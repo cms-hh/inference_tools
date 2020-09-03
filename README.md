@@ -1,5 +1,3 @@
-**Attention: This repository moved to: https://gitlab.cern.ch/hh/tools/inference**
-
 # Statistical inference HH(bbWW)
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -155,3 +153,7 @@ For a quick introduction into some of the features of `law`, check out the [intr
 
 Code style is enforced with the formatter "black": https://github.com/psf/black.
 The default line width is increased to 100 (see `pyproject.toml`).
+
+## Contributors
+* Peter Fackeldey: peter.fackeldey@cern.ch (email)
+* Marcel Rieger: marcel.rieger@cern.ch (email)
