@@ -7,6 +7,7 @@ from operator import itemgetter
 
 import law
 import luigi
+import luigi.util
 
 from dhi.tasks.base import CHBase, AnalysisTask, HTCondorWorkflow
 from dhi.utils.util import *
@@ -136,7 +137,7 @@ class NLOBase1D(DCBase):
     all_pois = k_pois + r_pois
 
     poi = luigi.ChoiceParameter(default="kl", choices=k_pois)
-    poi_range = law.CSVParameter(cls=luigi.IntParameter, default=(-40, 40), min_len=2, max_len=2)
+    poi_range = law.CSVParameter(cls=luigi.IntParameter, default=(-30, 30), min_len=2, max_len=2)
 
     def __init__(self, *args, **kwargs):
         super(NLOBase1D, self).__init__(*args, **kwargs)
@@ -261,6 +262,31 @@ class NLOScan1D(NLOBase1D, HTCondorWorkflow, law.LocalWorkflow):
         )
 
 
+@luigi.util.inherits(NLOScan1D)
+class MergeScan1D(AnalysisTask, law.tasks.ForestMerge):
+
+    merge_factor = 10
+
+    def merge_workflow_requires(self):
+        return NLOScan1D.req(self, _prefer_cli=["workflow"])
+
+    def merge_requires(self, start_leaf, end_leaf):
+        # the requirement is a workflow, so start_leaf and end_leaf correspond to branches
+        return NLOScan1D.req(
+            self, branch=-1, workflow="local", start_branch=start_leaf, end_branch=end_leaf
+        )
+
+    def trace_merge_inputs(self, inputs):
+        return [inp for inp in inputs["collection"].targets.values()]
+
+    def merge_output(self):
+        return self.local_target("scan1d_merged.root")
+
+    def merge(self, inputs, output):
+        with output.localize("w") as tmp_out:
+            law.root.hadd_task(self, inputs, tmp_out, local=True)
+
+
 class NLOScan2D(NLOBase2D, HTCondorWorkflow, law.LocalWorkflow):
 
     points = luigi.IntParameter(default=1000, description="Number of points to scan. Default: 1000")
@@ -305,6 +331,31 @@ class NLOScan2D(NLOBase2D, HTCondorWorkflow, law.LocalWorkflow):
             point=self.branch_data,
             output=self.output().basename,
         )
+
+
+@luigi.util.inherits(NLOScan2D)
+class MergeScan2D(AnalysisTask, law.tasks.ForestMerge):
+
+    merge_factor = 10
+
+    def merge_workflow_requires(self):
+        return NLOScan2D.req(self, _prefer_cli=["workflow"])
+
+    def merge_requires(self, start_leaf, end_leaf):
+        # the requirement is a workflow, so start_leaf and end_leaf correspond to branches
+        return NLOScan2D.req(
+            self, branch=-1, workflow="local", start_branch=start_leaf, end_branch=end_leaf
+        )
+
+    def trace_merge_inputs(self, inputs):
+        return [inp for inp in inputs["collection"].targets.values()]
+
+    def merge_output(self):
+        return self.local_target("scan2d_merged.root")
+
+    def merge(self, inputs, output):
+        with output.localize("w") as tmp_out:
+            law.root.hadd_task(self, inputs, tmp_out, local=True)
 
 
 class ImpactsPulls(DCBase):

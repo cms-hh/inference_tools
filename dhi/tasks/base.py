@@ -12,7 +12,7 @@ import luigi
 import six
 import law
 
-law.contrib.load("matplotlib", "htcondor")
+law.contrib.load("matplotlib", "htcondor", "root", "tasks")
 
 
 class BaseTask(law.Task):
