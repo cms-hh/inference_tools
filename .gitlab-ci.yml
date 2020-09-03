@@ -1,0 +1,10 @@
+stages:
+  - formatting
+
+black:
+  stage: formatting
+  image: python:3.7
+  script:
+    - pip install --upgrade pip
+    - pip install black==19.10b0
+    - black -l 100 --check --diff dhi

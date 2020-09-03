@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# commit-msg hook to run linting before actually committing.
+
+action() {
+    echo "running linter before performing git commit ..."
+
+    # get the black command
+    local black_cmd=""
+    if command -v black &> /dev/null; then
+        black_cmd="black"
+    else
+        black_cmd="dhi_black"
+    fi
+
+    # determine the directory to lint
+    local lint_dir=""
+    if [ -z "$DHA_BASE" ]; then
+        lint_dir="dhi"
+    else
+        lint_dir="$DHI_BASE/dhi"
+    fi
+
+    # run it
+    eval "$black_cmd --check --diff $lint_dir"
+    local ret="$?"
+
+    # show some hints when the linting failed and return
+    if [ "$ret" != "0" ]; then
+        echo
+        echo "run 'dhi_lint' to run the linter manually"
+        echo "or  'dhi_lint fix' to automatically fix all issues"
+        return "$ret"
+    fi
+
+    echo
+}
+action "$@"
