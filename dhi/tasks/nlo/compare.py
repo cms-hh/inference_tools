@@ -127,7 +127,10 @@ class CompareScan(PlotMixin, LabelsMixin, ViewMixin, AnalysisTask):
         plt.title(r"\textbf{CMS} \textit{Preliminary}", loc="left")
         plt.title(self.top_right_text, loc="right")
         plt.plot(
-            arr[:, 0], sigma_sm, label=r"theoretical $\sigma$", linestyle="-",
+            arr[:, 0],
+            sigma_sm,
+            label=r"theoretical $\sigma$",
+            linestyle="-",
         )
         for k, arr in limits.items():
             plt.plot(

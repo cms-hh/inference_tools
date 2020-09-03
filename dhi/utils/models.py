@@ -154,9 +154,21 @@ class GGFHHFormula:
         kl, kt, box, tri, interf, s1, s2, s3 = symbols("kl kt box tri interf s1 s2 s3")
 
         ### the vector of couplings
-        c = Matrix([[kt ** 4], [kt ** 2 * kl ** 2], [kt ** 3 * kl],])
+        c = Matrix(
+            [
+                [kt ** 4],
+                [kt ** 2 * kl ** 2],
+                [kt ** 3 * kl],
+            ]
+        )
         ### the vector of components
-        v = Matrix([[box], [tri], [interf],])
+        v = Matrix(
+            [
+                [box],
+                [tri],
+                [interf],
+            ]
+        )
         ### the vector of samples (i.e. cross sections)
         s = Matrix([[s1], [s2], [s3]])
         ####
@@ -272,7 +284,8 @@ class HHModel(PhysicsModel):
                 raise ValueError("A power contains a non-integer exponent")
             s = str(expr)
             repl = zip(
-                pows, (Mul(*[b] * e, evaluate=False) for b, e in (i.as_base_exp() for i in pows)),
+                pows,
+                (Mul(*[b] * e, evaluate=False) for b, e in (i.as_base_exp() for i in pows)),
             )
             for fr, to in repl:
                 s = s.replace(str(fr), str(to))
@@ -420,7 +433,10 @@ class HHModel(PhysicsModel):
     def done(self):
         ## this checks that a scaling has been attached to a unique process
         scalings = {}
-        for (k, i,) in self.scalingMap.items():  ## key -> process, item -> [(isample, 'type')]
+        for (
+            k,
+            i,
+        ) in self.scalingMap.items():  ## key -> process, item -> [(isample, 'type')]
             samples = list(set(i))  # remove duplicates
             for s in samples:
                 if not s in scalings:
