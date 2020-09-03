@@ -19,6 +19,7 @@ action() {
     [ -z "$DHI_DATA" ] && export DHI_DATA="/eos/user/${DHI_USER:0:1}/${DHI_USER}/dhi"
     [ -z "$DHI_SOFTWARE" ] && export DHI_SOFTWARE="/afs/cern.ch/work/${DHI_USER:0:1}/${DHI_USER}/dhi_software"
     [ -z "$DHI_STORE" ] && export DHI_STORE="$DHI_DATA/store"
+    [ -z "$DHI_LOCAL_STORE" ] && export DHI_LOCAL_STORE="/afs/cern.ch/work/${DHI_USER:0:1}/${DHI_USER}/dhi_store"
     [ -z "$DHI_DIST_VERSION" ] && export DHI_DIST_VERSION="slc7"
     export DHI_BLACK_PATH="$DHI_SOFTWARE/black"
     export DHI_EXAMPLE_CARDS="/afs/cern.ch/user/m/mfackeld/public/datacards/*/*.txt"

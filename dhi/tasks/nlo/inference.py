@@ -3,11 +3,12 @@
 import os
 import glob
 import itertools
+from operator import itemgetter
 
 import law
 import luigi
 
-from dhi.tasks.base import CHBase, AnalysisTask
+from dhi.tasks.base import CHBase, AnalysisTask, HTCondorWorkflow
 from dhi.utils.util import *
 
 
@@ -93,11 +94,15 @@ class CombDatacards(DCBase):
             return "cp {} {}".format(inputs, outputs["datacard"].path)
         elif self.stack_cards:
             return "stackCards.py -m {} -i {} -o {} {}".format(
-                self.mass, inputs, outputs["datacard"].path, outputs["shapes"].path,
+                self.mass,
+                inputs,
+                outputs["datacard"].path,
+                outputs["shapes"].path,
             )
         else:
             return "combineCards.py {datacards} > {out}".format(
-                datacards=inputs, out=outputs["datacard"].path,
+                datacards=inputs,
+                out=outputs["datacard"].path,
             )
 
 
@@ -177,7 +182,7 @@ class NLOBase2D(DCBase):
         return parts
 
 
-class NLOLimit(NLOBase1D, law.LocalWorkflow):
+class NLOLimit(NLOBase1D, HTCondorWorkflow, law.LocalWorkflow):
     def create_branch_map(self):
         return list(range(self.poi_range[0], self.poi_range[1] + 1))
 
@@ -212,64 +217,92 @@ class NLOLimit(NLOBase1D, law.LocalWorkflow):
         )
 
 
-class NLOScan1D(NLOBase1D):
+class NLOScan1D(NLOBase1D, HTCondorWorkflow, law.LocalWorkflow):
+
+    points = luigi.IntParameter(default=200, description="Number of points to scan. Default: 200")
+
+    def create_branch_map(self):
+        return list(range(self.points))
+
     def requires(self):
         return NLOT2W.req(self)
 
     def output(self):
-        return self.local_target_dc("scan.root")
+        return self.local_target_dc("scan1d_{}.root".format(self.branch_data))
+
+    def workflow_requires(self):
+        reqs = super(NLOScan1D, self).workflow_requires()
+        reqs["nloscan1d"] = self.requires_from_branch()
+        return reqs
 
     @property
     def cmd(self):
         return (
             "combine -M MultiDimFit {workspace}"
             " -m {mass} -t -1 {stable_options}"
-            " --algo grid -v 1 --points 200 --robustFit 1 --X-rtd MINIMIZER_analytic"
+            " --algo grid -v 1 --points {points} --robustFit 1 --X-rtd MINIMIZER_analytic"
             " --redefineSignalPOIs {poi}"
             " --setParameterRanges {poi}={range}"
             " --setParameters {set_params}"
             " --freezeParameters {freeze_params}"
-            " && mv higgsCombineTest.MultiDimFit.mH{mass}.root {output}"
+            " --firstPoint {point} --lastPoint {point} -n .Test.POINTS.{point}"
+            " && mv higgsCombine.Test.POINTS.{point}.MultiDimFit.mH{mass}.root {output}"
         ).format(
             workspace=self.input().path,
             mass=self.mass,
             stable_options=self.stable_options,
+            points=self.points,
             poi=self.poi,
             range=",".join(str(r) for r in self.poi_range),
             set_params=self.set_params,
             freeze_params=self.freeze_params,
+            point=self.branch_data,
             output=self.output().basename,
         )
 
 
-class NLOScan2D(NLOBase2D):
+class NLOScan2D(NLOBase2D, HTCondorWorkflow, law.LocalWorkflow):
+
+    points = luigi.IntParameter(default=1000, description="Number of points to scan. Default: 1000")
+
+    def create_branch_map(self):
+        return list(range(self.points))
+
     def requires(self):
         return NLOT2W.req(self)
 
     def output(self):
-        return self.local_target_dc("scan.root")
+        return self.local_target_dc("scan2d_{}.root".format(self.branch_data))
+
+    def workflow_requires(self):
+        reqs = super(NLOScan2D, self).workflow_requires()
+        reqs["nloscan2d"] = self.requires_from_branch()
+        return reqs
 
     @property
     def cmd(self):
         return (
             "combine -M MultiDimFit {workspace}"
             " -m {mass} -t -1 {stable_options}"
-            " --algo grid -v 1 --points 1000 --robustFit 1 --X-rtd MINIMIZER_analytic"
+            " --algo grid -v 1 --points {points} --robustFit 1 --X-rtd MINIMIZER_analytic"
             " --redefineSignalPOIs {poi1},{poi2}"
             " --setParameterRanges {poi1}={range1}:{poi2}={range2}"
             " --setParameters {set_params}"
             " --freezeParameters {freeze_params}"
-            " && mv higgsCombineTest.MultiDimFit.mH{mass}.root {output}"
+            " --firstPoint {point} --lastPoint {point} -n .Test.POINTS.{point}"
+            " && mv higgsCombine.Test.POINTS.{point}.MultiDimFit.mH{mass}.root {output}"
         ).format(
             workspace=self.input().path,
             mass=self.mass,
             stable_options=self.stable_options,
+            points=self.points,
             poi1=self.poi1,
             poi2=self.poi2,
             range1=",".join(str(r) for r in self.poi1_range),
             range2=",".join(str(r) for r in self.poi2_range),
             set_params=self.set_params,
             freeze_params=self.freeze_params,
+            point=self.branch_data,
             output=self.output().basename,
         )
 
