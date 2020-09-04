@@ -294,12 +294,12 @@ class MergeScans1D(NLOBase1D):
 
 class NLOScan2D(NLOBase2D, HTCondorWorkflow, law.LocalWorkflow):
 
-    points = luigi.IntParameter(default=1024, description="Number of points to scan. Default: 1000")
+    points = luigi.IntParameter(default=1024, description="Number of points to scan. Default: 1024")
 
     def __init__(self, *args, **kwargs):
         super(NLOScan2D, self).__init__(*args, **kwargs)
 
-        if not ((self.points & (self.points - 1) == 0) and self.points != 0):
+        if not is_pow2(self.points):
             new_points = next_pow2(self.points)
             self.publish_message(
                 "The number of points has to be a number of power 2. Rounding up... old: {} new: {}".format(
