@@ -131,7 +131,7 @@ action() {
 
         # python packages
         rm -rf "$DHI_SOFTWARE/{bin,lib*}"
-        LAW_INSTALL_EXECUTABLE=env dhi_pip_install git+https://github.com/riga/law.git@refactor_cli_args --no-binary law || return "$?"
+        LAW_INSTALL_EXECUTABLE=env dhi_pip_install git+https://github.com/riga/law.git --no-binary law || return "$?"
 
         # virtual env for black which requires python 3
         echo "setting up black in virtual environment at $DHI_BLACK_PATH"
