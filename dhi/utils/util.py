@@ -34,3 +34,10 @@ def rgb(r, g, b):
     when using the atom package "pigments"!
     """
     return tuple(v if v <= 1.0 else float(v) / 255.0 for v in (r, g, b))
+
+
+def next_pow2(num):
+    k = 1
+    while k < num:
+        k = k << 1
+    return k

@@ -60,7 +60,8 @@ class DCBase(CHBase):
 
     def local_target_dc(self, *path, **kwargs):
         cls = law.LocalFileTarget if not kwargs.pop("dir", False) else law.LocalDirectoryTarget
-
+        store = kwargs.pop("store", self.default_store)
+        store = os.path.expandvars(os.path.expanduser(store))
         if path:
             # add the dc_prefix to the last path fragment
             last_parts = path[-1].rsplit(os.sep, 1)
@@ -76,7 +77,7 @@ class DCBase(CHBase):
             # add the last path fragment back
             path = path[:-1] + (last_path,)
 
-        return cls(self.local_path(*path), **kwargs)
+        return cls(self.local_path(*path, store=store), **kwargs)
 
 
 class CombDatacards(DCBase):
@@ -112,7 +113,9 @@ class NLOT2W(DCBase):
         return CombDatacards.req(self, mass=self.mass)
 
     def output(self):
-        return self.local_target_dc("workspace_{}.root".format(self.hh_model))
+        return self.local_target_dc(
+            "workspace_{}.root".format(self.hh_model), store="$DHI_LOCAL_STORE"
+        )
 
     @property
     def cmd(self):
@@ -229,7 +232,9 @@ class NLOScan1D(NLOBase1D, HTCondorWorkflow, law.LocalWorkflow):
         return NLOT2W.req(self)
 
     def output(self):
-        return self.local_target_dc("scan1d_{}.root".format(self.branch_data))
+        return self.local_target_dc(
+            "scan1d_{}.root".format(self.branch_data), store="$DHI_LOCAL_STORE"
+        )
 
     def workflow_requires(self):
         reqs = super(NLOScan1D, self).workflow_requires()
@@ -258,38 +263,50 @@ class NLOScan1D(NLOBase1D, HTCondorWorkflow, law.LocalWorkflow):
             set_params=self.set_params,
             freeze_params=self.freeze_params,
             point=self.branch_data,
-            output=self.output().basename,
+            output=self.output().path,
         )
 
 
 @luigi.util.inherits(NLOScan1D)
-class MergeScan1D(AnalysisTask, law.tasks.ForestMerge):
+class MergeScans1D(NLOBase1D):
+    def requires(self):
+        return NLOScan1D.req(self)
 
-    merge_factor = 10
+    def output(self):
+        return self.local_target("scan1d_merged.npz")
 
-    def merge_workflow_requires(self):
-        return NLOScan1D.req(self, _prefer_cli=["workflow"])
+    def run(self):
+        from tqdm import tqdm
+        import numpy as np
+        import uproot
 
-    def merge_requires(self, start_leaf, end_leaf):
-        # the requirement is a workflow, so start_leaf and end_leaf correspond to branches
-        return NLOScan1D.req(
-            self, branch=-1, workflow="local", start_branch=start_leaf, end_branch=end_leaf
-        )
-
-    def trace_merge_inputs(self, inputs):
-        return [inp for inp in inputs["collection"].targets.values()]
-
-    def merge_output(self):
-        return self.local_target("scan1d_merged.root")
-
-    def merge(self, inputs, output):
-        with output.localize("w") as tmp_out:
-            law.root.hadd_task(self, inputs, tmp_out, local=True)
+        inputs = [inp.path for inp in self.input()["collection"].targets.values()]
+        pb = tqdm(inputs, total=len(inputs), unit="files", desc="Extract fit results")
+        deltaNLL, poi = [], []
+        for inp in pb:
+            f = uproot.open(inp)["limit"]
+            deltaNLL.append(np.delete(f["deltaNLL"].array(), 0))
+            poi.append(np.delete(f[self.poi].array(), 0))
+        deltaNLL = np.concatenate(deltaNLL, axis=None)
+        poi = np.concatenate(poi, axis=None)
+        self.output().dump(poi=poi, deltaNLL=deltaNLL)
 
 
 class NLOScan2D(NLOBase2D, HTCondorWorkflow, law.LocalWorkflow):
 
-    points = luigi.IntParameter(default=1000, description="Number of points to scan. Default: 1000")
+    points = luigi.IntParameter(default=1024, description="Number of points to scan. Default: 1000")
+
+    def __init__(self, *args, **kwargs):
+        super(NLOScan2D, self).__init__(*args, **kwargs)
+
+        if not ((self.points & (self.points - 1) == 0) and self.points != 0):
+            new_points = next_pow2(self.points)
+            self.publish_message(
+                "The number of points has to be a number of power 2. Rounding up... old: {} new: {}".format(
+                    self.points, new_points
+                )
+            )
+            self.points = new_points
 
     def create_branch_map(self):
         return list(range(self.points))
@@ -298,7 +315,9 @@ class NLOScan2D(NLOBase2D, HTCondorWorkflow, law.LocalWorkflow):
         return NLOT2W.req(self)
 
     def output(self):
-        return self.local_target_dc("scan2d_{}.root".format(self.branch_data))
+        return self.local_target_dc(
+            "scan2d_{}.root".format(self.branch_data), store="$DHI_LOCAL_STORE"
+        )
 
     def workflow_requires(self):
         reqs = super(NLOScan2D, self).workflow_requires()
@@ -329,33 +348,35 @@ class NLOScan2D(NLOBase2D, HTCondorWorkflow, law.LocalWorkflow):
             set_params=self.set_params,
             freeze_params=self.freeze_params,
             point=self.branch_data,
-            output=self.output().basename,
+            output=self.output().path,
         )
 
 
 @luigi.util.inherits(NLOScan2D)
-class MergeScan2D(AnalysisTask, law.tasks.ForestMerge):
+class MergeScans2D(NLOBase2D):
+    def requires(self):
+        return NLOScan2D.req(self)
 
-    merge_factor = 10
+    def output(self):
+        return self.local_target("scan2d_merged.npz")
 
-    def merge_workflow_requires(self):
-        return NLOScan2D.req(self, _prefer_cli=["workflow"])
+    def run(self):
+        from tqdm import tqdm
+        import numpy as np
+        import uproot
 
-    def merge_requires(self, start_leaf, end_leaf):
-        # the requirement is a workflow, so start_leaf and end_leaf correspond to branches
-        return NLOScan2D.req(
-            self, branch=-1, workflow="local", start_branch=start_leaf, end_branch=end_leaf
-        )
-
-    def trace_merge_inputs(self, inputs):
-        return [inp for inp in inputs["collection"].targets.values()]
-
-    def merge_output(self):
-        return self.local_target("scan2d_merged.root")
-
-    def merge(self, inputs, output):
-        with output.localize("w") as tmp_out:
-            law.root.hadd_task(self, inputs, tmp_out, local=True)
+        inputs = [inp.path for inp in self.input()["collection"].targets.values()]
+        pb = tqdm(inputs, total=len(inputs), unit="files", desc="Extract fit results")
+        deltaNLL, poi1, poi2 = [], [], []
+        for inp in pb:
+            f = uproot.open(inp)["limit"]
+            deltaNLL.append(np.delete(f["deltaNLL"].array(), 0))
+            poi1.append(np.delete(f[self.poi1].array(), 0))
+            poi2.append(np.delete(f[self.poi2].array(), 0))
+        deltaNLL = np.concatenate(deltaNLL, axis=None)
+        poi1 = np.concatenate(poi1, axis=None)
+        poi2 = np.concatenate(poi2, axis=None)
+        self.output().dump(poi1=poi1, poi2=poi2, deltaNLL=deltaNLL)
 
 
 class ImpactsPulls(DCBase):

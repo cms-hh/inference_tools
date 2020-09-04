@@ -18,8 +18,8 @@ from dhi.tasks.nlo.inference import (
     NLOBase1D,
     NLOBase2D,
     NLOLimit,
-    NLOScan1D,
-    NLOScan2D,
+    MergeScans1D,
+    MergeScans2D,
     ImpactsPulls,
 )
 from dhi.tasks.nlo.mixins import (
@@ -61,41 +61,36 @@ class PlotScan(ScanMixin, LabelsMixin, ViewMixin, NLOBase1D):
 
 class PlotNLL1D(NLL1DMixin, LabelsMixin, ViewMixin, NLOBase1D):
     def requires(self):
-        return NLOScan1D.req(self)
+        return MergeScans1D.req(self)
 
     def output(self):
         return self.local_target_dc("nll.pdf")
 
     @ViewMixin.view_output_plots
     def run(self):
-        import uproot
+        import numpy as np
 
-        self.output().parent.touch()
-        inp = uproot.open(self.input().path)
-        tree = inp["limit"]
-        # first element is trash
-        poi = np.delete(tree[self.poi].array(), 0)
-        deltaNLL = 2 * np.delete(tree["deltaNLL"].array(), 0)
+        inp = self.input().load()
+        poi = inp["poi"]
+        deltaNLL = 2 * inp["deltaNLL"]
         self.plot(poi=poi, deltaNLL=deltaNLL)
 
 
 class PlotNLL2D(NLL2DMixin, LabelsMixin, ViewMixin, NLOBase2D):
     def requires(self):
-        return NLOScan2D.req(self)
+        return MergeScans2D.req(self)
 
     def output(self):
         return self.local_target_dc("nll.pdf")
 
     @ViewMixin.view_output_plots
     def run(self):
-        import uproot
+        import numpy as np
 
-        inp = uproot.open(self.input().path)
-        tree = inp["limit"]
-        # first element is trash
-        poi1 = np.delete(tree[self.poi1].array(), 0)
-        poi2 = np.delete(tree[self.poi2].array(), 0)
-        deltaNLL = 2 * np.delete(tree["deltaNLL"].array(), 0)
+        inp = self.input().load()
+        poi1 = inp["poi1"]
+        poi2 = inp["poi2"]
+        deltaNLL = 2 * inp["deltaNLL"]
         self.plot(poi1=poi1, poi2=poi2, deltaNLL=deltaNLL)
 
 

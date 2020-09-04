@@ -6,13 +6,14 @@ __all__ = ["BaseTask", "AnalysisTask", "CMSSWSandboxTask", "CHBase"]
 
 
 import os
+import math
 from collections import OrderedDict
 
 import luigi
 import six
 import law
 
-law.contrib.load("matplotlib", "htcondor", "root", "tasks")
+law.contrib.load("matplotlib", "htcondor", "root", "tasks", "numpy")
 
 
 class BaseTask(law.Task):
@@ -72,10 +73,8 @@ class CHBase(AnalysisTask):
 
     @law.decorator.safe_output
     def run(self):
-        # find the directory of the first registered output
         output_dir = law.util.flatten(self.output())[0].parent
         output_dir.touch()
-
         with self.publish_step(law.util.colored(self.cmd, color="light_cyan")):
             code = law.util.interruptable_popen(
                 self.cmd,
@@ -88,6 +87,13 @@ class CHBase(AnalysisTask):
 
 
 class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
+    max_runtime = law.DurationParameter(
+        default=2.0,
+        unit="h",
+        significant=False,
+        description="maximum runtime, default unit is hours, default: 2",
+    )
+
     def htcondor_output_directory(self):
         # the directory where submission meta data should be stored
         return law.LocalDirectoryTarget(self.local_path(store="$DHI_LOCAL_STORE"))
@@ -108,8 +114,8 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         # the CERN htcondor setup requires a "log" config, but we can safely set it to /dev/null
         # if you are interested in the logs of the batch system itself, set a meaningful value here
         config.custom_content.append(("log", "/dev/null"))
-        # schedule for 1 day runtime
-        config.custom_content.append(("+JobFlavour", "tomorrow"))
+        # max runtime
+        config.custom_content.append(("+MaxRuntime", int(math.floor(self.max_runtime * 3600)) - 1))
         return config
 
     def htcondor_use_local_scheduler(self):
