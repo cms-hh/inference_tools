@@ -141,15 +141,15 @@ Result plot can be inspected in https://cernbox.cern.ch/ under `dhi/store/PlotNL
 All fit/scan tasks are `law.Workflows` internally and can be submitted to the CERN HTCondor batch system:
 * 1D scan:
 ```bash
-law run dhi.NLOScan1D --version dev1 --workflow htcondor --tasks-per-job 4 --transfer-logs --poll-interval 30sec
+law run dhi.NLOScan1D --version dev1 --workflow htcondor --tasks-per-job 4 --poll-interval 30sec
 ```
 * 2D scan:
 ```bash
-law run dhi.NLOScan2D --version dev1 --workflow htcondor --tasks-per-job 5 --transfer-logs --poll-interval 30sec
+law run dhi.NLOScan2D --version dev1 --workflow htcondor --tasks-per-job 5 --poll-interval 30sec
 ```
 * Limits:
 ```bash
-law run dhi.NLOLimit --version dev1 --workflow htcondor --tasks-per-job 2 --transfer-logs --poll-interval 30sec
+law run dhi.NLOLimit --version dev1 --workflow htcondor --tasks-per-job 2 --poll-interval 30sec
 ```
 
 ## LO scans
