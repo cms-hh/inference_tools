@@ -90,7 +90,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
     transfer_logs = luigi.BoolParameter(
         default=True,
         significant=False,
-        description="transfer " "job logs to the output directory, default: True",
+        description="transfer job logs to the output directory, default: True",
     )
     max_runtime = law.DurationParameter(
         default=2.0,
