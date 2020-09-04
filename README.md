@@ -50,22 +50,24 @@ module 'dhi.tasks.nlo.plotting', 5 task(s):
     - dhi.PlotNLL1D
     - dhi.PlotNLL2D
 
-module 'dhi.tasks.nlo.inference', 9 task(s):
+module 'dhi.tasks.nlo.inference', 11 task(s):
     - dhi.NLOLimit
+    - dhi.NLOScan1D
+    - dhi.NLOScan2D
     - dhi.DCBase
     - dhi.CombDatacards
     - dhi.NLOT2W
     - dhi.NLOBase1D
     - dhi.NLOBase2D
     - dhi.ImpactsPulls
-    - dhi.NLOScan1D
-    - dhi.NLOScan2D
+    - dhi.MergeScans1D
+    - dhi.MergeScans2D
 
 module 'dhi.tasks.nlo.compare', 2 task(s):
     - dhi.CompareScan
     - dhi.CompareNLL1D
 
-written 16 task(s) to index file '/your/path/statistical-inference/.law/index'
+written 18 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 ## NLO scans
