@@ -228,6 +228,11 @@ class NLOScan1D(NLOBase1D, HTCondorWorkflow, law.LocalWorkflow):
     def create_branch_map(self):
         return list(range(self.points))
 
+    def store_parts(self):
+        parts = super(NLOScan1D, self).store_parts()
+        parts["points"] = self.points
+        return parts
+
     def requires(self):
         return NLOT2W.req(self)
 
@@ -272,6 +277,11 @@ class MergeScans1D(NLOBase1D):
     def requires(self):
         return NLOScan1D.req(self)
 
+    def store_parts(self):
+        parts = super(MergeScans1D, self).store_parts()
+        parts["points"] = self.points
+        return parts
+
     def output(self):
         return self.local_target("scan1d_merged.npz")
 
@@ -310,6 +320,11 @@ class NLOScan2D(NLOBase2D, HTCondorWorkflow, law.LocalWorkflow):
 
     def create_branch_map(self):
         return list(range(self.points))
+
+    def store_parts(self):
+        parts = super(NLOScan2D, self).store_parts()
+        parts["points"] = self.points
+        return parts
 
     def requires(self):
         return NLOT2W.req(self)
@@ -356,6 +371,11 @@ class NLOScan2D(NLOBase2D, HTCondorWorkflow, law.LocalWorkflow):
 class MergeScans2D(NLOBase2D):
     def requires(self):
         return NLOScan2D.req(self)
+
+    def store_parts(self):
+        parts = super(MergeScans2D, self).store_parts()
+        parts["points"] = self.points
+        return parts
 
     def output(self):
         return self.local_target("scan2d_merged.npz")
