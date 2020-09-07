@@ -7,6 +7,7 @@ action() {
     local this_file="$( [ ! -z "$ZSH_VERSION" ] && echo "${(%):-%x}" || echo "${BASH_SOURCE[0]}" )"
     local this_dir="$( cd "$( dirname "$this_file" )" && pwd )"
 
+    export DHI_N_CORES="$(grep -c processor /proc/cpuinfo)"
 
     #
     # global variables
