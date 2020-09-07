@@ -107,7 +107,11 @@ class ScanMixin(PlotMixin):
         plt.title(r"\textbf{CMS} \textit{Preliminary}", loc="left")
         plt.title(self.top_right_text, loc="right")
         plt.plot(
-            arr[:, 0], sigma_sm, label=r"theoretical $\sigma$", color="red", linestyle="-",
+            arr[:, 0],
+            sigma_sm,
+            label=r"theoretical $\sigma$",
+            color="red",
+            linestyle="-",
         )
         plt.plot(
             arr[:, 0],

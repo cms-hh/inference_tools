@@ -3,11 +3,13 @@
 import os
 import glob
 import itertools
+from operator import itemgetter
 
 import law
 import luigi
+import luigi.util
 
-from dhi.tasks.base import CHBase, AnalysisTask
+from dhi.tasks.base import CHBase, AnalysisTask, HTCondorWorkflow
 from dhi.utils.util import *
 
 
@@ -58,7 +60,8 @@ class DCBase(CHBase):
 
     def local_target_dc(self, *path, **kwargs):
         cls = law.LocalFileTarget if not kwargs.pop("dir", False) else law.LocalDirectoryTarget
-
+        store = kwargs.pop("store", self.default_store)
+        store = os.path.expandvars(os.path.expanduser(store))
         if path:
             # add the dc_prefix to the last path fragment
             last_parts = path[-1].rsplit(os.sep, 1)
@@ -74,7 +77,7 @@ class DCBase(CHBase):
             # add the last path fragment back
             path = path[:-1] + (last_path,)
 
-        return cls(self.local_path(*path), **kwargs)
+        return cls(self.local_path(*path, store=store), **kwargs)
 
 
 class CombDatacards(DCBase):
@@ -93,11 +96,15 @@ class CombDatacards(DCBase):
             return "cp {} {}".format(inputs, outputs["datacard"].path)
         elif self.stack_cards:
             return "stackCards.py -m {} -i {} -o {} {}".format(
-                self.mass, inputs, outputs["datacard"].path, outputs["shapes"].path,
+                self.mass,
+                inputs,
+                outputs["datacard"].path,
+                outputs["shapes"].path,
             )
         else:
             return "combineCards.py {datacards} > {out}".format(
-                datacards=inputs, out=outputs["datacard"].path,
+                datacards=inputs,
+                out=outputs["datacard"].path,
             )
 
 
@@ -106,7 +113,9 @@ class NLOT2W(DCBase):
         return CombDatacards.req(self, mass=self.mass)
 
     def output(self):
-        return self.local_target_dc("workspace_{}.root".format(self.hh_model))
+        return self.local_target_dc(
+            "workspace_{}.root".format(self.hh_model), store="$DHI_LOCAL_STORE"
+        )
 
     @property
     def cmd(self):
@@ -131,7 +140,7 @@ class NLOBase1D(DCBase):
     all_pois = k_pois + r_pois
 
     poi = luigi.ChoiceParameter(default="kl", choices=k_pois)
-    poi_range = law.CSVParameter(cls=luigi.IntParameter, default=(-40, 40), min_len=2, max_len=2)
+    poi_range = law.CSVParameter(cls=luigi.IntParameter, default=(-30, 30), min_len=2, max_len=2)
 
     def __init__(self, *args, **kwargs):
         super(NLOBase1D, self).__init__(*args, **kwargs)
@@ -177,7 +186,7 @@ class NLOBase2D(DCBase):
         return parts
 
 
-class NLOLimit(NLOBase1D, law.LocalWorkflow):
+class NLOLimit(NLOBase1D, HTCondorWorkflow, law.LocalWorkflow):
     def create_branch_map(self):
         return list(range(self.poi_range[0], self.poi_range[1] + 1))
 
@@ -212,66 +221,182 @@ class NLOLimit(NLOBase1D, law.LocalWorkflow):
         )
 
 
-class NLOScan1D(NLOBase1D):
+class NLOScan1D(NLOBase1D, HTCondorWorkflow, law.LocalWorkflow):
+
+    points = luigi.IntParameter(default=200, description="Number of points to scan. Default: 200")
+
+    def create_branch_map(self):
+        return list(range(self.points))
+
+    def store_parts(self):
+        parts = super(NLOScan1D, self).store_parts()
+        parts["points"] = self.points
+        return parts
+
     def requires(self):
         return NLOT2W.req(self)
 
     def output(self):
-        return self.local_target_dc("scan.root")
+        return self.local_target_dc(
+            "scan1d_{}.root".format(self.branch_data), store="$DHI_LOCAL_STORE"
+        )
+
+    def workflow_requires(self):
+        reqs = super(NLOScan1D, self).workflow_requires()
+        reqs["nloscan1d"] = self.requires_from_branch()
+        return reqs
 
     @property
     def cmd(self):
         return (
             "combine -M MultiDimFit {workspace}"
             " -m {mass} -t -1 {stable_options}"
-            " --algo grid -v 1 --points 200 --robustFit 1 --X-rtd MINIMIZER_analytic"
+            " --algo grid -v 1 --points {points} --robustFit 1 --X-rtd MINIMIZER_analytic"
             " --redefineSignalPOIs {poi}"
             " --setParameterRanges {poi}={range}"
             " --setParameters {set_params}"
             " --freezeParameters {freeze_params}"
-            " && mv higgsCombineTest.MultiDimFit.mH{mass}.root {output}"
+            " --firstPoint {point} --lastPoint {point} -n .Test.POINTS.{point}"
+            " && mv higgsCombine.Test.POINTS.{point}.MultiDimFit.mH{mass}.root {output}"
         ).format(
             workspace=self.input().path,
             mass=self.mass,
             stable_options=self.stable_options,
+            points=self.points,
             poi=self.poi,
             range=",".join(str(r) for r in self.poi_range),
             set_params=self.set_params,
             freeze_params=self.freeze_params,
-            output=self.output().basename,
+            point=self.branch_data,
+            output=self.output().path,
         )
 
 
-class NLOScan2D(NLOBase2D):
+@luigi.util.inherits(NLOScan1D)
+class MergeScans1D(NLOBase1D):
+    def requires(self):
+        return NLOScan1D.req(self)
+
+    def store_parts(self):
+        parts = super(MergeScans1D, self).store_parts()
+        parts["points"] = self.points
+        return parts
+
+    def output(self):
+        return self.local_target("scan1d_merged.npz")
+
+    def run(self):
+        from tqdm import tqdm
+        import numpy as np
+        import uproot
+
+        inputs = [inp.path for inp in self.input()["collection"].targets.values()]
+        pb = tqdm(inputs, total=len(inputs), unit="files", desc="Extract fit results")
+        deltaNLL, poi = [], []
+        for inp in pb:
+            f = uproot.open(inp)["limit"]
+            deltaNLL.append(np.delete(f["deltaNLL"].array(), 0))
+            poi.append(np.delete(f[self.poi].array(), 0))
+        deltaNLL = np.concatenate(deltaNLL, axis=None)
+        poi = np.concatenate(poi, axis=None)
+        self.output().dump(poi=poi, deltaNLL=deltaNLL)
+
+
+class NLOScan2D(NLOBase2D, HTCondorWorkflow, law.LocalWorkflow):
+
+    points = luigi.IntParameter(default=1024, description="Number of points to scan. Default: 1024")
+
+    def __init__(self, *args, **kwargs):
+        super(NLOScan2D, self).__init__(*args, **kwargs)
+
+        if not is_pow2(self.points):
+            new_points = next_pow2(self.points)
+            self.publish_message(
+                "The number of points has to be a number of power 2. Rounding up... old: {} new: {}".format(
+                    self.points, new_points
+                )
+            )
+            self.points = new_points
+
+    def create_branch_map(self):
+        return list(range(self.points))
+
+    def store_parts(self):
+        parts = super(NLOScan2D, self).store_parts()
+        parts["points"] = self.points
+        return parts
+
     def requires(self):
         return NLOT2W.req(self)
 
     def output(self):
-        return self.local_target_dc("scan.root")
+        return self.local_target_dc(
+            "scan2d_{}.root".format(self.branch_data), store="$DHI_LOCAL_STORE"
+        )
+
+    def workflow_requires(self):
+        reqs = super(NLOScan2D, self).workflow_requires()
+        reqs["nloscan2d"] = self.requires_from_branch()
+        return reqs
 
     @property
     def cmd(self):
         return (
             "combine -M MultiDimFit {workspace}"
             " -m {mass} -t -1 {stable_options}"
-            " --algo grid -v 1 --points 1000 --robustFit 1 --X-rtd MINIMIZER_analytic"
+            " --algo grid -v 1 --points {points} --robustFit 1 --X-rtd MINIMIZER_analytic"
             " --redefineSignalPOIs {poi1},{poi2}"
             " --setParameterRanges {poi1}={range1}:{poi2}={range2}"
             " --setParameters {set_params}"
             " --freezeParameters {freeze_params}"
-            " && mv higgsCombineTest.MultiDimFit.mH{mass}.root {output}"
+            " --firstPoint {point} --lastPoint {point} -n .Test.POINTS.{point}"
+            " && mv higgsCombine.Test.POINTS.{point}.MultiDimFit.mH{mass}.root {output}"
         ).format(
             workspace=self.input().path,
             mass=self.mass,
             stable_options=self.stable_options,
+            points=self.points,
             poi1=self.poi1,
             poi2=self.poi2,
             range1=",".join(str(r) for r in self.poi1_range),
             range2=",".join(str(r) for r in self.poi2_range),
             set_params=self.set_params,
             freeze_params=self.freeze_params,
-            output=self.output().basename,
+            point=self.branch_data,
+            output=self.output().path,
         )
+
+
+@luigi.util.inherits(NLOScan2D)
+class MergeScans2D(NLOBase2D):
+    def requires(self):
+        return NLOScan2D.req(self)
+
+    def store_parts(self):
+        parts = super(MergeScans2D, self).store_parts()
+        parts["points"] = self.points
+        return parts
+
+    def output(self):
+        return self.local_target("scan2d_merged.npz")
+
+    def run(self):
+        from tqdm import tqdm
+        import numpy as np
+        import uproot
+
+        inputs = [inp.path for inp in self.input()["collection"].targets.values()]
+        pb = tqdm(inputs, total=len(inputs), unit="files", desc="Extract fit results")
+        deltaNLL, poi1, poi2 = [], [], []
+        for inp in pb:
+            f = uproot.open(inp)["limit"]
+            deltaNLL.append(np.delete(f["deltaNLL"].array(), 0))
+            poi1.append(np.delete(f[self.poi1].array(), 0))
+            poi2.append(np.delete(f[self.poi2].array(), 0))
+        deltaNLL = np.concatenate(deltaNLL, axis=None)
+        poi1 = np.concatenate(poi1, axis=None)
+        poi2 = np.concatenate(poi2, axis=None)
+        self.output().dump(poi1=poi1, poi2=poi2, deltaNLL=deltaNLL)
 
 
 class ImpactsPulls(DCBase):
