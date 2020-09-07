@@ -401,7 +401,24 @@ class MergeScans2D(NLOBase2D):
 
 class ImpactsPulls(DCBase):
 
+    r = luigi.FloatParameter(default=1.0, description="Inject signal strength (r). Default: 1.")
+    r_range = law.CSVParameter(
+        cls=luigi.IntParameter,
+        default=(0, 30),
+        min_len=2,
+        max_len=2,
+        description="Ranges for signal strength. Default: 0..30",
+    )
+
     params = "--redefineSignalPOIs r --setParameters r_gghh=1,r_qqhh=1,kt=1,kl=1,CV=1,C2V=1"
+
+    def __init__(self, *args, **kwargs):
+        super(ImpactsPulls, self).__init__(*args, **kwargs)
+        assert self.r >= 0.0
+        self.r_low, self.r_high = self.r_range
+        assert self.r_low >= 0.0
+        assert self.r_high > 0.0
+        assert self.r_high > self.r_low
 
     def requires(self):
         return NLOT2W.req(self)
@@ -415,17 +432,27 @@ class ImpactsPulls(DCBase):
             "combineTool.py -M Impacts -d {workspace}"
             " -m {mass} -t -1 "
             " --cminDefaultMinimizerStrategy 0 --robustFit 1 --X-rtd MINIMIZER_analytic"
-            " --expectSignal=1"
+            " --expectSignal={r} --setParameterRanges r={r_low},{r_high}"
             " --doInitialFit"
-            " --parallel 8 {params}"
-        ).format(mass=self.mass, workspace=self.input().path, params=self.params)
+            " --parallel {cores} {params}"
+        ).format(
+            workspace=self.input().path,
+            mass=self.mass,
+            r=self.r,
+            r_low=self.r_low,
+            r_high=self.r_high,
+            cores=os.environ["DHI_N_CORES"],
+            params=self.params,
+        )
         fit = initial_fit.replace("--doInitialFit", "--doFits")
         impacts = (
-            "combineTool.py -M Impacts -d {workspace}" " -m {mass} --output {impacts} {params}"
+            "combineTool.py -M Impacts -d {workspace} -m {mass} --output {impacts} {params} --setParameterRanges r={r_low},{r_high}"
         ).format(
             mass=self.mass,
             workspace=self.input().path,
             impacts=self.output().path,
             params=self.params,
+            r_low=self.r_low,
+            r_high=self.r_high,
         )
         return " && ".join([initial_fit, fit, impacts])
