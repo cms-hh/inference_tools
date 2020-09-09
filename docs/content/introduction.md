@@ -18,7 +18,7 @@ The `setup.sh` script will install (and compile if necessary) all relevant softw
 
 - https://github.com/cms-sw/cmssw/tree/CMSSW_10_2_X (CMSSW_10_2_20_UL)
 - https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git
-- https://github.com/riga/CombineHarvester.git
+- https://github.com/riga/CombineHarvester.git (Fork)
 - https://github.com/riga/law/tree/master/law
 - https://github.com/psf/black (only for developers)
 
