@@ -1,0 +1,82 @@
+site_name: HH Inference Tools Documentation
+site_url: https://cern.ch/cms-hh/tools/inference
+site_description: Documentation of CMS DiHiggs Analysis Inference Tools
+site_author: Peter Fackeldey, Marcel Rieger
+
+docs_dir: content
+site_dir: site
+edit_uri: blob/master/content
+
+repo_name: hh/tools/inference
+repo_url: https://gitlab.cern.ch/hh/tools/inference
+
+use_directory_urls: false
+copyright: Copyright &copy; 2020
+
+theme:
+  name: material
+  logo: images/logo.png
+  palette:
+    scheme: preference
+    primary: deep orange
+    accent: light green
+  features:
+    - instant
+
+plugins:
+  - search:
+      min_search_length: 2
+  - minify:
+      minify_html: true
+  - markdownextradata
+  - git-revision-date-localized
+
+markdown_extensions:
+  - markdown.extensions.admonition
+  - markdown.extensions.attr_list
+  - markdown.extensions.def_list
+  - markdown.extensions.footnotes
+  - markdown.extensions.meta
+  - markdown.extensions.toc:
+      permalink: true
+  - pymdownx.arithmatex
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: squidfunk
+      repo: mkdocs-material
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_div_format
+  - pymdownx.tabbed
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+extra_javascript:
+  - https://unpkg.com/mermaid@8.6/dist/mermaid.min.js
+
+extra:
+  FOO: BAR
+  social:
+    - icon: fontawesome/brands/gitlab
+      link: https://gitlab.cern.ch/hh/tools/inference
+
+nav:
+  - Home: index.md
