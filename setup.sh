@@ -140,9 +140,9 @@ action() {
             dhi_reset_env
             rm -rf "$DHI_BLACK_PATH"
             virtualenv -p python3 "$DHI_BLACK_PATH" || return "$?"
-            source "$DHI_BLACK_PATH/bin/activate" || return "$?"
+            source "$DHI_BLACK_PATH/bin/activate" "" || return "$?"
             pip install -U pip || return "$?"
-            pip install black==19.10b0 || return "$?"
+            pip install black==20.8b1 || return "$?"
         )
 
         touch "$DHI_SOFTWARE/.good"
