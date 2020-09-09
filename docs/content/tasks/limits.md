@@ -60,5 +60,5 @@ law run dhi.NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/
 
 If you want to merge e.g. 3 fits in one job you can use the `--tasks-per-job` cli option:
 ```shell
-law run dhi.NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --workflow --poll-intervall 30sec --tasks-per-job 3
+law run dhi.NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --workflow htcondor --poll-intervall 30sec --tasks-per-job 3
 ```
