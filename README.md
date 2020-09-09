@@ -1,6 +1,6 @@
 # HH Inference Tools
 
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Documentation badge](https://img.shields.io/badge/Documentation-passing-brightgreen)](http://cern.ch/cms-hh/tools/inference) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ## Introduction
 
