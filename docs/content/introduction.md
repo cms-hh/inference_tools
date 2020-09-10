@@ -36,11 +36,12 @@ law index --verbose
 
 You should see:
 ```bash
-indexing tasks in 4 module(s)
+indexing tasks in 5 module(s)
 loading module 'dhi.tasks.base', done
 loading module 'dhi.tasks.nlo.inference', done
 loading module 'dhi.tasks.nlo.plotting', done
 loading module 'dhi.tasks.nlo.compare', done
+loading module 'dhi.tasks.misc', done
 
 module 'dhi.tasks.nlo.plotting', 5 task(s):
     - dhi.TestPlots
@@ -66,7 +67,10 @@ module 'dhi.tasks.nlo.compare', 2 task(s):
     - dhi.CompareScan
     - dhi.CompareNLL1D
 
-written 18 task(s) to index file '/your/path/inference/.law/index'
+module 'dhi.tasks.misc', 1 task(s):
+    - dhi.ValidateDatacard
+
+written 19 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 Now you are done with the setup and can start running the statistical inference!

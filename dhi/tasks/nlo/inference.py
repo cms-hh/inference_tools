@@ -3,7 +3,6 @@
 import os
 import glob
 import itertools
-from operator import itemgetter
 
 import law
 import luigi

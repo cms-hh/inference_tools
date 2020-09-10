@@ -10,4 +10,4 @@ More detailed information on the different scans & fits you can run, can be foun
 - [2D Scans](tasks/2dnll.md)
 
 Instructions on how to produce plots, with only datacards as a starting point can be found in the [Plotting Section](plotting.md).
-Additionally there are also instructions to produce pulls and impacts plots [here](pullsandimpacts.md).
+Additionally there are also instructions to produce pulls and impacts plots [here](pullsandimpacts.md) and to validate your datacard [Datacard Validation](datacardvalidation.md), which wraps `ValidateDatacards.py` from CombineHarvester to perform some sanity checks.
