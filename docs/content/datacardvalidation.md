@@ -55,4 +55,4 @@ This progress looks :) because there were no failed tasks or missing dependencie
 
 You can modify the verbosity level additionally with the `--verbosity` cli option.
 
-In the best case the won't be any warnings. Be careful: empty/negative bins/histograms will lead to `Bogus Norms!
+In the best case the won't be any warnings. Be careful: empty/negative bins/histograms will lead to `Bogus Norms`!
