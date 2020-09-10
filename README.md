@@ -4,7 +4,29 @@
 
 ## Introduction
 
-TODO.
+Connect to a CentOS 7 node on lxplus:
+```shell
+ssh <cern_username>@lxplus.cern.ch
+```
+
+Clone this repository:
+```shell
+git clone https://gitlab.cern.ch/hh/tools/inference.git
+cd inference
+```
+
+Run the following two steps everytime you newly login to a CentOS 7 node on lxplus in order to setup the correct software.
+
+1. Be patient this may take some time if you set up the software for the first time:
+```shell
+source setup.sh
+```
+
+2. Let law index your tasks and their parameters (for autocompletion)
+```shell
+law index --verbose
+```
+
 
 
 ## Documentation
