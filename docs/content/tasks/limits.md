@@ -1,5 +1,8 @@
 Run upper limits on the cross-section with the `dhi.NLOLimit` task.
 
+Default: Every law.Task comes with a `--version` parameter, in order to handle multiple inference analysis in parallel.
+Note: Omit the `--print-status` cli option in order to run the task!
+
 ```shell
 law run dhi.NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --print-status 0
 ```

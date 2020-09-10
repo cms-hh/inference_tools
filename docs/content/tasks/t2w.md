@@ -1,4 +1,5 @@
 Default: Every law.Task comes with a `--version` parameter, in order to handle multiple inference analysis in parallel.
+Note: Omit the `--print-status` cli option in order to run the task!
 
 After combining your datacards you need to create a workspace using a PhysicsModel. We will use Luca Cadamuro's HH PhysicsModel to perform next-to-leading order fits: https://indico.cern.ch/event/885273/contributions/3812533/attachments/2016615/3370728/HH_combine_model_7Apr2018.pdf
 

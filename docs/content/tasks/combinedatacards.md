@@ -1,6 +1,7 @@
 # Combine Datacards
 
 Default: Every law.Task comes with a `--version` parameter, in order to handle multiple inference analysis in parallel.
+Note: Omit the `--print-status` cli option in order to run the task!
 
 If you are starting with multiple datacards you can use the `dhi.CombDatacards` task to combine them.
 You can run this task with:

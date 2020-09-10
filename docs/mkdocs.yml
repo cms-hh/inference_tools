@@ -83,7 +83,9 @@ nav:
   - Introduction: introduction.md
   - Tasks:
     - Combine Datacards: tasks/combinedatacards.md
-    - Text-to-Workspace: tasks/t2w.md
-    - Upper limits on the cross section: tasks/limits.md
-    - One dimensional Likelihood Scans: tasks/1dnll.md
-    - Two dimensional Likelihood Scans: tasks/2dnll.md
+    - Text to Workspace: tasks/t2w.md
+    - Upper Limits on the Cross Section: tasks/limits.md
+    - One Dimensional Likelihood Scans: tasks/1dnll.md
+    - Two Dimensional Likelihood Scans: tasks/2dnll.md
+  - Plotting: plotting.md
+  - Pulls and Impacts: pullsandimpacts.md
