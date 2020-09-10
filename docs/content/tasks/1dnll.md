@@ -55,7 +55,7 @@ For heavy workloads, where you need to scan tens or hundreds of points and each 
 
 Example usage:
 ```shell
-law run dhi.NLOScan1D --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --workflow --poll-intervall 30sec
+law run dhi.NLOScan1D --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --workflow htcondor --poll-intervall 30sec
 ```
 
 If you want to merge e.g. 3 fits in one job you can use the `--tasks-per-job` cli option:
