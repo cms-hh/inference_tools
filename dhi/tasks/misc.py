@@ -1,17 +1,9 @@
 # coding: utf-8
 
-import os
-import glob
-import itertools
-
 import law
 import luigi
-import luigi.util
 
 from dhi.tasks.base import CHBase
-from dhi.utils.util import *
-
-import CombineHarvester.CombineTools.ch as ch
 
 
 class ValidateDatacard(CHBase):
