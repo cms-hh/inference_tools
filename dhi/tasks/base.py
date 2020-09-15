@@ -34,7 +34,9 @@ class BaseTask(law.Task):
 
     def local_target(self, *path, **kwargs):
         cls = law.LocalFileTarget if not kwargs.pop("dir", False) else law.LocalDirectoryTarget
-        return cls(self.local_path(*path), **kwargs)
+        store = kwargs.pop("store", self.default_store)
+        store = os.path.expandvars(os.path.expanduser(store))
+        return cls(self.local_path(*path, store=store), **kwargs)
 
 
 class AnalysisTask(BaseTask):
