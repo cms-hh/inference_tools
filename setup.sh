@@ -166,10 +166,12 @@ action() {
     # synchronize git hooks
     #
 
-    for hook in "$( ls "$this_dir/githooks" )"; do
-        if [ ! -f "$this_dir/.git/hooks/$hook" ]; then
-            ln -s "../../githooks/$hook" "$this_dir/.git/hooks/$hook" &> /dev/null
-        fi
-    done
+    # this is disabled for the moment to avoid difficulties related to formatting
+    # in the initial phase of the development of the combination tools
+    # for hook in "$( ls "$this_dir/githooks" )"; do
+    #     if [ ! -f "$this_dir/.git/hooks/$hook" ]; then
+    #         ln -s "../../githooks/$hook" "$this_dir/.git/hooks/$hook" &> /dev/null
+    #     fi
+    # done
 }
 action "$@"
