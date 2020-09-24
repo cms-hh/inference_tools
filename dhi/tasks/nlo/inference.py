@@ -3,7 +3,6 @@
 import os
 import glob
 import itertools
-from operator import itemgetter
 
 import law
 import luigi
@@ -102,9 +101,10 @@ class CombDatacards(DCBase):
                 outputs["shapes"].path,
             )
         else:
-            return "combineCards.py {datacards} > {out}".format(
+            return "combineCards.py {datacards} > {out} && ln -s /afs {parent_dir}/afs".format(
                 datacards=inputs,
                 out=outputs["datacard"].path,
+                parent_dir=outputs["datacard"].dirname,
             )
 
 
