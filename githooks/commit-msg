@@ -15,7 +15,7 @@ action() {
 
     # determine the directory to lint
     local lint_dir=""
-    if [ -z "$DHA_BASE" ]; then
+    if [ -z "$DHI_BASE" ]; then
         lint_dir="dhi"
     else
         lint_dir="$DHI_BASE/dhi"
