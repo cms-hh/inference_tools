@@ -1,9 +1,8 @@
 # coding: utf-8
 
-from __future__ import absolute_import
-
-__all__ = ["BaseTask", "AnalysisTask", "CMSSWSandboxTask", "CHBase"]
-
+"""
+Generic base tasks.
+"""
 
 import os
 import math
@@ -58,6 +57,48 @@ class AnalysisTask(BaseTask):
         return params
 
 
+class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
+
+    transfer_logs = luigi.BoolParameter(
+        default=True,
+        significant=False,
+        description="transfer job logs to the output directory, default: True",
+    )
+    max_runtime = law.DurationParameter(
+        default=2.0,
+        unit="h",
+        significant=False,
+        description="maximum runtime, default unit is hours, default: 2",
+    )
+
+    def htcondor_output_directory(self):
+        # the directory where submission meta data should be stored
+        return self.local_target(dir=True)
+
+    def htcondor_bootstrap_file(self):
+        # each job can define a bootstrap file that is executed prior to the actual job
+        # in order to setup software and environment variables
+        return os.path.expandvars("$DHI_BASE/dhi/tasks/bootstrap.sh")
+
+    def htcondor_job_config(self, config, job_num, branches):
+        # render_variables are rendered into all files sent with a job
+        config.render_variables["dhi_base"] = os.environ["DHI_BASE"]
+        config.render_variables["dhi_env_path"] = os.environ["PATH"]
+        # force to run on CC7, http://batchdocs.web.cern.ch/batchdocs/local/submit.html#os-choice
+        config.custom_content.append(("requirements", '(OpSysAndVer =?= "CentOS7")'))
+        # copy the entire environment, TODO(mrieger): use code checkout instead
+        config.custom_content.append(("getenv", "true"))
+        # the CERN htcondor setup requires a "log" config, but we can safely set it to /dev/null
+        # if you are interested in the logs of the batch system itself, set a meaningful value here
+        config.custom_content.append(("log", "/dev/null"))
+        # max runtime
+        config.custom_content.append(("+MaxRuntime", int(math.floor(self.max_runtime * 3600)) - 1))
+        return config
+
+    def htcondor_use_local_scheduler(self):
+        return True
+
+
 class CHBase(AnalysisTask):
 
     mass = luigi.IntParameter(default=125)
@@ -88,44 +129,3 @@ class CHBase(AnalysisTask):
             )[0]
             if code != 0:
                 raise Exception("{} failed with exit code {}".format(self.cmd, code))
-
-
-class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
-    transfer_logs = luigi.BoolParameter(
-        default=True,
-        significant=False,
-        description="transfer job logs to the output directory, default: True",
-    )
-    max_runtime = law.DurationParameter(
-        default=2.0,
-        unit="h",
-        significant=False,
-        description="maximum runtime, default unit is hours, default: 2",
-    )
-
-    def htcondor_output_directory(self):
-        # the directory where submission meta data should be stored
-        return law.LocalDirectoryTarget(self.local_path(store="$DHI_LOCAL_STORE"))
-
-    def htcondor_bootstrap_file(self):
-        # each job can define a bootstrap file that is executed prior to the actual job
-        # in order to setup software and environment variables
-        return os.path.expandvars("$DHI_BASE/dhi/tasks/bootstrap.sh")
-
-    def htcondor_job_config(self, config, job_num, branches):
-        # render_variables are rendered into all files sent with a job
-        config.render_variables["dhi_base"] = os.environ["DHI_BASE"]
-        config.render_variables["dhi_env_path"] = os.environ["PATH"]
-        # force to run on CC7, http://batchdocs.web.cern.ch/batchdocs/local/submit.html#os-choice
-        config.custom_content.append(("requirements", '(OpSysAndVer =?= "CentOS7")'))
-        # copy the entire environment
-        config.custom_content.append(("getenv", "true"))
-        # the CERN htcondor setup requires a "log" config, but we can safely set it to /dev/null
-        # if you are interested in the logs of the batch system itself, set a meaningful value here
-        config.custom_content.append(("log", "/dev/null"))
-        # max runtime
-        config.custom_content.append(("+MaxRuntime", int(math.floor(self.max_runtime * 3600)) - 1))
-        return config
-
-    def htcondor_use_local_scheduler(self):
-        return True

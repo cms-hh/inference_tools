@@ -6,18 +6,13 @@ import law
 import luigi
 import numpy as np
 import matplotlib
-
 matplotlib.use("Agg")
 matplotlib.rc("text", usetex=True)
 matplotlib.rcParams["text.latex.preamble"] = [r"\usepackage{amsmath}"]
 import matplotlib.pyplot as plt
 
-from dhi.tasks.nlo.mixins import (
-    PlotMixin,
-    LabelsMixin,
-    ViewMixin,
-)
 from dhi.tasks.base import AnalysisTask
+from dhi.tasks.nlo.mixins import PlotMixin, LabelsMixin, ViewMixin
 
 
 class CompareScan(PlotMixin, LabelsMixin, ViewMixin, AnalysisTask):

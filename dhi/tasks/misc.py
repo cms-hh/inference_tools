@@ -1,5 +1,9 @@
 # coding: utf-8
 
+"""
+Miscellaneous tasks.
+"""
+
 import os
 import law
 import luigi
@@ -33,7 +37,7 @@ class PostFitShapes(CHBase):
         return NLOT2W.req(self)
 
     def output(self):
-        return self.local_target("fitDiagnostics.root", store="$DHI_LOCAL_STORE")
+        return self.local_target("fitDiagnostics.root")
 
     @property
     def cmd(self):
@@ -58,7 +62,7 @@ class CompareNuisances(CHBase):
         return PostFitShapes.req(self)
 
     def output(self):
-        return self.local_target("nuisances.{}".format(self.ext), store="$DHI_LOCAL_STORE")
+        return self.local_target("nuisances.{}".format(self.ext))
 
     def __init__(self, *args, **kwargs):
         super(CompareNuisances, self).__init__(*args, **kwargs)

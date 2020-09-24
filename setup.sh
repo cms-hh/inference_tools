@@ -4,34 +4,26 @@ action() {
     #
     # prepare local variables
     #
+
     local this_file="$( [ ! -z "$ZSH_VERSION" ] && echo "${(%):-%x}" || echo "${BASH_SOURCE[0]}" )"
     local this_dir="$( cd "$( dirname "$this_file" )" && pwd )"
     local orig="$PWD"
+    local setup_name="${1:-default}"
 
 
     #
     # global variables
     # (DHI = Di Higgs Inference)
-    # some of them can be exported before this script is sourced for customization
     #
 
     export DHI_BASE="$this_dir"
-    [ -z "$DHI_USER" ] && export DHI_USER="$( whoami )"
-    [ -z "$DHI_DATA" ] && export DHI_DATA="/eos/user/${DHI_USER:0:1}/${DHI_USER}/dhi"
-    [ -z "$DHI_SOFTWARE" ] && export DHI_SOFTWARE="/afs/cern.ch/work/${DHI_USER:0:1}/${DHI_USER}/dhi_software"
-    [ -z "$DHI_STORE" ] && export DHI_STORE="$DHI_DATA/store"
-    [ -z "$DHI_LOCAL_STORE" ] && export DHI_LOCAL_STORE="/afs/cern.ch/work/${DHI_USER:0:1}/${DHI_USER}/dhi_store"
-    [ -z "$DHI_JOB_DIR" ] && export DHI_JOB_DIR="$DHI_BASE/data/jobs"
-    [ -z "$DHI_N_CORES" ] && export DHI_N_CORES="$( grep -c ^processor /proc/cpuinfo )"
+    interactive_setup "$setup_name"
     export DHI_BLACK_PATH="$DHI_SOFTWARE/black"
     export DHI_EXAMPLE_CARDS="/afs/cern.ch/user/m/mfackeld/public/datacards/*/*.txt"
     export DHI_ORIG_PATH="$PATH"
     export DHI_ORIG_PYTHONPATH="$PYTHONPATH"
     export DHI_ORIG_PYTHON3PATH="$PYTHON3PATH"
     export DHI_ORIG_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
-    [ -z "$LANGUAGE" ] && export LANGUAGE=en_US.UTF-8
-    [ -z "$LANG" ] && export LANG=en_US.UTF-8
-    [ -z "$LC_ALL" ] && export LC_ALL=en_US.UTF-8
 
 
     #
@@ -91,7 +83,7 @@ action() {
             git clone --depth 1 --branch v8.1.0 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit || return "1"
             cd HiggsAnalysis/CombinedLimit
             source env_standalone.sh "" || return "2"
-            make -j "$DHI_N_CORES"
+            make -j
             make || return "3"
         )
 
@@ -165,13 +157,12 @@ action() {
 
     export LAW_HOME="$DHI_BASE/.law"
     export LAW_CONFIG_FILE="$DHI_BASE/law.cfg"
-    [ -z "$DHI_SCHEDULER_PORT" ] && export DHI_SCHEDULER_PORT="80"
-    if [ -z "$DHI_LOCAL_SCHEDULER" ]; then
-        export DHI_LOCAL_SCHEDULER="$( [ -z "$DHI_SCHEDULER_HOST" ] && echo True || echo False )"
-    fi
 
     # source law's bash completion scipt
     which law &> /dev/null && source "$( law completion )" ""
+
+    # run task indexing for autocompletion
+    law index --verbose
 
 
     #
@@ -187,6 +178,67 @@ action() {
     # done
 
 
-    echo -e "\x1b[0;49;32mHH inference tools successfully setup\x1b[0m"
+    echo -e "\n\x1b[0;49;35mHH inference tools successfully setup\x1b[0m"
 }
+
+interactive_setup() {
+    local setup_name="${1:-default}"
+    local env_file="${2:-$DHI_BASE/.env_$setup_name.sh}"
+    local env_file_tmp="${2:-$DHI_BASE/.env_$setup_name.sh.tmp}"
+
+    # when the setup already exists and it's not the default one,
+    # source the corresponding env file and stop
+    if [ "$setup_name" != "default" ] && [ -f "$env_file" ]; then
+        echo "sourcing setup variables from $env_file"
+        source "$env_file" ""
+        return "0"
+    fi
+
+    query() {
+        local varname="$1"
+        local text="$2"
+        local default="$3"
+        local default_text="${4:-$default}"
+        if [ "$setup_name" = "default" ]; then
+            export $varname="$default"
+        else
+            read -p "$text ($varname, default '$default_text'):  " query_response
+            [ "X$query_response" = "X" ] && query_response="$default"
+            # repeat for boolean flags that were not entered correctly
+            while true; do
+                ( [ "$default" != "True" ] && [ "$default" != "False" ] ) && break
+                ( [ "$query_response" = "True" ] || [ "$query_response" = "False" ] ) && break
+                read -p "please enter either 'True' or 'False':  " query_response
+                [ "X$query_response" = "X" ] && query_response="$default"
+            done
+            export $varname="$query_response"
+            echo "export $varname=\"$query_response\"" >> "$env_file_tmp"
+            echo
+        fi
+    }
+
+    # ensure that the temporary env file is empty
+    rm -rf "$env_file_tmp"
+
+    # start querying for variables
+    query DHI_USER "Username on lxplus" "$( whoami )"
+    query DHI_DATA "Local data directory" "$DHI_BASE/data" "./data"
+    query DHI_STORE "Default output store in local directory" "$DHI_DATA/store" "\$DHI_DATA/store"
+    query DHI_STORE_AFSWORK "Optional output store in AFS work directory" "/afs/cern.ch/work/${DHI_USER:0:1}/${DHI_USER}/dhi/store"
+    query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "/eos/user/${DHI_USER:0:1}/${DHI_USER}/dhi/store"
+    query DHI_SOFTWARE "Directory for installing software" "$DHI_DATA/software" "\$DHI_DATA/software"
+    query DHI_JOB_DIR "Directory for storing job files" "$DHI_DATA/jobs" "\$DHI_DATA/jobs"
+    query DHI_LOCAL_SCHEDULER "Use a local scheduler for law tasks" "True"
+    if [ "$DHI_LOCAL_SCHEDULER" != "True" ]; then
+        query DHI_SCHEDULER_HOST "Address of a central scheduler for law tasks" "hh:cmshhcombr2@hh-scheduler1.cern.ch"
+        query DHI_SCHEDULER_PORT "Port of a central scheduler for law tasks" "80"
+    fi
+
+    # move the env file to the correct location for later use
+    if [ "$setup_name" != "default" ]; then
+        mv "$env_file_tmp" "$env_file"
+        echo "setup variables written to $env_file"
+    fi
+}
+
 action "$@"

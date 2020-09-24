@@ -114,9 +114,7 @@ class NLOT2W(DCBase):
         return CombDatacards.req(self, mass=self.mass)
 
     def output(self):
-        return self.local_target_dc(
-            "workspace_{}.root".format(self.hh_model), store="$DHI_LOCAL_STORE"
-        )
+        return self.local_target_dc("workspace_{}.root".format(self.hh_model))
 
     @property
     def cmd(self):
@@ -238,9 +236,7 @@ class NLOScan1D(NLOBase1D, law.LocalWorkflow, HTCondorWorkflow):
         return NLOT2W.req(self)
 
     def output(self):
-        return self.local_target_dc(
-            "scan1d_{}.root".format(self.branch_data), store="$DHI_LOCAL_STORE"
-        )
+        return self.local_target_dc("scan1d_{}.root".format(self.branch_data))
 
     def workflow_requires(self):
         reqs = super(NLOScan1D, self).workflow_requires()
@@ -327,9 +323,7 @@ class NLOScan2D(NLOBase2D, law.LocalWorkflow, HTCondorWorkflow):
         return NLOT2W.req(self)
 
     def output(self):
-        return self.local_target_dc(
-            "scan2d_{}.root".format(self.branch_data), store="$DHI_LOCAL_STORE"
-        )
+        return self.local_target_dc("scan2d_{}.root".format(self.branch_data))
 
     def workflow_requires(self):
         reqs = super(NLOScan2D, self).workflow_requires()
