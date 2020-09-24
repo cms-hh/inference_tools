@@ -3,6 +3,7 @@
 import os
 import glob
 import itertools
+import multiprocessing
 
 import law
 import luigi
@@ -441,7 +442,7 @@ class ImpactsPulls(DCBase):
             r=self.r,
             r_low=self.r_low,
             r_high=self.r_high,
-            cores=os.environ["DHI_N_CORES"],
+            cores=multiprocessing.cpu_count(),
             params=self.params,
         )
         fit = initial_fit.replace("--doInitialFit", "--doFits")
