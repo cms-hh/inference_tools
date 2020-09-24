@@ -29,13 +29,15 @@ class BaseTask(law.Task):
     def local_path(self, *path, **kwargs):
         store = kwargs.get("store") or self.default_store
         store = os.path.expandvars(os.path.expanduser(store))
+
         parts = tuple(self.store_parts().values()) + path
+
         return os.path.join(store, *(str(p) for p in parts))
 
     def local_target(self, *path, **kwargs):
         cls = law.LocalFileTarget if not kwargs.pop("dir", False) else law.LocalDirectoryTarget
-        store = kwargs.pop("store", self.default_store)
-        store = os.path.expandvars(os.path.expanduser(store))
+        store = kwargs.pop("store", None)
+
         return cls(self.local_path(*path, store=store), **kwargs)
 
 

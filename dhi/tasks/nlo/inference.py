@@ -10,7 +10,7 @@ import luigi
 import luigi.util
 
 from dhi.tasks.base import CHBase, AnalysisTask, HTCondorWorkflow
-from dhi.utils.util import *
+from dhi.utils.util import is_pow2, next_pow2
 
 
 class DCBase(CHBase):
@@ -187,7 +187,7 @@ class NLOBase2D(DCBase):
         return parts
 
 
-class NLOLimit(NLOBase1D, HTCondorWorkflow, law.LocalWorkflow):
+class NLOLimit(NLOBase1D, law.LocalWorkflow, HTCondorWorkflow):
     def create_branch_map(self):
         return list(range(self.poi_range[0], self.poi_range[1] + 1))
 
@@ -222,7 +222,7 @@ class NLOLimit(NLOBase1D, HTCondorWorkflow, law.LocalWorkflow):
         )
 
 
-class NLOScan1D(NLOBase1D, HTCondorWorkflow, law.LocalWorkflow):
+class NLOScan1D(NLOBase1D, law.LocalWorkflow, HTCondorWorkflow):
 
     points = luigi.IntParameter(default=200, description="Number of points to scan. Default: 200")
 
@@ -287,23 +287,19 @@ class MergeScans1D(NLOBase1D):
         return self.local_target("scan1d_merged.npz")
 
     def run(self):
-        from tqdm import tqdm
         import numpy as np
-        import uproot
 
-        inputs = [inp.path for inp in self.input()["collection"].targets.values()]
-        pb = tqdm(inputs, total=len(inputs), unit="files", desc="Extract fit results")
         deltaNLL, poi = [], []
-        for inp in pb:
-            f = uproot.open(inp)["limit"]
+        for inp in self.input()["collection"].targets.values():
+            f = inp.load(formatter="uproot")["limit"]
             deltaNLL.append(np.delete(f["deltaNLL"].array(), 0))
             poi.append(np.delete(f[self.poi].array(), 0))
         deltaNLL = np.concatenate(deltaNLL, axis=None)
         poi = np.concatenate(poi, axis=None)
-        self.output().dump(poi=poi, deltaNLL=deltaNLL)
+        self.output().dump(poi=poi, deltaNLL=deltaNLL, formatter="numpy")
 
 
-class NLOScan2D(NLOBase2D, HTCondorWorkflow, law.LocalWorkflow):
+class NLOScan2D(NLOBase2D, law.LocalWorkflow, HTCondorWorkflow):
 
     points = luigi.IntParameter(default=1024, description="Number of points to scan. Default: 1024")
 
