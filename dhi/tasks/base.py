@@ -9,7 +9,6 @@ import math
 from collections import OrderedDict
 
 import luigi
-import six
 import law
 
 law.contrib.load("matplotlib", "htcondor", "root", "tasks", "numpy")

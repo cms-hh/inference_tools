@@ -4,12 +4,6 @@ import re
 
 import law
 import luigi
-import numpy as np
-import matplotlib
-matplotlib.use("Agg")
-matplotlib.rc("text", usetex=True)
-matplotlib.rcParams["text.latex.preamble"] = [r"\usepackage{amsmath}"]
-import matplotlib.pyplot as plt
 
 from dhi.tasks.base import AnalysisTask
 from dhi.tasks.nlo.inference import (
@@ -29,7 +23,7 @@ from dhi.tasks.nlo.mixins import (
     NLL2DMixin,
     ViewMixin,
 )
-from dhi.util import rgb
+from dhi.util import import_matplotlib, rgb
 
 
 class PlotScan(ScanMixin, LabelsMixin, ViewMixin, NLOBase1D):
@@ -42,6 +36,8 @@ class PlotScan(ScanMixin, LabelsMixin, ViewMixin, NLOBase1D):
 
     @ViewMixin.view_output_plots
     def run(self):
+        import numpy as np
+
         self.output().parent.touch()
         inputs = {
             int(re.findall(r"-?\d+", k.basename)[0]): k

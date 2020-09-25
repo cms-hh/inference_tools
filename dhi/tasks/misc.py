@@ -13,11 +13,11 @@ from dhi.tasks.nlo.inference import CombDatacards, NLOT2W, ImpactsPulls
 
 
 class ValidateDatacard(CHBase):
-    version = None
 
     input_card = luigi.Parameter(description="Path to input datacard")
-
     verbosity = luigi.ChoiceParameter(default="1", choices=("0", "1", "2", "3"))
+
+    version = None
 
     def output(self):
         return self.local_target("validation.json")
@@ -33,6 +33,7 @@ class ValidateDatacard(CHBase):
 
 
 class PostFitShapes(CHBase):
+
     def requires(self):
         return NLOT2W.req(self)
 
@@ -54,9 +55,10 @@ class PostFitShapes(CHBase):
 
 
 class CompareNuisances(CHBase):
-    exe = "$CMSSW_BASE/src/HiggsAnalysis/CombinedLimit/test/diffNuisances.py"
 
     format = luigi.ChoiceParameter(default="html", choices=("html", "latex", "text"))
+
+    exe = "$CMSSW_BASE/src/HiggsAnalysis/CombinedLimit/test/diffNuisances.py"
 
     def requires(self):
         return PostFitShapes.req(self)
@@ -66,11 +68,12 @@ class CompareNuisances(CHBase):
 
     def __init__(self, *args, **kwargs):
         super(CompareNuisances, self).__init__(*args, **kwargs)
+
         if self.format == "html":
             self.ext = "html"
-        if self.format == "latex":
+        elif self.format == "latex":
             self.ext = "tex"
-        if self.format == "text":
+        elif self.format == "text":
             self.ext = "txt"
 
     @property

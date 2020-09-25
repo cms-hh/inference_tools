@@ -4,12 +4,6 @@ import re
 
 import law
 import luigi
-import numpy as np
-import matplotlib
-matplotlib.use("Agg")
-matplotlib.rc("text", usetex=True)
-matplotlib.rcParams["text.latex.preamble"] = [r"\usepackage{amsmath}"]
-import matplotlib.pyplot as plt
 
 from dhi.tasks.base import AnalysisTask
 from dhi.tasks.nlo.mixins import PlotMixin, LabelsMixin, ViewMixin
@@ -42,7 +36,8 @@ class CompareScan(PlotMixin, LabelsMixin, ViewMixin, AnalysisTask):
 
     @ViewMixin.view_output_plots
     def run(self):
-        self.output().parent.touch()
+        import numpy as np
+        plt = import_plt()
 
         limits = {}
 
@@ -154,6 +149,7 @@ class CompareNLL1D(PlotMixin, LabelsMixin, ViewMixin, AnalysisTask):
 
     def __init__(self, *args, **kwargs):
         super(CompareNLL1D, self).__init__(*args, **kwargs)
+
         if not self.nll_labels:
             self.nll_labels = list(map(str, range(len(self.nll_files))))
         assert len(self.nll_files) == len(self.nll_labels)
@@ -163,9 +159,9 @@ class CompareNLL1D(PlotMixin, LabelsMixin, ViewMixin, AnalysisTask):
 
     @ViewMixin.view_output_plots
     def run(self):
+        import numpy as np
         import uproot
-
-        self.output().parent.touch()
+        plt = import_plt()
 
         nll = {}
         for nll_label, nll_file in zip(self.nll_labels, self.nll_files):
