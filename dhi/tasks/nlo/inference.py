@@ -10,7 +10,7 @@ import luigi
 import luigi.util
 
 from dhi.tasks.base import CHBase, AnalysisTask, HTCondorWorkflow
-from dhi.utils.util import is_pow2, next_pow2
+from dhi.util import is_pow2, next_pow2
 
 
 class DCBase(CHBase):
@@ -81,6 +81,7 @@ class DCBase(CHBase):
 
 
 class CombDatacards(DCBase):
+
     def output(self):
         outputs = {"datacard": self.local_target_dc("datacard.txt")}
         if self.stack_cards:
@@ -110,6 +111,7 @@ class CombDatacards(DCBase):
 
 
 class NLOT2W(DCBase):
+
     def requires(self):
         return CombDatacards.req(self, mass=self.mass)
 
@@ -123,7 +125,7 @@ class NLOT2W(DCBase):
             "text2workspace.py {datacard}"
             " -m {mass}"
             " -o {workspace}"
-            " -P dhi.utils.models:{model}"
+            " -P dhi.models:{model}"
         ).format(
             datacard=inputs["datacard"].path,
             workspace=self.output().path,
@@ -186,6 +188,7 @@ class NLOBase2D(DCBase):
 
 
 class NLOLimit(NLOBase1D, law.LocalWorkflow, HTCondorWorkflow):
+
     def create_branch_map(self):
         return list(range(self.poi_range[0], self.poi_range[1] + 1))
 
@@ -271,6 +274,7 @@ class NLOScan1D(NLOBase1D, law.LocalWorkflow, HTCondorWorkflow):
 
 @luigi.util.inherits(NLOScan1D)
 class MergeScans1D(NLOBase1D):
+
     def requires(self):
         return NLOScan1D.req(self)
 
@@ -360,6 +364,7 @@ class NLOScan2D(NLOBase2D, law.LocalWorkflow, HTCondorWorkflow):
 
 @luigi.util.inherits(NLOScan2D)
 class MergeScans2D(NLOBase2D):
+
     def requires(self):
         return NLOScan2D.req(self)
 

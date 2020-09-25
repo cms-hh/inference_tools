@@ -16,18 +16,15 @@ from dhi.tasks.nlo.mixins import PlotMixin, LabelsMixin, ViewMixin
 
 
 class CompareScan(PlotMixin, LabelsMixin, ViewMixin, AnalysisTask):
-
     """
     Example usage:
         law run dhi.CompareScan --version dev1 --limit-directories "/eos/user/u/username/dhi/store/NLOLimit/mjj/125/kl_-40_40,/eos/user/u/username/dhi/store/NLOLimit/classic_dnn/125/kl_-40_40" --limit-labels "mjj,dnn"
     """
 
     poi = luigi.ChoiceParameter(default="kl", choices=("kl", "C2V"))
-
     limit_directories = law.CSVParameter(
         description="usage: --limit-directories '/path/to/mjj/limits/directory,/path/to/dnn/limits/directory'"
     )
-
     limit_labels = law.CSVParameter(description="usage: --limit-labels 'mjj,dnn'", default=())
 
     def __init__(self, *args, **kwargs):
@@ -71,7 +68,7 @@ class CompareScan(PlotMixin, LabelsMixin, ViewMixin, AnalysisTask):
         k_factor = 1.115
         sigma_sm = np.ones_like(arr[:, 0])
         if self.poi == "kl":
-            from dhi.utils.models import ggf_formula
+            from dhi.models import ggf_formula
 
             sigma_sm = (
                 np.array(
@@ -93,7 +90,7 @@ class CompareScan(PlotMixin, LabelsMixin, ViewMixin, AnalysisTask):
                 * 1000.0  # convert pb -> fb
             )
         if self.poi == "C2V":
-            from dhi.utils.models import vbf_formula
+            from dhi.models import vbf_formula
 
             sigma_sm = (
                 np.array(
@@ -144,18 +141,15 @@ class CompareScan(PlotMixin, LabelsMixin, ViewMixin, AnalysisTask):
 
 
 class CompareNLL1D(PlotMixin, LabelsMixin, ViewMixin, AnalysisTask):
-
     """
     Example usage:
         law run dhi.CompareNLL1D --version dev1 --nll-files "/eos/user/u/username/dhi/store/NLOScan1D/dev1/125/kl_-40_40/higgsCombineTest.MultiDimFit.mH125.root,/eos/user/u/username/dhi/store/NLOScan1D/classic_dnn/125/kl_-40_40/higgsCombineTest.MultiDimFit.mH125.root,/eos/user/u/username/dhi/store/NLOScan1D/mjj/125/kl_-40_40/higgsCombineTest.MultiDimFit.mH125.root" --nll-labels "multiclass DNN,classic DNN,mjj"
     """
 
     poi = luigi.ChoiceParameter(default="kl", choices=("kl", "C2V"))
-
     nll_files = law.CSVParameter(
         description="usage: --nll-files '/path/to/mjj/nll/higgsCombineTest.MultiDimFit.mH125.root,/path/to/dnn/nll/higgsCombineTest.MultiDimFit.mH125.root'"
     )
-
     nll_labels = law.CSVParameter(description="usage: --nll-labels 'mjj,dnn'", default=())
 
     def __init__(self, *args, **kwargs):

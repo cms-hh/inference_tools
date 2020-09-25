@@ -6,7 +6,6 @@ import law
 import luigi
 import numpy as np
 import matplotlib
-
 matplotlib.use("Agg")
 matplotlib.rc("text", usetex=True)
 matplotlib.rcParams["text.latex.preamble"] = [r"\usepackage{amsmath}"]
@@ -30,10 +29,11 @@ from dhi.tasks.nlo.mixins import (
     NLL2DMixin,
     ViewMixin,
 )
-from dhi.utils.util import rgb
+from dhi.util import rgb
 
 
 class PlotScan(ScanMixin, LabelsMixin, ViewMixin, NLOBase1D):
+
     def requires(self):
         return NLOLimit.req(self)
 
@@ -60,6 +60,7 @@ class PlotScan(ScanMixin, LabelsMixin, ViewMixin, NLOBase1D):
 
 
 class PlotNLL1D(NLL1DMixin, LabelsMixin, ViewMixin, NLOBase1D):
+
     def requires(self):
         return MergeScans1D.req(self)
 
@@ -77,6 +78,7 @@ class PlotNLL1D(NLL1DMixin, LabelsMixin, ViewMixin, NLOBase1D):
 
 
 class PlotNLL2D(NLL2DMixin, LabelsMixin, ViewMixin, NLOBase2D):
+
     def requires(self):
         return MergeScans2D.req(self)
 
@@ -95,6 +97,7 @@ class PlotNLL2D(NLL2DMixin, LabelsMixin, ViewMixin, NLOBase2D):
 
 
 class PlotImpacts(ViewMixin, DCBase):
+
     def requires(self):
         return ImpactsPulls.req(self)
 
@@ -113,6 +116,7 @@ class PlotImpacts(ViewMixin, DCBase):
 
 
 class TestPlots(ViewMixin, AnalysisTask, law.WrapperTask):
+
     def requires(self):
         return [
             PlotScan.req(self),

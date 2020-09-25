@@ -200,7 +200,7 @@ interactive_setup() {
         local text="$2"
         local default="$3"
         local default_text="${4:-$default}"
-        if [ "$setup_name" = "default" ]; then
+        if [ "$setup_name" = "_default" ]; then
             export $varname="$default"
         else
             printf "$text (\x1b[0;49;35m$varname\x1b[0m, default '\x1b[1;49;39m$default_text\x1b[0m'):  "

@@ -1,20 +1,21 @@
 # coding: utf-8
 
+from math import ceil, log
+
 import law
 import luigi
 import numpy as np
 import matplotlib
-from math import ceil, log
-
 matplotlib.use("Agg")
 matplotlib.rc("text", usetex=True)
 matplotlib.rcParams["text.latex.preamble"] = [r"\usepackage{amsmath}"]
 import matplotlib.pyplot as plt
 
-from dhi.utils.util import rgb
+from dhi.util import rgb
 
 
 class LabelsMixin(object):
+
     poi_labels = {
         "kl": r"$\kappa_\lambda$",
         "kt": r"$\kappa_t$",
@@ -49,6 +50,7 @@ class PlotMixin(object):
 
 
 class ScanMixin(PlotMixin):
+
     def plot(self, arr):
         # rescale r to xsec:
 
@@ -146,6 +148,7 @@ class ScanMixin(PlotMixin):
 
 
 class NLL1DMixin(PlotMixin):
+
     def plot(self, poi, deltaNLL):
         import numpy as np
         from scipy.interpolate import interp1d
@@ -202,6 +205,7 @@ class NLL1DMixin(PlotMixin):
 
 
 class NLL2DMixin(PlotMixin):
+
     def plot(self, poi1, poi2, deltaNLL):
         e1 = np.unique(poi1)
         e2 = np.unique(poi2)
