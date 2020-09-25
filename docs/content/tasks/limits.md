@@ -1,16 +1,16 @@
-Run upper limits on the cross-section with the `dhi.NLOLimit` task.
+Run upper limits on the cross-section with the `NLOLimit` task.
 
 Default: Every law.Task comes with a `--version` parameter, in order to handle multiple inference analysis in parallel.
 Note: Omit the `--print-status` cli option in order to run the task!
 
 ```shell
-law run dhi.NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --print-status 0
+law run NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --print-status 0
 ```
 Output:
 ```shell
 print task status with max_depth 0 and target_depth 0
 
-> check status of dhi.NLOLimit(branch=-1, start_branch=0, end_branch=61, branches=, version=dev, mass=125, input_cards=, dc_prefix=, hh_model=HHdefault, stack_cards=False, poi=kl, poi_range=-30,30, workflow=htcondor)
+> check status of NLOLimit(branch=-1, start_branch=0, end_branch=61, branches=, version=dev, mass=125, input_cards=, dc_prefix=, hh_model=HHdefault, stack_cards=False, poi=kl, poi_range=-30,30, workflow=htcondor)
 |  submission: LocalFileTarget(path=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOLimit/dev/125/HHdefault/kl_-30_30/htcondor_submission_0To61.json, optional)
 |    absent
 |  status: LocalFileTarget(path=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOLimit/dev/125/HHdefault/kl_-30_30/htcondor_status_0To61.json, optional)
@@ -29,13 +29,13 @@ and it's range can be adjusted within the possible ranges of the PhysicsModel.
 
 Example:
 ```shell
-law run dhi.NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --poi "C2V" --poi-range=0,5 --print-status 0
+law run NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --poi "C2V" --poi-range=0,5 --print-status 0
 ```
 Output:
 ```shell
 print task status with max_depth 0 and target_depth 0
 
-> check status of dhi.NLOLimit(branch=-1, start_branch=0, end_branch=6, branches=, version=dev, mass=125, input_cards=, dc_prefix=, hh_model=HHdefault, stack_cards=False, poi=C2V, poi_range=0,5, workflow=htcondor)
+> check status of NLOLimit(branch=-1, start_branch=0, end_branch=6, branches=, version=dev, mass=125, input_cards=, dc_prefix=, hh_model=HHdefault, stack_cards=False, poi=C2V, poi_range=0,5, workflow=htcondor)
 |  submission: LocalFileTarget(path=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOLimit/dev/125/HHdefault/C2V_0_5/htcondor_submission_0To6.json, optional)
 |    absent
 |  status: LocalFileTarget(path=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOLimit/dev/125/HHdefault/C2V_0_5/htcondor_status_0To6.json, optional)
@@ -49,7 +49,7 @@ As you can see there will be one output file in the `SiblingFileCollection` for 
 
 Example usage:
 ```shell
-law run dhi.NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --workflow local --workers 4
+law run NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --workflow local --workers 4
 ```
 
 
@@ -58,10 +58,10 @@ For heavy workloads, where you need to scan tens or hundreds of points and each 
 
 Example usage:
 ```shell
-law run dhi.NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --workflow htcondor --poll-intervall 30sec
+law run NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --workflow htcondor --poll-intervall 30sec
 ```
 
 If you want to merge e.g. 3 fits in one job you can use the `--tasks-per-job` cli option:
 ```shell
-law run dhi.NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --workflow htcondor --poll-intervall 30sec --tasks-per-job 3
+law run NLOLimit --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --workflow htcondor --poll-intervall 30sec --tasks-per-job 3
 ```

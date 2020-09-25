@@ -8,7 +8,7 @@ action() {
     local this_file="$( [ ! -z "$ZSH_VERSION" ] && echo "${(%):-%x}" || echo "${BASH_SOURCE[0]}" )"
     local this_dir="$( cd "$( dirname "$this_file" )" && pwd )"
     local orig="$PWD"
-    local setup_name="${1:-default}"
+    local setup_name="${1:-_default}"
 
 
     #
@@ -162,6 +162,7 @@ action() {
     which law &> /dev/null && source "$( law completion )" ""
 
     # run task indexing for autocompletion
+    echo
     law index --verbose
 
 
@@ -182,14 +183,14 @@ action() {
 }
 
 interactive_setup() {
-    local setup_name="${1:-default}"
-    local env_file="${2:-$DHI_BASE/.env_$setup_name.sh}"
-    local env_file_tmp="${2:-$DHI_BASE/.env_$setup_name.sh.tmp}"
+    local setup_name="${1:-_default}"
+    local env_file="${2:-$DHI_BASE/.setups/$setup_name.sh}"
+    local env_file_tmp="$env_file.tmp"
 
     # when the setup already exists and it's not the default one,
     # source the corresponding env file and stop
-    if [ "$setup_name" != "default" ] && [ -f "$env_file" ]; then
-        echo "sourcing setup variables from $env_file"
+    if [ "$setup_name" != "_default" ] && [ -f "$env_file" ]; then
+        echo "using setup variables from $env_file"
         source "$env_file" ""
         return "0"
     fi
@@ -202,23 +203,29 @@ interactive_setup() {
         if [ "$setup_name" = "default" ]; then
             export $varname="$default"
         else
-            read -p "$text ($varname, default '$default_text'):  " query_response
+            printf "$text (\x1b[0;49;35m$varname\x1b[0m, default '\x1b[1;49;39m$default_text\x1b[0m'):  "
+            read query_response
             [ "X$query_response" = "X" ] && query_response="$default"
             # repeat for boolean flags that were not entered correctly
             while true; do
                 ( [ "$default" != "True" ] && [ "$default" != "False" ] ) && break
                 ( [ "$query_response" = "True" ] || [ "$query_response" = "False" ] ) && break
-                read -p "please enter either 'True' or 'False':  " query_response
+                printf "please enter either '\x1b[1;49;39mTrue\x1b[0m' or '\x1b[1;49;39mFalse\x1b[0m':  " query_response
+                read  query_response
                 [ "X$query_response" = "X" ] && query_response="$default"
             done
             export $varname="$query_response"
             echo "export $varname=\"$query_response\"" >> "$env_file_tmp"
-            echo
         fi
     }
 
-    # ensure that the temporary env file is empty
-    rm -rf "$env_file_tmp"
+    # prepare the tmp env file
+    if [ "$setup_name" != "_default" ]; then
+        rm -rf "$env_file_tmp"
+        mkdir -p "$( dirname "$env_file_tmp" )"
+
+        echo -e "Start querying variables for setup '$setup_name', press enter to accept default values\n"
+    fi
 
     # start querying for variables
     query DHI_USER "Username on lxplus" "$( whoami )"
@@ -228,6 +235,7 @@ interactive_setup() {
     query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "/eos/user/${DHI_USER:0:1}/${DHI_USER}/dhi/store"
     query DHI_SOFTWARE "Directory for installing software" "$DHI_DATA/software" "\$DHI_DATA/software"
     query DHI_JOB_DIR "Directory for storing job files" "$DHI_DATA/jobs" "\$DHI_DATA/jobs"
+    query DHI_TASK_NAMESPACE "Namespace (i.e. the prefix) of law tasks" ""
     query DHI_LOCAL_SCHEDULER "Use a local scheduler for law tasks" "True"
     if [ "$DHI_LOCAL_SCHEDULER" != "True" ]; then
         query DHI_SCHEDULER_HOST "Address of a central scheduler for law tasks" "hh:cmshhcombr2@hh-scheduler1.cern.ch"
@@ -235,9 +243,9 @@ interactive_setup() {
     fi
 
     # move the env file to the correct location for later use
-    if [ "$setup_name" != "default" ]; then
+    if [ "$setup_name" != "_default" ]; then
         mv "$env_file_tmp" "$env_file"
-        echo "setup variables written to $env_file"
+        echo -e "\nsetup variables written to $env_file"
     fi
 }
 

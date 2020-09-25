@@ -44,7 +44,7 @@ class AnalysisTask(BaseTask):
 
     version = luigi.Parameter(description="task version")
 
-    task_namespace = "dhi"
+    task_namespace = os.getenv("DHI_TASK_NAMESPACE")
 
     def store_parts(self):
         parts = super(AnalysisTask, self).store_parts()
