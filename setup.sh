@@ -151,6 +151,28 @@ action() {
         touch "$sw_flag_file"
     fi
 
+    # gfal2 bindings
+    local lcg_dir="/cvmfs/grid.cern.ch/centos7-ui-4.0.3-1_umd4v3/usr"
+    if [ ! -d "$lcg_dir" ]; then
+        2>&1 echo "lcg directory $lcg_dir not existing, cannot setup gfal2 bindings"
+        return "4"
+    fi
+
+    export DHI_GFAL_DIR="$DHI_SOFTWARE/gfal2"
+    export GFAL_PLUGIN_DIR="$DHI_GFAL_DIR/plugins"
+    export PYTHONPATH="$DHI_GFAL_DIR:$PYTHONPATH"
+
+    local gfal_flag_file="$DHI_SOFTWARE/.gfal_good"
+    if [ ! -f "$gfal_flag_file" ]; then
+        echo "linking gfal2 bindings"
+
+        mkdir -p "$GFAL_PLUGIN_DIR"
+        ln -s $lcg_dir/lib64/python2.7/site-packages/gfal2.so "$DHI_GFAL_DIR"
+        ln -s $lcg_dir/lib64/gfal2-plugins/libgfal_plugin_* "$GFAL_PLUGIN_DIR"
+
+        touch "$gfal_flag_file"
+    fi
+
 
     #
     # law setup
