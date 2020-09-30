@@ -23,7 +23,7 @@ tmp
 store
 software
 data
-test
+test*
 .law
 .setups
 docs/site

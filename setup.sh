@@ -8,7 +8,7 @@ action() {
     local this_file="$( [ ! -z "$ZSH_VERSION" ] && echo "${(%):-%x}" || echo "${BASH_SOURCE[0]}" )"
     local this_dir="$( cd "$( dirname "$this_file" )" && pwd )"
     local orig="$PWD"
-    local setup_name="${1:-_default}"
+    local setup_name="${1:-default}"
 
 
     #
@@ -18,6 +18,7 @@ action() {
 
     export DHI_BASE="$this_dir"
     interactive_setup "$setup_name"
+    export DHI_STORE_REPO="$DHI_BASE/data/store"
     export DHI_BLACK_PATH="$DHI_SOFTWARE/black"
     export DHI_EXAMPLE_CARDS="/afs/cern.ch/user/m/mfackeld/public/datacards/*/*.txt"
     export DHI_ORIG_PATH="$PATH"
@@ -161,10 +162,6 @@ action() {
     # source law's bash completion scipt
     which law &> /dev/null && source "$( law completion )" ""
 
-    # run task indexing for autocompletion
-    echo
-    law index --verbose
-
 
     #
     # synchronize git hooks
@@ -179,48 +176,67 @@ action() {
     # done
 
 
-    echo -e "\n\x1b[0;49;35mHH inference tools successfully setup\x1b[0m"
+    echo -e "\x1b[0;49;35mHH inference tools successfully setup\x1b[0m"
 }
 
 interactive_setup() {
-    local setup_name="${1:-_default}"
+    local setup_name="${1:-default}"
     local env_file="${2:-$DHI_BASE/.setups/$setup_name.sh}"
     local env_file_tmp="$env_file.tmp"
 
+    # check if the setup is the default one
+    local setup_is_default="false"
+    [ "$setup_name" = "default" ] && setup_is_default="true"
+
     # when the setup already exists and it's not the default one,
     # source the corresponding env file and stop
-    if [ "$setup_name" != "_default" ] && [ -f "$env_file" ]; then
+    if ! $setup_is_default && [ -f "$env_file" ]; then
         echo "using setup variables from $env_file"
         source "$env_file" ""
         return "0"
     fi
+
+    export_and_save() {
+        local varname="$1"
+        local value="$2"
+
+        export $varname="$value"
+        ! $setup_is_default && echo "export $varname=\"$value\"" >> "$env_file_tmp"
+    }
 
     query() {
         local varname="$1"
         local text="$2"
         local default="$3"
         local default_text="${4:-$default}"
-        if [ "$setup_name" = "_default" ]; then
-            export $varname="$default"
+
+        # when the setup is the default one, use the default value when the env variable is empty,
+        # otherwise, query interactively
+        local value="$default"
+        if $setup_is_default; then
+            [ ! -z "${!varname}" ] && value="${!varname}"
         else
-            printf "$text (\x1b[0;49;35m$varname\x1b[0m, default '\x1b[1;49;39m$default_text\x1b[0m'):  "
+            printf "$text (\x1b[1;49;39m$varname\x1b[0m, default '\x1b[1;49;39m$default_text\x1b[0m'):  "
             read query_response
             [ "X$query_response" = "X" ] && query_response="$default"
+
             # repeat for boolean flags that were not entered correctly
             while true; do
                 ( [ "$default" != "True" ] && [ "$default" != "False" ] ) && break
                 ( [ "$query_response" = "True" ] || [ "$query_response" = "False" ] ) && break
                 printf "please enter either '\x1b[1;49;39mTrue\x1b[0m' or '\x1b[1;49;39mFalse\x1b[0m':  " query_response
-                read  query_response
+                read query_response
                 [ "X$query_response" = "X" ] && query_response="$default"
             done
-            export $varname="$query_response"
-            echo "export $varname=\"$query_response\"" >> "$env_file_tmp"
+
+            value="$query_response"
         fi
+
+        export_and_save "$varname" "$value"
     }
 
     # prepare the tmp env file
-    if [ "$setup_name" != "_default" ]; then
+    if ! $setup_is_default; then
         rm -rf "$env_file_tmp"
         mkdir -p "$( dirname "$env_file_tmp" )"
 
@@ -230,9 +246,10 @@ interactive_setup() {
     # start querying for variables
     query DHI_USER "Username on lxplus" "$( whoami )"
     query DHI_DATA "Local data directory" "$DHI_BASE/data" "./data"
-    query DHI_STORE "Default output store in local directory" "$DHI_DATA/store" "\$DHI_DATA/store"
+    query DHI_STORE "Default local output store" "$DHI_DATA/store" "\$DHI_DATA/store"
     query DHI_STORE_AFSWORK "Optional output store in AFS work directory" "/afs/cern.ch/work/${DHI_USER:0:1}/${DHI_USER}/dhi/store"
     query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "/eos/user/${DHI_USER:0:1}/${DHI_USER}/dhi/store"
+    query DHI_STORE_BUNDLES "Output store for software bundles" "$DHI_STORE" "\$DHI_STORE"
     query DHI_SOFTWARE "Directory for installing software" "$DHI_DATA/software" "\$DHI_DATA/software"
     query DHI_JOB_DIR "Directory for storing job files" "$DHI_DATA/jobs" "\$DHI_DATA/jobs"
     query DHI_TASK_NAMESPACE "Namespace (i.e. the prefix) of law tasks" ""
@@ -240,10 +257,12 @@ interactive_setup() {
     if [ "$DHI_LOCAL_SCHEDULER" != "True" ]; then
         query DHI_SCHEDULER_HOST "Address of a central scheduler for law tasks" "hh:cmshhcombr2@hh-scheduler1.cern.ch"
         query DHI_SCHEDULER_PORT "Port of a central scheduler for law tasks" "80"
+    else
+        export_and_save DHI_SCHEDULER_PORT "80"
     fi
 
     # move the env file to the correct location for later use
-    if [ "$setup_name" != "_default" ]; then
+    if ! $setup_is_default; then
         mv "$env_file_tmp" "$env_file"
         echo -e "\nsetup variables written to $env_file"
     fi

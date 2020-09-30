@@ -23,7 +23,7 @@ from dhi.tasks.nlo.mixins import (
     NLL2DMixin,
     ViewMixin,
 )
-from dhi.util import import_matplotlib, rgb
+from dhi.util import rgb
 
 
 class PlotScan(ScanMixin, LabelsMixin, ViewMixin, NLOBase1D):

@@ -37,13 +37,14 @@ where the value of `some_name` is your choice, and the script interactively guid
 To use the same configuration the next time, ==make sure to use the same value you passed before.==
 
 
-2. Let law index your tasks and their parameters (for autocompletion):
+2. Let law index your tasks and their parameters:
 
 ```shell
 law index --verbose
 ```
 
-This is automatically done when sourcing the setup script, but in case you added a new task or changed the parameters of existing tasks, you might want to rerun this line so that law's autocompletion will track your updates.
+While indexing always sounds somewhat cumbersome, the law index file is just a human-readable file summarizing your tasks, the corresponding python modules, and their parameters.
+Law uses that file only to accelerate the autocompletion of the command line interface.
 
 You should see:
 
@@ -84,5 +85,21 @@ module 'tasks.misc', 1 task(s):
 
 written 19 task(s) to index file '/your/path/inference/.law/index'
 ```
+
+You can type
+
+```shell
+law run <tab><tab>
+```
+
+to see the list of available tasks in your shell, and
+
+```shell
+law run SomeTask <tab><tab>
+```
+
+to list all parameters of `SomeTask`.
+
+--
 
 Now you are done with the setup and can start running the statistical inference!

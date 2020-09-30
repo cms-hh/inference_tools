@@ -7,7 +7,6 @@ import multiprocessing
 
 import law
 import luigi
-import luigi.util
 
 from dhi.tasks.base import CHBase, AnalysisTask, HTCondorWorkflow
 from dhi.util import is_pow2, next_pow2
@@ -272,8 +271,9 @@ class NLOScan1D(NLOBase1D, law.LocalWorkflow, HTCondorWorkflow):
         )
 
 
-@luigi.util.inherits(NLOScan1D)
 class MergeScans1D(NLOBase1D):
+
+    points = NLOScan1D.points
 
     def requires(self):
         return NLOScan1D.req(self)
@@ -362,7 +362,6 @@ class NLOScan2D(NLOBase2D, law.LocalWorkflow, HTCondorWorkflow):
         )
 
 
-@luigi.util.inherits(NLOScan2D)
 class MergeScans2D(NLOBase2D):
 
     def requires(self):
