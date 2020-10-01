@@ -62,13 +62,12 @@ By default, all pages are *automatically rebuilt and reloaded* when a source fil
 
 ## For developers
 
-Code style is enforced with the formatter "black": https://github.com/psf/black.
-The default line width is increased to 100 (see `pyproject.toml`).
+A consistent code style is encouraged and can be checked (and even applied) with the [black](https://github.com/psf/black) formatter.
 
 To run the linting (i.e. show locations in the code that require formatting), run
 
 ```shell
-dha_lint
+dhi_lint
 ```
 
 and to automatically fix the formatting, add `fix` to the command.

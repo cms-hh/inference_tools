@@ -1,20 +1,15 @@
 # coding: utf-8
 
-import law
-import luigi
-import numpy as np
-import matplotlib
 from math import ceil, log
 
-matplotlib.use("Agg")
-matplotlib.rc("text", usetex=True)
-matplotlib.rcParams["text.latex.preamble"] = [r"\usepackage{amsmath}"]
-import matplotlib.pyplot as plt
+import law
+import luigi
 
-from dhi.utils.util import rgb
+from dhi.util import import_plt, rgb
 
 
 class LabelsMixin(object):
+
     poi_labels = {
         "kl": r"$\kappa_\lambda$",
         "kt": r"$\kappa_t$",
@@ -40,6 +35,7 @@ class PlotMixin(object):
     top_right_text = luigi.Parameter(default="2017 (13 TeV)", significant=False)
 
     def save_plt(self, plt, *args, **kwargs):
+        plt = import_plt()
         plt.tight_layout()
         self.output().dump(plt, formatter="mpl")
         plt.close()
@@ -49,9 +45,12 @@ class PlotMixin(object):
 
 
 class ScanMixin(PlotMixin):
-    def plot(self, arr):
-        # rescale r to xsec:
 
+    def plot(self, arr):
+        import numpy as np
+        plt = import_plt()
+
+        # rescale r to xsec
         br_hww_hbb = 0.0264
         k_factor = 1.115
         sigma_sm = np.ones_like(arr[:, 0])
@@ -146,9 +145,11 @@ class ScanMixin(PlotMixin):
 
 
 class NLL1DMixin(PlotMixin):
+
     def plot(self, poi, deltaNLL):
         import numpy as np
         from scipy.interpolate import interp1d
+        plt = import_plt()
 
         interpol = interp1d(poi, deltaNLL)
         precision = poi.size * 100
@@ -202,7 +203,12 @@ class NLL1DMixin(PlotMixin):
 
 
 class NLL2DMixin(PlotMixin):
+
     def plot(self, poi1, poi2, deltaNLL):
+        import numpy as np
+        import matplotlib
+        plt = import_plt()
+
         e1 = np.unique(poi1)
         e2 = np.unique(poi2)
         i1 = np.searchsorted(e1, poi1, side="right") - 1

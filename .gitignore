@@ -14,6 +14,9 @@
 *.yaml
 *.pb
 *.txt
+*.out
+.env_*.sh
+.env_*.sh.tmp
 __pycache__
 dist
 build
@@ -21,6 +24,7 @@ tmp
 store
 software
 data
-test
+test*
 .law
+.setups
 docs/site

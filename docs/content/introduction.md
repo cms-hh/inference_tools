@@ -14,63 +14,92 @@ cd inference
 ```
 
 Now proceed with setting up the software and environment.
-The `setup.sh` script will install (and compile if necessary) all relevant software packages:
-
-- https://github.com/cms-sw/cmssw/tree/CMSSW_10_2_X (CMSSW_10_2_20_UL)
-- https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git
-- https://github.com/riga/CombineHarvester.git (Fork)
-- https://github.com/riga/law/tree/master/law
-- https://github.com/psf/black (only for developers)
+The `setup.sh` script will install (and compile if necessary) all relevant software packages.
 
 Run the following two steps everytime you newly login to a CentOS 7 node on lxplus in order to setup the correct software.
 
-1. Be patient this may take some time if you set up the software for the first time:
+1. Source the setup:
+
 ```shell
 source setup.sh
 ```
 
-2. Let law index your tasks and their parameters (for autocompletion)
+When the software is set up for the first time, this might take a few moments to complete.
+
+==By default, the setup script makes a few assumptions on where software is installed, outputs are stored, etc, but this is fully configurable.==
+To do so, run
+
+```shell
+source setup.sh some_name
+```
+
+where the value of `some_name` is your choice, and the script interactively guides you through the quick setup process.
+To use the same configuration the next time, ==make sure to use the same value you passed before.==
+
+
+2. Let law index your tasks and their parameters:
+
 ```shell
 law index --verbose
 ```
 
+While indexing always sounds somewhat cumbersome, the law index file is just a human-readable file summarizing your tasks, the corresponding python modules, and their parameters.
+Law uses that file only to accelerate the autocompletion of the command line interface.
+
 You should see:
-```bash
+
+```shell
 indexing tasks in 5 module(s)
-loading module 'dhi.tasks.base', done
-loading module 'dhi.tasks.nlo.inference', done
-loading module 'dhi.tasks.nlo.plotting', done
-loading module 'dhi.tasks.nlo.compare', done
-loading module 'dhi.tasks.misc', done
+loading module 'tasks.base', done
+loading module 'tasks.nlo.inference', done
+loading module 'tasks.nlo.plotting', done
+loading module 'tasks.nlo.compare', done
+loading module 'tasks.misc', done
 
-module 'dhi.tasks.nlo.plotting', 5 task(s):
-    - dhi.TestPlots
-    - dhi.PlotImpacts
-    - dhi.PlotScan
-    - dhi.PlotNLL1D
-    - dhi.PlotNLL2D
+module 'tasks.nlo.plotting', 5 task(s):
+    - TestPlots
+    - PlotImpacts
+    - PlotScan
+    - PlotNLL1D
+    - PlotNLL2D
 
-module 'dhi.tasks.nlo.inference', 11 task(s):
-    - dhi.NLOLimit
-    - dhi.NLOScan1D
-    - dhi.NLOScan2D
-    - dhi.DCBase
-    - dhi.CombDatacards
-    - dhi.NLOT2W
-    - dhi.NLOBase1D
-    - dhi.NLOBase2D
-    - dhi.ImpactsPulls
-    - dhi.MergeScans1D
-    - dhi.MergeScans2D
+module 'tasks.nlo.inference', 11 task(s):
+    - NLOLimit
+    - NLOScan1D
+    - NLOScan2D
+    - DCBase
+    - CombDatacards
+    - NLOT2W
+    - NLOBase1D
+    - NLOBase2D
+    - ImpactsPulls
+    - MergeScans1D
+    - MergeScans2D
 
-module 'dhi.tasks.nlo.compare', 2 task(s):
-    - dhi.CompareScan
-    - dhi.CompareNLL1D
+module 'tasks.nlo.compare', 2 task(s):
+    - CompareScan
+    - CompareNLL1D
 
-module 'dhi.tasks.misc', 1 task(s):
-    - dhi.ValidateDatacard
+module 'tasks.misc', 1 task(s):
+    - ValidateDatacard
 
 written 19 task(s) to index file '/your/path/inference/.law/index'
 ```
+
+You can type
+
+```shell
+law run <tab><tab>
+```
+
+to see the list of available tasks in your shell, and
+
+```shell
+law run SomeTask <tab><tab>
+```
+
+to list all parameters of `SomeTask`.
+
+--
 
 Now you are done with the setup and can start running the statistical inference!
