@@ -8,6 +8,7 @@
 # HHModel     -> implements the interfaces to combine
 ###################################
 
+import os
 from HiggsAnalysis.CombinedLimit.PhysicsModel import *
 from HiggsAnalysis.CombinedLimit.PhysicsModel import SM_HIGG_DECAYS
 from HiggsAnalysis.CombinedLimit.PhysicsModel import SM_HIGG_PROD
@@ -274,7 +275,8 @@ class HHModel(PhysicsModel):
         self.modelBuilder.doVar("kt[1,-10,10]")
 
         self.modelBuilder.doSet("POI",POIs)
-        self.SMH = SMHiggsBuilder(self.modelBuilder)
+        self.SMH = SMHiggsBuilder(self.modelBuilder,
+            datadir=os.path.expandvars("$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit/data/lhc-hxswg"))
 
         self.modelBuilder.out.var("r_gghh") .setConstant(True)
         self.modelBuilder.out.var("r_qqhh") .setConstant(True)

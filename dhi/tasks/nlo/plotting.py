@@ -6,116 +6,104 @@ import law
 import luigi
 
 from dhi.tasks.base import AnalysisTask
-from dhi.tasks.nlo.inference import (
-    DCBase,
-    NLOBase1D,
-    NLOBase2D,
-    NLOLimit,
-    MergeScans1D,
-    MergeScans2D,
-    ImpactsPulls,
-)
-from dhi.tasks.nlo.mixins import (
-    PlotMixin,
-    ScanMixin,
-    LabelsMixin,
-    NLL1DMixin,
-    NLL2DMixin,
-    ViewMixin,
-)
-from dhi.util import rgb
+from dhi.tasks.nlo.base import POIScanTask1D
+from dhi.tasks.nlo.inference import MergeLimitScan
+from dhi.config import br_hww_hbb, k_factor
+from dhi.util import get_ggf_xsec, get_vbf_xsec
 
 
-class PlotScan(ScanMixin, LabelsMixin, ViewMixin, NLOBase1D):
+@law.decorator.factory(accept_generator=True)
+def view_output_plots(fn, opts, task, *args, **kwargs):
+    def before_call():
+        return None
+
+    def call(state):
+        return fn(task, *args, **kwargs)
+
+    def after_call(state):
+        view_cmd = getattr(task, "view_cmd", None)
+        if not view_cmd or view_cmd == law.NO_STR:
+            return
+
+        # prepare the view command
+        if "{}" not in view_cmd:
+            view_cmd += " {}"
+
+        # collect all paths to view
+        view_paths = []
+        for output in law.util.flatten(task.output()):
+            if not getattr(output, "path", None):
+                continue
+            if output.path.endswith((".pdf", ".png")):
+                view_paths.append(output.path)
+
+        # loop through paths and view them
+        for path in view_paths:
+            task.publish_message("showing {}".format(path))
+            law.util.interruptable_popen(view_cmd.format(path), shell=True, executable="/bin/bash")
+
+    return before_call, call, after_call
+
+
+class PlotTask(AnalysisTask):
+
+    plot_flavor = luigi.ChoiceParameter(default="root", choices=["root", "mpl"], significant=False,
+        description="the plot flavor; choices: root,mpl; default: root")
+    view_cmd = luigi.Parameter(default=law.NO_STR, significant=False, description="a command to "
+        "execute after the task has run to visualize plots in the terminal, default: empty")
+
+
+class PlotLimitScan(PlotTask, POIScanTask1D):
 
     def requires(self):
-        return NLOLimit.req(self)
+        return MergeLimitScan.req(self)
 
     def output(self):
-        return self.local_target_dc("scan.pdf")
+        return self.local_target_dc("limits__{}_n{}_{}_{}.pdf".format(
+            self.poi, self.points, *self.poi_range))
 
-    @ViewMixin.view_output_plots
+    @view_output_plots
     def run(self):
         import numpy as np
 
-        self.output().parent.touch()
-        inputs = {
-            int(re.findall(r"-?\d+", k.basename)[0]): k
-            for k in self.input()["collection"].targets.values()
-        }
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
 
-        data = [
-            [kl] + [data[i] for i in range(-2, 3)]
-            for kl, data in (
-                (key, {int(k[3:]): v for k, v in inp.load()["125.0"].items()})
-                for key, inp in sorted(inputs.items(), key=lambda x: x)
-            )
-        ]
-        arr = np.array(data)
-        self.plot(arr=arr)
+        # load limit data
+        data = self.input().load(formatter="numpy")["data"]
 
+        # rescale from limit on r to limit on xsec, depending on the poi
+        limit_keys = [key for key in data.dtype.names if key.startswith("limit")]
+        scale = br_hww_hbb * k_factor * 1000.0  # TODO: generalize this for different analyses
 
-class PlotNLL1D(NLL1DMixin, LabelsMixin, ViewMixin, NLOBase1D):
+        if self.poi == "kl":
+            formula = self.load_hh_model()[0].ggf_formula
+            theory_values = []
+            is_xsec = True
+            for point in data:
+                xsec = get_ggf_xsec(formula, kl=point["kl"])
+                theory_values.append(xsec)
+                for key in limit_keys:
+                    point[key] *= xsec * scale
 
-    def requires(self):
-        return MergeScans1D.req(self)
+        elif self.poi == "C2V":
+            formula = self.load_hh_model()[0].vbf_formula
+            theory_values = []
+            is_xsec = True
+            for point in data:
+                xsec = get_vbf_xsec(formula, c2v=point["C2V"])
+                theory_values.append(xsec)
+                for key in limit_keys:
+                    point[key] *= xsec * scale
 
-    def output(self):
-        return self.local_target_dc("nll.pdf")
+        else:
+            # no scaling
+            theory_values = None
+            is_xsec = False
 
-    @ViewMixin.view_output_plots
-    def run(self):
-        import numpy as np
+        # get the proper plot function and call it
+        # (only the mpl version exists right now)
+        from dhi.plots.limits_mpl import plot_limit_scan
 
-        inp = self.input().load()
-        poi = inp["poi"]
-        deltaNLL = 2 * inp["deltaNLL"]
-        self.plot(poi=poi, deltaNLL=deltaNLL)
-
-
-class PlotNLL2D(NLL2DMixin, LabelsMixin, ViewMixin, NLOBase2D):
-
-    def requires(self):
-        return MergeScans2D.req(self)
-
-    def output(self):
-        return self.local_target_dc("nll.pdf")
-
-    @ViewMixin.view_output_plots
-    def run(self):
-        import numpy as np
-
-        inp = self.input().load()
-        poi1 = inp["poi1"]
-        poi2 = inp["poi2"]
-        deltaNLL = 2 * inp["deltaNLL"]
-        self.plot(poi1=poi1, poi2=poi2, deltaNLL=deltaNLL)
-
-
-class PlotImpacts(ViewMixin, DCBase):
-
-    def requires(self):
-        return ImpactsPulls.req(self)
-
-    def output(self):
-        return self.local_target_dc("impacts.pdf")
-
-    @property
-    def cmd(self):
-        return "plotImpacts.py -i {impacts} --output {out} ".format(
-            impacts=self.input().path, out=self.output().basename.split(".")[0]
-        )
-
-    @ViewMixin.view_output_plots
-    def run(self):
-        super(PlotImpacts, self).run()
-
-
-class TestPlots(ViewMixin, AnalysisTask, law.WrapperTask):
-
-    def requires(self):
-        return [
-            PlotScan.req(self),
-            PlotNLL1D.req(self),
-            PlotNLL2D.req(self),
-        ]
+        plot_limit_scan(output.path, self.poi, data, theory_values=theory_values, is_xsec=is_xsec)

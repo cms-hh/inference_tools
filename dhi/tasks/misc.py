@@ -8,79 +8,84 @@ import os
 import law
 import luigi
 
-from dhi.tasks.base import CHBase
-from dhi.tasks.nlo.inference import CombDatacards, NLOT2W, ImpactsPulls
+from dhi.tasks.base import CombineCommandTask
+from dhi.tasks.nlo.inference import CreateWorkspace, ImpactsPulls
 
 
-class ValidateDatacard(CHBase):
+# currently disabled since we decided to use a non-CMSSW environment which does not allow to run any
+# CombineHarvester tool such as ValidateDatacards.py; this is, however, required to be run by HIG
+# (https://twiki.cern.ch/twiki/bin/view/CMS/HiggsWG/HiggsPAGPreapprovalChecks?rev=19) so we might
+# want to revisit this in the future using (e.g.) task sandboxing
+# class ValidateDatacard(CombineCommandTask):
+#
+#     mass = 125
+#     input_card = luigi.Parameter(description="path to the input datacard")
+#     verbosity = luigi.ChoiceParameter(var_type=int, default=1, choices=list(range(4)))
+#
+#     version = None
+#
+#     def output(self):
+#         return self.local_target("validation.json")
+#
+#     def build_command(self):
+#         return (
+#             "ValidateDatacards.py {self.input_card}"
+#             " --mass {self.mass}"
+#             " --printLevel {self.verbosity}"
+#             " --jsonFile {out}"
+#         ).format(
+#             self=self,
+#             out=self.output().path,
+#         )
 
-    input_card = luigi.Parameter(description="Path to input datacard")
-    verbosity = luigi.ChoiceParameter(default="1", choices=("0", "1", "2", "3"))
 
-    version = None
-
-    def output(self):
-        return self.local_target("validation.json")
-
-    @property
-    def cmd(self):
-        return "ValidateDatacards.py {input_card} --mass {mass} --printLevel {verbosity} --jsonFile {out}".format(
-            input_card=self.input_card,
-            mass=self.mass,
-            verbosity=self.verbosity,
-            out=self.output().path,
-        )
-
-
-class PostFitShapes(CHBase):
+class PostFitShapes(CombineCommandTask):
 
     def requires(self):
-        return NLOT2W.req(self)
+        return CreateWorkspace.req(self)
 
     def output(self):
         return self.local_target("fitDiagnostics.root")
 
-    @property
-    def cmd(self):
+    def build_command(self):
         return (
-            "combine -M FitDiagnostics {workspace} -t -1 --expectSignal 1 "
-            "--X-rtd MINIMIZER_analytic -m {mass} -v 2 {params} "
-            "{options} --saveShapes --saveWithUncertainties "
+            "combine -M FitDiagnostics {workspace}"
+            " -t -1"
+            " -v 2"
+            " -m {self.mass}"
+            " --expectSignal 1"
+            " --saveShapes --saveWithUncertainties"
+            " --X-rtd MINIMIZER_analytic"
+            " {self.combine_stable_options}"
+            " {params}"
         ).format(
+            self=self,
             workspace=self.input().path,
-            mass=self.mass,
             params=ImpactsPulls.params,
-            options=self.stable_options,
         )
 
 
-class CompareNuisances(CHBase):
+class CompareNuisances(CombineCommandTask):
 
-    format = luigi.ChoiceParameter(default="html", choices=("html", "latex", "text"))
+    format = luigi.ChoiceParameter(default="html", choices=("html", "tex", "txt"))
 
-    exe = "$CMSSW_BASE/src/HiggsAnalysis/CombinedLimit/test/diffNuisances.py"
+    format_to_ext = {
+        "html": "html",
+        "latex": "tex",
+        "text": "tex",
+    }
 
     def requires(self):
         return PostFitShapes.req(self)
 
     def output(self):
-        return self.local_target("nuisances.{}".format(self.ext))
+        return self.local_target("nuisances.{}".format(self.format_to_ext[self.ext]))
 
-    def __init__(self, *args, **kwargs):
-        super(CompareNuisances, self).__init__(*args, **kwargs)
-
-        if self.format == "html":
-            self.ext = "html"
-        elif self.format == "latex":
-            self.ext = "tex"
-        elif self.format == "text":
-            self.ext = "txt"
-
-    @property
-    def cmd(self):
-        return "python {exe} -a -f {format} {fitfile} > {output}".format(
-            exe=self.exe,
-            format=self.format,
-            fitfile=self.input().path,
+    def build_command(self):
+        script = "$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit/test/diffNuisances.py"
+        return "python {script} -a -f {self.format} {input} > {output}".format(
+            self=self,
+            script=script,
+            input=self.input().path,
             output=self.output().path,
         )

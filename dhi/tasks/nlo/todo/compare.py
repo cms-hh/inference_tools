@@ -7,6 +7,7 @@ import luigi
 
 from dhi.tasks.base import AnalysisTask
 from dhi.tasks.nlo.mixins import PlotMixin, LabelsMixin, ViewMixin
+from dhi.util import import_plt
 
 
 class CompareScan(PlotMixin, LabelsMixin, ViewMixin, AnalysisTask):

@@ -12,10 +12,53 @@ from collections import OrderedDict
 import luigi
 import law
 
-law.contrib.load("git", "htcondor", "matplotlib", "numpy", "root", "tasks")
+law.contrib.load("git", "htcondor", "matplotlib", "numpy", "root", "tasks", "wlcg")
 
 
 class BaseTask(law.Task):
+
+    print_command = law.CSVParameter(default=(), significant=False, description="print the command "
+        "that this task would execute but do not run any task; this CSV parameter accepts a single "
+        "integer value which sets the task recursion depth to also print the commands of required "
+        "tasks (0 means non-recursive)")
+
+    interactive_params = law.Task.interactive_params + ["print_command"]
+    task_namespace = os.getenv("DHI_TASK_NAMESPACE")
+
+    def _print_command(self, args):
+        max_depth = int(args[0])
+
+        print("print task commands with max_depth {}".format(max_depth))
+
+        for dep, _, depth in self.walk_deps(max_depth=max_depth, order="pre"):
+            offset = depth * ("|" + law.task.interactive.ind)
+            print(offset)
+
+            print("{}> {}".format(offset, dep.repr(color=True)))
+            offset += "|" + law.task.interactive.ind
+
+            if isinstance(dep, CommandTask):
+                # when dep is a workflow, take the first branch
+                text = law.util.colored("command", style="bright")
+                if isinstance(dep, law.BaseWorkflow) and dep.is_workflow():
+                    dep = dep.as_branch(0)
+                    text += " (from branch {})".format(law.util.colored("0", "red"))
+                text += ": "
+
+                cmd = dep.build_command()
+                if cmd:
+                    cmd = law.util.quote_cmd(cmd) if isinstance(cmd, (list, tuple)) else cmd
+                    text += law.util.colored(cmd, "cyan")
+                else:
+                    text += law.util.colored("empty", "red")
+                print(offset + text)
+            else:
+                print(offset + law.util.colored("not a CommandTask", "yellow"))
+
+
+class AnalysisTask(BaseTask):
+
+    version = luigi.Parameter(description="task version")
 
     output_collection_cls = law.SiblingFileCollection
     default_store = "$DHI_STORE"
@@ -25,11 +68,17 @@ class BaseTask(law.Task):
         parts["task_class"] = self.__class__.__name__
         return parts
 
+    def store_parts_ext(self):
+        parts = OrderedDict()
+        if self.version is not None:
+            parts["version"] = self.version
+        return parts
+
     def local_path(self, *path, **kwargs):
         store = kwargs.get("store") or self.default_store
         store = os.path.expandvars(os.path.expanduser(store))
 
-        parts = tuple(self.store_parts().values()) + path
+        parts = tuple(self.store_parts().values()) + tuple(self.store_parts_ext().values()) + path
 
         return os.path.join(store, *(str(p) for p in parts))
 
@@ -38,23 +87,6 @@ class BaseTask(law.Task):
         store = kwargs.pop("store", None)
 
         return cls(self.local_path(*path, store=store), **kwargs)
-
-
-class AnalysisTask(BaseTask):
-
-    version = luigi.Parameter(description="task version")
-
-    task_namespace = os.getenv("DHI_TASK_NAMESPACE")
-
-    def store_parts(self):
-        parts = super(AnalysisTask, self).store_parts()
-        if self.version is not None:
-            parts["version"] = self.version
-        return parts
-
-    @classmethod
-    def modify_param_values(cls, params):
-        return params
 
 
 class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
@@ -226,34 +258,87 @@ class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile, law.tasks.RunOnc
         self.mark_complete()
 
 
-# TODO: move CHBase
-class CHBase(AnalysisTask):
-
-    mass = luigi.IntParameter(default=125)
-
-    stable_options = r"--cminDefaultMinimizerType Minuit2 --cminDefaultMinimizerStrategy 0 --cminFallbackAlgo Minuit2,0:1.0"
+class CommandTask(AnalysisTask):
+    """
+    A task that provides convenience methods to work with shell commands, i.e., printing them on the
+    command line and executing them with error handling.
+    """
 
     exclude_index = True
 
-    def store_parts(self):
-        parts = super(CHBase, self).store_parts()
-        parts["mass"] = self.mass
-        return parts
+    run_command_in_tmp = False
 
-    @property
-    def cmd(self):
+    def build_command(self):
+        # this method should build and return the command to run
         raise NotImplementedError
 
-    @law.decorator.safe_output
-    def run(self):
-        output_dir = law.util.flatten(self.output())[0].parent
-        output_dir.touch()
-        with self.publish_step(law.util.colored(self.cmd, color="light_cyan")):
-            code = law.util.interruptable_popen(
-                self.cmd,
-                shell=True,
-                executable="/bin/bash",
-                cwd=output_dir.path,
-            )[0]
-            if code != 0:
-                raise Exception("{} failed with exit code {}".format(self.cmd, code))
+    def run_command(self, cmd, optional=False, **kwargs):
+        # proper command encoding
+        cmd = law.util.quote_cmd(cmd) if isinstance(cmd, (list, tuple)) else cmd
+
+        # when no cwd was set and run_command_in_tmp is True, create a tmp dir
+        if "cwd" not in kwargs and self.run_command_in_tmp:
+            tmp_dir = law.LocalDirectoryTarget(is_tmp=True)
+            tmp_dir.touch()
+            kwargs["cwd"] = tmp_dir.path
+
+        # call it
+        with self.publish_step("running '{}' ...".format(law.util.colored(cmd, "cyan"))):
+            code, out, err = law.util.interruptable_popen(cmd, shell=True, executable="/bin/bash",
+                **kwargs)
+
+        # raise an exception when the call failed and optional is not True
+        if code != 0 and not optional:
+            msg = "command failed with exit code {}: {}".format(code, cmd)
+            if out:
+                msg += "\noutput: {}".format(out)
+            if err:
+                msg += "\nerror: {}".format(err)
+            raise Exception(msg)
+
+        return code, out, err
+
+    def touch_output_dirs(self):
+        # keep track of created uris so we can avoid creating them twice
+        handled_parent_uris = set()
+
+        for outp in law.util.flatten(self.output()):
+            # get the parent directory target
+            parent = None
+            if isinstance(outp, law.SiblingFileCollection):
+                parent = outp.dir
+            elif isinstance(outp, law.FileSystemFileTarget):
+                parent = outp.parent
+
+            # create it
+            if parent and parent.uri() not in handled_parent_uris:
+                parent.touch()
+                handled_parent_uris.add(parent.uri())
+
+    def run(self, **kwargs):
+        # default run implementation
+        # first, create all output directories
+        self.touch_output_dirs()
+
+        # build the command
+        cmd = self.build_command()
+
+        # run it
+        self.run_command(cmd, **kwargs)
+
+
+class CombineCommandTask(CommandTask):
+
+    mass = luigi.IntParameter(default=125, description="mass of the underlying resonance, "
+        "default: 125")
+
+    combine_stable_options = " ".join([
+        "--cminDefaultMinimizerType Minuit2",
+        "--cminDefaultMinimizerStrategy 0",
+        "--cminFallbackAlgo Minuit2,0:1.0",
+    ])
+
+    def store_parts(self):
+        parts = super(CombineCommandTask, self).store_parts()
+        parts["mass"] = "m{}".format(self.mass)
+        return parts

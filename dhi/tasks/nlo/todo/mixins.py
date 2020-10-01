@@ -207,7 +207,7 @@ class NLL2DMixin(PlotMixin):
     def plot(self, poi1, poi2, deltaNLL):
         import numpy as np
         import matplotlib
-        plt = import_matplotlib()
+        plt = import_plt()
 
         e1 = np.unique(poi1)
         e2 = np.unique(poi2)

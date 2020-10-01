@@ -14,6 +14,7 @@
 *.yaml
 *.pb
 *.txt
+*.out
 .env_*.sh
 .env_*.sh.tmp
 __pycache__

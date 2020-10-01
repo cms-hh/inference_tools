@@ -103,10 +103,10 @@ action() {
     # source externals
     for pkg in \
             py2-pip/9.0.3 \
-            py2-numpy/1.14.1-omkpbe2 \
-            py2-scipy/1.1.0-ogkkac2 \
-            py2-sympy/1.1.1-gnimlf \
-            py2-matplotlib/1.5.2-omkpbe4 \
+            py2-numpy/1.16.2-pafccj \
+            py2-scipy/1.2.1-pafccj \
+            py2-sympy/1.3-pafccj \
+            py2-matplotlib/2.2.3 \
             py2-cycler/0.10.0-gnimlf \
             py2-uproot/2.6.19-gnimlf \
             py2-requests/2.20.0 \
