@@ -26,6 +26,11 @@ action() {
     export DHI_ORIG_PYTHON3PATH="$PYTHON3PATH"
     export DHI_ORIG_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
 
+    # lang defaults
+    [ -z "$LANGUAGE" ] && export LANGUAGE="en_US.UTF-8"
+    [ -z "$LANG" ] && export LANG="en_US.UTF-8"
+    [ -z "$LC_ALL" ] && export LC_ALL="en_US.UTF-8"
+
 
     #
     # helper functions
