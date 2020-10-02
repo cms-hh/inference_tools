@@ -20,10 +20,9 @@ class BaseTask(law.Task):
     print_command = law.CSVParameter(
         default=(),
         significant=False,
-        description="print the command "
-        "that this task would execute but do not run any task; this CSV parameter accepts a single "
-        "integer value which sets the task recursion depth to also print the commands of required "
-        "tasks (0 means non-recursive)",
+        description="print the command that this task would execute but do not run any task; this "
+        "CSV parameter accepts a single integer value which sets the task recursion depth to also "
+        "print the commands of required tasks (0 means non-recursive)",
     )
 
     interactive_params = law.Task.interactive_params + ["print_command"]
@@ -116,8 +115,8 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         default=False,
         significant=False,
         description="whether to use htcondor's getenv feature to set the job enrivonment to the "
-        "current one, instead of using bundled versions of the repository and software, default: "
-        "False",
+        "current one, instead of using bundled versions of the repository and software, "
+        "default: False",
     )
 
     def htcondor_workflow_requires(self):
@@ -179,7 +178,8 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLocalFile):
 
     replicas = luigi.IntParameter(
-        default=10, description="number of replicas to generate, " "default: 10"
+        default=10,
+        description="number of replicas to generate, default: 10",
     )
 
     exclude_files = ["docs", "githooks", ".data", ".law", ".setups"]
@@ -223,7 +223,8 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
 class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile, law.tasks.RunOnceTask):
 
     replicas = luigi.IntParameter(
-        default=10, description="number of replicas to generate, " "default: 10"
+        default=10,
+        description="number of replicas to generate, default: 10",
     )
     force_upload = luigi.BoolParameter(default=False, description="force uploading")
 
@@ -343,8 +344,9 @@ class CommandTask(AnalysisTask):
 
 class CombineCommandTask(CommandTask):
 
-    mass = luigi.IntParameter(
-        default=125, description="mass of the underlying resonance, " "default: 125"
+    mass = luigi.FloatParameter(
+        default=125.0,
+        description="mass of the underlying resonance, default: 125.",
     )
 
     combine_stable_options = " ".join(

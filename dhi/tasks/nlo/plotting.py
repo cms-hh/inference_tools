@@ -58,8 +58,8 @@ class PlotTask(AnalysisTask):
     view_cmd = luigi.Parameter(
         default=law.NO_STR,
         significant=False,
-        description="a command to "
-        "execute after the task has run to visualize plots in the terminal, default: empty",
+        description="a command to execute after the task has run to visualize plots in the "
+        "terminal, default: empty",
     )
     campaign = luigi.ChoiceParameter(
         default="2017",

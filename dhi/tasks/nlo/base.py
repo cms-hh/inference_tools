@@ -25,16 +25,17 @@ class DatacardBaseTask(AnalysisTask):
     """
 
     input_cards = law.CSVParameter(
-        default=tuple(os.getenv("DHI_EXAMPLE_CARDS").split(" ")),
+        default=tuple(os.getenv("DHI_EXAMPLE_CARDS").split()),
         description="path to input datacards separated by comma; supports globbing",
     )
     dc_prefix = luigi.Parameter(
-        default="", description="prefix to prepend to output file paths; " "default: ''"
+        default="",
+        description="prefix to prepend to output file paths; default: ''",
     )
     hh_model = luigi.Parameter(
         default="hh:HHdefault",
-        description="the name of the HH model "
-        "relative to dhi.models in the format module:model_name; default: hh:HHdefault",
+        description="the name of the HH model relative to dhi.models in the format "
+        "module:model_name; default: hh:HHdefault",
     )
 
     @classmethod
@@ -136,10 +137,11 @@ class POITask1D(POITask):
     poi = luigi.ChoiceParameter(
         default="kl",
         choices=POITask.k_pois,
-        description="name of the " "poi; default: kl",
+        description="name of the poi; default: kl",
     )
     poi_value = luigi.FloatParameter(
-        default=1.0, description="initial value of the poi; default: " "1.0"
+        default=1.0,
+        description="initial value of the poi; default: 1.0",
     )
 
     def __init__(self, *args, **kwargs):
@@ -163,7 +165,10 @@ class POIScanTask1D(POITask1D):
         max_len=2,
         description="the range of the poi given by two comma-separated values; default: -10,10",
     )
-    points = luigi.IntParameter(default=21, description="number of points to scan; default: 21")
+    points = luigi.IntParameter(
+        default=21,
+        description="number of points to scan; default: 21",
+    )
 
     poi_value = None
 
@@ -173,18 +178,20 @@ class POITask2D(POITask):
     poi1 = luigi.ChoiceParameter(
         default="kl",
         choices=POITask.k_pois,
-        description="name of " "the first poi; default: kl",
+        description="name of the first poi; default: kl",
     )
     poi2 = luigi.ChoiceParameter(
         default="kt",
         choices=POITask.k_pois,
-        description="name of " "the first poi; default: kt",
+        description="name of the first poi; default: kt",
     )
     poi1_value = luigi.FloatParameter(
-        default=1.0, description="initial value of the first poi; " "default: 1.0"
+        default=1.0,
+        description="initial value of the first poi; default: 1.0",
     )
     poi2_value = luigi.FloatParameter(
-        default=1.0, description="initial value of the second poi; " "default: 1.0"
+        default=1.0,
+        description="initial value of the second poi; default: 1.0",
     )
 
     def __init__(self, *args, **kwargs):
@@ -223,11 +230,11 @@ class POIScanTask2D(POITask2D):
     )
     points1 = luigi.IntParameter(
         default=21,
-        description="number of points of the first poi to " "scan; default: 21",
+        description="number of points of the first poi to scan; default: 21",
     )
     points2 = luigi.IntParameter(
         default=21,
-        description="number of points of the second poi to " "scan; default: 21",
+        description="number of points of the second poi to scan; default: 21",
     )
 
     poi1_value = None

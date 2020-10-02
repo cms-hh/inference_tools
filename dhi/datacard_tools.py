@@ -14,7 +14,7 @@ import law
 def read_datacard_blocks(datacard, is_separator=None):
     """
     Reads the content of *datacard*, divides the lines into blocks according to a certain separator
-    and returns a list containing lines per block as list. *is_separator* can be a function
+    and returns a list containing lines per block as lists. *is_separator* can be a function
     accepting a line string as its sole argument to check whether a line is a separator. By default,
     a line is treated as a separator when it starts with at least three "-".
     """

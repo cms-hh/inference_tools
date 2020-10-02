@@ -52,7 +52,8 @@ class CombineDatacards(DatacardBaseTask, CombineCommandTask):
         for shape, data in shape_data.items():
             if basenames.count(data["basename"]) > 1:
                 data["target_basename"] = "{1}_{0}{2}".format(
-                    law.util.create_hash(shape), *os.path.splitext(data["basename"]))
+                    law.util.create_hash(shape), *os.path.splitext(data["basename"])
+                )
             else:
                 data["target_basename"] = data["basename"]
             tmp_dir.child(data["target_basename"], type="f").copy_from(shape)
@@ -60,9 +61,11 @@ class CombineDatacards(DatacardBaseTask, CombineCommandTask):
         # update shape files in datacards to new basenames and save them in the tmp dir
         tmp_datacards = []
         for i, (card, bin_name) in enumerate(zip(datacards, bin_names)):
+
             def func(rel_shape, *args):
                 shape = os.path.join(os.path.dirname(card), rel_shape)
                 return shape_data[shape]["target_basename"]
+
             tmp_card = "datacard_{}.txt".format(i)
             update_shape_files(func, card, os.path.join(tmp_dir.path, tmp_card))
             tmp_datacards.append((bin_name + "=" if bin_name else "") + tmp_card)
