@@ -38,6 +38,7 @@ class CompareScan(PlotMixin, LabelsMixin, ViewMixin, AnalysisTask):
     @ViewMixin.view_output_plots
     def run(self):
         import numpy as np
+
         plt = import_plt()
 
         limits = {}
@@ -162,6 +163,7 @@ class CompareNLL1D(PlotMixin, LabelsMixin, ViewMixin, AnalysisTask):
     def run(self):
         import numpy as np
         import uproot
+
         plt = import_plt()
 
         nll = {}

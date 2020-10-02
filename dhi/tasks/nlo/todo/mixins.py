@@ -45,9 +45,9 @@ class PlotMixin(object):
 
 
 class ScanMixin(PlotMixin):
-
     def plot(self, arr):
         import numpy as np
+
         plt = import_plt()
 
         # rescale r to xsec
@@ -145,10 +145,10 @@ class ScanMixin(PlotMixin):
 
 
 class NLL1DMixin(PlotMixin):
-
     def plot(self, poi, deltaNLL):
         import numpy as np
         from scipy.interpolate import interp1d
+
         plt = import_plt()
 
         interpol = interp1d(poi, deltaNLL)
@@ -203,10 +203,10 @@ class NLL1DMixin(PlotMixin):
 
 
 class NLL2DMixin(PlotMixin):
-
     def plot(self, poi1, poi2, deltaNLL):
         import numpy as np
         import matplotlib
+
         plt = import_plt()
 
         e1 = np.unique(poi1)

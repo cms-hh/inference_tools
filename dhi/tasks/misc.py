@@ -40,7 +40,6 @@ from dhi.tasks.nlo.inference import CreateWorkspace, ImpactsPulls
 
 
 class PostFitShapes(CombineCommandTask):
-
     def requires(self):
         return CreateWorkspace.req(self)
 
