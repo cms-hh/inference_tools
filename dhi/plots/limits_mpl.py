@@ -6,14 +6,22 @@ Limit plots using matplotlib.
 
 import numpy as np
 
-from dhi.config import poi_labels
+from dhi.config import poi_labels, campaign_labels
 from dhi.util import import_plt
 
 plt = import_plt()
 
 
-def plot_limit_scan(path, poi, data, injected_values=None, theory_values=None, log=False,
-        is_xsec=True):
+def plot_limit_scan(
+    path,
+    poi,
+    data,
+    injected_values=None,
+    theory_values=None,
+    log=False,
+    is_xsec=True,
+    campaign="2017",
+):
     """
     Creates a plot for the scan of a *poi* and saves it at *path*. *data* should be a mapping to
     lists of values or a record array with keys "<poi_name>" and "limit", and optionally "limit_p1"
@@ -29,15 +37,15 @@ def plot_limit_scan(path, poi, data, injected_values=None, theory_values=None, l
         data = {key: data[key] for key in data.dtype.names}
 
     # input checks
-    assert(poi in data)
+    assert poi in data
     poi_values = data[poi]
     n_points = len(poi_values)
-    assert("limit" in data)
-    assert(all(len(d) == n_points for d in data.values()))
+    assert "limit" in data
+    assert all(len(d) == n_points for d in data.values())
     if injected_values:
-        assert(len(injected_values) == n_points)
+        assert len(injected_values) == n_points
     if theory_values:
-        assert(len(theory_values) == n_points)
+        assert len(theory_values) == n_points
 
     # start plotting
     fig, ax = plt.subplots()
@@ -100,7 +108,7 @@ def plot_limit_scan(path, poi, data, injected_values=None, theory_values=None, l
     ax.set_ylabel(r"Upper $95\%$ CLs limit on $\sigma$ / " + y_unit)
     ax.tick_params(bottom=True, top=True, left=True, right=True, direction="in")
     ax.set_title(r"\textbf{CMS} \textit{Preliminary}", loc="left")
-    # ax.set_title(self.top_right_text, loc="right")
+    ax.set_title(campaign_labels[campaign], loc="right")
     if log:
         ax.set_yscale("log")
 

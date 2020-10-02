@@ -7,7 +7,7 @@ import luigi
 
 from dhi.tasks.base import AnalysisTask
 from dhi.tasks.nlo.base import POIScanTask1D
-from dhi.tasks.nlo.inference import MergeLimitScan
+from dhi.tasks.nlo.inference import MergeLimitScan, MergeLikelihoodScan1D
 from dhi.config import br_hww_hbb, k_factor
 from dhi.util import get_ggf_xsec, get_vbf_xsec
 
@@ -47,20 +47,34 @@ def view_output_plots(fn, opts, task, *args, **kwargs):
 
 class PlotTask(AnalysisTask):
 
-    plot_flavor = luigi.ChoiceParameter(default="root", choices=["root", "mpl"], significant=False,
-        description="the plot flavor; choices: root,mpl; default: root")
-    view_cmd = luigi.Parameter(default=law.NO_STR, significant=False, description="a command to "
-        "execute after the task has run to visualize plots in the terminal, default: empty")
+    plot_flavor = luigi.ChoiceParameter(
+        default="root",
+        choices=["root", "mpl"],
+        significant=False,
+        description="the plot flavor; choices: root,mpl; default: root",
+    )
+    view_cmd = luigi.Parameter(
+        default=law.NO_STR,
+        significant=False,
+        description="a command to "
+        "execute after the task has run to visualize plots in the terminal, default: empty",
+    )
+    campaign = luigi.ChoiceParameter(
+        default="2017",
+        choices=["2016", "2017", "2018", "FullRun2"],
+        significant=False,
+        description="the year/campaign (mainly for plotting); default: 2017",
+    )
 
 
 class PlotLimitScan(PlotTask, POIScanTask1D):
-
     def requires(self):
         return MergeLimitScan.req(self)
 
     def output(self):
-        return self.local_target_dc("limits__{}_n{}_{}_{}.pdf".format(
-            self.poi, self.points, *self.poi_range))
+        return self.local_target_dc(
+            "limits__{}_n{}_{}_{}.pdf".format(self.poi, self.points, *self.poi_range)
+        )
 
     @view_output_plots
     def run(self):
@@ -106,4 +120,41 @@ class PlotLimitScan(PlotTask, POIScanTask1D):
         # (only the mpl version exists right now)
         from dhi.plots.limits_mpl import plot_limit_scan
 
-        plot_limit_scan(output.path, self.poi, data, theory_values=theory_values, is_xsec=is_xsec)
+        plot_limit_scan(
+            path=output.path,
+            poi=self.poi,
+            data=data,
+            theory_values=theory_values,
+            is_xsec=is_xsec,
+            campaign=self.campaign,
+        )
+
+
+class PlotLikelihood1D(PlotTask, POIScanTask1D):
+    def requires(self):
+        return MergeLikelihoodScan1D.req(self)
+
+    def output(self):
+        return self.local_target_dc(
+            "nll__{}_n{}_{}_{}.pdf".format(self.poi, self.points, *self.poi_range)
+        )
+
+    @view_output_plots
+    def run(self):
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
+
+        # load limit data
+        data = self.input().load(formatter="numpy")["data"]
+
+        # get the proper plot function and call it
+        # (only the mpl version exists right now)
+        from dhi.plots.scan1d_mpl import plot_likelihood1d
+
+        plot_likelihood1d(
+            path=output.path,
+            poi=self.poi,
+            data=data,
+            campaign=self.campaign,
+        )

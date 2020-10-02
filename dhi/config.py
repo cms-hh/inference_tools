@@ -16,6 +16,7 @@ campaign_labels = {
     "2016": "2016 (13 TeV)",
     "2017": "2017 (13 TeV)",
     "2018": "2018 (13 TeV)",
+    "FullRun2": "2016+2017+2018 (13 TeV)",
 }
 
 # campaign labels

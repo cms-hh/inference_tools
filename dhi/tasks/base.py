@@ -17,10 +17,14 @@ law.contrib.load("git", "htcondor", "matplotlib", "numpy", "root", "tasks", "wlc
 
 class BaseTask(law.Task):
 
-    print_command = law.CSVParameter(default=(), significant=False, description="print the command "
+    print_command = law.CSVParameter(
+        default=(),
+        significant=False,
+        description="print the command "
         "that this task would execute but do not run any task; this CSV parameter accepts a single "
         "integer value which sets the task recursion depth to also print the commands of required "
-        "tasks (0 means non-recursive)")
+        "tasks (0 means non-recursive)",
+    )
 
     interactive_params = law.Task.interactive_params + ["print_command"]
     task_namespace = os.getenv("DHI_TASK_NAMESPACE")
@@ -174,8 +178,9 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 
 class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLocalFile):
 
-    replicas = luigi.IntParameter(default=10, description="number of replicas to generate, "
-        "default: 10")
+    replicas = luigi.IntParameter(
+        default=10, description="number of replicas to generate, " "default: 10"
+    )
 
     exclude_files = ["docs", "githooks", ".data", ".law", ".setups"]
 
@@ -204,9 +209,11 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         self.bundle(bundle)
 
         # log the size
-        self.publish_message("bundled repository archive, size is {:.2f} {}".format(
-            *law.util.human_bytes(bundle.stat.st_size)
-        ))
+        self.publish_message(
+            "bundled repository archive, size is {:.2f} {}".format(
+                *law.util.human_bytes(bundle.stat.st_size)
+            )
+        )
 
         # transfer the bundle
         self.transfer(bundle)
@@ -214,8 +221,9 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
 
 class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile, law.tasks.RunOnceTask):
 
-    replicas = luigi.IntParameter(default=10, description="number of replicas to generate, "
-        "default: 10")
+    replicas = luigi.IntParameter(
+        default=10, description="number of replicas to generate, " "default: 10"
+    )
     force_upload = luigi.BoolParameter(default=False, description="force uploading")
 
     version = None
@@ -249,9 +257,11 @@ class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile, law.tasks.RunOnc
         bundle.dump(software_path, filter=_filter)
 
         # log the size
-        self.publish_message("bundled software archive, size is {:.2f} {}".format(
-            *law.util.human_bytes(bundle.stat.st_size)
-        ))
+        self.publish_message(
+            "bundled software archive, size is {:.2f} {}".format(
+                *law.util.human_bytes(bundle.stat.st_size)
+            )
+        )
 
         # transfer the bundle and mark the task as complete
         self.transfer(bundle)
@@ -284,8 +294,9 @@ class CommandTask(AnalysisTask):
 
         # call it
         with self.publish_step("running '{}' ...".format(law.util.colored(cmd, "cyan"))):
-            code, out, err = law.util.interruptable_popen(cmd, shell=True, executable="/bin/bash",
-                **kwargs)
+            code, out, err = law.util.interruptable_popen(
+                cmd, shell=True, executable="/bin/bash", **kwargs
+            )
 
         # raise an exception when the call failed and optional is not True
         if code != 0 and not optional:
@@ -329,14 +340,17 @@ class CommandTask(AnalysisTask):
 
 class CombineCommandTask(CommandTask):
 
-    mass = luigi.IntParameter(default=125, description="mass of the underlying resonance, "
-        "default: 125")
+    mass = luigi.IntParameter(
+        default=125, description="mass of the underlying resonance, " "default: 125"
+    )
 
-    combine_stable_options = " ".join([
-        "--cminDefaultMinimizerType Minuit2",
-        "--cminDefaultMinimizerStrategy 0",
-        "--cminFallbackAlgo Minuit2,0:1.0",
-    ])
+    combine_stable_options = " ".join(
+        [
+            "--cminDefaultMinimizerType Minuit2",
+            "--cminDefaultMinimizerStrategy 0",
+            "--cminFallbackAlgo Minuit2,0:1.0",
+        ]
+    )
 
     def store_parts(self):
         parts = super(CombineCommandTask, self).store_parts()
