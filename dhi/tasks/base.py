@@ -357,6 +357,10 @@ class CombineCommandTask(CommandTask):
         ]
     )
 
+    @property
+    def mass_int(self):
+        return law.util.try_int(self.mass)
+
     def store_parts(self):
         parts = super(CombineCommandTask, self).store_parts()
         parts["mass"] = "m{}".format(self.mass)

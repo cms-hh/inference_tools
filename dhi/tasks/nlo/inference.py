@@ -219,7 +219,7 @@ class LikelihoodScan1D(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTC
             " --X-rtd MINIMIZER_analytic"
             " {self.combine_stable_options}"
             " && "
-            "mv higgsCombineTest.MultiDimFit.mH{self.mass}.root {output}"
+            "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.root {output}"
         ).format(
             self=self,
             workspace=self.input().path,
@@ -277,16 +277,18 @@ class LikelihoodScan2D(POIScanTask2D, CombineCommandTask, law.LocalWorkflow, HTC
         )
 
     def build_command(self):
+        corr1 = 0.5 * (self.poi1_range[1] - self.poi1_range[0]) / (self.points1 - 1)
+        corr2 = 0.5 * (self.poi2_range[1] - self.poi2_range[0]) / (self.points2 - 1)
         return (
             "combine -M MultiDimFit {workspace}"
             " -m {self.mass}"
             " -t -1"
             " -v 1"
             " --algo grid"
-            " --points 1"
-            " --setParameterRanges {self.poi1}={point1},{point1}:{self.poi2}={point2},{point2}"
-            " --firstPoint 0"
-            " --lastPoint 0"
+            " --points {points}"
+            " --setParameterRanges {self.poi1}={start1},{stop1}:{self.poi2}={start2},{stop2}"
+            " --firstPoint {self.branch}"
+            " --lastPoint {self.branch}"
             " --redefineSignalPOIs {self.poi1},{self.poi2}"
             " --setParameters {self.fixed_params}"
             " --freezeParameters {self.frozen_params}"
@@ -294,13 +296,16 @@ class LikelihoodScan2D(POIScanTask2D, CombineCommandTask, law.LocalWorkflow, HTC
             " --X-rtd MINIMIZER_analytic"
             " {self.combine_stable_options}"
             " && "
-            "mv higgsCombineTest.MultiDimFit.mH{self.mass}.root {output}"
+            "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.root {output}"
         ).format(
             self=self,
             workspace=self.input().path,
             output=self.output().path,
-            point1=self.branch_data[0],
-            point2=self.branch_data[1],
+            points=self.points1 * self.points2,
+            start1=self.poi1_range[0] - corr1,
+            stop1=self.poi1_range[1] + corr1,
+            start2=self.poi2_range[0] - corr2,
+            stop2=self.poi2_range[1] + corr2,
         )
 
 
