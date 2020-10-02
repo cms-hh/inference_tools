@@ -196,9 +196,6 @@ class MergeLikelihoodScan1D(POIScanTask1D):
 
         records = []
         dtype = [(self.poi, np.float32), ("delta_nll", np.float32)]
-        from IPython import embed
-
-        embed()
         for inp in self.input()["collection"].targets.values():
             f = inp.load(formatter="uproot")["limit"]
             records.append((f[self.poi].array()[1], f["deltaNLL"].array()[1]))
