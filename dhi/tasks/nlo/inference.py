@@ -4,14 +4,15 @@
 NLO inference tasks.
 """
 
+import os
 import itertools
-import multiprocessing
 
 import law
 import luigi
 
 from dhi.tasks.base import CombineCommandTask, HTCondorWorkflow
 from dhi.tasks.nlo.base import DatacardBaseTask, POIScanTask1D, POIScanTask2D
+from dhi.datacard_tools import extract_shape_files, update_shape_files
 
 
 class CombineDatacards(DatacardBaseTask, CombineCommandTask):
@@ -19,18 +20,62 @@ class CombineDatacards(DatacardBaseTask, CombineCommandTask):
     def output(self):
         return self.local_target_dc("datacard.txt")
 
-    def build_command(self):
-        inputs = " ".join(self.input_cards)
+    def build_command(self, datacards=None):
+        if not datacards:
+            datacard = self.datacards
+
+        inputs = " ".join(datacards)
         output = self.output()
 
-        # TODO: copy all shape files to same location as before
-        if len(self.input_cards) == 1:
-            return "cp {} {}".format(inputs, output.path)
-        else:
-            return "combineCards.py {inputs} > {output}".format(
-                inputs=inputs,
-                output=output.path,
-            )
+        return "combineCards.py {} > {}".format(inputs, output.path)
+
+    @law.decorator.safe_output
+    def run(self):
+        # before running the actual card combination command, copy shape files and handle collisions
+        # first, create a tmp dir to work in
+        tmp_dir = law.LocalDirectoryTarget(is_tmp=True)
+        tmp_dir.touch()
+
+        # remove any bin name from the datacard paths
+        datacards = [self.split_datacard_path(card)[0] for card in self.datacards]
+        bin_names = [self.split_datacard_path(card)[1] for card in self.datacards]
+
+        # create a map shape file -> datacards, basename
+        shape_data = {}
+        for card in datacards:
+            for shape in extract_shape_files(card):
+                if shape not in shape_data:
+                    shape_data[shape] = {"datacards": [], "basename": os.path.basename(shape)}
+                shape_data[shape]["datacards"].append(card)
+
+        # determine the final basenames of shape files, handle collisions and copy shapes
+        basenames = [data["basename"] for data in shape_data.values()]
+        for shape, data in shape_data.items():
+            if basenames.count(data["basename"]) > 1:
+                data["target_basename"] = "{1}_{0}{2}".format(
+                    law.util.create_hash(shape), *os.path.splitext(data["basename"]))
+            else:
+                data["target_basename"] = data["basename"]
+            tmp_dir.child(data["target_basename"], type="f").copy_from(shape)
+
+        # update shape files in datacards to new basenames and save them in the tmp dir
+        tmp_datacards = []
+        for i, (card, bin_name) in enumerate(zip(datacards, bin_names)):
+            def func(rel_shape, *args):
+                shape = os.path.join(os.path.dirname(card), rel_shape)
+                return shape_data[shape]["target_basename"]
+            tmp_card = "datacard_{}.txt".format(i)
+            update_shape_files(func, card, os.path.join(tmp_dir.path, tmp_card))
+            tmp_datacards.append((bin_name + "=" if bin_name else "") + tmp_card)
+
+        # build and run the command
+        output_dir = self.output().parent
+        output_dir.touch()
+        self.run_command(self.build_command(tmp_datacards), cwd=tmp_dir.path)
+
+        # finally, copy shape files to output location
+        for data in shape_data.values():
+            tmp_dir.child(data["target_basename"], type="f").copy_to(output_dir)
 
 
 class CreateWorkspace(DatacardBaseTask, CombineCommandTask):

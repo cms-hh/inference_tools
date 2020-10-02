@@ -4,9 +4,9 @@
 Base tasks dedicated to NLO inference.
 """
 
-
 import os
 import sys
+import re
 import glob
 import importlib
 
@@ -24,7 +24,7 @@ class DatacardBaseTask(AnalysisTask):
     that are significant for the datacard handling.
     """
 
-    input_cards = law.CSVParameter(default=tuple(os.getenv("DHI_EXAMPLE_CARDS").split(" ")),
+    datacards = law.CSVParameter(default=tuple(os.getenv("DHI_EXAMPLE_CARDS").split(" ")),
         description="path to input datacards separated by comma; supports globbing")
     dc_prefix = luigi.Parameter(default="", description="prefix to prepend to output file paths; "
         "default: ''")
@@ -34,17 +34,34 @@ class DatacardBaseTask(AnalysisTask):
     @classmethod
     def modify_param_values(cls, params):
         """
-        Interpret globbing statements in input_cards, expand variables and remove duplicates.
+        Interpret globbing statements in datacards, expand variables, remove duplicates and sort.
+        All of the transformations respect bin statements, e.g. "mybin=datacard.txt".
         """
-        cards = params.get("input_cards")
-        if isinstance(cards, tuple):
-            unique_cards = []
-            for card in sum((glob.glob(card) for card in cards), []):
-                card = os.path.expandvars(os.path.expanduser(card))
-                if card not in unique_cards:
-                    unique_cards.append(card)
-            params["input_cards"] = tuple(unique_cards)
+        _cards = params.get("datacards")
+        if isinstance(_cards, (tuple, list)):
+            cards = []
+            for pattern in _cards:
+                pattern, bin_name = cls.split_datacard_path(pattern)
+                for _card in glob.glob(pattern):
+                    _card = os.path.abspath(os.path.expandvars(os.path.expanduser(_card)))
+                    cards.append("{}={}".format(bin_name, _card) if bin_name else _card)
+            cards = sorted(law.util.make_unique(cards))
+
+            # complain when cards are empty
+            if not cards:
+                raise ValueError("datacards parameter did not match any existing datacard files")
+
+            params["datacards"] = tuple(cards)
         return params
+
+    @classmethod
+    def split_datacard_path(cls, path):
+        """
+        Splits a potential bin name from a datacard path and returns the path and the bin name,
+        which is *None* when missing.
+        """
+        bin_name, path = re.match(r"^(([^\/]+)=)?(.+)$", path).groups()[1:]
+        return path, bin_name
 
     def store_parts(self):
         parts = super(DatacardBaseTask, self).store_parts()
