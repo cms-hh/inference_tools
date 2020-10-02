@@ -100,7 +100,7 @@ class CreateWorkspace(DatacardBaseTask, CombineCommandTask):
         )
 
 
-class LimitScan(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+class UpperLimits(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     run_command_in_tmp = True
 
@@ -108,7 +108,7 @@ class LimitScan(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondorWo
         return CreateWorkspace.req(self)
 
     def workflow_requires(self):
-        reqs = super(LimitScan, self).workflow_requires()
+        reqs = super(UpperLimits, self).workflow_requires()
         reqs["workspace"] = self.requires_from_branch()
         return reqs
 
@@ -142,9 +142,9 @@ class LimitScan(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondorWo
         )
 
 
-class MergeLimitScan(POIScanTask1D):
+class MergeUpperLimits(POIScanTask1D):
     def requires(self):
-        return LimitScan.req(self)
+        return UpperLimits.req(self)
 
     def output(self):
         return self.local_target_dc(

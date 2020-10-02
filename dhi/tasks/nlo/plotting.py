@@ -9,7 +9,7 @@ import luigi
 
 from dhi.tasks.base import AnalysisTask
 from dhi.tasks.nlo.base import POIScanTask1D
-from dhi.tasks.nlo.inference import MergeLimitScan, MergeLikelihoodScan1D
+from dhi.tasks.nlo.inference import MergeUpperLimits, MergeLikelihoodScan1D
 from dhi.config import br_hww_hbb, k_factor
 from dhi.util import get_ggf_xsec, get_vbf_xsec
 
@@ -69,9 +69,9 @@ class PlotTask(AnalysisTask):
     )
 
 
-class PlotLimitScan(PlotTask, POIScanTask1D):
+class PlotUpperLimits(PlotTask, POIScanTask1D):
     def requires(self):
-        return MergeLimitScan.req(self)
+        return MergeUpperLimits.req(self)
 
     def output(self):
         return self.local_target_dc(
@@ -130,7 +130,7 @@ class PlotLimitScan(PlotTask, POIScanTask1D):
         )
 
 
-class PlotLikelihood1D(PlotTask, POIScanTask1D):
+class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
     def requires(self):
         return MergeLikelihoodScan1D.req(self)
 
