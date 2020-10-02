@@ -163,6 +163,9 @@ class POITask1D(POITask):
         parts["poi"] = self.poi
         return parts
 
+    def get_output_postfix(self):
+        return "{}_{}".format(self.poi, self.poi_value)
+
 
 class POIScanTask1D(POITask1D):
 
@@ -179,6 +182,9 @@ class POIScanTask1D(POITask1D):
     )
 
     poi_value = None
+
+    def get_output_postfix(self):
+        return "{}_n{}_{}_{}".format(self.poi, self.poi_value, *self.poi_range)
 
 
 class POITask2D(POITask):
@@ -217,6 +223,9 @@ class POITask2D(POITask):
         parts["pois"] = "{}__{}".format(self.poi1, self.poi2)
         return parts
 
+    def get_output_postfix(self):
+        return "{}_{}__{}_{}".format(self.poi1, self.poi1_value, self.poi2, self.poi2_value)
+
 
 class POIScanTask2D(POITask2D):
 
@@ -247,3 +256,8 @@ class POIScanTask2D(POITask2D):
 
     poi1_value = None
     poi2_value = None
+
+    def get_output_postfix(self):
+        return "{0}_n{1}_{4}_{5}__{2}_n{3}_{6}_{7}".format(
+            self.poi1, self.points1, self.poi2, self.points2, *(self.poi1_range + self.poi2_range)
+        )

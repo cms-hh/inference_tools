@@ -147,9 +147,7 @@ class MergeUpperLimits(POIScanTask1D):
         return UpperLimits.req(self)
 
     def output(self):
-        return self.local_target_dc(
-            "limits__{}_n{}_{}_{}.npz".format(self.poi, self.points, *self.poi_range)
-        )
+        return self.local_target_dc("limits__{}.npz".format(self.get_output_postfix()))
 
     def run(self):
         import numpy as np
@@ -235,9 +233,7 @@ class MergeLikelihoodScan1D(POIScanTask1D):
         return LikelihoodScan1D.req(self)
 
     def output(self):
-        return self.local_target_dc(
-            "likelihoods__{}_n{}_{}_{}.npz".format(self.poi, self.points, *self.poi_range)
-        )
+        return self.local_target_dc("likelihoods__{}.npz".format(self.get_output_postfix()))
 
     def run(self):
         import numpy as np
@@ -314,15 +310,7 @@ class MergeLikelihoodScan2D(POIScanTask2D):
         return LikelihoodScan2D.req(self)
 
     def output(self):
-        return self.local_target_dc(
-            "likelihoods__{0}_n{1}_{4}_{5}__{2}_n{3}_{6}_{7}.npz".format(
-                self.poi1,
-                self.points1,
-                self.poi2,
-                self.points2,
-                *(self.poi1_range + self.poi2_range)
-            )
-        )
+        return self.local_target_dc("likelihoods__{}.npz".format(self.get_output_postfix()))
 
     def run(self):
         import numpy as np

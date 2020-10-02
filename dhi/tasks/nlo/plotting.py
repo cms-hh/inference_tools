@@ -74,9 +74,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
         return MergeUpperLimits.req(self)
 
     def output(self):
-        return self.local_target_dc(
-            "limits__{}_n{}_{}_{}.pdf".format(self.poi, self.points, *self.poi_range)
-        )
+        return self.local_target_dc("nll__{}.pdf".format(self.get_output_postfix()))
 
     @view_output_plots
     def run(self):
@@ -135,9 +133,7 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
         return MergeLikelihoodScan1D.req(self)
 
     def output(self):
-        return self.local_target_dc(
-            "nll__{}_n{}_{}_{}.pdf".format(self.poi, self.points, *self.poi_range)
-        )
+        return self.local_target_dc("nll__{}.pdf".format(self.get_output_postfix()))
 
     @view_output_plots
     def run(self):
