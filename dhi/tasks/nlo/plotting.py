@@ -1,6 +1,8 @@
 # coding: utf-8
 
-import re
+"""
+NLO Plotting tasks.
+"""
 
 import law
 import luigi
@@ -78,8 +80,6 @@ class PlotLimitScan(PlotTask, POIScanTask1D):
 
     @view_output_plots
     def run(self):
-        import numpy as np
-
         # prepare the output
         output = self.output()
         output.parent.touch()

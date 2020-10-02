@@ -26,6 +26,11 @@ action() {
     export DHI_ORIG_PYTHON3PATH="$PYTHON3PATH"
     export DHI_ORIG_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
 
+    # lang defaults
+    [ -z "$LANGUAGE" ] && export LANGUAGE="en_US.UTF-8"
+    [ -z "$LANG" ] && export LANG="en_US.UTF-8"
+    [ -z "$LC_ALL" ] && export LC_ALL="en_US.UTF-8"
+
 
     #
     # helper functions
@@ -121,7 +126,7 @@ action() {
 
     # update paths and flags
     local pyv="$( python -c "import sys; print('{0.major}.{0.minor}'.format(sys.version_info))" )"
-    export PATH="$DHI_BASE/bin:$DHI_SOFTWARE/bin:$PATH"
+    export PATH="$DHI_BASE/bin:$DHI_BASE/dhi/scripts:$DHI_SOFTWARE/bin:$PATH"
     export PYTHONPATH="$DHI_BASE:$DHI_SOFTWARE/lib/python${pyv}/site-packages:$DHI_SOFTWARE/lib64/python${pyv}/site-packages:$PYTHONPATH"
     export PYTHONWARNINGS="ignore"
     export GLOBUS_THREAD_MODEL="none"
@@ -238,7 +243,7 @@ interactive_setup() {
         if $setup_is_default; then
             [ ! -z "${!varname}" ] && value="${!varname}"
         else
-            printf "$text (\x1b[1;49;39m$varname\x1b[0m, default '\x1b[1;49;39m$default_text\x1b[0m'):  "
+            printf "$text (\x1b[1;49;39m$varname\x1b[0m, default \x1b[1;49;39m$default_text\x1b[0m):  "
             read query_response
             [ "X$query_response" = "X" ] && query_response="$default"
 
@@ -251,7 +256,13 @@ interactive_setup() {
                 [ "X$query_response" = "X" ] && query_response="$default"
             done
 
-            value="$query_response"
+            # save the expanded value
+            value="$( eval "echo $query_response" )"
+            # strip " and '
+            value=${value%\"}
+            value=${value%\'}
+            value=${value#\"}
+            value=${value#\'}
         fi
 
         export_and_save "$varname" "$value"

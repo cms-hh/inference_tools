@@ -203,6 +203,7 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
     def output(self):
         return law.tasks.TransferLocalFile.output(self)
 
+    @law.decorator.safe_output
     def run(self):
         # create the bundle
         bundle = law.LocalFileTarget(is_tmp="tgz")
@@ -242,6 +243,7 @@ class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile, law.tasks.RunOnc
         path = os.path.expandvars(os.path.expanduser(self.single_output().path))
         return self.get_replicated_path(path, i=None if self.replicas <= 0 else "*")
 
+    @law.decorator.safe_output
     def run(self):
         software_path = os.environ["DHI_SOFTWARE"]
 
@@ -326,6 +328,7 @@ class CommandTask(AnalysisTask):
                 parent.touch()
                 handled_parent_uris.add(parent.uri())
 
+    @law.decorator.safe_output
     def run(self, **kwargs):
         # default run implementation
         # first, create all output directories
