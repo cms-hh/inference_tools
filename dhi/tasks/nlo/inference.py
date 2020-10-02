@@ -22,7 +22,7 @@ class CombineDatacards(DatacardBaseTask, CombineCommandTask):
 
     def build_command(self, datacards=None):
         if not datacards:
-            datacard = self.datacards
+            datacards = self.datacards
 
         inputs = " ".join(datacards)
         output = self.output()
