@@ -24,7 +24,7 @@ class DatacardBaseTask(AnalysisTask):
     that are significant for the datacard handling.
     """
 
-    input_cards = law.CSVParameter(
+    datacards = law.CSVParameter(
         default=tuple(os.getenv("DHI_EXAMPLE_CARDS").split()),
         description="path to input datacards separated by comma; supports globbing",
     )
@@ -37,6 +37,8 @@ class DatacardBaseTask(AnalysisTask):
         description="the name of the HH model relative to dhi.models in the format "
         "module:model_name; default: hh:HHdefault",
     )
+
+    hash_datacards_in_repr = True
 
     @classmethod
     def modify_param_values(cls, params):
@@ -60,6 +62,12 @@ class DatacardBaseTask(AnalysisTask):
 
             params["datacards"] = tuple(cards)
         return params
+
+    @classmethod
+    def _repr_param(cls, name, value, **kwargs):
+        if cls.hash_datacards_in_repr and name == "datacards":
+            value = "hash:{}".format(law.util.create_hash(value))
+        return super(DatacardBaseTask, cls)._repr_param(name, value, **kwargs)
 
     @classmethod
     def split_datacard_path(cls, path):

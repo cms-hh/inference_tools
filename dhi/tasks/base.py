@@ -65,10 +65,11 @@ class AnalysisTask(BaseTask):
 
     output_collection_cls = law.SiblingFileCollection
     default_store = "$DHI_STORE"
+    store_by_family = False
 
     def store_parts(self):
         parts = OrderedDict()
-        parts["task_class"] = self.__class__.__name__
+        parts["task_class"] = self.task_family if self.store_by_family else self.__class__.__name__
         return parts
 
     def store_parts_ext(self):
