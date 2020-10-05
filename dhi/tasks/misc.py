@@ -8,7 +8,7 @@ import os
 import law
 import luigi
 
-from dhi.tasks.base import CombineCommandTask
+from dhi.tasks.nlo.base import CombineCommandTask
 from dhi.tasks.nlo.inference import CreateWorkspace, ImpactsPulls
 
 

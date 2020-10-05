@@ -10,8 +10,9 @@ import itertools
 import law
 import luigi
 
-from dhi.tasks.base import CombineCommandTask, HTCondorWorkflow
-from dhi.tasks.nlo.base import DatacardBaseTask, POIScanTask1D, POIScanTask2D
+from dhi.tasks.base import HTCondorWorkflow
+from dhi.tasks.nlo.base import CombineCommandTask, DatacardBaseTask, POIScanTask1D, POIScanTask2D
+from dhi.util import linspace
 from dhi.datacard_tools import extract_shape_files, update_shape_files
 
 
@@ -238,19 +239,30 @@ class MergeLikelihoodScan1D(POIScanTask1D):
     def run(self):
         import numpy as np
 
-        records = []
+        data = []
         dtype = [(self.poi, np.float32), ("delta_nll", np.float32)]
-        for inp in self.input()["collection"].targets.values():
+        poi_min = np.nan
+        branch_map = self.requires().branch_map
+        for b, inp in self.input()["collection"].targets.items():
             f = inp.load(formatter="uproot")["limit"]
-            records.append((f[self.poi].array()[1], f["deltaNLL"].array()[1]))
+            failed = len(f["deltaNLL"].array()) <= 1
+            if failed:
+                data.append((branch_map[b], np.nan))
+                continue
+            # save the best fit value
+            if poi_min is np.nan:
+                poi_min = f[self.poi].array()[0]
+            # store the value of that point
+            data.append((branch_map[b], f["deltaNLL"].array()[1]))
 
-        data = np.array(records, dtype=dtype)
-        self.output().dump(data=data, formatter="numpy")
+        data = np.array(data, dtype=dtype)
+        self.output().dump(poi_min=poi_min, data=data, formatter="numpy")
 
 
 class LikelihoodScan2D(POIScanTask2D, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     run_command_in_tmp = True
+    store_pois_sorted = True
 
     def requires(self):
         return CreateWorkspace.req(self)
@@ -268,9 +280,13 @@ class LikelihoodScan2D(POIScanTask2D, CombineCommandTask, law.LocalWorkflow, HTC
         return list(itertools.product(range1, range2))
 
     def output(self):
-        return self.local_target_dc(
-            "likelihood__{0}_{2}__{1}_{3}.root".format(self.poi1, self.poi2, *self.branch_data)
-        )
+        # create a verbose file postfix and apply sorting manually here
+        postfix1 = "{}_{}".format(self.poi1, self.branch_data[0])
+        postfix2 = "{}_{}".format(self.poi2, self.branch_data[1])
+        if self.store_pois_sorted and self.poi1 > self.poi2:
+            postfix1, postfix2 = postfix2, postfix1
+
+        return self.local_target_dc("likelihood__{}__{}.root".format(postfix1, postfix2))
 
     def build_command(self):
         corr1 = 0.5 * (self.poi1_range[1] - self.poi1_range[0]) / (self.points1 - 1)
@@ -297,15 +313,13 @@ class LikelihoodScan2D(POIScanTask2D, CombineCommandTask, law.LocalWorkflow, HTC
             self=self,
             workspace=self.input().path,
             output=self.output().path,
-            points=self.points1 * self.points2,
-            start1=self.poi1_range[0] - corr1,
-            stop1=self.poi1_range[1] + corr1,
-            start2=self.poi2_range[0] - corr2,
-            stop2=self.poi2_range[1] + corr2,
         )
 
 
 class MergeLikelihoodScan2D(POIScanTask2D):
+
+    store_pois_sorted = True
+
     def requires(self):
         return LikelihoodScan2D.req(self)
 

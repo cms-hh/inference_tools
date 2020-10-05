@@ -67,6 +67,16 @@ class AnalysisTask(BaseTask):
     default_store = "$DHI_STORE"
     store_by_family = False
 
+    @classmethod
+    def req_params(cls, inst, **kwargs):
+        # always prefer certain parameters given as task family parameters (--TaskFamily-parameter)
+        _prefer_cli = law.util.make_list(kwargs.get("_prefer_cli", []))
+        if "version" not in _prefer_cli:
+            _prefer_cli.append("version")
+        kwargs["_prefer_cli"] = _prefer_cli
+
+        return super(AnalysisTask, cls).req_params(inst, **kwargs)
+
     def store_parts(self):
         parts = OrderedDict()
         parts["task_class"] = self.task_family if self.store_by_family else self.__class__.__name__
@@ -149,6 +159,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         # the CERN htcondor setup requires a "log" config, but we can safely set it to /dev/null
         # if you are interested in the logs of the batch system itself, set a meaningful value here
         config.custom_content.append(("log", "/dev/null"))
+
         # max runtime
         config.custom_content.append(("+MaxRuntime", int(math.floor(self.max_runtime * 3600)) - 1))
 
@@ -341,28 +352,3 @@ class CommandTask(AnalysisTask):
 
         # run it
         self.run_command(cmd, **kwargs)
-
-
-class CombineCommandTask(CommandTask):
-
-    mass = luigi.FloatParameter(
-        default=125.0,
-        description="mass of the underlying resonance, default: 125.",
-    )
-
-    combine_stable_options = " ".join(
-        [
-            "--cminDefaultMinimizerType Minuit2",
-            "--cminDefaultMinimizerStrategy 0",
-            "--cminFallbackAlgo Minuit2,0:1.0",
-        ]
-    )
-
-    @property
-    def mass_int(self):
-        return law.util.try_int(self.mass)
-
-    def store_parts(self):
-        parts = super(CombineCommandTask, self).store_parts()
-        parts["mass"] = "m{}".format(self.mass)
-        return parts

@@ -13,7 +13,16 @@ import importlib
 import law
 import luigi
 
-from dhi.tasks.base import AnalysisTask
+from dhi.tasks.base import AnalysisTask, CommandTask
+
+
+class CombineCommandTask(CommandTask):
+
+    combine_stable_options = (
+        "--cminDefaultMinimizerType Minuit2"
+        " --cminDefaultMinimizerStrategy 0"
+        " --cminFallbackAlgo Minuit2,0:1.0"
+    )
 
 
 class DatacardBaseTask(AnalysisTask):
@@ -27,6 +36,10 @@ class DatacardBaseTask(AnalysisTask):
     datacards = law.CSVParameter(
         default=tuple(os.getenv("DHI_EXAMPLE_CARDS").split()),
         description="path to input datacards separated by comma; supports globbing",
+    )
+    mass = luigi.FloatParameter(
+        default=125.0,
+        description="hypothetical mass of the sought resonance, default: 125.",
     )
     dc_prefix = luigi.Parameter(
         default="",
@@ -80,7 +93,8 @@ class DatacardBaseTask(AnalysisTask):
 
     def store_parts(self):
         parts = super(DatacardBaseTask, self).store_parts()
-        parts["hh_model"] = self.hh_model.replace(".", "_").replace(":", "_")
+        parts["mass"] = "m{}".format(self.mass)
+        parts["hh_model"] = "model_" + self.hh_model.replace(".", "_").replace(":", "_")
         return parts
 
     def local_target_dc(self, *path, **kwargs):
@@ -97,6 +111,10 @@ class DatacardBaseTask(AnalysisTask):
             path = path[:-1] + (last_path,)
 
         return cls(self.local_path(*path, store=store), **kwargs)
+
+    @property
+    def mass_int(self):
+        return law.util.try_int(self.mass)
 
     def load_hh_model(self, hh_model=None):
         """
@@ -122,7 +140,7 @@ class POITask(DatacardBaseTask):
     all_pois = k_pois + r_pois
 
     @staticmethod
-    def get_freeze_parameters(other_pois):
+    def get_frozen_parameters(other_pois):
         return ",".join(other_pois)
 
     @staticmethod
@@ -133,7 +151,7 @@ class POITask(DatacardBaseTask):
 
     @property
     def frozen_params(self):
-        return self.get_freeze_parameters(self.other_pois)
+        return self.get_frozen_parameters(self.other_pois)
 
     @property
     def fixed_params(self):
@@ -176,7 +194,7 @@ class POIScanTask1D(POITask1D):
         max_len=2,
         description="the range of the poi given by two comma-separated values; default: -10,10",
     )
-    points = luigi.IntParameter(
+    poi_points = luigi.IntParameter(
         default=21,
         description="number of points to scan; default: 21",
     )
@@ -184,7 +202,7 @@ class POIScanTask1D(POITask1D):
     poi_value = None
 
     def get_output_postfix(self):
-        return "{}_n{}_{}_{}".format(self.poi, self.poi_value, *self.poi_range)
+        return "{}_n{}_{}_{}".format(self.poi, self.poi_points, *self.poi_range)
 
 
 class POITask2D(POITask):
@@ -208,6 +226,8 @@ class POITask2D(POITask):
         description="initial value of the second poi; default: 1.0",
     )
 
+    store_pois_sorted = False
+
     def __init__(self, *args, **kwargs):
         super(POITask2D, self).__init__(*args, **kwargs)
 
@@ -218,13 +238,38 @@ class POITask2D(POITask):
         # store pois that are not selected
         self.other_pois = [p for p in self.all_pois if p not in (self.poi1, self.poi2)]
 
+    def get_poi_info(self, attributes=("", "_value")):
+        # get info per poi
+        info = {}
+        info.update({"poi1" + attr: getattr(self, "poi1" + attr) for attr in attributes})
+        info.update({"poi2" + attr: getattr(self, "poi2" + attr) for attr in attributes})
+
+        # add same info with keys starting with "poiA_" and "poiB_" to reflect sorting by name
+        # i.e. when poi1 is "kl" and poi2 is "C2V", "poiA_" would denote poi2
+        names = sorted([self.poi1, self.poi2])
+        keys = sorted(["poi1", "poi2"], key=lambda key: names.index(getattr(self, key)))
+        info.update({"poiA" + attr: getattr(self, keys[0] + attr) for attr in attributes})
+        info.update({"poiB" + attr: getattr(self, keys[1] + attr) for attr in attributes})
+
+        return info
+
     def store_parts(self):
         parts = super(POITask2D, self).store_parts()
-        parts["pois"] = "{}__{}".format(self.poi1, self.poi2)
+
+        if self.store_pois_sorted:
+            tmpl = "{poiA}__{poiB}"
+        else:
+            tmpl = "{poi1}__{poi2}"
+        parts["pois"] = tmpl.format(**self.get_poi_info())
+
         return parts
 
     def get_output_postfix(self):
-        return "{}_{}__{}_{}".format(self.poi1, self.poi1_value, self.poi2, self.poi2_value)
+        if self.store_pois_sorted:
+            tmpl = "{poiA}_{poiA_value}__{poiB}_{poiB_value}"
+        else:
+            tmpl = "{poi1}_{poi1_value}__{poi2}_{poi2_value}"
+        return tmpl.format(**self.get_poi_info())
 
 
 class POIScanTask2D(POITask2D):
@@ -245,11 +290,11 @@ class POIScanTask2D(POITask2D):
         description="the range of the second poi given by two comma-separated values; "
         "default: -10,10",
     )
-    points1 = luigi.IntParameter(
+    poi1_points = luigi.IntParameter(
         default=21,
         description="number of points of the first poi to scan; default: 21",
     )
-    points2 = luigi.IntParameter(
+    poi2_points = luigi.IntParameter(
         default=21,
         description="number of points of the second poi to scan; default: 21",
     )
@@ -257,7 +302,14 @@ class POIScanTask2D(POITask2D):
     poi1_value = None
     poi2_value = None
 
+    def get_poi_info(self, attributes=("", "_range", "_points")):
+        return super(POIScanTask2D, self).get_poi_info(attributes=attributes)
+
     def get_output_postfix(self):
-        return "{0}_n{1}_{4}_{5}__{2}_n{3}_{6}_{7}".format(
-            self.poi1, self.points1, self.poi2, self.points2, *(self.poi1_range + self.poi2_range)
-        )
+        if self.store_pois_sorted:
+            tmpl = "{poiA}_n{poiA_points}_{poiA_range[0]}_{poiA_range[1]}" \
+                "__{poiB}_n{poiB_points}_{poiB_range[0]}_{poiB_range[1]}"
+        else:
+            tmpl = "{poi1}_n{poi1_points}_{poi1_range[0]}_{poi1_range[1]}" \
+                "__{poi2}_n{poi2_points}_{poi2_range[0]}_{poi2_range[1]}"
+        return tmpl.format(**self.get_poi_info())
