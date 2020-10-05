@@ -19,10 +19,12 @@ campaign_labels = {
     "FullRun2": "2016+2017+2018 (13 TeV)",
 }
 
-# campaign labels
+# poi labels
 poi_labels = {
-    "kl": r"$\kappa_\lambda$",
-    "kt": r"$\kappa_t$",
-    "C2V": r"$C_{2V}$",
-    "CV": r"$C_{V}$",
+    "kl": r"\kappa_{\lambda}",
+    "kt": r"\kappa_{t}",
+    "C2V": r"C_{2V}",
+    "CV": r"C_{V}",
 }
+
+poi_labels_math = {key: "${}$".format(label) for key, label in poi_labels.items()}

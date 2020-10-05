@@ -114,9 +114,7 @@ class UpperLimits(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondor
         return reqs
 
     def create_branch_map(self):
-        import numpy as np
-
-        return np.linspace(self.poi_range[0], self.poi_range[1], self.points).round(7).tolist()
+        return linspace(self.poi_range[0], self.poi_range[1], self.poi_points)
 
     def output(self):
         return self.local_target_dc("limit__{}_{}.root".format(self.poi, self.branch_data))
@@ -126,20 +124,19 @@ class UpperLimits(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondor
             "combine -M AsymptoticLimits {workspace}"
             " -m {self.mass}"
             " -v 1"
-            " --keyword-value {self.poi}={point}"  # TODO: remove this and adjust file to copy
             " --run expected"
             " --noFitAsimov"
             " --redefineSignalPOIs r"  # TODO: shouldn't this be {poi}?
             " --setParameters {set_params},{self.poi}={point}"
             " {self.combine_stable_options}"
             " && "
-            "mv higgsCombineTest.AsymptoticLimits.mH{self.mass}.{self.poi}{point}.root {output}"
+            "mv higgsCombineTest.AsymptoticLimits.mH{self.mass_int}.root {output}"
         ).format(
             self=self,
             workspace=self.input().path,
             output=self.output().path,
             point=self.branch_data,
-            set_params=self.get_set_parameters(),
+            set_params=self.fixed_params,
         )
 
 
@@ -192,25 +189,23 @@ class LikelihoodScan1D(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTC
         return reqs
 
     def create_branch_map(self):
-        import numpy as np
-
-        return np.linspace(self.poi_range[0], self.poi_range[1], self.points).round(7).tolist()
+        return linspace(self.poi_range[0], self.poi_range[1], self.poi_points)
 
     def output(self):
         return self.local_target_dc("likelihood__{}_{}.root".format(self.poi, self.branch_data))
 
     def build_command(self):
-        corr = 0.5 * (self.poi_range[1] - self.poi_range[0]) / (self.points - 1)
         return (
             "combine -M MultiDimFit {workspace}"
             " -m {self.mass}"
             " -t -1"
             " -v 1"
             " --algo grid"
-            " --points {self.points}"
-            " --setParameterRanges {self.poi}={start},{stop}"
+            " --points {self.poi_points}"
+            " --setParameterRanges {self.poi}={self.poi_range[0]},{self.poi_range[1]}"
             " --firstPoint {self.branch}"
             " --lastPoint {self.branch}"
+            " --alignEdges 1"
             " --redefineSignalPOIs {self.poi}"
             " --setParameters {self.fixed_params}"
             " --freezeParameters {self.frozen_params}"
@@ -224,8 +219,6 @@ class LikelihoodScan1D(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTC
             workspace=self.input().path,
             output=self.output().path,
             point=self.branch_data,
-            start=self.poi_range[0] - corr,
-            stop=self.poi_range[1] + corr,
         )
 
 
@@ -273,10 +266,8 @@ class LikelihoodScan2D(POIScanTask2D, CombineCommandTask, law.LocalWorkflow, HTC
         return reqs
 
     def create_branch_map(self):
-        import numpy as np
-
-        range1 = np.linspace(self.poi1_range[0], self.poi1_range[1], self.points1).round(7).tolist()
-        range2 = np.linspace(self.poi2_range[0], self.poi2_range[1], self.points2).round(7).tolist()
+        range1 = linspace(self.poi1_range[0], self.poi1_range[1], self.poi1_points)
+        range2 = linspace(self.poi2_range[0], self.poi2_range[1], self.poi2_points)
         return list(itertools.product(range1, range2))
 
     def output(self):
@@ -289,18 +280,19 @@ class LikelihoodScan2D(POIScanTask2D, CombineCommandTask, law.LocalWorkflow, HTC
         return self.local_target_dc("likelihood__{}__{}.root".format(postfix1, postfix2))
 
     def build_command(self):
-        corr1 = 0.5 * (self.poi1_range[1] - self.poi1_range[0]) / (self.points1 - 1)
-        corr2 = 0.5 * (self.poi2_range[1] - self.poi2_range[0]) / (self.points2 - 1)
         return (
             "combine -M MultiDimFit {workspace}"
             " -m {self.mass}"
             " -t -1"
             " -v 1"
             " --algo grid"
-            " --points {points}"
-            " --setParameterRanges {self.poi1}={start1},{stop1}:{self.poi2}={start2},{stop2}"
+            " --points {self.poi1_points}"
+            " --points2 {self.poi2_points}"
+            " --setParameterRanges {self.poi1}={self.poi1_range[0]},{self.poi1_range[1]}:"
+            "{self.poi2}={self.poi2_range[0]},{self.poi2_range[1]}"
             " --firstPoint {self.branch}"
             " --lastPoint {self.branch}"
+            " --alignEdges 1"
             " --redefineSignalPOIs {self.poi1},{self.poi2}"
             " --setParameters {self.fixed_params}"
             " --freezeParameters {self.frozen_params}"
@@ -329,24 +321,30 @@ class MergeLikelihoodScan2D(POIScanTask2D):
     def run(self):
         import numpy as np
 
-        records = []
+        data = []
         dtype = [
             (self.poi1, np.float32),
             (self.poi2, np.float32),
             ("delta_nll", np.float32),
         ]
-        for inp in self.input()["collection"].targets.values():
+        poi1_min = np.nan
+        poi2_min = np.nan
+        branch_map = self.requires().branch_map
+        for b, inp in self.input()["collection"].targets.items():
             f = inp.load(formatter="uproot")["limit"]
-            records.append(
-                (
-                    f[self.poi1].array()[1],
-                    f[self.poi2].array()[1],
-                    f["deltaNLL"].array()[1],
-                )
-            )
+            failed = len(f["deltaNLL"].array()) <= 1
+            if failed:
+                data.append(branch_map[b] + (np.nan,))
+                continue
+            # save the best fit value
+            if poi1_min is np.nan or poi2_min is np.nan:
+                poi1_min = f[self.poi1].array()[0]
+                poi2_min = f[self.poi2].array()[0]
+            # store the value of that point
+            data.append((branch_map[b] + (f["deltaNLL"].array()[1],)))
 
-        data = np.array(records, dtype=dtype)
-        self.output().dump(data=data, formatter="numpy")
+        data = np.array(data, dtype=dtype)
+        self.output().dump(poi1_min=poi1_min, poi2_min=poi2_min, data=data, formatter="numpy")
 
 
 class ImpactsPulls(CombineCommandTask):

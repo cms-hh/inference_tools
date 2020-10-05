@@ -8,8 +8,8 @@ import law
 import luigi
 
 from dhi.tasks.base import AnalysisTask
-from dhi.tasks.nlo.base import POIScanTask1D
-from dhi.tasks.nlo.inference import MergeUpperLimits, MergeLikelihoodScan1D
+from dhi.tasks.nlo.base import POIScanTask1D, POIScanTask2D
+from dhi.tasks.nlo.inference import MergeUpperLimits, MergeLikelihoodScan1D, MergeLikelihoodScan2D
 from dhi.config import br_hww_hbb, k_factor
 from dhi.util import get_ggf_xsec, get_vbf_xsec
 
@@ -36,7 +36,7 @@ def view_output_plots(fn, opts, task, *args, **kwargs):
         for output in law.util.flatten(task.output()):
             if not getattr(output, "path", None):
                 continue
-            if output.path.endswith((".pdf", ".png")):
+            if output.path.endswith((".pdf", ".png")) and output.path not in view_paths:
                 view_paths.append(output.path)
 
         # loop through paths and view them
@@ -74,7 +74,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
         return MergeUpperLimits.req(self)
 
     def output(self):
-        return self.local_target_dc("nll__{}.pdf".format(self.get_output_postfix()))
+        return self.local_target_dc("limits__{}.pdf".format(self.get_output_postfix()))
 
     @view_output_plots
     def run(self):
@@ -133,24 +133,73 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
         return MergeLikelihoodScan1D.req(self)
 
     def output(self):
-        return self.local_target_dc("nll__{}.pdf".format(self.get_output_postfix()))
+        return self.local_target_dc("nll1d__{}.pdf".format(self.get_output_postfix()))
 
     @view_output_plots
     def run(self):
+        import numpy as np
+        import numpy.lib.recfunctions as rec
+
         # prepare the output
         output = self.output()
         output.parent.touch()
 
         # load limit data
-        data = self.input().load(formatter="numpy")["data"]
+        inp = self.input().load(formatter="numpy")
+        data = inp["data"]
+        poi_min = float(inp["poi_min"]) if not np.isnan(inp["poi_min"]) else None
+
+        # insert a dnll2 column
+        data = rec.append_fields(data, ["dnll2"], [data["delta_nll"] * 2.])
 
         # get the proper plot function and call it
         # (only the mpl version exists right now)
-        from dhi.plots.scan1d_mpl import plot_likelihood1d
+        from dhi.plots.likelihoods_mpl import plot_likelihood_scan_1d
 
-        plot_likelihood1d(
+        plot_likelihood_scan_1d(
             path=output.path,
             poi=self.poi,
             data=data,
+            poi_min=poi_min,
+            campaign=self.campaign,
+        )
+
+
+class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
+    def requires(self):
+        return MergeLikelihoodScan2D.req(self)
+
+    def output(self):
+        return self.local_target_dc("nll2d__{}.pdf".format(self.get_output_postfix()))
+
+    @view_output_plots
+    def run(self):
+        import numpy as np
+        import numpy.lib.recfunctions as rec
+
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
+
+        # load limit data
+        inp = self.input().load(formatter="numpy")
+        data = inp["data"]
+        poi1_min = float(inp["poi1_min"]) if not np.isnan(inp["poi1_min"]) else None
+        poi2_min = float(inp["poi2_min"]) if not np.isnan(inp["poi2_min"]) else None
+
+        # insert a dnll2 column
+        data = rec.append_fields(data, ["dnll2"], [data["delta_nll"] * 2.])
+
+        # get the proper plot function and call it
+        # (only the mpl version exists right now)
+        from dhi.plots.likelihoods_mpl import plot_likelihood_scan_2d
+
+        plot_likelihood_scan_2d(
+            path=output.path,
+            poi1=self.poi1,
+            poi2=self.poi2,
+            data=data,
+            poi1_min=poi1_min,
+            poi2_min=poi2_min,
             campaign=self.campaign,
         )

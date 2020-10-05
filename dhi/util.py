@@ -46,6 +46,15 @@ def import_ROOT():
     return _ROOT
 
 
+class DotDict(dict):
+    """
+    Dictionary providing item access via attributes.
+    """
+
+    def __getattr__(self, attr):
+        return self[attr]
+
+
 def rgb(r, g, b):
     """
     This function norms the rgb color inputs for
@@ -55,6 +64,15 @@ def rgb(r, g, b):
     when using the atom package "pigments"!
     """
     return tuple(v if v <= 1.0 else float(v) / 255.0 for v in (r, g, b))
+
+
+def linspace(start, stop, steps, precision=7):
+    """
+    Same as np.linspace with *start*, *stop* and *steps* being directly forwarded but the generated
+    values are rounded to a certain *precision* and returned in a list.
+    """
+    import numpy as np
+    return np.linspace(start, stop, steps).round(precision).tolist()
 
 
 def get_ggf_xsec(ggf_formula, kl=1.0, kt=1.0):

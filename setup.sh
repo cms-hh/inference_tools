@@ -86,7 +86,10 @@ action() {
         (
             cd "$DHI_SOFTWARE"
             rm -rf HiggsAnalysis/CombinedLimit
-            git clone --depth 1 --branch v8.1.0 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit || return "1"
+            # TODO: the following branch is based on v8.1.0 and adds the --points2 parameter to
+            # likelihood scans to improve control over the scan grid, so switch back again to the
+            # original repo once merged
+            git clone --depth 1 --branch control_2d_grid https://github.com/riga/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit || return "1"
             cd HiggsAnalysis/CombinedLimit
             source env_standalone.sh "" || return "2"
             make -j
@@ -141,6 +144,7 @@ action() {
         # python packages
         dhi_pip_install luigi==2.8.2 || return "$?"
         LAW_INSTALL_EXECUTABLE="$DHI_PYTHON" dhi_pip_install --no-deps git+https://github.com/riga/law.git || return "$?"
+        dhi_pip_install --no-deps git+https://github.com/riga/scinum.git || return "$?"
 
         # virtual env for black which requires python 3
         echo -e "\nsetting up black in virtual environment at $DHI_BLACK_PATH"

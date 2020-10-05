@@ -6,7 +6,7 @@ Limit plots using matplotlib.
 
 import numpy as np
 
-from dhi.config import poi_labels, campaign_labels
+from dhi.config import poi_labels_math, campaign_labels
 from dhi.util import import_plt
 
 plt = import_plt()
@@ -23,14 +23,17 @@ def plot_limit_scan(
     campaign="2017",
 ):
     """
-    Creates a plot for the scan of a *poi* and saves it at *path*. *data* should be a mapping to
-    lists of values or a record array with keys "<poi_name>" and "limit", and optionally "limit_p1"
-    (plus 1 sigma), "limit_m1" (minus 1 sigma), "limit_p2" and "limit_m2". When the variations by 1
-    or 2 sigma are missing, the plot is created without them. When *injected_values* or
-    *theory_values* are given, they should be single lists of values. Therefore, they must have the
-    same length as the lists given in *data*. When *log* is *True*, the y axis is plotted with a
+    Creates a plot for the upper limit scan of a *poi* and saves it at *path*. *data* should be a
+    mapping to lists of values or a record array with keys "<poi_name>" and "limit", and optionally
+    "limit_p1" (plus 1 sigma), "limit_m1" (minus 1 sigma), "limit_p2" and "limit_m2". When the
+    variations by 1 or 2 sigma are missing, the plot is created without them. When *injected_values*
+    or *theory_values* are given, they should be single lists of values. Therefore, they must have
+    the same length as the lists given in *data*. When *log* is *True*, the y axis is plotted with a
     logarithmic scale. *is_xsec* denotes whether the passed values are given as real cross sections
-    or, when *False*, as a ratio over the theory prediction.
+    or, when *False*, as a ratio over the theory prediction. *campaign* should refer to the name of
+    a campaign label defined in dhi.config.campaign_labels.
+
+    Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/?search=limits
     """
     # convert record array to dict
     if isinstance(data, np.ndarray):
@@ -102,13 +105,13 @@ def plot_limit_scan(
         )
 
     # legend, labels, titles, etc
-    ax.legend(loc="best")
-    ax.set_xlabel(poi_labels[poi])
+    ax.set_xlabel(poi_labels_math.get(poi, poi))
     y_unit = "fb" if is_xsec else r"$\sigma_{SM}$"
     ax.set_ylabel(r"Upper $95\%$ CLs limit on $\sigma$ / " + y_unit)
     ax.tick_params(bottom=True, top=True, left=True, right=True, direction="in")
-    ax.set_title(r"\textbf{CMS} \textit{Preliminary}", loc="left")
-    ax.set_title(campaign_labels[campaign], loc="right")
+    ax.legend(loc="best")
+    ax.set_title(r"\textbf{CMS} \textit{preliminary}", loc="left")
+    ax.set_title(campaign_labels.get(campaign, campaign), loc="right")
     if log:
         ax.set_yscale("log")
 

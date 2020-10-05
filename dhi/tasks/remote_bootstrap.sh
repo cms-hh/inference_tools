@@ -72,13 +72,24 @@ fetch_local_file() {
     local src_pattern="$1"
     local dst_path="$2"
 
-    # select one random file matched by pattern
-    local src_path="$( ls $src_pattern | shuf -n 1 )"
-    if [ -z "$src_path" ]; then
-        2>&1 echo "could not determine random src file from pattern $src_pattern"
-        return "1"
-    fi
-    echo "using source file $src_path"
+    # select one random file matched by pattern with two attempts
+    local src_path
+    for i in 1 2; do
+        src_path="$( ls $src_pattern | shuf -n 1 )"
+        if [ ! -z "$src_path" ]; then
+            echo "using source file $src_path"
+            break
+        fi
+
+        local msg="could not determine src file from pattern $src_pattern"
+        if [ "$i" != "2" ]; then
+            echo "$msg, next attempt in 5 seconds"
+            sleep 5
+        else
+            2>&1 echo "$msg, stopping"
+            return "1"
+        fi
+    done
 
     # create the target directory if it does not exist yet
     local dst_dir="$( dirname "$dst_path" )"
