@@ -40,7 +40,7 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_mi
     poi_values = data[poi]
     dnll2_values = data["dnll2"]
 
-    # set default x range
+    # set default range
     if x_min is None:
         x_min = poi_values.min()
     if x_max is None:

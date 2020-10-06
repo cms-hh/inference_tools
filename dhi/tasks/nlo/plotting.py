@@ -59,7 +59,7 @@ class PlotTask(AnalysisTask):
         default=law.NO_STR,
         significant=False,
         description="a command to execute after the task has run to visualize plots in the "
-        "terminal, default: empty",
+        "terminal; default: empty",
     )
     campaign = luigi.ChoiceParameter(
         default="2017",
@@ -70,11 +70,32 @@ class PlotTask(AnalysisTask):
 
 
 class PlotUpperLimits(PlotTask, POIScanTask1D):
+
+    scale_xsec = luigi.BoolParameter(default=False, description="draw the limits on cross sections "
+        "instead of signal strength parameters; default: False")
+    scale_log = luigi.BoolParameter(default=False, description="apply log scaling to the y-axis; "
+        "default: False")
+
+    @classmethod
+    def modify_param_values(self, params):
+        # scaling to xsec is only supported for kl and C2V
+        if params.get("scale_xsec") and params.get("poi") not in ("kl", "C2V"):
+            params["scale_xsec"] = False
+        return params
+
     def requires(self):
         return MergeUpperLimits.req(self)
 
     def output(self):
-        return self.local_target_dc("limits__{}.pdf".format(self.get_output_postfix()))
+        # postfix from xsec and log
+        parts = []
+        if self.scale_xsec:
+            parts.append("xsec")
+        if self.scale_log:
+            parts.append("log")
+        postfix = ("__" + "_".join(parts)) if parts else ""
+
+        return self.local_target_dc("limits__{}{}.pdf".format(self.get_output_postfix(), postfix))
 
     @view_output_plots
     def run(self):
@@ -84,35 +105,34 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
 
         # load limit data
         data = self.input().load(formatter="numpy")["data"]
-
-        # rescale from limit on r to limit on xsec, depending on the poi
         limit_keys = [key for key in data.dtype.names if key.startswith("limit")]
-        scale = br_hww_hbb * k_factor * 1000.0  # TODO: generalize this for different analyses
 
-        if self.poi == "kl":
-            formula = self.load_hh_model()[0].ggf_formula
-            theory_values = []
-            is_xsec = True
-            for point in data:
-                xsec = get_ggf_xsec(formula, kl=point["kl"])
-                theory_values.append(xsec)
-                for key in limit_keys:
-                    point[key] *= xsec * scale
-
-        elif self.poi == "C2V":
-            formula = self.load_hh_model()[0].vbf_formula
-            theory_values = []
-            is_xsec = True
-            for point in data:
-                xsec = get_vbf_xsec(formula, c2v=point["C2V"])
-                theory_values.append(xsec)
-                for key in limit_keys:
-                    point[key] *= xsec * scale
-
-        else:
-            # no scaling
-            theory_values = None
-            is_xsec = False
+        # rescale from limit on r to limit on xsec when requested, depending on the poi
+        theory_values = None
+        is_xsec = self.scale_xsec
+        if is_xsec:
+            scale = br_hww_hbb * k_factor * 1000.0  # TODO: generalize this for different analyses
+            if self.poi == "kl":
+                formula = self.load_hh_model()[0].ggf_formula
+                theory_values = []
+                is_xsec = True
+                for point in data:
+                    xsec = get_ggf_xsec(formula, kl=point["kl"])
+                    theory_values.append(xsec)
+                    for key in limit_keys:
+                        point[key] *= xsec * scale
+            elif self.poi == "C2V":
+                formula = self.load_hh_model()[0].vbf_formula
+                theory_values = []
+                is_xsec = True
+                for point in data:
+                    xsec = get_vbf_xsec(formula, c2v=point["C2V"])
+                    theory_values.append(xsec)
+                    for key in limit_keys:
+                        point[key] *= xsec * scale
+            else:
+                # no scaling
+                is_xsec = False
 
         # get the proper plot function and call it
         # (only the mpl version exists right now)
@@ -124,6 +144,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
             data=data,
             theory_values=theory_values,
             is_xsec=is_xsec,
+            log=self.scale_log,
             campaign=self.campaign,
         )
 
