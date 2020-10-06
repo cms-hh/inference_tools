@@ -11,7 +11,7 @@ import matplotlib
 from scinum import Number
 
 from dhi.config import poi_labels, poi_labels_math, campaign_labels
-from dhi.util import import_plt, DotDict, rgb
+from dhi.util import import_plt, DotDict, rgb, minimize_1d, get_neighbor_coordinates
 
 
 plt = import_plt()
@@ -36,7 +36,7 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_mi
 
     Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/?search=nll1d
     """
-    # get poi and delta nll values
+    # get valid poi and delta nll values
     poi_values = data[poi]
     dnll2_values = data["dnll2"]
 
@@ -45,6 +45,11 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_mi
         x_min = poi_values.min()
     if x_max is None:
         x_max = poi_values.max()
+
+    # select valid points
+    mask = ~np.isnan(dnll2_values)
+    poi_values = poi_values[mask]
+    dnll2_values = dnll2_values[mask]
 
     # evaluate the scan, run interpolation and error estimation
     scan = evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min)
@@ -62,8 +67,8 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_mi
                 color=rgb(161, 16, 53),
             )
 
-    # lines at 1 and 4
-    for n in [1., 4.]:
+    # lines at chi2_1 intervals
+    for n in [chi2_levels[1][1], chi2_levels[1][2]]:
         if n < dnll2_values.max():
             ax.plot(
                 (x_min, x_max),
@@ -112,7 +117,7 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_mi
 
 
 def plot_likelihood_scan_2d(path, poi1, poi2, data, poi1_min=None, poi2_min=None, campaign="2017",
-        x1_min=None, x1_max=None, x2_min=None, x2_max=None):
+        x1_min=None, x1_max=None, x2_min=None, x2_max=None, fill_nans=True):
     """
     Creates a likelihood plot of the 2D scan of two pois *poi1* and *poi2*, and saves it at *path*.
     *data* should be a mapping to lists of values or a record array with keys "<poi1_name>",
@@ -120,7 +125,9 @@ def plot_likelihood_scan_2d(path, poi1, poi2, data, poi1_min=None, poi2_min=None
     of the pois that lead to the best likelihood. Otherwise, they are  estimated from the
     interpolated curve. *campaign* should refer to the name of a campaign label defined in
     dhi.config.campaign_labels. *x1_min*, *x1_max*, *x2_min* and *x2_max* define the axis range of
-    poi1 and poi2, respectively, and default to the ranges of the poi values.
+    poi1 and poi2, respectively, and default to the ranges of the poi values. When *fill_nans* is
+    *True*, points with failed fits, denoted by nan values, are filled with the averages of
+    neighboring fits.
 
     Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/?search=nll2d
     """
@@ -129,7 +136,7 @@ def plot_likelihood_scan_2d(path, poi1, poi2, data, poi1_min=None, poi2_min=None
     poi2_values = data[poi2]
     dnll2_values = data["dnll2"]
 
-    # set default x ranges
+    # set default ranges
     if x1_min is None:
         x1_min = poi1_values.min()
     if x1_max is None:
@@ -143,28 +150,46 @@ def plot_likelihood_scan_2d(path, poi1, poi2, data, poi1_min=None, poi2_min=None
     scan = evaluate_likelihood_scan_2d(poi1_values, poi2_values, dnll2_values, poi1_min=poi1_min,
         poi2_min=poi2_min)
 
+    # transform the poi coordinates and dnll2 values into a 2d array
+    # where the inner (outer) dimension refers to poi1 (poi2)
+    e1 = np.unique(poi1_values)
+    e2 = np.unique(poi2_values)
+    i1 = np.searchsorted(e1, poi1_values, side="right") - 1
+    i2 = np.searchsorted(e2, poi2_values, side="right") - 1
+    data = np.zeros((e2.size, e1.size), dtype=np.float32)
+    data[i2, i1] = dnll2_values
+
+    # set slightly negative numbers (usually in the order of e-5) to a new minimal value
+    # (not needed for the moment)
+    # cur_min = data[data > 0].min()
+    # data[(data < 0) & (data > -1e-5)] = cur_min * 0.9
+
+    # optionally fill nans with averages over neighboring points
+    if fill_nans:
+        nans = np.argwhere(np.isnan(data))
+        npoints = {tuple(p): get_neighbor_coordinates(data.shape, *p) for p in nans}
+        nvals = {p: data[[c[0] for c in cs], [c[1] for c in cs]] for p, cs in npoints.items()}
+        nmeans = {p: vals[~np.isnan(vals)].mean() for p, vals in nvals.items()}
+        data[[p[0] for p in nmeans], [p[1] for p in nmeans]] = nmeans.values()
+
     # start plotting
     fig, ax = plt.subplots()
 
-    counts, bins_x, bins_y, img = ax.hist2d(
-        poi1_values,
-        poi2_values,
-        weights=dnll2_values,
-        range=[[x1_min, x1_max], [x2_min, x2_max]],
-        bins=[np.unique(poi1_values).size - 1, np.unique(poi2_values).size - 1],
+    img = ax.imshow(
+        data,
         norm=matplotlib.colors.LogNorm(),
+        aspect="auto",
+        origin="lower",
+        extent=[poi1_values.min(), poi1_values.max(), poi2_values.min(), poi2_values.max()],
         cmap="viridis",
+        interpolation="nearest",
     )
     fig.colorbar(img, ax=ax, label=r"$-2 \Delta \text{ln}\mathcal{L}$")
 
     # contours
-    contours = ax.contour(counts.transpose(),
-        extent=[bins_x.min(), bins_x.max(), bins_y.min(), bins_y.max()],
-        levels=np.log([chi2_levels[2][1], chi2_levels[2][2]]),
-        linewidths=2,
-    )
+    contours = plt.contour(e1, e2, data, levels=[chi2_levels[2][1], chi2_levels[2][2]])
     fmt = {l: s for l, s in zip(contours.levels, [r"$1 \sigma$", r"$2 \sigma$"])}
-    ax.clabel(contours, inline=True, fontsize=8, fmt=fmt)
+    plt.clabel(contours, inline=True, fontsize=8, fmt=fmt)
 
     # best fit value marker with errors
     ax.errorbar(
@@ -231,23 +256,30 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     mask = ~np.isnan(dnll2_values)
     interp = scipy.interpolate.interp1d(poi_values[mask], dnll2_values[mask], kind="cubic")
 
+    # store sane extrema
+    poi_values_min = poi_values[mask].min()
+    poi_values_max = poi_values[mask].max()
+
     # get the minimum when not set
-    bounds = (poi_values.min() + 1e-4, poi_values.max() - 1e-4)
     if poi_min is None:
         objective = lambda x: abs(interp(x))
-        res = scipy.optimize.minimize(objective, 1., tol=1e-7, bounds=[bounds])
+        bounds = (poi_values_min + 1e-4, poi_values_max - 1e-4)
+        res = minimize_1d(objective, bounds)
         if res.status != 0:
             raise Exception("could not find minimum of nll2 interpolation: {}".format(res.message))
         poi_min = res.x[0]
 
     # helper to get the outermost intersection of the nll curve with a certain value
     def get_intersections(v):
-        def minimize(start):
-            objective = lambda x: abs(interp(x) - v)
-            res = scipy.optimize.minimize(objective, start, tol=1e-7, bounds=[bounds])
+        def minimize(bounds):
+            objective = lambda x: (interp(x) - v)**2.
+            res = minimize_1d(objective, bounds)
             return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
 
-        return minimize(poi_values.max() - 1), minimize(poi_values.min() + 1)
+        return (
+            minimize((poi_min, poi_values_max - 1e-4)),
+            minimize((poi_values_min + 1e-4, poi_min)),
+        )
 
     # get the intersections with values corresponding to 1 and 2 sigma
     # (taken from solving chi2_1_cdf(x) = 1 or 2 sigma gauss intervals)
@@ -309,11 +341,17 @@ def evaluate_likelihood_scan_2d(poi1_values, poi2_values, dnll2_values, poi1_min
     interp = scipy.interpolate.interp2d(poi1_values[mask], poi2_values[mask], dnll2_values[mask],
         kind="cubic")
 
+    # store sane extrema
+    poi1_values_min = poi1_values[mask].min()
+    poi1_values_max = poi1_values[mask].max()
+    poi2_values_min = poi2_values[mask].min()
+    poi2_values_max = poi2_values[mask].max()
+
     # get the minima
     if poi1_min is None or poi2_min is None:
-        objective = lambda x: abs(interp(*x))
-        bounds1 = (poi1_values.min() + 1e-4, poi1_values.max() - 1e-4)
-        bounds2 = (poi2_values.min() + 1e-4, poi2_values.max() - 1e-4)
+        objective = lambda x: interp(*x)**2.
+        bounds1 = (poi1_values_min + 1e-4, poi1_values_max - 1e-4)
+        bounds2 = (poi2_values_min + 1e-4, poi2_values_max - 1e-4)
         res = scipy.optimize.minimize(objective, [1., 1.], tol=1e-7, bounds=[bounds1, bounds2])
         if res.status != 0:
             raise Exception("could not find minimum of nll2 interpolation: {}".format(res.message))
@@ -321,27 +359,31 @@ def evaluate_likelihood_scan_2d(poi1_values, poi2_values, dnll2_values, poi1_min
         poi2_min = res.x[1]
 
     # helper to get the outermost intersection of the nll curve with a certain value
-    def get_intersections(v, poi_values, poi1=None, poi2=None):
-        def minimize(start):
-            if poi1 is None:
-                objective = lambda x: abs(interp(x, poi2) - v)
-                bounds = (poi1_values.min() + 1e-4, poi1_values.max() - 1e-4)
-            elif poi2 is None:
-                objective = lambda x: abs(interp(poi1, x) - v)
-                bounds = (poi2_values.min() + 1e-4, poi2_values.max() - 1e-4)
-            else:
-                raise ValueError("either poi1 or poi2 must be set")
-            res = scipy.optimize.minimize(objective, start, tol=1e-3, bounds=[bounds])
+    def get_intersections(v, n_poi):
+        def minimize(bounds):
+            res = minimize_1d(objective, bounds)
             return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
 
-        return minimize(poi_values.max() - 1), minimize(poi_values.min() + 1)
+        if n_poi == 1:
+            poi_values_min, poi_values_max = poi1_values_min, poi1_values_max
+            poi_min = poi1_min
+            objective = lambda x: (interp(x, poi2_min) - v)**2.
+        else:
+            poi_values_min, poi_values_max = poi2_values_min, poi2_values_max
+            poi_min = poi2_min
+            objective = lambda x: (interp(poi1_min, x) - v)**2.
+
+        return (
+            minimize((poi_min, poi_values_max - 1e-4)),
+            minimize((poi_values_min + 1e-4, poi_min)),
+        )
 
     # get the intersections with values corresponding to 1 and 2 sigma
     # (taken from solving chi2_1_cdf(x) = 1 or 2 sigma gauss intervals)
-    poi1_p1, poi1_m1 = get_intersections(chi2_levels[2][1], poi1_values, poi2=poi2_min)
-    poi2_p1, poi2_m1 = get_intersections(chi2_levels[2][1], poi2_values, poi1=poi1_min)
-    poi1_p2, poi1_m2 = get_intersections(chi2_levels[2][2], poi1_values, poi2=poi2_min)
-    poi2_p2, poi2_m2 = get_intersections(chi2_levels[2][2], poi2_values, poi1=poi1_min)
+    poi1_p1, poi1_m1 = get_intersections(chi2_levels[2][1], 1)
+    poi2_p1, poi2_m1 = get_intersections(chi2_levels[2][1], 2)
+    poi1_p2, poi1_m2 = get_intersections(chi2_levels[2][2], 1)
+    poi2_p2, poi2_m2 = get_intersections(chi2_levels[2][2], 2)
 
     # create Number objects wrapping the best fit values and their 1 sigma error when given
     unc1 = None
