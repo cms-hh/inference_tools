@@ -118,7 +118,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
                 is_xsec = True
                 for point in data:
                     xsec = get_ggf_xsec(formula, kl=point["kl"])
-                    theory_values.append(xsec)
+                    theory_values.append(xsec * scale)
                     for key in limit_keys:
                         point[key] *= xsec * scale
             elif self.poi == "C2V":
@@ -127,7 +127,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
                 is_xsec = True
                 for point in data:
                     xsec = get_vbf_xsec(formula, c2v=point["C2V"])
-                    theory_values.append(xsec)
+                    theory_values.append(xsec * scale)
                     for key in limit_keys:
                         point[key] *= xsec * scale
             else:
