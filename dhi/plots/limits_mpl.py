@@ -6,7 +6,7 @@ Limit plots using matplotlib.
 
 import numpy as np
 
-from dhi.config import poi_labels_math, campaign_labels
+from dhi.config import poi_data, campaign_labels
 from dhi.util import import_plt
 
 plt = import_plt()
@@ -26,7 +26,7 @@ def plot_limit_scan(path, poi, data, injected_values=None, theory_values=None, l
     cross sections or, when *False*, as a ratio over the theory prediction. *campaign* should refer
     to the name of a campaign label defined in dhi.config.campaign_labels.
 
-    Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/?search=limits
+    Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/mpl/?search=limits
     """
     # convert record array to dict
     if isinstance(data, np.ndarray):
@@ -110,7 +110,7 @@ def plot_limit_scan(path, poi, data, injected_values=None, theory_values=None, l
         legend_handles.append(p[0])
 
     # legend, labels, titles, etc
-    ax.set_xlabel(poi_labels_math.get(poi, poi))
+    ax.set_xlabel(poi_data[poi].label_math)
     y_unit = "fb" if is_xsec else r"$\sigma_{SM}$"
     ax.set_ylabel(r"Upper $95\%$ CLs limit on $\sigma$ / " + y_unit)
     if y_min is not None:

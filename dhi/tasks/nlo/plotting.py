@@ -77,10 +77,13 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
         "default: False")
 
     @classmethod
-    def modify_param_values(self, params):
+    def modify_param_values(cls, params):
+        params = super(PlotUpperLimits, cls).modify_param_values(params)
+
         # scaling to xsec is only supported for kl and C2V
         if params.get("scale_xsec") and params.get("poi") not in ("kl", "C2V"):
             params["scale_xsec"] = False
+
         return params
 
     def requires(self):

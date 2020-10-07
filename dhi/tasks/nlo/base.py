@@ -13,6 +13,7 @@ import importlib
 import law
 import luigi
 
+from dhi.config import poi_data
 from dhi.tasks.base import AnalysisTask, CommandTask
 
 
@@ -139,12 +140,12 @@ class POITask(DatacardBaseTask):
     r_pois = ("r", "r_qqhh", "r_gghh")
     all_pois = k_pois + r_pois
 
-    @staticmethod
-    def get_frozen_parameters(other_pois):
+    @classmethod
+    def get_frozen_parameters(cls, other_pois):
         return ",".join(other_pois)
 
-    @staticmethod
-    def get_set_parameters(other_pois, values=1.0):
+    @classmethod
+    def get_set_parameters(cls, other_pois, values=1.0):
         if not isinstance(values, dict):
             values = {poi: values for poi in other_pois}
         return ",".join(["{}={}".format(p, values.get(p, 1.0)) for p in other_pois])
@@ -189,17 +190,32 @@ class POIScanTask1D(POITask1D):
 
     poi_range = law.CSVParameter(
         cls=luigi.IntParameter,
-        default=(-10, 10),
+        default=None,
         min_len=2,
         max_len=2,
-        description="the range of the poi given by two comma-separated values; default: -10,10",
+        description="the range of the poi given by two comma-separated values; default: range "
+        "defined in physics model for poi",
     )
     poi_points = luigi.IntParameter(
-        default=21,
-        description="number of points to scan; default: 21",
+        default=None,
+        description="number of points to scan; default: int(poi_range[1] - poi_range[0] + 1)",
     )
 
     poi_value = None
+
+    @classmethod
+    def modify_param_values(cls, params):
+        params = super(POIScanTask1D, cls).modify_param_values(params)
+
+        # set default range and points
+        if "poi" in params:
+            data = poi_data[params["poi"]]
+            if params.get("poi_range") in [None, (None,), (None, None)]:
+                params["poi_range"] = data.range
+            if not params.get("poi_points"):
+                params["poi_points"] = int(params["poi_range"][1] - params["poi_range"][0] + 1)
+
+        return params
 
     def get_output_postfix(self):
         return "{}_n{}_{}_{}".format(self.poi, self.poi_points, *self.poi_range)
@@ -276,31 +292,49 @@ class POIScanTask2D(POITask2D):
 
     poi1_range = law.CSVParameter(
         cls=luigi.FloatParameter,
-        default=(-10.0, 10.0),
+        default=None,
         min_len=2,
         max_len=2,
-        description="the range of the first poi given by two comma-separated values; "
-        "default: -10,10",
+        description="the range of the first poi given by two comma-separated values; default: "
+        "range defined in physics model for poi1",
     )
     poi2_range = law.CSVParameter(
         cls=luigi.FloatParameter,
-        default=(-10.0, 10.0),
+        default=None,
         min_len=2,
         max_len=2,
-        description="the range of the second poi given by two comma-separated values; "
-        "default: -10,10",
+        description="the range of the second poi given by two comma-separated values; default: "
+        "range defined in physics model for poi2",
     )
     poi1_points = luigi.IntParameter(
-        default=21,
-        description="number of points of the first poi to scan; default: 21",
+        default=None,
+        description="number of points of the first poi to scan; default: "
+        "int(poi1_range[1] - poi1_range[0] + 1)",
     )
     poi2_points = luigi.IntParameter(
-        default=21,
-        description="number of points of the second poi to scan; default: 21",
+        default=None,
+        description="number of points of the second poi to scan; default: "
+        "int(poi2_range[1] - poi2_range[0] + 1)",
     )
 
     poi1_value = None
     poi2_value = None
+
+    @classmethod
+    def modify_param_values(cls, params):
+        params = super(POIScanTask2D, cls).modify_param_values(params)
+
+        # set default range and points
+        for n in ["poi1", "poi2"]:
+            if n not in params:
+                continue
+            data = poi_data[params[n]]
+            if params.get(n + "_range") in [None, (None,), (None, None)]:
+                params[n + "_range"] = data.range
+            if not params.get(n + "_points"):
+                params[n + "_points"] = int(params[n + "_range"][1] - params[n + "_range"][0] + 1)
+
+        return params
 
     def get_poi_info(self, attributes=("", "_range", "_points")):
         return super(POIScanTask2D, self).get_poi_info(attributes=attributes)

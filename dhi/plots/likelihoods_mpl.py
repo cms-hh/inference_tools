@@ -10,7 +10,7 @@ import scipy.optimize
 import matplotlib
 from scinum import Number
 
-from dhi.config import poi_labels, poi_labels_math, campaign_labels
+from dhi.config import poi_data, campaign_labels
 from dhi.util import import_plt, DotDict, rgb, minimize_1d, get_neighbor_coordinates
 
 
@@ -34,7 +34,7 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_mi
     defined in dhi.config.campaign_labels. *x_min* and *x_max* define the x-axis range and default
     to the range of poi values.
 
-    Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/?search=nll1d
+    Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/mpl/?search=nll1d
     """
     # get valid poi and delta nll values
     poi_values = data[poi]
@@ -81,7 +81,7 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_mi
     dnll2_max_visible = dnll2_values[(poi_values >= x_min) & (poi_values <= x_max)].max()
     best_line_max = dnll2_max_visible * 0.85
     best_label = r"$\mu_{{{}}} = {}$".format(
-        poi_labels.get(poi, poi),
+        poi_data[poi].label,
         scan.num_min.str(format="%.2f", style="latex"),
     )
     ax.plot(
@@ -102,7 +102,7 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_mi
     )
 
     # legend, labels, titles, etc
-    ax.set_xlabel(poi_labels_math.get(poi, poi))
+    ax.set_xlabel(poi_data[poi].label_math)
     ax.set_ylabel(r"$-2 \Delta \text{ln}\mathcal{L}$")
     ax.set_ylim(bottom=0.0)
     ax.set_xlim(x_min, x_max)
@@ -129,7 +129,7 @@ def plot_likelihood_scan_2d(path, poi1, poi2, data, poi1_min=None, poi2_min=None
     *True*, points with failed fits, denoted by nan values, are filled with the averages of
     neighboring fits.
 
-    Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/?search=nll2d
+    Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/mpl/?search=nll2d
     """
     # get poi and delta nll values
     poi1_values = data[poi1]
@@ -206,7 +206,7 @@ def plot_likelihood_scan_2d(path, poi1, poi2, data, poi1_min=None, poi2_min=None
     # best fit texts
     def best_fit_text(poi, num_min, dx2=0.05):
         best_label = r"$\mu_{{{}}} = {}$".format(
-            poi_labels.get(poi, poi),
+            poi_data[poi].label,
             num_min.str(format="%.2f", style="latex"),
         )
         ax.annotate(
@@ -219,8 +219,8 @@ def plot_likelihood_scan_2d(path, poi1, poi2, data, poi1_min=None, poi2_min=None
     best_fit_text(poi2, scan.num2_min, 0.06)
 
     # legend, labels, titles, etc
-    ax.set_xlabel(poi_labels_math.get(poi1, poi1))
-    ax.set_ylabel(poi_labels_math.get(poi2, poi2))
+    ax.set_xlabel(poi_data[poi1].label_math)
+    ax.set_ylabel(poi_data[poi2].label_math)
     ax.set_xlim(x1_min, x1_max)
     ax.set_ylim(x2_min, x2_max)
     ax.tick_params(bottom=True, top=True, left=True, right=True, direction="in")
