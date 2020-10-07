@@ -10,7 +10,7 @@ import luigi
 from dhi.tasks.base import AnalysisTask
 from dhi.tasks.nlo.base import POIScanTask1D, POIScanTask2D
 from dhi.tasks.nlo.inference import MergeUpperLimits, MergeLikelihoodScan1D, MergeLikelihoodScan2D
-from dhi.config import br_hww_hbb, k_factor
+from dhi.config import br_hh, k_factor
 from dhi.util import get_ggf_xsec, get_vbf_xsec
 
 
@@ -71,18 +71,28 @@ class PlotTask(AnalysisTask):
 
 class PlotUpperLimits(PlotTask, POIScanTask1D):
 
-    scale_xsec = luigi.BoolParameter(default=False, description="draw the limits on cross sections "
-        "instead of signal strength parameters; default: False")
-    scale_log = luigi.BoolParameter(default=False, description="apply log scaling to the y-axis; "
-        "default: False")
+    xsec = luigi.BoolParameter(
+        default=False,
+        description="draw the limits on cross sections instead of signal strength parameters; only "
+        "supported for poi's kl and C2V; default: False",
+    )
+    br = luigi.Parameter(
+        default="1",
+        description="branching ratio or name of a branching ratio stored at dhi.config.br_hh to "
+        "scale the cross section when xsec is used; default: 1.0",
+    )
+    y_log = luigi.BoolParameter(
+        default=False,
+        description="apply log scaling to the y-axis; default: False",
+    )
 
     @classmethod
     def modify_param_values(cls, params):
         params = super(PlotUpperLimits, cls).modify_param_values(params)
 
         # scaling to xsec is only supported for kl and C2V
-        if params.get("scale_xsec") and params.get("poi") not in ("kl", "C2V"):
-            params["scale_xsec"] = False
+        if params.get("xsec") and params.get("poi") not in ("kl", "C2V"):
+            params["xsec"] = False
 
         return params
 
@@ -90,11 +100,12 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
         return MergeUpperLimits.req(self)
 
     def output(self):
-        # postfix from xsec and log
+        # additional postfix
         parts = []
-        if self.scale_xsec:
+        if self.xsec:
             parts.append("xsec")
-        if self.scale_log:
+            parts.append("br{}".format(self.br))
+        if self.y_log:
             parts.append("log")
         postfix = ("__" + "_".join(parts)) if parts else ""
 
@@ -112,9 +123,14 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
 
         # rescale from limit on r to limit on xsec when requested, depending on the poi
         theory_values = None
-        is_xsec = self.scale_xsec
+        is_xsec = self.xsec
         if is_xsec:
-            scale = br_hww_hbb * k_factor * 1000.0  # TODO: generalize this for different analyses
+            # determine the scaling factor
+            scale = 1000.  # pb -> fb
+            scale *= k_factor  # NLO -> NNLO
+            scale *= br_hh[self.br] if self.br in br_hh else float(self.br)
+
+            # perform the scaling
             if self.poi == "kl":
                 formula = self.load_hh_model()[0].ggf_formula
                 theory_values = []

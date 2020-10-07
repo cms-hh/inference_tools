@@ -189,7 +189,7 @@ class POITask1D(POITask):
 class POIScanTask1D(POITask1D):
 
     poi_range = law.CSVParameter(
-        cls=luigi.IntParameter,
+        cls=luigi.FloatParameter,
         default=None,
         min_len=2,
         max_len=2,
