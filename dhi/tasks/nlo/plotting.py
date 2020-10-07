@@ -163,17 +163,29 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
             data=data,
             theory_values=theory_values,
             is_xsec=is_xsec,
-            log=self.scale_log,
+            y_log=self.y_log,
             campaign=self.campaign,
         )
 
 
 class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
+
+    y_log = luigi.BoolParameter(
+        default=False,
+        description="apply log scaling to the y-axis; default: False",
+    )
+
     def requires(self):
         return MergeLikelihoodScan1D.req(self)
 
     def output(self):
-        return self.local_target_dc("nll1d__{}.pdf".format(self.get_output_postfix()))
+        # additional postfix
+        parts = []
+        if self.y_log:
+            parts.append("log")
+        postfix = ("__" + "_".join(parts)) if parts else ""
+
+        return self.local_target_dc("nll1d__{}{}.pdf".format(self.get_output_postfix(), postfix))
 
     @view_output_plots
     def run(self):
@@ -202,15 +214,28 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
             data=data,
             poi_min=poi_min,
             campaign=self.campaign,
+            y_log=self.y_log,
         )
 
 
 class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
+
+    z_log = luigi.BoolParameter(
+        default=True,
+        description="apply log scaling to the z-axis; default: True",
+    )
+
     def requires(self):
         return MergeLikelihoodScan2D.req(self)
 
     def output(self):
-        return self.local_target_dc("nll2d__{}.pdf".format(self.get_output_postfix()))
+        # additional postfix
+        parts = []
+        if self.z_log:
+            parts.append("log")
+        postfix = ("__" + "_".join(parts)) if parts else ""
+
+        return self.local_target_dc("nll2d__{}{}.pdf".format(self.get_output_postfix(), postfix))
 
     @view_output_plots
     def run(self):
@@ -242,4 +267,5 @@ class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
             poi1_min=poi1_min,
             poi2_min=poi2_min,
             campaign=self.campaign,
+            z_log=self.z_log,
         )

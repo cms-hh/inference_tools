@@ -24,15 +24,16 @@ chi2_levels = {
 }
 
 
-def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_min=None,
+def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", y_log=False, x_min=None,
         x_max=None):
     """
     Creates a likelihood plot of the 1D scan of a *poi* and saves it at *path*. *data* should be a
     mapping to lists of values or a record array with keys "<poi_name>" and "dnll2". When *poi_min*
     is set, it should be the value of the poi that leads to the best likelihood. Otherwise, it is
     estimated from the interpolated curve. *campaign* should refer to the name of a campaign label
-    defined in dhi.config.campaign_labels. *x_min* and *x_max* define the x-axis range and default
-    to the range of poi values.
+    defined in dhi.config.campaign_labels. When *y_log* is *True*, the y-axis is plotted with a
+    logarithmic scale. *x_min* and *x_max* define the x-axis range and default to the range of poi
+    values.
 
     Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/mpl/?search=nll1d
     """
@@ -64,6 +65,7 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_mi
                 (value, value),
                 (0.0, scan.interp(value)),
                 linestyle="--",
+                linewidth=1,
                 color=rgb(161, 16, 53),
             )
 
@@ -74,6 +76,7 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_mi
                 (x_min, x_max),
                 (n, n),
                 linestyle="--",
+                linewidth=1,
                 color=rgb(161, 16, 53),
             )
 
@@ -88,6 +91,7 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_mi
         (scan.poi_min, scan.poi_min),
         (0, best_line_max),
         linestyle="-",
+        linewidth=1,
         color=rgb(161, 16, 53),
     )
     ax.annotate(best_label, (scan.poi_min, best_line_max * 1.02), ha="center")
@@ -104,7 +108,10 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_mi
     # legend, labels, titles, etc
     ax.set_xlabel(poi_data[poi].label_math)
     ax.set_ylabel(r"$-2 \Delta \text{ln}\mathcal{L}$")
-    ax.set_ylim(bottom=0.0)
+    if y_log:
+        ax.set_yscale("log")
+    else:
+        ax.set_ylim(bottom=0.0)
     ax.set_xlim(x_min, x_max)
     ax.tick_params(bottom=True, top=True, left=True, right=True, direction="in")
     ax.set_title(r"\textbf{CMS} \textit{preliminary}", loc="left")
@@ -117,17 +124,17 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", x_mi
 
 
 def plot_likelihood_scan_2d(path, poi1, poi2, data, poi1_min=None, poi2_min=None, campaign="2017",
-        x1_min=None, x1_max=None, x2_min=None, x2_max=None, fill_nans=True):
+        z_log=True, x1_min=None, x1_max=None, x2_min=None, x2_max=None, fill_nans=True):
     """
     Creates a likelihood plot of the 2D scan of two pois *poi1* and *poi2*, and saves it at *path*.
     *data* should be a mapping to lists of values or a record array with keys "<poi1_name>",
     "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be the values
     of the pois that lead to the best likelihood. Otherwise, they are  estimated from the
     interpolated curve. *campaign* should refer to the name of a campaign label defined in
-    dhi.config.campaign_labels. *x1_min*, *x1_max*, *x2_min* and *x2_max* define the axis range of
-    poi1 and poi2, respectively, and default to the ranges of the poi values. When *fill_nans* is
-    *True*, points with failed fits, denoted by nan values, are filled with the averages of
-    neighboring fits.
+    dhi.config.campaign_labels. When *z_log* is *True*, the z-axis is plotted with a logarithmic
+    scale. *x1_min*, *x1_max*, *x2_min* and *x2_max* define the axis range of poi1 and poi2,
+    respectively, and default to the ranges of the poi values. When *fill_nans* is *True*, points
+    with failed fits, denoted by nan values, are filled with the averages of neighboring fits.
 
     Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/mpl/?search=nll2d
     """
@@ -177,7 +184,7 @@ def plot_likelihood_scan_2d(path, poi1, poi2, data, poi1_min=None, poi2_min=None
 
     img = ax.imshow(
         data,
-        norm=matplotlib.colors.LogNorm(),
+        norm=matplotlib.colors.LogNorm() if z_log else None,
         aspect="auto",
         origin="lower",
         extent=[poi1_values.min(), poi1_values.max(), poi2_values.min(), poi2_values.max()],

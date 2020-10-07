@@ -12,7 +12,7 @@ from dhi.util import import_plt
 plt = import_plt()
 
 
-def plot_limit_scan(path, poi, data, injected_values=None, theory_values=None, log=False,
+def plot_limit_scan(path, poi, data, injected_values=None, theory_values=None, y_log=False,
         x_min=None, x_max=None, y_min=None, y_max=None, is_xsec=False, campaign="2017"):
     """
     Creates a plot for the upper limit scan of a *poi* and saves it at *path*. *data* should be a
@@ -20,8 +20,8 @@ def plot_limit_scan(path, poi, data, injected_values=None, theory_values=None, l
     "limit_p1" (plus 1 sigma), "limit_m1" (minus 1 sigma), "limit_p2" and "limit_m2". When the
     variations by 1 or 2 sigma are missing, the plot is created without them. When *injected_values*
     or *theory_values* are given, they should be single lists of values. Therefore, they must have
-    the same length as the lists given in *data*. When *log* is *True*, the y axis is plotted with a
-    logarithmic scale. *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to
+    the same length as the lists given in *data*. When *y_log* is *True*, the y-axis is plotted with
+    a logarithmic scale. *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to
     the range of the given values. *is_xsec* denotes whether the passed values are given as real
     cross sections or, when *False*, as a ratio over the theory prediction. *campaign* should refer
     to the name of a campaign label defined in dhi.config.campaign_labels.
@@ -113,6 +113,8 @@ def plot_limit_scan(path, poi, data, injected_values=None, theory_values=None, l
     ax.set_xlabel(poi_data[poi].label_math)
     y_unit = "fb" if is_xsec else r"$\sigma_{SM}$"
     ax.set_ylabel(r"Upper $95\%$ CLs limit on $\sigma$ / " + y_unit)
+    if y_log:
+        ax.set_yscale("log")
     if y_min is not None:
         ax.set_ylim(bottom=y_min)
     if y_max is not None:
@@ -123,8 +125,6 @@ def plot_limit_scan(path, poi, data, injected_values=None, theory_values=None, l
     ax.set_title(r"\textbf{CMS} \textit{preliminary}", loc="left")
     ax.set_title(campaign_labels.get(campaign, campaign), loc="right")
     ax.grid()
-    if log:
-        ax.set_yscale("log")
 
     # save
     fig.tight_layout()
