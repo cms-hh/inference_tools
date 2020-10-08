@@ -126,7 +126,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
         is_xsec = self.xsec
         if is_xsec:
             # determine the scaling factor
-            scale = 1000.  # pb -> fb
+            scale = 1000.0  # pb -> fb
             scale *= k_factor  # NLO -> NNLO
             scale *= br_hh[self.br] if self.br in br_hh else float(self.br)
 
@@ -202,7 +202,7 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
         poi_min = float(inp["poi_min"]) if not np.isnan(inp["poi_min"]) else None
 
         # insert a dnll2 column
-        data = rec.append_fields(data, ["dnll2"], [data["delta_nll"] * 2.])
+        data = rec.append_fields(data, ["dnll2"], [data["delta_nll"] * 2.0])
 
         # get the proper plot function and call it
         # (only the mpl version exists right now)
@@ -253,7 +253,7 @@ class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
         poi2_min = float(inp["poi2_min"]) if not np.isnan(inp["poi2_min"]) else None
 
         # insert a dnll2 column
-        data = rec.append_fields(data, ["dnll2"], [data["delta_nll"] * 2.])
+        data = rec.append_fields(data, ["dnll2"], [data["delta_nll"] * 2.0])
 
         # get the proper plot function and call it
         # (only the mpl version exists right now)

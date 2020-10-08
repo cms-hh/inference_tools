@@ -24,8 +24,9 @@ chi2_levels = {
 }
 
 
-def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", y_log=False, x_min=None,
-        x_max=None):
+def plot_likelihood_scan_1d(
+    path, poi, data, poi_min=None, campaign="2017", y_log=False, x_min=None, x_max=None
+):
     """
     Creates a likelihood plot of the 1D scan of a *poi* and saves it at *path*. *data* should be a
     mapping to lists of values or a record array with keys "<poi_name>" and "dnll2". When *poi_min*
@@ -123,8 +124,21 @@ def plot_likelihood_scan_1d(path, poi, data, poi_min=None, campaign="2017", y_lo
     fig.savefig(path)
 
 
-def plot_likelihood_scan_2d(path, poi1, poi2, data, poi1_min=None, poi2_min=None, campaign="2017",
-        z_log=True, x1_min=None, x1_max=None, x2_min=None, x2_max=None, fill_nans=True):
+def plot_likelihood_scan_2d(
+    path,
+    poi1,
+    poi2,
+    data,
+    poi1_min=None,
+    poi2_min=None,
+    campaign="2017",
+    z_log=True,
+    x1_min=None,
+    x1_max=None,
+    x2_min=None,
+    x2_max=None,
+    fill_nans=True,
+):
     """
     Creates a likelihood plot of the 2D scan of two pois *poi1* and *poi2*, and saves it at *path*.
     *data* should be a mapping to lists of values or a record array with keys "<poi1_name>",
@@ -154,8 +168,9 @@ def plot_likelihood_scan_2d(path, poi1, poi2, data, poi1_min=None, poi2_min=None
         x2_max = poi2_values.max()
 
     # evaluate the scan, run interpolation and error estimation
-    scan = evaluate_likelihood_scan_2d(poi1_values, poi2_values, dnll2_values, poi1_min=poi1_min,
-        poi2_min=poi2_min)
+    scan = evaluate_likelihood_scan_2d(
+        poi1_values, poi2_values, dnll2_values, poi1_min=poi1_min, poi2_min=poi2_min
+    )
 
     # transform the poi coordinates and dnll2 values into a 2d array
     # where the inner (outer) dimension refers to poi1 (poi2)
@@ -222,7 +237,8 @@ def plot_likelihood_scan_2d(path, poi1, poi2, data, poi1_min=None, poi2_min=None
             ha="left",
             va="top",
         )
-    best_fit_text(poi1, scan.num1_min, 0.)
+
+    best_fit_text(poi1, scan.num1_min, 0.0)
     best_fit_text(poi2, scan.num2_min, 0.06)
 
     # legend, labels, titles, etc
@@ -279,7 +295,7 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     # helper to get the outermost intersection of the nll curve with a certain value
     def get_intersections(v):
         def minimize(bounds):
-            objective = lambda x: (interp(x) - v)**2.
+            objective = lambda x: (interp(x) - v) ** 2.0
             res = minimize_1d(objective, bounds)
             return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
 
@@ -310,8 +326,9 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     )
 
 
-def evaluate_likelihood_scan_2d(poi1_values, poi2_values, dnll2_values, poi1_min=None,
-        poi2_min=None):
+def evaluate_likelihood_scan_2d(
+    poi1_values, poi2_values, dnll2_values, poi1_min=None, poi2_min=None
+):
     """
     Takes the results of a 2D likelihood profiling scan given by *poi1_values*, *poi2_values* and
     the corresponding *dnll2_values* values, performs an interpolation and returns certain results
@@ -345,8 +362,9 @@ def evaluate_likelihood_scan_2d(poi1_values, poi2_values, dnll2_values, poi1_min
     """
     # first, obtain an interpolation function and sample new points
     mask = ~np.isnan(dnll2_values)
-    interp = scipy.interpolate.interp2d(poi1_values[mask], poi2_values[mask], dnll2_values[mask],
-        kind="cubic")
+    interp = scipy.interpolate.interp2d(
+        poi1_values[mask], poi2_values[mask], dnll2_values[mask], kind="cubic"
+    )
 
     # store sane extrema
     poi1_values_min = poi1_values[mask].min()
@@ -356,10 +374,10 @@ def evaluate_likelihood_scan_2d(poi1_values, poi2_values, dnll2_values, poi1_min
 
     # get the minima
     if poi1_min is None or poi2_min is None:
-        objective = lambda x: interp(*x)**2.
+        objective = lambda x: interp(*x) ** 2.0
         bounds1 = (poi1_values_min + 1e-4, poi1_values_max - 1e-4)
         bounds2 = (poi2_values_min + 1e-4, poi2_values_max - 1e-4)
-        res = scipy.optimize.minimize(objective, [1., 1.], tol=1e-7, bounds=[bounds1, bounds2])
+        res = scipy.optimize.minimize(objective, [1.0, 1.0], tol=1e-7, bounds=[bounds1, bounds2])
         if res.status != 0:
             raise Exception("could not find minimum of nll2 interpolation: {}".format(res.message))
         poi1_min = res.x[0]
@@ -374,11 +392,11 @@ def evaluate_likelihood_scan_2d(poi1_values, poi2_values, dnll2_values, poi1_min
         if n_poi == 1:
             poi_values_min, poi_values_max = poi1_values_min, poi1_values_max
             poi_min = poi1_min
-            objective = lambda x: (interp(x, poi2_min) - v)**2.
+            objective = lambda x: (interp(x, poi2_min) - v) ** 2.0
         else:
             poi_values_min, poi_values_max = poi2_values_min, poi2_values_max
             poi_min = poi2_min
-            objective = lambda x: (interp(poi1_min, x) - v)**2.
+            objective = lambda x: (interp(poi1_min, x) - v) ** 2.0
 
         return (
             minimize((poi_min, poi_values_max - 1e-4)),

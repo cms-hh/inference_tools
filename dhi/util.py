@@ -76,6 +76,7 @@ def linspace(start, stop, steps, precision=7):
     values are rounded to a certain *precision* and returned in a list.
     """
     import numpy as np
+
     return np.linspace(start, stop, steps).round(precision).tolist()
 
 

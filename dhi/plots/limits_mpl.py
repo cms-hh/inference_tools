@@ -12,8 +12,20 @@ from dhi.util import import_plt
 plt = import_plt()
 
 
-def plot_limit_scan(path, poi, data, injected_values=None, theory_values=None, y_log=False,
-        x_min=None, x_max=None, y_min=None, y_max=None, is_xsec=False, campaign="2017"):
+def plot_limit_scan(
+    path,
+    poi,
+    data,
+    injected_values=None,
+    theory_values=None,
+    y_log=False,
+    x_min=None,
+    x_max=None,
+    y_min=None,
+    y_max=None,
+    is_xsec=False,
+    campaign="2017",
+):
     """
     Creates a plot for the upper limit scan of a *poi* and saves it at *path*. *data* should be a
     mapping to lists of values or a record array with keys "<poi_name>" and "limit", and optionally

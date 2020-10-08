@@ -341,9 +341,13 @@ class POIScanTask2D(POITask2D):
 
     def get_output_postfix(self):
         if self.store_pois_sorted:
-            tmpl = "{poiA}_n{poiA_points}_{poiA_range[0]}_{poiA_range[1]}" \
+            tmpl = (
+                "{poiA}_n{poiA_points}_{poiA_range[0]}_{poiA_range[1]}"
                 "__{poiB}_n{poiB_points}_{poiB_range[0]}_{poiB_range[1]}"
+            )
         else:
-            tmpl = "{poi1}_n{poi1_points}_{poi1_range[0]}_{poi1_range[1]}" \
+            tmpl = (
+                "{poi1}_n{poi1_points}_{poi1_range[0]}_{poi1_range[1]}"
                 "__{poi2}_n{poi2_points}_{poi2_range[0]}_{poi2_range[1]}"
+            )
         return tmpl.format(**self.get_poi_info())
