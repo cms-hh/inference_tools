@@ -11,7 +11,7 @@ ssh <cern_username>@lxplus.cern.ch
 
 Clone this repository:
 ```shell
-git clone https://gitlab.cern.ch/hh/tools/inference.git
+git clone --recursive https://gitlab.cern.ch/hh/tools/inference.git
 cd inference
 ```
 

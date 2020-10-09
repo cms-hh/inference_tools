@@ -1,0 +1,3 @@
+[submodule "datacards"]
+    path = datacards
+    url = ../../results/datacards_run2.git
