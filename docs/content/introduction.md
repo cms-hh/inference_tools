@@ -2,23 +2,18 @@
 
 ## First steps (setup)
 
-Connect to a CentOS 7 node on lxplus:
-```shell
-ssh <cern_username>@lxplus.cern.ch
-```
+This repository uses submodules (currently only one), so clone it recursivel via
 
-Clone this repository:
 ```shell
-git clone https://gitlab.cern.ch/hh/tools/inference.git
+git clone --recursive https://gitlab.cern.ch/hh/tools/inference.git
 cd inference
 ```
 
 Now proceed with setting up the software and environment.
-The `setup.sh` script will install (and compile if necessary) all relevant software packages.
-
-Run the following two steps everytime you newly login to a CentOS 7 node on lxplus in order to setup the correct software.
 
 1. Source the setup:
+
+The `setup.sh` script will install (and compile if necessary) all relevant software packages.
 
 ```shell
 source setup.sh
@@ -50,40 +45,40 @@ You should see:
 
 ```shell
 indexing tasks in 5 module(s)
-loading module 'tasks.base', done
-loading module 'tasks.nlo.inference', done
-loading module 'tasks.nlo.plotting', done
-loading module 'tasks.nlo.compare', done
-loading module 'tasks.misc', done
+loading module 'dhi.tasks.base', done
+loading module 'dhi.tasks.nlo.base', done
+loading module 'dhi.tasks.nlo.inference', done
+loading module 'dhi.tasks.nlo.plotting', done
+loading module 'dhi.tasks.misc', done
 
-module 'tasks.nlo.plotting', 5 task(s):
-    - TestPlots
-    - PlotImpacts
-    - PlotScan
-    - PlotNLL1D
-    - PlotNLL2D
+module 'law.contrib.git', 1 task(s):
+    - law.git.BundleGitRepository
 
-module 'tasks.nlo.inference', 11 task(s):
-    - NLOLimit
-    - NLOScan1D
-    - NLOScan2D
-    - DCBase
-    - CombDatacards
-    - NLOT2W
-    - NLOBase1D
-    - NLOBase2D
+module 'dhi.tasks.base', 2 task(s):
+    - BundleRepo
+    - BundleSoftware
+
+module 'dhi.tasks.nlo.inference', 9 task(s):
+    - UpperLimits
+    - LikelihoodScan1D
+    - LikelihoodScan2D
+    - CombineDatacards
+    - CreateWorkspace
     - ImpactsPulls
-    - MergeScans1D
-    - MergeScans2D
+    - MergeUpperLimits
+    - MergeLikelihoodScan1D
+    - MergeLikelihoodScan2D
 
-module 'tasks.nlo.compare', 2 task(s):
-    - CompareScan
-    - CompareNLL1D
+module 'dhi.tasks.nlo.plotting', 3 task(s):
+    - PlotUpperLimits
+    - PlotLikelihoodScan1D
+    - PlotLikelihoodScan2D
 
-module 'tasks.misc', 1 task(s):
-    - ValidateDatacard
+module 'dhi.tasks.misc', 2 task(s):
+    - PostFitShapes
+    - CompareNuisances
 
-written 19 task(s) to index file '/your/path/inference/.law/index'
+written 17 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type
@@ -99,7 +94,5 @@ law run SomeTask <tab><tab>
 ```
 
 to list all parameters of `SomeTask`.
-
---
 
 Now you are done with the setup and can start running the statistical inference!

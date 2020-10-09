@@ -19,6 +19,8 @@ from dhi.tasks.base import AnalysisTask, CommandTask
 
 class CombineCommandTask(CommandTask):
 
+    exclude_index = True
+
     combine_stable_options = (
         "--cminDefaultMinimizerType Minuit2"
         " --cminDefaultMinimizerStrategy 0"
