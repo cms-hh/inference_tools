@@ -84,7 +84,7 @@ def plot_likelihood_scan_1d(
     # line and text indicating the best fit value
     dnll2_max_visible = dnll2_values[(poi_values >= x_min) & (poi_values <= x_max)].max()
     best_line_max = dnll2_max_visible * 0.85
-    best_label = r"$\mu_{{{}}} = {}$".format(
+    best_label = r"${} = {}$".format(
         poi_data[poi].label,
         scan.num_min.str(format="%.2f", style="latex"),
     )
@@ -227,7 +227,7 @@ def plot_likelihood_scan_2d(
 
     # best fit texts
     def best_fit_text(poi, num_min, dx2=0.05):
-        best_label = r"$\mu_{{{}}} = {}$".format(
+        best_label = r"${} = {}$".format(
             poi_data[poi].label,
             num_min.str(format="%.2f", style="latex"),
         )
