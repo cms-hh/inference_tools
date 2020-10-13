@@ -78,8 +78,9 @@ action() {
     # combine setup
     #
 
-    local combine_flag_file="$DHI_SOFTWARE/.combine_good"
-    if [ ! -f "$combine_flag_file" ]; then
+    local flag_file_combine="$DHI_SOFTWARE/.combine_good"
+    [ "$DHI_REINSTALL_COMBINE" = "1" ] && rm -f "$flag_file_combine"
+    if [ ! -f "$flag_file_combine" ]; then
         echo "installing combine into $DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
         mkdir -p "$DHI_SOFTWARE"
 
@@ -96,7 +97,7 @@ action() {
             make || return "3"
         )
 
-        touch "$combine_flag_file"
+        touch "$flag_file_combine"
     fi
 
     cd "$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
@@ -136,8 +137,9 @@ action() {
     ulimit -s unlimited
 
     # local stack
-    local sw_flag_file="$DHI_SOFTWARE/.sw_good"
-    if [ ! -f "$sw_flag_file" ]; then
+    local flag_file_sw="$DHI_SOFTWARE/.sw_good"
+    [ "$DHI_REINSTALL_SOFTWARE" = "1" ] && rm -f "$flag_file_sw"
+    if [ ! -f "$flag_file_sw" ]; then
         echo "installing software stack into $DHI_SOFTWARE"
         mkdir -p "$DHI_SOFTWARE"
 
@@ -157,7 +159,7 @@ action() {
             pip install black==20.8b1 || return "$?"
         )
 
-        touch "$sw_flag_file"
+        touch "$flag_file_sw"
     fi
 
     # gfal2 bindings
@@ -171,15 +173,18 @@ action() {
     export GFAL_PLUGIN_DIR="$DHI_GFAL_DIR/plugins"
     export PYTHONPATH="$DHI_GFAL_DIR:$PYTHONPATH"
 
-    local gfal_flag_file="$DHI_SOFTWARE/.gfal_good"
-    if [ ! -f "$gfal_flag_file" ]; then
+    local flag_file_gfal="$DHI_SOFTWARE/.gfal_good"
+    [ "$DHI_REINSTALL_GFAL" = "1" ] && rm -f "$flag_file_gfal"
+    if [ ! -f "$flag_file_gfal" ]; then
         echo "linking gfal2 bindings"
 
+        rm -rf "$DHI_GFAL_DIR"
         mkdir -p "$GFAL_PLUGIN_DIR"
+
         ln -s $lcg_dir/lib64/python2.7/site-packages/gfal2.so "$DHI_GFAL_DIR"
         ln -s $lcg_dir/lib64/gfal2-plugins/libgfal_plugin_* "$GFAL_PLUGIN_DIR"
 
-        touch "$gfal_flag_file"
+        touch "$flag_file_gfal"
     fi
 
 
@@ -222,7 +227,7 @@ interactive_setup() {
     # when the setup already exists and it's not the default one,
     # source the corresponding env file and stop
     if ! $setup_is_default && [ -f "$env_file" ]; then
-        echo "using setup variables from $env_file"
+        echo -e "using variables for setup '\x1b[0;49;35m$setup_name\x1b[0m' from $env_file"
         source "$env_file" ""
         return "0"
     fi
@@ -277,18 +282,18 @@ interactive_setup() {
         rm -rf "$env_file_tmp"
         mkdir -p "$( dirname "$env_file_tmp" )"
 
-        echo -e "Start querying variables for setup '$setup_name', press enter to accept default values\n"
+        echo -e "Start querying variables for setup '\x1b[0;49;35m$setup_name\x1b[0m', press enter to accept default values\n"
     fi
 
     # start querying for variables
-    query DHI_USER "Username on lxplus" "$( whoami )"
+    query DHI_USER "CERN / WLCG username" "$( whoami )"
     query DHI_DATA "Local data directory" "$DHI_BASE/data" "./data"
     query DHI_STORE "Default local output store" "$DHI_DATA/store" "\$DHI_DATA/store"
     query DHI_STORE_BUNDLES "Output store for software bundles when submitting jobs" "$DHI_STORE" "\$DHI_STORE"
     query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "/eos/user/${DHI_USER:0:1}/${DHI_USER}/dhi/store"
     query DHI_SOFTWARE "Directory for installing software" "$DHI_DATA/software" "\$DHI_DATA/software"
     query DHI_JOB_DIR "Directory for storing job files" "$DHI_DATA/jobs" "\$DHI_DATA/jobs"
-    query DHI_TASK_NAMESPACE "Namespace (i.e. the prefix) of law tasks" ""
+    query DHI_TASK_NAMESPACE "Namespace (i.e. the prefix) of law tasks" "" "''"
     query DHI_LOCAL_SCHEDULER "Use a local scheduler for law tasks" "True"
     if [ "$DHI_LOCAL_SCHEDULER" != "True" ]; then
         query DHI_SCHEDULER_HOST "Address of a central scheduler for law tasks" "hh:cmshhcombr2@hh-scheduler1.cern.ch"
