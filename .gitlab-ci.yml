@@ -33,4 +33,7 @@ deploy_docs:
   script:
     - cd docs
     - mkdocs build --strict
-    - sshpass -v -p ${KRB_PASS} scp -v -o "StrictHostKeyChecking=no" -r site/* ${KRB_USER}@lxplus.cern.ch:/eos/user/m/mrieger/www/hh/tools/inference
+    - cd site
+    - tar -czf site.tgz *
+    - sshpass -v -p ${KRB_PASS} scp -o "StrictHostKeyChecking=no" -r site.tgz ${KRB_USER}@lxplus.cern.ch:/eos/user/m/mrieger/www/hh/tools/inference
+    - sshpass -v -p ${KRB_PASS} ssh -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch "cd /eos/user/m/mrieger/www/hh/tools/inference; tar -xzf site.tgz; rm site.tgz"
