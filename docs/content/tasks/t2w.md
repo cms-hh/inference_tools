@@ -1,50 +1,50 @@
-Default: Every law.Task comes with a `--version` parameter, in order to handle multiple inference analysis in parallel.
-Note: Omit the `--print-status` cli option in order to run the task!
+# Text to workspace
 
-After combining your datacards you need to create a workspace using a PhysicsModel. We will use Luca Cadamuro's HH PhysicsModel to perform next-to-leading order fits: https://indico.cern.ch/event/885273/contributions/3812533/attachments/2016615/3370728/HH_combine_model_7Apr2018.pdf
+After combining your datacards you need to create a workspace using a PhysicsModel. We will use different HH PhysicsModel to perform next-to-leading order fits.
 
 This task can be run with:
 
 ```shell
-law run NLOT2W --version dev
+law run CreateWorkspace --version dev
 ```
 
-Now since we require a combined datacard, we will see the power of `law` workflows. This task does indeed require the output of the `CombDatacards` task.
+Now since we require a combined datacard, we will see the power of `law` workflows. This task does indeed require the output of the `CombineDatacards` task.
 
 Let's have a look at a higher task depth:
 ```shell
-law run NLOT2W --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --print-status 1
+law run CreateWorkspace --version dev --print-status 1
 ```
 Output:
 ```shell
 print task status with max_depth 1 and target_depth 0
 
-> check status of NLOT2W(version=dev, mass=125, input_cards=, dc_prefix=, hh_model=HHdefault, stack_cards=False)
-|  - LocalFileTarget(path=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOT2W/dev/125/HHdefault/workspace_HHdefault.root)
+> check status of CreateWorkspace(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
+|  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CreateWorkspace/m125.0/model_hh_HHdefault/dev/workspace.root)
 |    absent
 |
-|  > check status of CombDatacards(version=dev, mass=125, input_cards=, dc_prefix=, hh_model=HHdefault, stack_cards=False)
-|  |  datacard: LocalFileTarget(path=/eos/user/<u>/<username>/dhi/store/CombDatacards/dev/125/HHdefault/datacard.txt)
+|  > check status of CombineDatacards(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
+|  |  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
 |  |    absent
 ```
-As you can see there is a task hierarchy and in fact `NLOT2W` will not be exectued until the output of `CombDatacards` exists. Another thing to notice is that cli options (here: `--input-cards`) are upstreamed to all required tasks.
+As you can see there is a task hierarchy and in fact `CreateWorkspace` will not be exectued until the output of `CombineDatacards` exists. Another thing to notice is that cli options (here: `--datacards`) are upstreamed to all required tasks.
 
-Here we can use a new cli option: `--hh-model`, which default is the aforementioned PhysicsModel by Luca Cadamuro. In case you want to use a new PhysicsModel, you just have to add it to `utils.models.py` and pass it to `--hh-model`, such as:
+Here we can use a new cli option: `--hh-model`, which default is the standard HH PhysicsModel. In case you want to use a new PhysicsModel, you just have to add it to `dhi/models` and pass it to `--hh-model` (relative to `dhi/models`), such as:
 
+(Assume we created a PhysicsModel called `MyCoolPhysicsModel` in `dhi/models/my_model.py`)
 ```shell
-law run NLOT2W --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --hh-model MyCoolPhysicsModel --print-status 0
+law run CreateWorkspace --version dev --hh-model my_model:MyCoolPhysicsModel --print-status 0
 ```
 Output:
 ```shell
 print task status with max_depth 0 and target_depth 0
 
-> check status of NLOT2W(version=dev, mass=125, input_cards=, dc_prefix=, hh_model=MyCoolPhysicsModel, stack_cards=False)
-|  - LocalFileTarget(path=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOT2W/dev/125/MyCoolPhysicsModel/workspace_MyCoolPhysicsModel.root)
+> check status of CreateWorkspace(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=my_model:MyCoolPhysicsModel)
+|  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CreateWorkspace/m125.0/model_my_model_MyCoolPhysicsModel/dev/workspace.root)
 |    absent
 ```
-It will automatically look for `MyCoolPhysicsModel` in `dhi.utils.models.py` and will use this to create the workspace.
+It will automatically look for `MyCoolPhysicsModel` in `dhi/models/my_model.py` and will use this to create the workspace.
 
+---
+**_NOTES_**
 
-### Todo
-
-* Add PhysicsModel with single Higgs extension
+Currently the default PhysicsModel is the one presented [here](https://indico.cern.ch/event/885273/contributions/3812533/attachments/2016615/3370728/HH_combine_model_7Apr2018.pdf).

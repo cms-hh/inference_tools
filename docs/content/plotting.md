@@ -5,74 +5,59 @@ Note: Omit the `--print-status` cli option in order to run the task!
 
 ## Plot: Upper Limits on the Cross Section
 
-Check the task status with:
-```shell
-law run PlotScan --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --print-status 1
-```
-Output:
-```shell
-print task status with max_depth 1 and target_depth 0
+![Upper limits](images/limits__kl_n61_-30.0_30.0__xsec_brbbwwllvv_log.png)
 
-> check status of PlotScan(version=dev, mass=125, input_cards=/afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt,/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt,/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt, dc_prefix=, hh_model=HHdefault, stack_cards=False, poi=kl, poi_range=-30,30)
-|  - LocalFileTarget(path=/eos/user/<u>/<username>/dhi/store/PlotScan/dev/125/HHdefault/kl_-30_30/scan.pdf)
-|    absent
-|
-|  > check status of NLOLimit(branch=-1, start_branch=0, end_branch=61, branches=, version=dev, mass=125, input_cards=/afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt,/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt,/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt, dc_prefix=, hh_model=HHdefault, stack_cards=False, poi=kl, poi_range=-30,30, workflow=htcondor)
-|  |  submission: LocalFileTarget(path=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOLimit/dev/125/HHdefault/kl_-30_30/htcondor_submission_0To61.json, optional)
-|  |    absent
-|  |  status: LocalFileTarget(path=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOLimit/dev/125/HHdefault/kl_-30_30/htcondor_status_0To61.json, optional)
-|  |    absent
-|  |  collection: SiblingFileCollection(len=61, threshold=61.0, dir=/eos/user/<u>/<username>/dhi/store/NLOLimit/dev/125/HHdefault/kl_-30_30)
-|  |    absent (0/61)
+Recreate this plot with:
+```shell
+law run PlotUpperLimits --version dev --workers 10 --xsec --br bbww --y-log
 ```
 
-As you can see the `PlotScan` task requires the presence of calculated limits by the `NLOLimit` task. Again all cli options are upstreamed to the required tasks.
-Note: If you don't have a valid datacard yet, there is a default datacard, which is used if you don't modifiy/use the `--input-cards` cli option. You can produce a limit plot then with:
-```shell
-law run PlotScan --version dev --NLOLimit-workflow local --workers 8 --poi-range=-10,10
-```
-For simplicity the range of the parameter of interest is reduced to `-10..10`. Additionally these datacards are very simple, which means it is sufficent to use local multiprocessing with 8 workers (no HTCondor submission). We forward this option with to the `NLOLimit` task: `--NLOLimit-workflow local --workers 8`.
+Cli parameters:
 
-The resulting plot can be found in: `/eos/user/<u>/<username>/dhi/store/PlotScan/dev/125/HHdefault/kl_-10_10/scan.pdf` or more conveniently in the webbrowser: https://cernbox.cern.ch/ (path: `dhi/store/PlotScan/dev/125/HHdefault/kl_-10_10/scan.pdf`), which supports a direct PDF preview.
+- `--workers 10`: local multiprocessing
+- `--xsec`: calculate the limit on the cross-section and not the signal strength
+- `--br`: when using `--xsec`, scale the cross section with the BR of the corresponding HH decay (see: [BRs](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/dhi/config.py#L14-49))
+- `--y-log`: logarithmic y-axis
+
+
 
 
 ## Plot: One Dimensional Likelihood Scans
 
-Check the task status with:
-```shell
-law run PlotNLL1D --version dev --print-status 2
-```
-Output:
-```shell
-print task status with max_depth 2 and target_depth 0
+![1D Likelihood Scan](images/nll1d__kl_n61_-30.0_30.0.png)
 
-> check status of PlotNLL1D(version=dev, mass=125, input_cards=/afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt,/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt,/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt, dc_prefix=, hh_model=HHdefault, stack_cards=False, poi=kl, poi_range=-30,30)
-|  - LocalFileTarget(path=/eos/user/<u>/<username>/dhi/store/PlotNLL1D/dev/125/HHdefault/kl_-30_30/nll.pdf)
-|    absent
-|
-|  > check status of MergeScans1D(branch=-1, start_branch=-1, end_branch=-1, branches=, cancel_jobs=False, cleanup_jobs=False, version=dev, mass=125, input_cards=/afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt,/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt,/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt, dc_prefix=, hh_model=HHdefault, stack_cards=False, poi=kl, poi_range=-30,30, points=200)
-|  |  - LocalFileTarget(path=/eos/user/<u>/<username>/dhi/store/MergeScans1D/dev/125/HHdefault/kl_-30_30/200/scan1d_merged.npz)
-|  |    absent
-|  |
-|  |  > check status of NLOScan1D(branch=-1, start_branch=0, end_branch=200, branches=, version=dev, mass=125, input_cards=/afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt,/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt,/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt, dc_prefix=, hh_model=HHdefault, stack_cards=False, poi=kl, poi_range=-30,30, points=200, workflow=htcondor)
-|  |  |  submission: LocalFileTarget(path=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOScan1D/dev/125/HHdefault/kl_-30_30/200/htcondor_submission_0To200.json, optional)
-|  |  |    absent
-|  |  |  status: LocalFileTarget(path=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOScan1D/dev/125/HHdefault/kl_-30_30/200/htcondor_status_0To200.json, optional)
-|  |  |    absent
-|  |  |  collection: SiblingFileCollection(len=200, threshold=200.0, dir=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOScan1D/dev/125/HHdefault/kl_-30_30/200)
-|  |  |    absent (0/200)
+Recreate this plot with:
+```shell
+law run PlotLikelihoodScan1D --version dev --workers 10
 ```
 
-As you can see the `PlotNLL1D` task requires the presence of calculated limits by the `NLOScan1D` task and their merged outputs by the `MergeScans1D` task. Again all cli options are upstreamed to the required tasks.
-Note: If you don't have a valid datacard yet, there is a default datacard, which is used if you don't modifiy/use the `--input-cards` cli option. You can produce a 1D scan plot then with:
-```shell
-law run PlotNLL1D --version dev --MergeScans1D-workflow local --workers 8 --MergeScans1D-points 50
-```
-For simplicity the granularity of scan points of the parameter of interest is reduced to `50`. Additionally these datacards are very simple, which means it is sufficent to use local multiprocessing with 8 workers (no HTCondor submission). We forward this option with to the `MergeScans1D` task: `--MergeScans1D-workflow local --workers 8`.
+Cli parameters:
 
-The resulting plot can be found in: `/eos/user/<u>/<username>/dhi/store/PlotNLL1D/dev/125/HHdefault/kl_-30_30/nll.pdf` or more conveniently in the webbrowser: https://cernbox.cern.ch/ (path: `dhi/store/PlotNLL1D/dev/125/HHdefault/kl_-30_30/nll.pdf`), which supports a direct PDF preview.
+- `--workers 10`: local multiprocessing
+
 
 
 ## Plot: Two Dimensional Likelihood Scans
 
-Completely equivalent usage to one dimensional likelihood scan plots. The corresponding task is called: `law run PlotNLL2D`.
+![2D Likelihood Scan](images/nll2d__kl_n61_-30.0_30.0__kt_n41_-10.0_10.0__log.png)
+
+
+```shell
+law run PlotLikelihoodScan2D --version dev --LikelihoodScan2D-workflow htcondor --LikelihoodScan2D-tasks-per-job 10 --z-log
+```
+
+Cli parameters:
+
+- `--LikelihoodScan2D-workflow htcondor`: Run the actual scan on HTCondor
+- `--LikelihoodScan2D-tasks-per-job 10`: Merge 10 scans into one job
+- `--z-log`: logarithmic z-axis
+
+
+---
+**_NOTES_**
+
+For more options use the autocompletion of law:
+
+```shell
+law run PlotLikelihoodScan2D --<tab><tab>
+```
