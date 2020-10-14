@@ -36,7 +36,7 @@ def plot_likelihood_scan_1d(
     logarithmic scale. *x_min* and *x_max* define the x-axis range and default to the range of poi
     values.
 
-    Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/mpl/?search=nll1d
+    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#1d-likelihood-scans
     """
     # get valid poi and delta nll values
     poi_values = data[poi]
@@ -150,7 +150,7 @@ def plot_likelihood_scan_2d(
     respectively, and default to the ranges of the poi values. When *fill_nans* is *True*, points
     with failed fits, denoted by nan values, are filled with the averages of neighboring fits.
 
-    Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/mpl/?search=nll2d
+    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#2d-likelihood-scans
     """
     # get poi and delta nll values
     poi1_values = data[poi1]

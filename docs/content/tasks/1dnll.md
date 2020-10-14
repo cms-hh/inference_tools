@@ -1,5 +1,3 @@
-# One Dimensional Likelihood Scans
-
 This section will explain how you can run one dimensional likelihood scans.
 
 You can check the status of this task with:
@@ -12,15 +10,15 @@ Output:
 print task status with max_depth 2 and target_depth 0
 
 > check status of LikelihoodScan1D(branch=-1, start_branch=0, end_branch=61, branches=, version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi=kl, poi_range=-30.0,30.0, poi_points=61, workflow=local)
-|  collection: SiblingFileCollection(len=61, threshold=61.0, dir=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/LikelihoodScan1D/m125.0/model_hh_HHdefault/kl/dev)
+|  collection: SiblingFileCollection(len=61, threshold=61.0, dir=$DHI_STORE/LikelihoodScan1D/m125.0/model_hh_HHdefault/kl/dev)
 |    absent (0/61)
 |
 |  > check status of CreateWorkspace(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  |  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CreateWorkspace/m125.0/model_hh_HHdefault/dev/workspace.root)
+|  |  - LocalFileTarget(path=$DHI_STORE/CreateWorkspace/m125.0/model_hh_HHdefault/dev/workspace.root)
 |  |    absent
 |  |
 |  |  > check status of CombineDatacards(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  |  |  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
+|  |  |  - LocalFileTarget(path=$DHI_STORE/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
 |  |  |    absent
 ```
 

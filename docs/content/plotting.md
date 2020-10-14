@@ -3,7 +3,8 @@ This section will explain how to produce plots from finalized fits and scans.
 Default: Every law.Task comes with a `--version` parameter, in order to handle multiple inference analysis in parallel.
 Note: Omit the `--print-status` cli option in order to run the task!
 
-## Plot: Upper Limits on the Cross Section
+
+## Upper Limits
 
 ![Upper limits](images/limits__kl_n61_-30.0_30.0__xsec_brbbwwllvv_log.png)
 
@@ -20,9 +21,7 @@ Cli parameters:
 - `--y-log`: logarithmic y-axis
 
 
-
-
-## Plot: One Dimensional Likelihood Scans
+## 1D Likelihood Scans
 
 ![1D Likelihood Scan](images/nll1d__kl_n61_-30.0_30.0.png)
 
@@ -36,8 +35,7 @@ Cli parameters:
 - `--workers 10`: local multiprocessing
 
 
-
-## Plot: Two Dimensional Likelihood Scans
+## 2D Likelihood Scans
 
 ![2D Likelihood Scan](images/nll2d__kl_n61_-30.0_30.0__kt_n41_-10.0_10.0__log.png)
 
@@ -59,5 +57,5 @@ Cli parameters:
 For more options use the autocompletion of law:
 
 ```shell
-law run PlotLikelihoodScan2D --<tab><tab>
+law run PlotLikelihoodScan2D <tab><tab>
 ```

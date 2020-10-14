@@ -1,6 +1,4 @@
-# Combine Datacards
-
-If you are starting with multiple datacards you can use the `CombDatacards` task to combine them.
+If you are starting with multiple datacards you can use the `CombineDatacards` task to combine them.
 You can run this task with:
 
 Let combine automatically choose bin names:
@@ -29,7 +27,7 @@ Output:
 print task status with max_depth 0 and target_depth 0
 
 > check status of CombineDatacards(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=my_, hh_model=hh:HHdefault)
-|  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CombineDatacards/m125.0/model_hh_HHdefault/dev/my_datacard.txt)
+|  - LocalFileTarget(path=$DHI_STORE/CombineDatacards/m125.0/model_hh_HHdefault/dev/my_datacard.txt)
 |    absent
 ```
 

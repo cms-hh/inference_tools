@@ -1,5 +1,3 @@
-# Upper Limits on the Cross Section
-
 Run upper limits on the cross-section with the `UpperLimits` task.
 
 ```shell
@@ -10,15 +8,15 @@ Output:
 print task status with max_depth 2 and target_depth 0
 
 > check status of UpperLimits(branch=-1, start_branch=0, end_branch=61, branches=, version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi=kl, poi_range=-30.0,30.0, poi_points=61, workflow=local)
-|  collection: SiblingFileCollection(len=61, threshold=61.0, dir=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/UpperLimits/m125.0/model_hh_HHdefault/kl/dev)
+|  collection: SiblingFileCollection(len=61, threshold=61.0, dir=$DHI_STORE/UpperLimits/m125.0/model_hh_HHdefault/kl/dev)
 |    absent (0/61)
 |
 |  > check status of CreateWorkspace(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  |  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CreateWorkspace/m125.0/model_hh_HHdefault/dev/workspace.root)
+|  |  - LocalFileTarget(path=$DHI_STORE/CreateWorkspace/m125.0/model_hh_HHdefault/dev/workspace.root)
 |  |    absent
 |  |
 |  |  > check status of CombineDatacards(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  |  |  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
+|  |  |  - LocalFileTarget(path=$DHI_STORE/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
 |  |  |    absent
 ```
 By default it will calculate limits as a function of kappa lambda from -30 to 30 with a step size of 1.
@@ -44,7 +42,7 @@ Output:
 print task status with max_depth 0 and target_depth 0
 
 > check status of UpperLimits(branch=-1, start_branch=0, end_branch=20, branches=, version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi=C2V, poi_range=-5.0,5.0, poi_points=20, workflow=local)
-|  collection: SiblingFileCollection(len=20, threshold=20.0, dir=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/UpperLimits/m125.0/model_hh_HHdefault/C2V/dev)
+|  collection: SiblingFileCollection(len=20, threshold=20.0, dir=$DHI_STORE/UpperLimits/m125.0/model_hh_HHdefault/C2V/dev)
 |    absent (0/20)
 ```
 

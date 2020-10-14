@@ -8,7 +8,7 @@ RUN apt-get update; apt-get clean
 RUN apt-get install -y nano less htop git sshpass; apt-get clean
 
 # update pip
-RUN pip install --upgrade pip
+RUN pip install --no-cache-dir --upgrade pip
 
 # python software stack
 RUN pip install --no-cache-dir mkdocs

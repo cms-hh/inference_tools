@@ -38,7 +38,7 @@ def plot_limit_scan(
     cross sections or, when *False*, as a ratio over the theory prediction. *campaign* should refer
     to the name of a campaign label defined in dhi.config.campaign_labels.
 
-    Examples: http://mrieger.web.cern.ch/mrieger/dhi/examples/mpl/?search=limits
+    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#upper-limits
     """
     # convert record array to dict
     if isinstance(data, np.ndarray):

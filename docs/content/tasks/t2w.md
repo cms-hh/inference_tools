@@ -1,5 +1,3 @@
-# Text to workspace
-
 After combining your datacards you need to create a workspace using a PhysicsModel. We will use different HH PhysicsModel to perform next-to-leading order fits.
 
 This task can be run with:
@@ -19,11 +17,11 @@ Output:
 print task status with max_depth 1 and target_depth 0
 
 > check status of CreateWorkspace(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CreateWorkspace/m125.0/model_hh_HHdefault/dev/workspace.root)
+|  - LocalFileTarget(path=$DHI_STORE/CreateWorkspace/m125.0/model_hh_HHdefault/dev/workspace.root)
 |    absent
 |
 |  > check status of CombineDatacards(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  |  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
+|  |  - LocalFileTarget(path=$DHI_STORE/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
 |  |    absent
 ```
 As you can see there is a task hierarchy and in fact `CreateWorkspace` will not be exectued until the output of `CombineDatacards` exists. Another thing to notice is that cli options (here: `--datacards`) are upstreamed to all required tasks.
@@ -39,7 +37,7 @@ Output:
 print task status with max_depth 0 and target_depth 0
 
 > check status of CreateWorkspace(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=my_model:MyCoolPhysicsModel)
-|  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CreateWorkspace/m125.0/model_my_model_MyCoolPhysicsModel/dev/workspace.root)
+|  - LocalFileTarget(path=$DHI_STORE/CreateWorkspace/m125.0/model_my_model_MyCoolPhysicsModel/dev/workspace.root)
 |    absent
 ```
 It will automatically look for `MyCoolPhysicsModel` in `dhi/models/my_model.py` and will use this to create the workspace.

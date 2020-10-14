@@ -1,5 +1,3 @@
-# Two Dimensional Likelihood Scans
-
 This section will explain how you can run two dimensional likelihood scans.
 
 You can check the status of this task with:
@@ -12,15 +10,15 @@ Output:
 print task status with max_depth 2 and target_depth 0
 
 > check status of LikelihoodScan2D(branch=-1, start_branch=0, end_branch=1281, branches=, version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi1=kl, poi2=kt, poi1_range=-30.0,30.0, poi2_range=-10.0,10.0, poi1_points=61, poi2_points=21, workflow=local)
-|  collection: SiblingFileCollection(len=1281, threshold=1281.0, dir=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/LikelihoodScan2D/m125.0/model_hh_HHdefault/kl__kt/dev)
+|  collection: SiblingFileCollection(len=1281, threshold=1281.0, dir=$DHI_STORE/LikelihoodScan2D/m125.0/model_hh_HHdefault/kl__kt/dev)
 |    absent (0/1281)
 |
 |  > check status of CreateWorkspace(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  |  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CreateWorkspace/m125.0/model_hh_HHdefault/dev/workspace.root)
+|  |  - LocalFileTarget(path=$DHI_STORE/CreateWorkspace/m125.0/model_hh_HHdefault/dev/workspace.root)
 |  |    absent
 |  |
 |  |  > check status of CombineDatacards(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  |  |  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
+|  |  |  - LocalFileTarget(path=$DHI_STORE/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
 |  |  |    absent
 ```
 
