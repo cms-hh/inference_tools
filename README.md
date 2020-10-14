@@ -1,6 +1,6 @@
 # HH Inference Tools
 
-[![Documentation badge](https://img.shields.io/badge/Documentation-passing-brightgreen)](http://cern.ch/cms-hh/tools/inference) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Documentation badge](https://img.shields.io/badge/Documentation-passing-brightgreen)](http://cms-hh.web.cern.ch/cms-hh/tools/inference/index.html) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ## Introduction
 
@@ -124,7 +124,7 @@ which creates a directory `docs/site/` containing static HTML pages.
 To start a server to browse the pages, run
 
 ```shell
-./docs/docker/run.sh build
+./docs/docker/run.sh serve
 ```
 
 and open your webbrowser at [http://localhost:8000](http://localhost:8000).

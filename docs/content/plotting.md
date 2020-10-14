@@ -41,7 +41,7 @@ Cli parameters:
 
 ![2D Likelihood Scan](images/nll2d__kl_n61_-30.0_30.0__kt_n41_-10.0_10.0__log.png)
 
-
+Recreate this plot with:
 ```shell
 law run PlotLikelihoodScan2D --version dev --LikelihoodScan2D-workflow htcondor --LikelihoodScan2D-tasks-per-job 10 --z-log
 ```
