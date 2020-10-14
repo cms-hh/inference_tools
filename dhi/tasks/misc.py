@@ -66,19 +66,19 @@ class PostFitShapes(CombineCommandTask):
 
 class CompareNuisances(CombineCommandTask):
 
-    format = luigi.ChoiceParameter(default="html", choices=("html", "tex", "txt"))
+    format = luigi.ChoiceParameter(default="html", choices=("html", "latex", "text"))
 
     format_to_ext = {
         "html": "html",
         "latex": "tex",
-        "text": "tex",
+        "text": "txt",
     }
 
     def requires(self):
         return PostFitShapes.req(self)
 
     def output(self):
-        return self.local_target("nuisances.{}".format(self.format_to_ext[self.ext]))
+        return self.local_target("nuisances.{}".format(self.format_to_ext[self.format]))
 
     def build_command(self):
         script = "$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit/test/diffNuisances.py"

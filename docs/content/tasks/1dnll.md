@@ -1,44 +1,43 @@
-This section will explain how you can run one dimensional likelihood scans.
+# One Dimensional Likelihood Scans
 
-Default: Every law.Task comes with a `--version` parameter, in order to handle multiple inference analysis in parallel.
-Note: Omit the `--print-status` cli option in order to run the task!
+This section will explain how you can run one dimensional likelihood scans.
 
 You can check the status of this task with:
 
 ```shell
-law run NLOScan1D --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --print-status 2
+law run LikelihoodScan1D --version dev --print-status 2
 ```
 Output:
 ```shell
 print task status with max_depth 2 and target_depth 0
 
-> check status of NLOScan1D(branch=-1, start_branch=0, end_branch=200, branches=, version=dev, mass=125, input_cards=, dc_prefix=, hh_model=HHdefault, stack_cards=False, poi=kl, poi_range=-30,30, points=200, workflow=htcondor)
-|  submission: LocalFileTarget(path=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOScan1D/dev/125/HHdefault/kl_-30_30/200/htcondor_submission_0To200.json, optional)
-|    absent
-|  status: LocalFileTarget(path=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOScan1D/dev/125/HHdefault/kl_-30_30/200/htcondor_status_0To200.json, optional)
-|    absent
-|  collection: SiblingFileCollection(len=200, threshold=200.0, dir=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOScan1D/dev/125/HHdefault/kl_-30_30/200)
-|    absent (0/200)
+> check status of LikelihoodScan1D(branch=-1, start_branch=0, end_branch=61, branches=, version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi=kl, poi_range=-30.0,30.0, poi_points=61, workflow=local)
+|  collection: SiblingFileCollection(len=61, threshold=61.0, dir=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/LikelihoodScan1D/m125.0/model_hh_HHdefault/kl/dev)
+|    absent (0/61)
 |
-|  > check status of NLOT2W(version=dev, mass=125, input_cards=, dc_prefix=, hh_model=HHdefault, stack_cards=False)
-|  |  - LocalFileTarget(path=/afs/cern.ch/work/<u>/<username>/dhi_store/NLOT2W/dev/125/HHdefault/workspace_HHdefault.root)
+|  > check status of CreateWorkspace(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
+|  |  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CreateWorkspace/m125.0/model_hh_HHdefault/dev/workspace.root)
 |  |    absent
 |  |
-|  |  > check status of CombDatacards(version=dev, mass=125, input_cards=, dc_prefix=, hh_model=HHdefault, stack_cards=False)
-|  |  |  datacard: LocalFileTarget(path=/eos/user/<u>/<username>/dhi/store/CombDatacards/dev/125/HHdefault/datacard.txt)
+|  |  > check status of CombineDatacards(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
+|  |  |  - LocalFileTarget(path=/afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
 |  |  |    absent
 ```
 
-As you can see `NLOScan1D` produces by default a kappa lambda scan with a granularity of 200 points. It requires the presence of a workspace (`NLOT2W`), which furthermore requires the presence of a datacard (`CombDatacards`). The `NLOScan1D` task has several cli options similary to the `NLOLimit` task. You can scan for multiple parameter of interests:
+As you can see `LikelihoodScan1D` produces by default a kappa lambda scan with a granularity of 61 points from `-30..30`. It requires the presence of a workspace (`CreateWorkspace`), which furthermore requires the presence of a datacard (`CombineDatacards`). The `LikelihoodScan1D` task has several cli options similary to the `UpperLimits` task. You can scan for multiple parameter of interests:
 
 - kappa lambda: "kl"
 - kappa top: "kt"
 - CV: "CV"
 - C2V: "C2V"
 
-and it's range can be adjusted within the possible ranges of the PhysicsModel (see: [Upper limits](limits.md) for further details).
+Cli parameters:
 
-The granularity of these scans can be adjusted by passing a different number of points to the `--points` cli option.
+- `--poi`: the parameter of interest you want to scan
+- `--poi-range`: the range of the defined parameter of interest
+- `--poi-points`: the number/granularity of scan points
+
+(see also: [Upper limits](limits.md))
 
 
 ### Multiprocessing
@@ -46,19 +45,24 @@ As you can see there will be one output file in the `SiblingFileCollection` for 
 
 Example usage:
 ```shell
-law run NLOScan1D --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --workflow local --workers 4
+law run LikelihoodScan1D --version dev --workflow local --workers 4
 ```
 
 
 ### HTCondor submission
-For heavy workloads, where you need to scan tens or hundreds of points and each fit takes several minutes it might be necessary to submit each fit to the CERN HTCondor cluster.
+For heavy workloads, where you need to scan tens or hundreds of points and each fit takes several minutes it might be necessary to submit each fit to the (CERN) HTCondor cluster.
 
 Example usage:
 ```shell
-law run NLOScan1D --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --workflow htcondor --poll-intervall 30sec
+law run LikelihoodScan1D --version dev --workflow htcondor --poll-interval 30sec
 ```
 
 If you want to merge e.g. 3 fits in one job you can use the `--tasks-per-job` cli option:
 ```shell
-law run NLOScan1D --version dev --input-cards "/path/to/first/card.txt,/path/to/second/card.txt" --workflow htcondor --poll-intervall 30sec --tasks-per-job 3
+law run LikelihoodScan1D --version dev --workflow htcondor --poll-interval 30sec --tasks-per-job 3
 ```
+
+---
+**_NOTES_**
+
+Be cautious with the `--poi-range` option. Defining a range which is outside of the one defined by the PhysicsModel might lead to unreasonable results.

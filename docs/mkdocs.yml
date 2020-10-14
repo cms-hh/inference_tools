@@ -81,6 +81,7 @@ extra:
 nav:
   - Home: index.md
   - Introduction: introduction.md
+  - General Options: generaloptions.md
   - Tasks:
     - Combine Datacards: tasks/combinedatacards.md
     - Text to Workspace: tasks/t2w.md
