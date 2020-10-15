@@ -31,7 +31,7 @@ class CombineDatacards(DatacardBaseTask, CombineCommandTask):
         inputs = " ".join(datacards)
         output = self.output()
 
-        return "combineCards.py {} > {}".format(inputs, output.path)
+        return "combineCards.py {} {} > {}".format(self.custom_args, inputs, output.path)
 
     @law.decorator.safe_output
     def run(self):
@@ -98,6 +98,7 @@ class CreateWorkspace(DatacardBaseTask, CombineCommandTask):
             " -o {workspace}"
             " -m {self.mass}"
             " -P dhi.models.{self.hh_model}"
+            " {self.custom_args}"
         ).format(
             self=self,
             datacard=self.input().path,
@@ -133,6 +134,7 @@ class UpperLimits(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondor
             " --redefineSignalPOIs r"  # TODO: shouldn't this be {poi}?
             " --setParameters {set_params},{self.poi}={point}"
             " {self.combine_stable_options}"
+            " {self.custom_args}"
             " && "
             "mv higgsCombineTest.AsymptoticLimits.mH{self.mass_int}.root {output}"
         ).format(
@@ -216,6 +218,7 @@ class LikelihoodScan1D(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTC
             " --robustFit 1"
             " --X-rtd MINIMIZER_analytic"
             " {self.combine_stable_options}"
+            " {self.custom_args}"
             " && "
             "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.root {output}"
         ).format(
@@ -303,6 +306,7 @@ class LikelihoodScan2D(POIScanTask2D, CombineCommandTask, law.LocalWorkflow, HTC
             " --robustFit 1"
             " --X-rtd MINIMIZER_analytic"
             " {self.combine_stable_options}"
+            " {self.custom_args}"
             " && "
             "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.root {output}"
         ).format(
@@ -423,6 +427,7 @@ class PullsAndImpacts(POITask1D, CombineCommandTask, law.LocalWorkflow, HTCondor
             " --freezeParameters {self.frozen_params}"
             " --X-rtd MINIMIZER_analytic"
             " {self.combine_stable_options}"
+            " {self.custom_args}"
             " {{branch_opts}}"
             " && "
             "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.root {output}"

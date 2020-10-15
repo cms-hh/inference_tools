@@ -289,7 +289,14 @@ class CommandTask(AnalysisTask):
     command line and executing them with error handling.
     """
 
+    custom_args = luigi.Parameter(
+        default="",
+        description="custom arguments that are forwarded to the underlying command; they might not "
+        "be encoded into output file paths; default: empty",
+    )
+
     exclude_index = True
+    exclude_params_req = {"custom_args"}
 
     run_command_in_tmp = False
 
