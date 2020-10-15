@@ -9,7 +9,7 @@ import law
 import luigi
 
 from dhi.tasks.nlo.base import CombineCommandTask
-from dhi.tasks.nlo.inference import CreateWorkspace, ImpactsPulls
+from dhi.tasks.nlo.inference import CreateWorkspace, PullsAndImpacts
 
 
 # currently disabled since we decided to use a non-CMSSW environment which does not allow to run any
@@ -60,7 +60,7 @@ class PostFitShapes(CombineCommandTask):
         ).format(
             self=self,
             workspace=self.input().path,
-            params=ImpactsPulls.params,
+            params=PullsAndImpacts.params,
         )
 
 

@@ -7,8 +7,11 @@ Helpers to manipulate and work with datacards and shape files.
 import os
 import shutil
 import contextlib
+from collections import OrderedDict
 
 import law
+
+from dhi.util import import_ROOT
 
 
 def read_datacard_blocks(datacard, is_separator=None):
@@ -159,3 +162,75 @@ def update_shape_files(func, datacard, target_datacard=None):
             if new_shape_file != shape_file:
                 new_line = " ".join([prefix, process, channel, new_shape_file] + patterns)
                 shape_lines[i] = new_line
+
+
+def get_workspace_parameters(workspace, workspace_name="w", config_name="ModelConfig"):
+    """
+    Takes a workspace stored in a ROOT file *workspace* with the name *workspace_name* and gathers
+    information on all non-constant parameters. The return value is an ordered dictionary that maps
+    parameter names to dicts with fields ``name``, ``type``, ``groups`` and ``prefit``. The
+    functionality is loosely based on ``CombineHarvester.CombineTools.combine.utils``.
+    """
+    ROOT = import_ROOT()
+
+    # read the workspace
+    workspace = os.path.expandvars(os.path.expanduser(workspace))
+    f = ROOT.TFile.Open(workspace)
+    w = f.Get(workspace_name)
+
+    # get all model parameters
+    config = w.genobj(config_name)
+    all_params = config.GetPdf().getParameters(config.GetObservables())
+
+    # iteration helper since ROO parameter lists yield no iterator through bindings
+    def iterate(iterable):
+        it = iterable.createIterator()
+        while True:
+            obj = it.Next()
+            if obj:
+                yield obj
+            else:
+                break
+
+    # loop through parameters and select
+    params = OrderedDict()
+    for param in iterate(all_params):
+        if not isinstance(param, ROOT.RooRealVar) or param.isConstant():
+            continue
+
+        # get the type of the pdf
+        pdf = w.pdf("{}_Pdf".format(param.GetName()))
+        if pdf is None or isinstance(pdf, ROOT.RooUniform):
+            pdf_type = "Unconstrained"
+        elif isinstance(pdf, ROOT.RooGaussian):
+            pdf_type = "Gaussian"
+        elif isinstance(pdf, ROOT.RooPoisson):
+            pdf_type = "Poisson"
+        elif isinstance(pdf, ROOT.RooBifurGauss):
+            pdf_type = "AsymmetricGaussian"
+        else:
+            pdf_type = "Unrecognised"
+
+        # get groups
+        start = "group_"
+        groups = [attr.replace(start, "") for attr in param.attributes() if attr.startswith(start)]
+
+        # prefit values
+        nom = param.getVal()
+        if pdf_type == "Unconstrained":
+            prefit = [nom, nom, nom]
+        else:
+            prefit = [nom + param.getErrorLo(), nom, nom + param.getErrorHi()]
+
+        # store it
+        params[param.GetName()] = {
+            "name": param.GetName(),
+            "type": pdf_type,
+            "groups": groups,
+            "prefit": prefit,
+        }
+
+    # cleanup
+    f.Close()
+
+    return params
