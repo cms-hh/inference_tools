@@ -36,4 +36,4 @@ deploy_docs:
     - cd site
     - tar -czf site.tgz *
     - sshpass -v -p ${KRB_PASS} scp -o "StrictHostKeyChecking=no" -r site.tgz ${KRB_USER}@lxplus.cern.ch:/eos/user/m/mrieger/www/hh/tools/inference
-    - sshpass -v -p ${KRB_PASS} ssh -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch "cd /eos/user/m/mrieger/www/hh/tools/inference; rm -rf !(site.tgz); tar -xzf site.tgz; rm site.tgz"
+    - sshpass -v -p ${KRB_PASS} ssh -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch "cd /eos/user/m/mrieger/www/hh/tools/inference; rm -rf !('site.tgz'); tar -xzf site.tgz; rm site.tgz"
