@@ -147,6 +147,7 @@ action() {
         dhi_pip_install luigi==2.8.2 || return "$?"
         LAW_INSTALL_EXECUTABLE="$DHI_PYTHON" dhi_pip_install --no-deps git+https://github.com/riga/law.git || return "$?"
         dhi_pip_install --no-deps git+https://github.com/riga/scinum.git || return "$?"
+        dhi_pip_install --no-deps git+https://github.com/riga/plotlib.git || return "$?"
 
         # virtual env for black which requires python 3
         echo -e "\nsetting up black in virtual environment at $DHI_BLACK_PATH"

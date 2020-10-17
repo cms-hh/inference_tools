@@ -4,7 +4,8 @@
 Helpers and utilities.
 """
 
-
+import re
+import fnmatch
 import itertools
 
 
@@ -68,6 +69,27 @@ def rgb(r, g, b):
     when using the atom package "pigments"!
     """
     return tuple(v if v <= 1.0 else float(v) / 255.0 for v in (r, g, b))
+
+
+def multi_match(name, patterns, mode=any, regex=False):
+    """
+    Compares *name* to multiple *patterns* and returns *True* in case of at least one match (*mode*
+    = *any*, the default), or in case all patterns match (*mode* = *all*). Otherwise, *False* is
+    returned. When *regex* is *True*, *re.match* is used instead of *fnmatch.fnmatch*.
+    """
+    if not isinstance(patterns, (list, tuple, set)):
+        patterns = [patterns]
+    if not regex:
+        return mode(fnmatch.fnmatch(name, pattern) for pattern in patterns)
+    else:
+        return mode(re.match(pattern, name) for pattern in patterns)
+
+
+def to_root_latex(s):
+    """
+    Converts latex expressions in a string *s* to ROOT-compatible latex.
+    """
+    return s.replace("$", "").replace("\\", "#")
 
 
 def linspace(start, stop, steps, precision=7):

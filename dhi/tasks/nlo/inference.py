@@ -446,7 +446,7 @@ class PullsAndImpacts(POITask1D, CombineCommandTask, law.LocalWorkflow, HTCondor
         else:
             # nuisance fits
             branch_opts = (
-                " --algo impact "
+                " --algo impact"
                 " -P {}"
                 " --floatOtherPOIs 1"
                 " --saveInactivePOI 1"

@@ -51,11 +51,19 @@ Cli parameters:
 - `--z-log`: logarithmic z-axis
 
 
----
-**_NOTES_**
+## Pulls and impacts
 
-For more options use the autocompletion of law:
+![Pulls and impacts](images/pulls_impacts__kl.png)
 
+Recreate this plot with:
 ```shell
-law run PlotLikelihoodScan2D <tab><tab>
+law run PlotPullsAndImpacts --version dev
 ```
+
+Cli parameters:
+
+- `--mc-stats`: Calculate pulls and impacts for MC stats nuisances as well. Default is False.
+- `--parameters-per-page`: Number of parameters per page. When < 1, a single page is created. Default is -1.
+- `--skip-parameters`: List of parameters of files containing parameters line-by-line that should be skipped. No default.
+- `--order-parameters`: List of parameters of files containing parameters line-by-line whose order is used for sorting parameters. No default.
+- `--order-by-impact`: Order parameters by maximum impact and neglect `--order-parameters`. Default is False.

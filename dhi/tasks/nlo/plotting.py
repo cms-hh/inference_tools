@@ -8,9 +8,11 @@ import law
 import luigi
 
 from dhi.tasks.base import AnalysisTask
-from dhi.tasks.nlo.base import POIScanTask1D, POIScanTask2D
-from dhi.tasks.nlo.inference import MergeUpperLimits, MergeLikelihoodScan1D, MergeLikelihoodScan2D
-from dhi.config import br_hh, k_factor
+from dhi.tasks.nlo.base import POITask1D, POIScanTask1D, POIScanTask2D
+from dhi.tasks.nlo.inference import (
+    MergeUpperLimits, MergeLikelihoodScan1D, MergeLikelihoodScan2D, MergePullsAndImpacts,
+)
+from dhi.config import br_hh, k_factor, nuisance_labels
 from dhi.util import get_ggf_xsec, get_vbf_xsec
 
 
@@ -112,6 +114,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
         return self.local_target_dc("limits__{}{}.pdf".format(self.get_output_postfix(), postfix))
 
     @view_output_plots
+    @law.decorator.safe_output
     def run(self):
         # prepare the output
         output = self.output()
@@ -188,6 +191,7 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
         return self.local_target_dc("nll1d__{}{}.pdf".format(self.get_output_postfix(), postfix))
 
     @view_output_plots
+    @law.decorator.safe_output
     def run(self):
         import numpy as np
         import numpy.lib.recfunctions as rec
@@ -238,6 +242,7 @@ class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
         return self.local_target_dc("nll2d__{}{}.pdf".format(self.get_output_postfix(), postfix))
 
     @view_output_plots
+    @law.decorator.safe_output
     def run(self):
         import numpy as np
         import numpy.lib.recfunctions as rec
@@ -268,4 +273,65 @@ class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
             poi2_min=poi2_min,
             campaign=self.campaign,
             z_log=self.z_log,
+        )
+
+
+class PlotPullsAndImpacts(PlotTask, POITask1D):
+
+    mc_stats = MergePullsAndImpacts.mc_stats
+    parameters_per_page = luigi.IntParameter(
+        default=-1,
+        description="number of parameters per page; creates a single page when < 1; default: -1",
+    )
+    skip_parameters = law.CSVParameter(
+        default=(),
+        description="list of parameters or files containing parameters line-by-line that should be "
+        "skipped; supports patterns; default: empty",
+    )
+    order_parameters = law.CSVParameter(
+        default=(),
+        description="list of parameters or files containing parameters line-by-line for ordering; "
+        "supports patterns; default: empty",
+    )
+    order_by_impact = luigi.BoolParameter(
+        default=False,
+        description="when True, --parameter-order is neglected and parameters are ordered by "
+        "absolute maximum impact; default: False",
+    )
+
+    def requires(self):
+        return MergePullsAndImpacts.req(self)
+
+    def output(self):
+        # build the output file postfix
+        parts = [self.poi]
+        if self.mc_stats:
+            parts.append("mcstats")
+        postfix = "__".join(parts)
+
+        return self.local_target_dc("pulls_impacts__{}.pdf".format(postfix))
+
+    @view_output_plots
+    @law.decorator.safe_output
+    def run(self):
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
+
+        # load input data
+        data = self.input().load(formatter="json")
+
+        # get the proper plot function and call it
+        # (only the mpl version exists right now)
+        from dhi.plots.pulls_impacts_root import plot_pulls_impacts
+
+        plot_pulls_impacts(
+            path=output.path,
+            data=data,
+            parameters_per_page=self.parameters_per_page,
+            skip_parameters=self.skip_parameters,
+            order_parameters=self.order_parameters,
+            order_by_impact=self.order_by_impact,
+            labels=nuisance_labels,
+            campaign=self.campaign,
         )

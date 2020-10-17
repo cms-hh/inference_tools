@@ -76,3 +76,6 @@ poi_data = DotDict(
 # add "$" embedded labels
 for poi, data in poi_data.items():
     data["label_math"] = "${}$".format(data.label)
+
+# nuisance parameters labels
+nuisance_labels = {}
