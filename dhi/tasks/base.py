@@ -306,7 +306,7 @@ class CommandTask(AnalysisTask):
 
     def run_command(self, cmd, optional=False, **kwargs):
         # proper command encoding
-        cmd = law.util.quote_cmd(cmd) if isinstance(cmd, (list, tuple)) else cmd
+        cmd = (law.util.quote_cmd(cmd) if isinstance(cmd, (list, tuple)) else cmd).strip()
 
         # when no cwd was set and run_command_in_tmp is True, create a tmp dir
         if "cwd" not in kwargs and self.run_command_in_tmp:

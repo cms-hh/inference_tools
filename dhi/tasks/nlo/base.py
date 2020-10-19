@@ -60,23 +60,29 @@ class DatacardBaseTask(AnalysisTask):
     def modify_param_values(cls, params):
         """
         Interpret globbing statements in datacards, expand variables, remove duplicates and sort.
-        All of the transformations respect bin statements, e.g. "mybin=datacard.txt".
+        When a pattern did not resolve to valid paths it is reconsidered relative to the
+        datacards_run2 directory. Bin statements, e.g. "mybin=datacard.txt" are accepted.
         """
-        _cards = params.get("datacards")
-        if isinstance(_cards, (tuple, list)):
-            cards = []
-            for pattern in _cards:
+        cards = params.get("datacards")
+        if isinstance(cards, (tuple, list)):
+            _cards = []
+            dc_path = os.path.expandvars("$DHI_BASE/datacards_run2")
+            for pattern in cards:
                 pattern, bin_name = cls.split_datacard_path(pattern)
-                for _card in glob.glob(pattern):
-                    _card = os.path.abspath(os.path.expandvars(os.path.expanduser(_card)))
-                    cards.append("{}={}".format(bin_name, _card) if bin_name else _card)
-            cards = sorted(law.util.make_unique(cards))
+                pattern = os.path.expandvars(os.path.expanduser(pattern))
+                paths = list(glob.glob(pattern))
+                if not paths:
+                    # try relative to datacards_run2
+                    paths = list(glob.glob(os.path.join(dc_path, pattern)))
+                for path in paths:
+                    _cards.append("{}={}".format(bin_name, path) if bin_name else path)
+            _cards = sorted(law.util.make_unique(_cards))
 
             # complain when cards are empty
-            if not cards:
+            if not _cards:
                 raise ValueError("datacards parameter did not match any existing datacard files")
 
-            params["datacards"] = tuple(cards)
+            params["datacards"] = tuple(_cards)
         return params
 
     @classmethod
