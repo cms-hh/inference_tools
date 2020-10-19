@@ -1,5 +1,6 @@
 This section documents the usage of the tasks `PullsAndImpacts`, `MergePullsAndImpacts`, and `PlotPullsAndImpacts`.
 
+
 ## Task structure
 
 The default command to run the entire task chain is
@@ -45,6 +46,7 @@ CombineDatacards
 → MergePullsAndImpacts
 → PlotPullsAndImpacts
 ```
+
 
 ## `PullsAndImpacts`
 
@@ -122,7 +124,8 @@ When configured to run on HTCondor, a few additional **parameters** are enabled.
 
 ## `MergePullsAndImpacts`
 
-The `MergePullsAndImpacts` collects the results of all branches of `PullsAndImpacts`, i.e., it requires the full workflow as can be seen in the first status output above (`PullsAndImpacts(branch=-1, ...)`). It produces a single json file containing all pre- and postfit data in a structure that is similar to the one created by CombineHarvester's [`combineTool.py -M Impacts`](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/nonstandard/#nuisance-parameter-impacts) command.
+The `MergePullsAndImpacts` collects the results of all branches of `PullsAndImpacts`, i.e., it requires the full workflow as can be seen in the first status output above (`PullsAndImpacts(branch=-1, ...)`).
+It produces a single json file containing all pre- and postfit data in a structure that is similar to the one created by CombineHarvester's [`combineTool.py -M Impacts`](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/nonstandard/#nuisance-parameter-impacts) command.
 
 **Parameters**
 
@@ -132,7 +135,7 @@ Same as [`PullsAndImpacts`](#pullsandimpacts).
 ## `PlotPullsAndImpacts`
 
 The `PlotPullsAndImpacts` task reads the json output of the `MergePullsAndImpacts` task and creates a plot where pulls and impacts are drawn into the same pad with two x-axes.
-The underlying plotting function is located at [`dhi.plots.pulls_impacts.root`](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/dhi/plots/pulls_impacts_root.py) and is currently only implemented as a ROOT plot.
+The underlying plotting function is located at [`dhi.plots.pulls_impacts_root`](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/dhi/plots/pulls_impacts_root.py) and is currently only implemented as a ROOT plot.
 In general, it is also compatible the the output structure of the [`combineTool.py -M Impacts`](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/nonstandard/#nuisance-parameter-impacts) command.
 
 ![Pulls and impacts](../images/pulls_impacts__kl.png)
@@ -141,8 +144,7 @@ In general, it is also compatible the the output structure of the [`combineTool.
 
 Same as [`PullsAndImpacts`](#pullsandimpacts) plus:
 
-
 - `--parameters-per-page INT`: The number of parameters per plot page. Defaults to `-1`, meaning that all parameters are shown in the same plot.
 - `--skip-parameters STRINGS`: List of parameters or files containing parameters line-by-line that should be skipped. No default.
 - `--order-parameters STRINGS`: List of parameters or files containing parameters line-by-line for ordering.
-- `--order-by-impact BOOL`:When True, `--parameter-order` is neglected and parameters are ordered by absolute maximum impact. Defaults to `False`.
+- `--order-by-impact BOOL`: When True, `--parameter-order` is neglected and parameters are ordered by absolute maximum impact. Defaults to `False`.

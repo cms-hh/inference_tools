@@ -5,7 +5,7 @@ site_author: Peter Fackeldey, Marcel Rieger
 
 docs_dir: content
 site_dir: site
-edit_uri: blob/master/content
+edit_uri: blob/master/docs/content
 
 repo_name: hh/tools/inference
 repo_url: https://gitlab.cern.ch/hh/tools/inference
