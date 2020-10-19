@@ -20,11 +20,12 @@ def plot_pulls_impacts(
     data,
     poi=None,
     parameters_per_page=-1,
+    page=-1,
     skip_parameters=None,
     order_parameters=None,
     order_by_impact=False,
     pull_range=2.,
-    impact_scale=10.,
+    impact_range=20.,
     best_fit_value=None,
     labels=None,
     campaign=None,
@@ -38,16 +39,17 @@ def plot_pulls_impacts(
     *data* contains only one POI, this value is used.
 
     *parameters_per_page* configures how many parameters are shown per plot page. When negative, all
-    parameters are shown in the same plot. *skip_parameters* can be a list of name patterns or files
-    containing name patterns line-by-line to exclude parameters from plotting. *order_parameters*
-    accepts the same type of values, except they are used to order parameters. When
-    *order_by_impact* is *True*, *order_parameters* is neglected and the order is derived using the
-    largest absolute impact.
+    parameters are shown in the same plot. This feature is only supported for pdfs. When *page* is
+    non-negative, only this page is created. *skip_parameters* can be a list of name patterns or
+    files containing name patterns line-by-line to exclude parameters from plotting.
+    *order_parameters* accepts the same type of values, except they are used to order parameters.
+    When *order_by_impact* is *True*, *order_parameters* is neglected and the order is derived using
+    the largest absolute impact.
 
-    The symmetric range of pulls on the bottom x-axis is defined by *pull_range*. The range of the
-    top x-axis associated to impact values is derived from the same range, multiplied by
-    *impact_scale*. For the purpose of visual clearness, the tick marks on both axes are identical,
-    so one needs to make sure that *pull_range* and *impact_scale* match.
+    The symmetric range of pulls on the bottom x-axis is defined by *pull_range* whereas the range
+    of the top x-axis associated to impact values is set by *impact_range*. For the purpose of
+    visual clearness, the tick marks on both axes are identical, so one needs to make sure that
+    *pull_range* and *impact_range* match.
 
     *best_fit_value* can be a 3-tuple (central value, unsigned +error, unsigned -error) that is
     shown as a text at the top of the plot. *labels* should be a dictionary or a json file
@@ -124,10 +126,15 @@ def plot_pulls_impacts(
     entry_height = 30  # pixels
     head_space = 130  # pixels
     x_min, x_max = -pull_range, pull_range
+    x_ratio = float(impact_range) / pull_range
 
     # plot per page
-    for page in range(n_pages):
-        _params = params[page * parameters_per_page:(page + 1) * parameters_per_page]
+    for p in range(n_pages):
+        # when set, only plot the selected page
+        if page >= 0 and page != p:
+            continue
+
+        _params = params[p * parameters_per_page:(p + 1) * parameters_per_page]
         n = len(_params)
 
         # get the canvas height
@@ -150,24 +157,21 @@ def plot_pulls_impacts(
         pad.cd()
         draw_objs = []
 
-        # canvas helpers
-        x2c = lambda x: r.pixel_to_coord(canvas, x=x)
-        y2c = lambda y: r.pixel_to_coord(canvas, y=y)
-
         # dummy histogram to control axes
         x_title = "Pull (#theta_{post} - #theta_{pre}) / #Delta#theta"
         h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
         r.setup_hist(h_dummy, props={"Maximum": y_max}, pad=pad)
         x_axis = h_dummy.GetXaxis()
-        r.setup_x_axis(x_axis, pad, props={"TitleOffset": 1.3, "LabelOffset": y2c(4)})
+        r.setup_x_axis(x_axis, pad, props={"TitleOffset": 1.3,
+            "LabelOffset": r.pixel_to_coord(canvas, y=4)})
         draw_objs.append((h_dummy, "HIST"))
 
         # draw a second axis at the top denoting impact values
-        x2_axis = ROOT.TGaxis(x_min, y_max, x_max, y_max, x_min * impact_scale, x_max * impact_scale,
+        x2_axis = ROOT.TGaxis(x_min, y_max, x_max, y_max, x_min * x_ratio, x_max * x_ratio,
             x_axis.GetNdivisions(), "S")
         x2_title = "Impact #Delta" + to_root_latex(poi_data[poi].label)
         r.setup_x_axis(x2_axis, pad, props={"Title": x2_title, "TickLength": 0.,
-            "LabelOffset": y2c(-24), "TitleOffset": -1.2})
+            "LabelOffset": r.pixel_to_coord(canvas, y=-24), "TitleOffset": -1.2})
         draw_objs.append(x2_axis)
 
         # y axis labels and ticks
@@ -175,7 +179,7 @@ def plot_pulls_impacts(
         h_dummy.GetYaxis().SetBinLabel(1, "")
         for i, param in enumerate(_params):
             # parameter labels
-            label = labels.get(param.name, param.name)
+            label = to_root_latex(labels.get(param.name, param.name))
             label = ROOT.TLatex(x_min - 0.05, n - i - 0.5, label)
             r.setup_latex(label, props={"NDC": False, "TextAlign": 32, "TextSize": 20})
             draw_objs.append(label)
@@ -194,13 +198,13 @@ def plot_pulls_impacts(
         for i, param in enumerate(_params):
             idx = n - i
             # use x scale to transform values given in x axis 2 to x axis 1
-            u, d = param.impact[1] / impact_scale, param.impact[0] / impact_scale
-            # place points always on zero, set errors to actial impact values
+            u, d = param.impact[1] / x_ratio, param.impact[0] / x_ratio
+            # place points always on zero, set errors to act as impact values
             g_impact_hi.SetPoint(idx, 0, idx - 0.5)
             g_impact_lo.SetPoint(idx, 0, idx - 0.5)
             g_impact_hi.SetPointError(idx, 0 if u > 0 else -u, u if u > 0 else 0, 0.5, 0.5)
             g_impact_lo.SetPointError(idx, -d if d < 0 else 0, 0 if d < 0 else d, 0.5, 0.5)
-            # fill overlap graph with up values in case of equal signs and down impact is larger
+            # fill overlap graph with up values in case of equal signs and larger down impact
             if u * d > 0 and abs(d) > abs(u):
                 g_impact_overlap.SetPoint(idx, 0, idx - 0.5)
                 g_impact_overlap.SetPointError(idx, 0 if u > 0 else -u, u if u > 0 else 0, 0.5, 0.5)
@@ -233,10 +237,7 @@ def plot_pulls_impacts(
         draw_objs.append((g_pull, "PEZ"))
 
         # legend
-        l_width, l_height = r.x2c(canvas, 170), r.y2c(canvas, 104)
-        l_x2 = r.x2c(canvas, canvas_width - 12) - pad.GetRightMargin()
-        l_y2 = r.y2c(canvas, canvas_height - 12) - pad.GetTopMargin()
-        legend = ROOT.TLegend(l_x2 - l_width, l_y2 - l_height, l_x2, l_y2)
+        legend = r.routines.create_legend(pad=pad, width=170, height=104)
         r.setup_legend(legend)
         legend.AddEntry(g_pull, "Pull")
         legend.AddEntry(g_impact_hi, "Impact +1#sigma")
@@ -247,22 +248,18 @@ def plot_pulls_impacts(
         if best_fit_value:
             fit_label = "{} = {:.2f}^{{+{:.2f}}}_{{-{:.2f}}}".format(
                 to_root_latex(poi_data[poi].label), *best_fit_value)
-            fit_label = r.routines.create_top_left_label(fit_label, props={"TextAlign": 21},
-                x=0.5 * (pad.GetLeftMargin() + 1 - pad.GetRightMargin()),
-                y=y2c(canvas_height - 110))
-            r.setup_latex(fit_label, props={"TextAlign": 21})
+            fit_label = r.routines.create_top_left_label(fit_label, pad=pad, y_offset=80,
+                x=0.5 * (r.get_x(0, pad, "right") + r.get_x(0, pad)), props={"TextAlign": 21})
             draw_objs.append(fit_label)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(postfix="Preliminary",
-            x=x2c(left_margin + 12), y=y2c(canvas_height - 110))
+        cms_labels = r.routines.create_cms_labels(pad=pad, y_offset=50)
         draw_objs.extend(cms_labels)
 
         # campaign label
         if campaign:
             campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
-            campaign_label = r.routines.create_top_left_label(campaign_label,
-                x=x2c(left_margin + 12), y=y2c(canvas_height - 140))
+            campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, y_offset=80)
             draw_objs.append(campaign_label)
 
         # draw objects
@@ -275,7 +272,7 @@ def plot_pulls_impacts(
         # update and save
         # when there is more than one page, use roots "logic" to write multiple pages
         r.update_canvas(canvas)
-        if n_pages > 1 and path.endswith(".pdf"):
+        if page < 0 and n_pages > 1 and path.endswith(".pdf"):
             flag = {0: "(", n_pages - 1: ")"}.get(page, "")
             canvas.Print(path + flag)
         else:
@@ -284,7 +281,7 @@ def plot_pulls_impacts(
 
 class Parameter(object):
     """
-    Minimal helper class that wraps a "param" entry in the json input data for a given poi and
+    Lightweight helper class that wraps a "param" entry in the json input data for a given poi and
     provides easy access to quantities.
     """
 
