@@ -140,7 +140,7 @@ The `PlotPullsAndImpacts` task reads the json output of the `MergePullsAndImpact
 The underlying plotting function is located at [`dhi.plots.pulls_impacts_root`](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/dhi/plots/pulls_impacts_root.py) and is currently only implemented as a ROOT plot.
 In general, it is also compatible the the output structure of the [`combineTool.py -M Impacts`](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/nonstandard/#nuisance-parameter-impacts) command.
 
-![Pulls and impacts](../images/pulls_impacts__kl.png)
+![Pulls and impacts](../images/pulls_impacts__kl__root.png)
 
 **Parameters**
 
