@@ -57,10 +57,15 @@ class PlotTask(AnalysisTask):
         significant=False,
         description="the plot flavor; choices: root,mpl; default: root",
     )
+    file_type = luigi.ChoiceParameter(
+        default="pdf",
+        choices=["pdf", "png"],
+        description="the type of the output plot file; choices: pdf,png; default: pdf",
+    )
     view_cmd = luigi.Parameter(
         default=law.NO_STR,
         significant=False,
-        description="a command to execute after the task has run to visualize plots in the "
+        description="a command to execute after the task has run to visualize plots right in the "
         "terminal; default: empty",
     )
     campaign = luigi.ChoiceParameter(
@@ -111,7 +116,8 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
             parts.append("log")
         postfix = ("__" + "_".join(parts)) if parts else ""
 
-        return self.local_target_dc("limits__{}{}.pdf".format(self.get_output_postfix(), postfix))
+        return self.local_target_dc("limits__{}{}.{}".format(
+            self.get_output_postfix(), postfix, self.file_type))
 
     @view_output_plots
     @law.decorator.safe_output
@@ -190,7 +196,8 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
             parts.append("log")
         postfix = ("__" + "_".join(parts)) if parts else ""
 
-        return self.local_target_dc("nll1d__{}{}.pdf".format(self.get_output_postfix(), postfix))
+        return self.local_target_dc("nll1d__{}{}.{}".format(
+            self.get_output_postfix(), postfix, self.file_type))
 
     @view_output_plots
     @law.decorator.safe_output
@@ -241,7 +248,8 @@ class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
             parts.append("log")
         postfix = ("__" + "_".join(parts)) if parts else ""
 
-        return self.local_target_dc("nll2d__{}{}.pdf".format(self.get_output_postfix(), postfix))
+        return self.local_target_dc("nll2d__{}{}.{}".format(
+            self.get_output_postfix(), postfix, self.file_type))
 
     @view_output_plots
     @law.decorator.safe_output
@@ -283,7 +291,8 @@ class PlotPullsAndImpacts(PlotTask, POITask1D):
     mc_stats = MergePullsAndImpacts.mc_stats
     parameters_per_page = luigi.IntParameter(
         default=-1,
-        description="number of parameters per page; creates a single page when < 1; default: -1",
+        description="number of parameters per page; creates a single page when < 1; only applied "
+        "for file type 'pdf'; default: -1",
     )
     skip_parameters = law.CSVParameter(
         default=(),
@@ -300,6 +309,15 @@ class PlotPullsAndImpacts(PlotTask, POITask1D):
         description="when True, --parameter-order is neglected and parameters are ordered by "
         "absolute maximum impact; default: False",
     )
+
+    def __init__(self, *args, **kwargs):
+        super(PlotPullsAndImpacts, self).__init__(*args, **kwargs)
+
+        # complain when parameters_per_page is set for non pdf file types
+        if self.parameters_per_page > 0 and self.file_type != "pdf":
+            self.logger.warning("parameters_per_page is not supported for file_type {}".format(
+                self.file_type))
+            self.parameters_per_page = -1
 
     def requires(self):
         return MergePullsAndImpacts.req(self)
