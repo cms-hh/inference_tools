@@ -78,7 +78,7 @@ Use `root` for the ROOT version,
 law run PlotUpperLimits --version dev --xsec --br bbwwllvv --y-log --plot-flavor root
 ```
 
-![Upper limits with ROOT](images/limits__kl_n61_-30.0_30.0__xsec_brbbwwllvv_log__root.png)
+![Upper limits with ROOT](../images/limits__kl_n61_-30.0_30.0__xsec_brbbwwllvv_log__root.png)
 
 and `mpl`for the matplotlib version,
 
@@ -87,7 +87,7 @@ and `mpl`for the matplotlib version,
 law run PlotUpperLimits --version dev --xsec --br bbwwllvv --y-log --plot-flavor mpl
 ```
 
-![Upper limits with matplotlib](images/limits__kl_n61_-30.0_30.0__xsec_brbbwwllvv_log__mpl.png)
+![Upper limits with matplotlib](../images/limits__kl_n61_-30.0_30.0__xsec_brbbwwllvv_log__mpl.png)
 
 **Parameters**:
 

@@ -76,7 +76,7 @@ Currently, there is only a matplotlib version of this plot.
 law run PlotLikelihoodScan2D --version dev
 ```
 
-![2D Likelihood Scan](images/nll2d__kl_n61_-30.0_30.0__kt_n41_-10.0_10.0__log__mpl.png)
+![2D Likelihood Scan](../images/nll2d__kl_n61_-30.0_30.0__kt_n41_-10.0_10.0__log__mpl.png)
 
 **Parameters**:
 

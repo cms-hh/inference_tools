@@ -74,7 +74,7 @@ Currently, there is only a matplotlib version of this plot.
 law run PlotLikelihoodScan1D --version dev
 ```
 
-![1D Likelihood Scan](images/nll1d__kl_n61_-30.0_30.0__mpl.png)
+![1D Likelihood Scan](../images/nll1d__kl_n61_-30.0_30.0__mpl.png)
 
 **Parameters**:
 
