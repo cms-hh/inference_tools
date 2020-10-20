@@ -111,6 +111,7 @@ action() {
 
     # source externals
     for pkg in \
+            libjpeg-turbo/1.3.1-omkpbe2 \
             py2-pip/9.0.3 \
             py2-numpy/1.16.2-pafccj \
             py2-scipy/1.2.1-pafccj \
