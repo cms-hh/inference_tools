@@ -60,27 +60,29 @@ module 'dhi.tasks.base', 2 task(s):
     - BundleRepo
     - BundleSoftware
 
-module 'dhi.tasks.nlo.inference', 9 task(s):
+module 'dhi.tasks.nlo.inference', 10 task(s):
     - UpperLimits
     - LikelihoodScan1D
     - LikelihoodScan2D
+    - PullsAndImpacts
     - CombineDatacards
     - CreateWorkspace
-    - ImpactsPulls
+    - MergePullsAndImpacts
     - MergeUpperLimits
     - MergeLikelihoodScan1D
     - MergeLikelihoodScan2D
 
-module 'dhi.tasks.nlo.plotting', 3 task(s):
+module 'dhi.tasks.nlo.plotting', 4 task(s):
     - PlotUpperLimits
     - PlotLikelihoodScan1D
     - PlotLikelihoodScan2D
+    - PlotPullsAndImpacts
 
 module 'dhi.tasks.misc', 2 task(s):
     - PostFitShapes
     - CompareNuisances
 
-written 17 task(s) to index file '/your/path/inference/.law/index'
+written 19 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type
@@ -146,5 +148,5 @@ and to automatically fix the formatting, add `fix` to the command.
 
 ## Contributors
 
-* Peter Fackeldey: peter.fackeldey@cern.ch (email)
-* Marcel Rieger: marcel.rieger@cern.ch (email)
+- Peter Fackeldey: peter.fackeldey@cern.ch (email)
+- Marcel Rieger: marcel.rieger@cern.ch (email), marcel_r88 (skype)
