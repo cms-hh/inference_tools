@@ -157,8 +157,10 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
                 is_xsec = False
 
         # get the proper plot function and call it
-        # (only the mpl version exists right now)
-        from dhi.plots.limits_mpl import plot_limit_scan
+        if self.plot_flavor == "root":
+            from dhi.plots.limits_root import plot_limit_scan
+        else:
+            from dhi.plots.limits_mpl import plot_limit_scan
 
         plot_limit_scan(
             path=output.path,

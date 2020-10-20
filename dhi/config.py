@@ -79,3 +79,14 @@ for poi, data in poi_data.items():
 
 # nuisance parameters labels
 nuisance_labels = {}
+
+# colors
+colors = DotDict({
+    "root": DotDict({
+        "red": 628,
+        "green": 418,
+        "yellow": 798,
+        "red_cream": 46,
+        "blue_cream": 38,
+    })
+})

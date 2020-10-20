@@ -11,7 +11,7 @@ import array
 
 import six
 
-from dhi.config import poi_data, campaign_labels
+from dhi.config import poi_data, campaign_labels, colors
 from dhi.util import import_ROOT, multi_match, to_root_latex, linspace
 
 
@@ -160,7 +160,7 @@ def plot_pulls_impacts(
         # dummy histogram to control axes
         x_title = "Pull (#theta_{post} - #theta_{pre}) / #Delta#theta"
         h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
-        r.setup_hist(h_dummy, props={"Maximum": y_max}, pad=pad)
+        r.setup_hist(h_dummy, props={"LineWidth": 0, "Maximum": y_max}, pad=pad)
         x_axis = h_dummy.GetXaxis()
         r.setup_x_axis(x_axis, pad, props={"TitleOffset": 1.3,
             "LabelOffset": r.pixel_to_coord(canvas, y=4)})
@@ -208,9 +208,9 @@ def plot_pulls_impacts(
             if u * d > 0 and abs(d) > abs(u):
                 g_impact_overlap.SetPoint(idx, 0, idx - 0.5)
                 g_impact_overlap.SetPointError(idx, 0 if u > 0 else -u, u if u > 0 else 0, 0.5, 0.5)
-        r.setup_graph(g_impact_hi, color=46, color_flags="lmf")
-        r.setup_graph(g_impact_lo, color=38, color_flags="lmf")
-        r.setup_graph(g_impact_overlap, color=46, color_flags="lmf")
+        r.setup_graph(g_impact_hi, color=colors.root.read_cream, color_flags="lmf")
+        r.setup_graph(g_impact_lo, color=colors.root.blue_cream, color_flags="lmf")
+        r.setup_graph(g_impact_overlap, color=colors.root.read_cream, color_flags="lmf")
         draw_objs.append((g_impact_hi, "2"))
         draw_objs.append((g_impact_lo, "2"))
         draw_objs.append((g_impact_overlap, "2"))
@@ -237,7 +237,7 @@ def plot_pulls_impacts(
         draw_objs.append((g_pull, "PEZ"))
 
         # legend
-        legend = r.routines.create_legend(pad=pad, width=170, height=104)
+        legend = r.routines.create_legend(pad=pad, width=170, height=3 * 35)
         r.setup_legend(legend)
         legend.AddEntry(g_pull, "Pull")
         legend.AddEntry(g_impact_hi, "Impact +1#sigma")
@@ -263,11 +263,7 @@ def plot_pulls_impacts(
             draw_objs.append(campaign_label)
 
         # draw objects
-        for obj in draw_objs:
-            if isinstance(obj, tuple) and len(obj) == 2:
-                obj[0].Draw(obj[1])
-            else:
-                obj.Draw()
+        r.routines.draw_objs(draw_objs)
 
         # update and save
         # when there is more than one page, use roots "logic" to write multiple pages

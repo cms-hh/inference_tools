@@ -89,7 +89,6 @@ nav:
     - 1D Likelihood Scans: tasks/1dnll.md
     - 2D Likelihood Scans: tasks/2dnll.md
     - Pulls and Impacts: tasks/pullsandimpacts.md
-  - Plotting: plotting.md
   - Datacard Validation: datacardvalidation.md
   - Pre- and Postfit Shapes: postfit.md
   - Interactive Datacard Viewer: http://cms-hh.web.cern.ch/cms-hh/tools/inference/view_datacard.html

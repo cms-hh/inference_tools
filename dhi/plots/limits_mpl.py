@@ -50,16 +50,16 @@ def plot_limit_scan(
     n_points = len(poi_values)
     assert "limit" in data
     assert all(len(d) == n_points for d in data.values())
-    if injected_values:
+    if injected_values is not None:
         assert len(injected_values) == n_points
-    if theory_values:
+    if theory_values is not None:
         assert len(theory_values) == n_points
 
     # set default ranges
     if x_min is None:
-        x_min = poi_values.min()
+        x_min = min(poi_values)
     if x_max is None:
-        x_max = poi_values.max()
+        x_max = max(poi_values)
 
     # start plotting
     fig, ax = plt.subplots()
@@ -100,7 +100,7 @@ def plot_limit_scan(
         legend_handles.insert(1, p)
 
     # injected limits
-    if injected_values:
+    if injected_values is not None:
         p = ax.plot(
             poi_values,
             injected_values,
@@ -111,7 +111,7 @@ def plot_limit_scan(
         legend_handles.append(p[0])
 
     # theory prediction
-    if theory_values:
+    if theory_values is not None:
         p = ax.plot(
             poi_values,
             theory_values,

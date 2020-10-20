@@ -5,14 +5,14 @@ This section documents the usage of the tasks `PullsAndImpacts`, `MergePullsAndI
 
 The default command to run the entire task chain is
 
-```shell
+```shell hl_lines="1"
 law run PlotPullsAndImpacts --version dev
 ```
 
 and, as usual, you can check the task structure and current output status beforehand by appending `--print-status TASK_DEPTH` to the command. Let's choose -1 to see the structure down to the first task (`CombineDatacards`):
 
-```shell
-> law run PlotPullsAndImpacts --version dev --print-status -4
+```shell hl_lines="1"
+law run PlotPullsAndImpacts --version dev --print-status -4
 
 print task status with max_depth -1 and target_depth 0
 
@@ -58,8 +58,9 @@ If you were to run the `PullsAndImpacts` task directly, the actual branch to run
 Passing -1 would trigger the entire workflow to be run (which is done locally by default) whereas positive numbers select a particular branch.
 To get more insight into this mechanism, we can check the detailed output by passing a target depth (here 1) as a second value to `--print-status`. Note that the first line of the output now says `... and target_depth 1`.
 
-```shell hl_lines="2"
-> law run PullsAndImpacts --version dev --print-status 0,1
+```shell hl_lines="1"
+law run PullsAndImpacts --version dev --print-status 0,1
+
 print task status with max_depth 0 and target_depth 1
 
 > check status of PullsAndImpacts(branch=-1, start_branch=0, end_branch=14, branches=, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi=kl, poi_value=1.0, mc_stats=False, workflow=local)
@@ -83,8 +84,9 @@ print task status with max_depth 0 and target_depth 1
 
 To get the pull and impact only for a particular nuisance, say `lumi_13TeV` which corresponds to branch 6, we could just run `law run PullsAndImpacts --version dev --branch 6`.
 
-```shell
-> law run PullsAndImpacts --version dev --branch 6 --print-status 0
+```shell hl_lines="1"
+law run PullsAndImpacts --version dev --branch 6 --print-status 0
+
 print task status with max_depth 0 and target_depth 0
 
 > check status of PullsAndImpacts(branch=6, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi=kl, poi_value=1.0, mc_stats=False)
