@@ -90,3 +90,10 @@ colors = DotDict({
         "blue_cream": 38,
     })
 })
+
+# cumulative, inverse chi2 values in a mapping "n_dof -> n_sigma -> level"
+# for the geometrical determination of errors of nll curves
+chi2_levels = {
+    1: {1: 1.000, 2: 4.000},
+    2: {1: 2.296, 2: 6.180},
+}

@@ -130,6 +130,8 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         "default: False",
     )
 
+    exclude_params_branch = {"max_runtime"}
+
     def htcondor_workflow_requires(self):
         reqs = law.htcondor.HTCondorWorkflow.htcondor_workflow_requires(self)
 

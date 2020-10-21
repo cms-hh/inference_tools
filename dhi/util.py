@@ -89,7 +89,10 @@ def to_root_latex(s):
     """
     Converts latex expressions in a string *s* to ROOT-compatible latex.
     """
-    return s.replace("$", "").replace("\\", "#")
+    s = re.sub(r"(\$|\\,|\\;)", "", s)
+    s = re.sub(r"\~", " ", s)
+    s = re.sub(r"\\", "#", s)
+    return s
 
 
 def linspace(start, stop, steps, precision=7):

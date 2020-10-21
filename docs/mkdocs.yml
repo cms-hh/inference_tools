@@ -86,8 +86,8 @@ nav:
     - Combine Datacards: tasks/combinedatacards.md
     - Text to Workspace: tasks/t2w.md
     - Upper Limits: tasks/limits.md
-    - 1D Likelihood Scans: tasks/1dnll.md
-    - 2D Likelihood Scans: tasks/2dnll.md
+    - 1D Likelihood Scans: tasks/likelihood1d.md
+    - 2D Likelihood Scans: tasks/likelihood2d.md
     - Pulls and Impacts: tasks/pullsandimpacts.md
   - Datacard Validation: datacardvalidation.md
   - Pre- and Postfit Shapes: postfit.md

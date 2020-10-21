@@ -69,6 +69,7 @@ def plot_limit_scan(
     canvas, (pad,) = r.routines.create_canvas(pad_props={"Logy": y_log})
     pad.cd()
     draw_objs = []
+    legend_entries = []
     y_max_value = -1e5
     y_min_value = 1e5
 
@@ -77,7 +78,7 @@ def plot_limit_scan(
     y_unit = "fb" if is_xsec else "#sigma_{SM}"
     y_title = "Upper 95% CLs limit on #sigma / " + y_unit
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
-    r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": 4000})
+    r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
     # helper to read data into graphs
@@ -97,7 +98,6 @@ def plot_limit_scan(
         )
 
     # 2 sigma band
-    legend_entries = []
     if "limit_p2" in data and "limit_m2" in data:
         g_2sigma = create_graph(sigma=2)
         r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,

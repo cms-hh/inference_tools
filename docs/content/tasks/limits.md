@@ -82,7 +82,6 @@ law run PlotUpperLimits --version dev --xsec --br bbwwllvv --y-log --plot-flavor
 
 and `mpl`for the matplotlib version,
 
-
 ```shell hl_lines="1"
 law run PlotUpperLimits --version dev --xsec --br bbwwllvv --y-log --plot-flavor mpl
 ```

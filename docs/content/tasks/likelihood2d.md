@@ -70,13 +70,23 @@ law run LikelihoodScan2D --version dev --workflow htcondor --poll-interval 30sec
 ### Plotting
 
 The `PlotLikelihoodScan2D` task takes the outputs from `LikelihoodScan2D` and `MergeLikelihoodScan2D` and plots the doubled, negative log-likehood curve over the two POI parameter values in question.
-Currently, there is only a matplotlib version of this plot.
+There is a ROOT and a matplotlib version of the plot, which can be controlled with the `--plot-flavor` parameter.
+
+Use `root` for the ROOT version,
 
 ```shell hl_lines="1"
-law run PlotLikelihoodScan2D --version dev
+law run PlotLikelihoodScan2D --version dev --poi1-points 61 --poi2-points 41 --plot-flavor root
 ```
 
-![2D Likelihood Scan](../images/nll2d__kl_n61_-30.0_30.0__kt_n41_-10.0_10.0__log__mpl.png)
+![2D likelihood scan with ROOT](../images/nll2d__kl_n61_-30.0_30.0__kt_n41_-10.0_10.0__log__root.png)
+
+and `mpl`for the matplotlib version,
+
+```shell hl_lines="1"
+law run PlotLikelihoodScan2D --version dev --poi1-points 61 --poi2-points 41 --plot-flavor mpl
+```
+
+![2D likelihood scan with matplotlib](../images/nll2d__kl_n61_-30.0_30.0__kt_n41_-10.0_10.0__log__mpl.png)
 
 **Parameters**:
 

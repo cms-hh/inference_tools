@@ -218,8 +218,10 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
         data = rec.append_fields(data, ["dnll2"], [data["delta_nll"] * 2.0])
 
         # get the proper plot function and call it
-        # (only the mpl version exists right now)
-        from dhi.plots.likelihoods_mpl import plot_likelihood_scan_1d
+        if self.plot_flavor == "root":
+            from dhi.plots.likelihoods_root import plot_likelihood_scan_1d
+        else:
+            from dhi.plots.likelihoods_mpl import plot_likelihood_scan_1d
 
         plot_likelihood_scan_1d(
             path=output.path,
@@ -271,8 +273,10 @@ class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
         data = rec.append_fields(data, ["dnll2"], [data["delta_nll"] * 2.0])
 
         # get the proper plot function and call it
-        # (only the mpl version exists right now)
-        from dhi.plots.likelihoods_mpl import plot_likelihood_scan_2d
+        if self.plot_flavor == "root":
+            from dhi.plots.likelihoods_root import plot_likelihood_scan_2d
+        else:
+            from dhi.plots.likelihoods_mpl import plot_likelihood_scan_2d
 
         plot_likelihood_scan_2d(
             path=output.path,
@@ -329,7 +333,7 @@ class PlotPullsAndImpacts(PlotTask, POITask1D):
             parts.append("mcstats")
         postfix = "__".join(parts)
 
-        return self.local_target_dc("pulls_impacts__{}.pdf".format(postfix))
+        return self.local_target_dc("pulls_impacts__{}.{}".format(postfix, self.file_type))
 
     @view_output_plots
     @law.decorator.safe_output

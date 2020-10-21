@@ -134,7 +134,7 @@ def plot_limit_scan(
     ax.set_xlim(left=x_min, right=x_max)
     ax.tick_params(bottom=True, top=True, left=True, right=True, direction="in")
     ax.legend(legend_handles, [h.get_label() for h in legend_handles], loc="best")
-    ax.set_title(r"\textbf{CMS} \textit{preliminary}", loc="left")
+    ax.set_title(r"\textbf{CMS} \textit{Preliminary}", loc="left")
     ax.set_title(campaign_labels.get(campaign, campaign), loc="right")
     ax.grid()
 

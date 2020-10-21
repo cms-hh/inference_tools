@@ -10,22 +10,22 @@ import scipy.optimize
 import matplotlib
 from scinum import Number
 
-from dhi.config import poi_data, campaign_labels
+from dhi.config import poi_data, campaign_labels, chi2_levels
 from dhi.util import import_plt, DotDict, rgb, minimize_1d, get_neighbor_coordinates
 
 
 plt = import_plt()
 
-# cumulative, inverse chi2 values in a mapping "n_dof -> n_sigma -> level"
-# for the geometrical determination of errors of nll curves
-chi2_levels = {
-    1: {1: 1.000, 2: 4.000},
-    2: {1: 2.296, 2: 6.180},
-}
-
 
 def plot_likelihood_scan_1d(
-    path, poi, data, poi_min=None, campaign="2017", y_log=False, x_min=None, x_max=None
+    path,
+    poi,
+    data,
+    poi_min=None,
+    campaign="2017",
+    y_log=False,
+    x_min=None,
+    x_max=None,
 ):
     """
     Creates a likelihood plot of the 1D scan of a *poi* and saves it at *path*. *data* should be a
@@ -39,14 +39,14 @@ def plot_likelihood_scan_1d(
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#1d-likelihood-scans
     """
     # get valid poi and delta nll values
-    poi_values = data[poi]
-    dnll2_values = data["dnll2"]
+    poi_values = np.array(data[poi])
+    dnll2_values = np.array(data["dnll2"])
 
     # set default range
     if x_min is None:
-        x_min = poi_values.min()
+        x_min = min(poi_values)
     if x_max is None:
-        x_max = poi_values.max()
+        x_max = max(poi_values)
 
     # select valid points
     mask = ~np.isnan(dnll2_values)
@@ -72,7 +72,7 @@ def plot_likelihood_scan_1d(
 
     # lines at chi2_1 intervals
     for n in [chi2_levels[1][1], chi2_levels[1][2]]:
-        if n < dnll2_values.max():
+        if n < max(dnll2_values):
             ax.plot(
                 (x_min, x_max),
                 (n, n),
@@ -115,7 +115,7 @@ def plot_likelihood_scan_1d(
         ax.set_ylim(bottom=0.0)
     ax.set_xlim(x_min, x_max)
     ax.tick_params(bottom=True, top=True, left=True, right=True, direction="in")
-    ax.set_title(r"\textbf{CMS} \textit{preliminary}", loc="left")
+    ax.set_title(r"\textbf{CMS} \textit{Preliminary}", loc="left")
     ax.set_title(campaign_labels.get(campaign, campaign), loc="right")
     ax.grid()
 
@@ -153,19 +153,19 @@ def plot_likelihood_scan_2d(
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#2d-likelihood-scans
     """
     # get poi and delta nll values
-    poi1_values = data[poi1]
-    poi2_values = data[poi2]
-    dnll2_values = data["dnll2"]
+    poi1_values = np.array(data[poi1])
+    poi2_values = np.array(data[poi2])
+    dnll2_values = np.array(data["dnll2"])
 
     # set default ranges
     if x1_min is None:
-        x1_min = poi1_values.min()
+        x1_min = min(poi1_values)
     if x1_max is None:
-        x1_max = poi1_values.max()
+        x1_max = max(poi1_values)
     if x2_min is None:
-        x2_min = poi2_values.min()
+        x2_min = min(poi2_values)
     if x2_max is None:
-        x2_max = poi2_values.max()
+        x2_max = max(poi2_values)
 
     # evaluate the scan, run interpolation and error estimation
     scan = evaluate_likelihood_scan_2d(
@@ -247,7 +247,7 @@ def plot_likelihood_scan_2d(
     ax.set_xlim(x1_min, x1_max)
     ax.set_ylim(x2_min, x2_max)
     ax.tick_params(bottom=True, top=True, left=True, right=True, direction="in")
-    ax.set_title(r"\textbf{CMS} \textit{preliminary}", loc="left")
+    ax.set_title(r"\textbf{CMS} \textit{Preliminary}", loc="left")
     ax.set_title(campaign_labels.get(campaign, campaign), loc="right")
 
     # save

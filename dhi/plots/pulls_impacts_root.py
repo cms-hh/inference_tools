@@ -208,9 +208,9 @@ def plot_pulls_impacts(
             if u * d > 0 and abs(d) > abs(u):
                 g_impact_overlap.SetPoint(idx, 0, idx - 0.5)
                 g_impact_overlap.SetPointError(idx, 0 if u > 0 else -u, u if u > 0 else 0, 0.5, 0.5)
-        r.setup_graph(g_impact_hi, color=colors.root.read_cream, color_flags="lmf")
+        r.setup_graph(g_impact_hi, color=colors.root.red_cream, color_flags="lmf")
         r.setup_graph(g_impact_lo, color=colors.root.blue_cream, color_flags="lmf")
-        r.setup_graph(g_impact_overlap, color=colors.root.read_cream, color_flags="lmf")
+        r.setup_graph(g_impact_overlap, color=colors.root.red_cream, color_flags="lmf")
         draw_objs.append((g_impact_hi, "2"))
         draw_objs.append((g_impact_lo, "2"))
         draw_objs.append((g_impact_overlap, "2"))
@@ -263,7 +263,7 @@ def plot_pulls_impacts(
             draw_objs.append(campaign_label)
 
         # draw objects
-        r.routines.draw_objs(draw_objs)
+        r.routines.draw_objects(draw_objs)
 
         # update and save
         # when there is more than one page, use roots "logic" to write multiple pages

@@ -68,13 +68,23 @@ law run LikelihoodScan1D --version dev --workflow htcondor --poll-interval 30sec
 ### Plotting
 
 The `PlotLikelihoodScan1D` task takes the outputs from `LikelihoodScan1D` and `MergeLikelihoodScan1D` and plots the doubled, negative log-likehood curve over the POI parameter values in question.
-Currently, there is only a matplotlib version of this plot.
+There is a ROOT and a matplotlib version of the plot, which can be controlled with the `--plot-flavor` parameter.
+
+Use `root` for the ROOT version,
 
 ```shell hl_lines="1"
-law run PlotLikelihoodScan1D --version dev
+law run PlotLikelihoodScan1D --version dev --plot-flavor root
 ```
 
-![1D Likelihood Scan](../images/nll1d__kl_n61_-30.0_30.0__mpl.png)
+![1D likelihood scan with ROOT](../images/nll1d__kl_n61_-30.0_30.0__root.png)
+
+and `mpl`for the matplotlib version,
+
+```shell hl_lines="1"
+law run PlotLikelihoodScan1D --version dev --plot-flavor mpl
+```
+
+![1D likelihood scan with matplotlib](../images/nll1d__kl_n61_-30.0_30.0__mpl.png)
 
 **Parameters**:
 
