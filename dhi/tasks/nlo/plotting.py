@@ -78,10 +78,11 @@ class PlotTask(AnalysisTask):
 
 class PlotUpperLimits(PlotTask, POIScanTask1D):
 
-    xsec = luigi.BoolParameter(
-        default=False,
-        description="draw the limits on cross sections instead of signal strength parameters; only "
-        "supported for poi's kl and C2V; default: False",
+    xsec = luigi.ChoiceParameter(
+        default=law.NO_STR,
+        choices=[law.NO_STR, "", "pb", "fb"],
+        description="convert limits to cross sections in this unit; only supported for poi's kl "
+        "and C2V; choices: '',pb,fb; default: empty",
     )
     br = luigi.Parameter(
         default="1",
@@ -98,8 +99,9 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
         params = super(PlotUpperLimits, cls).modify_param_values(params)
 
         # scaling to xsec is only supported for kl and C2V
-        if params.get("xsec") and params.get("poi") not in ("kl", "C2V"):
-            params["xsec"] = False
+        if params.get("xsec") not in ("", law.NO_STR) and params.get("poi") not in ("kl", "C2V"):
+            cls.logger.warning("xsec conversion is only supported for POIs 'kl' and 'C2V'")
+            params["xsec"] = law.NO_STR
 
         return params
 
@@ -109,9 +111,10 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
     def output(self):
         # additional postfix
         parts = []
-        if self.xsec:
-            parts.append("xsec")
-            parts.append("br{}".format(self.br))
+        if self.xsec in ["pb", "fb"]:
+            parts.append(self.xsec)
+            if str(self.br) != "1":
+                parts.append(str(self.br))
         if self.y_log:
             parts.append("log")
         postfix = ("__" + "_".join(parts)) if parts else ""
@@ -132,35 +135,32 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
 
         # rescale from limit on r to limit on xsec when requested, depending on the poi
         theory_values = None
-        is_xsec = self.xsec
-        if is_xsec:
+        xsec_unit = None
+        if self.xsec in ["pb", "fb"]:
             # determine the scaling factor
-            scale = 1000.0  # pb -> fb
+            scale = {"pb": 1., "fb": 1000.}[self.xsec]
             scale *= k_factor  # NLO -> NNLO
             scale *= br_hh[self.br] if self.br in br_hh else float(self.br)
 
             # perform the scaling
             if self.poi == "kl":
+                xsec_unit = self.xsec
                 formula = self.load_hh_model()[0].ggf_formula
                 theory_values = []
-                is_xsec = True
                 for point in data:
                     xsec = get_ggf_xsec(formula, kl=point["kl"])
                     theory_values.append(xsec * scale)
                     for key in limit_keys:
                         point[key] *= xsec * scale
             elif self.poi == "C2V":
+                xsec_unit = self.xsec
                 formula = self.load_hh_model()[0].vbf_formula
                 theory_values = []
-                is_xsec = True
                 for point in data:
                     xsec = get_vbf_xsec(formula, c2v=point["C2V"])
                     theory_values.append(xsec * scale)
                     for key in limit_keys:
                         point[key] *= xsec * scale
-            else:
-                # no scaling
-                is_xsec = False
 
         # get the proper plot function and call it
         if self.plot_flavor == "root":
@@ -173,7 +173,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
             poi=self.poi,
             data=data,
             theory_values=theory_values,
-            is_xsec=is_xsec,
+            xsec_unit=xsec_unit,
             y_log=self.y_log,
             campaign=self.campaign,
         )

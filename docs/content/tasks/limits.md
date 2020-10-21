@@ -75,22 +75,22 @@ There is a ROOT and a matplotlib version of the plot, which can be controlled wi
 Use `root` for the ROOT version,
 
 ```shell hl_lines="1"
-law run PlotUpperLimits --version dev --xsec --br bbwwllvv --y-log --plot-flavor root
+law run PlotUpperLimits --version dev --xsec fb --br bbwwllvv --y-log --plot-flavor root
 ```
 
-![Upper limits with ROOT](../images/limits__kl_n61_-30.0_30.0__xsec_brbbwwllvv_log__root.png)
+![Upper limits with ROOT](../images/limits__kl_n61_-30.0_30.0__fb_bbwwllvv_log__root.png)
 
 and `mpl`for the matplotlib version,
 
 ```shell hl_lines="1"
-law run PlotUpperLimits --version dev --xsec --br bbwwllvv --y-log --plot-flavor mpl
+law run PlotUpperLimits --version dev --xsec fb --br bbwwllvv --y-log --plot-flavor mpl
 ```
 
-![Upper limits with matplotlib](../images/limits__kl_n61_-30.0_30.0__xsec_brbbwwllvv_log__mpl.png)
+![Upper limits with matplotlib](../images/limits__kl_n61_-30.0_30.0__fb_bbwwllvv_log__mpl.png)
 
 **Parameters**:
 
 - `--plot-flavor STRING`: Either `root` or `mpl`. Defaults to `root`.
-- `--xsec BOOL`: Plot limits in units of a cross section rather than the signal strength. Defaults to `False`.
+- `--xsec STRING`: Convert limits to cross sections in this unit rather than on the signal strength. An empty value (identical to `NO_STR`) will use the latter. Choices are `pb`, `fb` and `""` (`NO_STR`). Defaults to `NO_STR`.
 - `--br FLOAT/STRING`: When using `--xsec`, scale the cross section with the BR of the corresponding HH decay. The value can be either a float value or the name of final state as defined [here](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/dhi/config.py#L14-49). No default.
 - `--y-log BOOL`: Logarithmic y-axis. Defaults to `False`.

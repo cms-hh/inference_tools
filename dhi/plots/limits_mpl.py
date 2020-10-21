@@ -23,7 +23,7 @@ def plot_limit_scan(
     x_max=None,
     y_min=None,
     y_max=None,
-    is_xsec=False,
+    xsec_unit=None,
     campaign="2017",
 ):
     """
@@ -34,9 +34,9 @@ def plot_limit_scan(
     or *theory_values* are given, they should be single lists of values. Therefore, they must have
     the same length as the lists given in *data*. When *y_log* is *True*, the y-axis is plotted with
     a logarithmic scale. *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to
-    the range of the given values. *is_xsec* denotes whether the passed values are given as real
-    cross sections or, when *False*, as a ratio over the theory prediction. *campaign* should refer
-    to the name of a campaign label defined in dhi.config.campaign_labels.
+    the range of the given values. *xsec_unit* denotes whether the passed values are given as real
+    cross sections in this unit or, when *None*, as a ratio over the theory prediction. *campaign*
+    should refer to the name of a campaign label defined in dhi.config.campaign_labels.
 
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#upper-limits
     """
@@ -123,7 +123,7 @@ def plot_limit_scan(
 
     # legend, labels, titles, etc
     ax.set_xlabel(poi_data[poi].label_math)
-    y_unit = "fb" if is_xsec else r"$\sigma_{SM}$"
+    y_unit = xsec_unit or r"$\sigma_{SM}$"
     ax.set_ylabel(r"Upper $95\%$ CLs limit on $\sigma$ / " + y_unit)
     if y_log:
         ax.set_yscale("log")
