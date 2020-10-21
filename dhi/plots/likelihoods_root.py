@@ -210,7 +210,7 @@ def plot_likelihood_scan_2d(
         data.shape[1], x1_min - 0.5 * bin_width1, x1_max + 0.5 * bin_width1,
         data.shape[0], x2_min - 0.5 * bin_width2, x2_max + 0.5 * bin_width2,
     )
-    r.setup_hist(h_nll, pad=pad)
+    r.setup_hist(h_nll, pad=pad, props={"Contour": 100})
     r.setup_z_axis(h_nll.GetZaxis(), pad=pad, props={"TitleOffset": 1.3})
     draw_objs.append((h_nll, "COLZ"))
     for i, j in np.ndindex(data.shape):
