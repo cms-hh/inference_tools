@@ -219,10 +219,12 @@ def plot_likelihood_scan_2d(
     # best fit point
     g_fit = ROOT.TGraphAsymmErrors(1)
     g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
-    g_fit.SetPointEXhigh(0, scan.num1_min.u(direction="up"))
-    g_fit.SetPointEXlow(0, scan.num1_min.u(direction="down"))
-    g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
-    g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
+    if scan.num1_min.uncertainties:
+        g_fit.SetPointEXhigh(0, scan.num1_min.u(direction="up"))
+        g_fit.SetPointEXlow(0, scan.num1_min.u(direction="down"))
+    if scan.num2_min.uncertainties:
+        g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
+        g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
     r.setup_graph(g_fit, color=colors.root.red)
     draw_objs.append((g_fit, "PEZ"))
 
@@ -241,8 +243,10 @@ def plot_likelihood_scan_2d(
         scan.num1_min.str(format="%.2f", style="root"))
     fit_label2 = "{} = {}".format(to_root_latex(poi_data[poi2].label),
         scan.num2_min.str(format="%.2f", style="root"))
-    fit_label1 = r.routines.create_top_right_label(fit_label1, pad=pad, x_offset=25, y_offset=45)
-    fit_label2 = r.routines.create_top_right_label(fit_label2, pad=pad, x_offset=25, y_offset=85)
+    fit_label1 = r.routines.create_top_right_label(fit_label1, pad=pad, x_offset=150, y_offset=30,
+        props={"TextAlign": 13})
+    fit_label2 = r.routines.create_top_right_label(fit_label2, pad=pad, x_offset=150, y_offset=68,
+        props={"TextAlign": 13})
     draw_objs.append(fit_label1)
     draw_objs.append(fit_label2)
 

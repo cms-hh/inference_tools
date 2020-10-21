@@ -87,10 +87,10 @@ action() {
         (
             cd "$DHI_SOFTWARE"
             rm -rf HiggsAnalysis/CombinedLimit
-            # TODO: the following branch is based on v8.1.0 and adds the --points2 parameter to
+            # TODO: the following branch is based on v8.1.0 and adds the --gridPoints parameter to
             # likelihood scans to improve control over the scan grid, so switch back again to the
             # original repo once merged, https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/pull/623
-            git clone --depth 1 --branch control_2d_grid https://github.com/riga/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit || return "1"
+            git clone --depth 1 --branch feature/control_2d_grid https://github.com/riga/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit || return "1"
             cd HiggsAnalysis/CombinedLimit
             source env_standalone.sh "" || return "2"
             make -j
