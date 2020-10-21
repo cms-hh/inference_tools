@@ -4,10 +4,12 @@
 Likelihood plots using matplotlib.
 """
 
+import math
+
 import numpy as np
 import scipy.interpolate
 import scipy.optimize
-import matplotlib
+import matplotlib as mpl
 from scinum import Number
 
 from dhi.config import poi_data, campaign_labels, chi2_levels
@@ -132,7 +134,7 @@ def plot_likelihood_scan_2d(
     poi1_min=None,
     poi2_min=None,
     campaign="2017",
-    z_log=True,
+    z_log=False,
     x1_min=None,
     x1_max=None,
     x2_min=None,
@@ -199,14 +201,17 @@ def plot_likelihood_scan_2d(
 
     img = ax.imshow(
         data,
-        norm=matplotlib.colors.LogNorm() if z_log else None,
+        norm=mpl.colors.LogNorm() if z_log else None,
         aspect="auto",
         origin="lower",
         extent=[poi1_values.min(), poi1_values.max(), poi2_values.min(), poi2_values.max()],
         cmap="viridis",
         interpolation="nearest",
     )
-    fig.colorbar(img, ax=ax, label=r"$-2 \Delta \text{ln}\mathcal{L}$")
+    min_tick = int(math.ceil(math.log10(data.min())))
+    max_tick = int(math.floor(math.log10(data.max())))
+    ticks = np.linspace(min_tick, max_tick, max_tick - min_tick + 1)
+    fig.colorbar(img, ax=ax, label=r"$-2 \Delta \text{ln}\mathcal{L}$", ticks=10**ticks)
 
     # contours
     contours = plt.contour(e1, e2, data, levels=[chi2_levels[2][1], chi2_levels[2][2]])
