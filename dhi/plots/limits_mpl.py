@@ -120,7 +120,7 @@ def plot_limit_scan(
         p = ax.plot(
             poi_values,
             theory_values,
-            label=r"Theory prediction",
+            label=r"SM prediction",
             color="red",
             linestyle="-",
         )

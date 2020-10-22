@@ -147,7 +147,7 @@ def plot_limit_scan(
         r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
             "MarkerSize": 0, "LineColor": colors.root.red})
         draw_objs.append((g_thy, "SAME,L"))
-        legend_entries.append((g_thy, "Theory prediction"))
+        legend_entries.append((g_thy, "SM prediction"))
 
     # set limits
     if y_min is None:

@@ -214,11 +214,12 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
 
         # load limit data
         inp = self.input().load(formatter="numpy")
-        data = inp["data"]
+        expected_values = inp["data"]
         poi_min = float(inp["poi_min"]) if not np.isnan(inp["poi_min"]) else None
 
         # insert a dnll2 column
-        data = rec.append_fields(data, ["dnll2"], [data["delta_nll"] * 2.0])
+        expected_values = rec.append_fields(expected_values, ["dnll2"],
+            [expected_values["delta_nll"] * 2.0])
 
         # get the proper plot function and call it
         if self.plot_flavor == "root":
@@ -229,7 +230,7 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
         plot_likelihood_scan_1d(
             path=output.path,
             poi=self.poi,
-            data=data,
+            expected_values=expected_values,
             poi_min=poi_min,
             campaign=self.campaign,
             y_log=self.y_log,

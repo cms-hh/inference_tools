@@ -93,6 +93,7 @@ nuisance_labels = {}
 # colors
 colors = DotDict({
     "root": DotDict({
+        "black": 1,
         "red": 628,
         "green": 418,
         "yellow": 798,
