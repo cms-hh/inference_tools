@@ -11,7 +11,7 @@ from collections import OrderedDict
 
 import law
 
-from dhi.util import import_ROOT
+from dhi.util import import_ROOT, multi_match
 
 
 def read_datacard_blocks(datacard, is_separator=None):
@@ -96,11 +96,12 @@ def manipulate_shape_lines(datacard, target_datacard=None):
         shutil.copy2(datacard, target_datacard)
 
 
-def extract_shape_files(datacard, absolute=True, resolve=True):
+def extract_shape_files(datacard, absolute=True, resolve=True, skip=("FAKE",)):
     """
     Extracts all unique paths declared as shape files in a *datacard* and returns them in a list.
     When *absolute* is *True*, the extracted paths are made absolute based on the location of the
     datacard itself. When both *absolute* and *resolve* are *True*, symbolic links are resolved.
+    *skip* can be a sequence of shape file paths or patterns to skip.
     """
     # read shape lines and extract file paths
     shape_files = []
@@ -108,8 +109,13 @@ def extract_shape_files(datacard, absolute=True, resolve=True):
         for line in shape_lines:
             # the shape file is the 4th part
             parts = line.split()
-            if len(parts) >= 4:
-                shape_files.append(parts[3])
+            if len(parts) < 4:
+                continue
+            shape_file = parts[3]
+            # skip fake files
+            if multi_match(shape_file, skip):
+                continue
+            shape_files.append(shape_file)
 
     # convert to absolute paths (when paths are already absolute, os.path.join will not change them)
     if absolute:
@@ -125,13 +131,13 @@ def extract_shape_files(datacard, absolute=True, resolve=True):
     return shape_files
 
 
-def update_shape_files(func, datacard, target_datacard=None):
+def update_shape_files(func, datacard, target_datacard=None, skip=("FAKE",)):
     """
     Updates the shape files in a *datacard* according to a configurable function *func* that should
     accept the shape file location, the process name, the channel name and optionally the nominal
     and systematic histogram extraction patterns that are usually defined in each shape line. When
     a *target_datacard* is given, the updated datacard is stored at this path rather than the
-    original one. Example:
+    original one. *skip* can be a sequence of shape file paths or patterns to skip. Example:
 
     .. code-block:: python
 
@@ -154,6 +160,10 @@ def update_shape_files(func, datacard, target_datacard=None):
             channel = parts.pop(0)
             shape_file = parts.pop(0)
             patterns = parts
+
+            # skip certain files
+            if multi_match(shape_file, skip):
+                continue
 
             # run the func
             new_shape_file = func(shape_file, process, channel, *patterns)

@@ -66,9 +66,8 @@ class CombineDatacards(DatacardBaseTask, CombineCommandTask):
         # update shape files in datacards to new basenames and save them in the tmp dir
         tmp_datacards = []
         for i, (card, bin_name) in enumerate(zip(datacards, bin_names)):
-
             def func(rel_shape, *args):
-                shape = os.path.join(os.path.dirname(card), rel_shape)
+                shape = os.path.realpath(os.path.join(os.path.dirname(card), rel_shape))
                 return shape_data[shape]["target_basename"]
 
             tmp_card = "datacard_{}.txt".format(i)
