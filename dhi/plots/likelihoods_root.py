@@ -152,7 +152,7 @@ def plot_likelihood_scan_2d(
     path,
     poi1,
     poi2,
-    data,
+    expected_values,
     poi1_min=None,
     poi2_min=None,
     campaign="2017",
@@ -165,9 +165,9 @@ def plot_likelihood_scan_2d(
 ):
     """
     Creates a likelihood plot of the 2D scan of two pois *poi1* and *poi2*, and saves it at *path*.
-    *data* should be a mapping to lists of values or a record array with keys "<poi1_name>",
-    "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be the values
-    of the pois that lead to the best likelihood. Otherwise, they are  estimated from the
+    *expected_values* should be a mapping to lists of values or a record array with keys
+    "<poi1_name>", "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be
+    the values of the pois that lead to the best likelihood. Otherwise, they are  estimated from the
     interpolated curve. *campaign* should refer to the name of a campaign label defined in
     dhi.config.campaign_labels. When *z_log* is *True*, the z-axis is plotted with a logarithmic
     scale. *x1_min*, *x1_max*, *x2_min* and *x2_max* define the axis range of poi1 and poi2,
@@ -180,9 +180,9 @@ def plot_likelihood_scan_2d(
     ROOT = import_ROOT()
 
     # get poi and delta nll values
-    poi1_values = np.array(data[poi1], dtype=np.float32)
-    poi2_values = np.array(data[poi2], dtype=np.float32)
-    dnll2_values = np.array(data["dnll2"], dtype=np.float32)
+    poi1_values = np.array(expected_values[poi1], dtype=np.float32)
+    poi2_values = np.array(expected_values[poi2], dtype=np.float32)
+    dnll2_values = np.array(expected_values["dnll2"], dtype=np.float32)
 
     # set default ranges
     if x1_min is None:
