@@ -24,6 +24,7 @@ def plot_limit_scan(
     y_min=None,
     y_max=None,
     xsec_unit=None,
+    hh_process="HH",
     campaign="2017",
 ):
     """
@@ -75,8 +76,8 @@ def plot_limit_scan(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[poi].label)
-    y_unit = xsec_unit or "#sigma_{SM}"
-    y_title = "Upper 95% CLs limit on #sigma / " + y_unit
+    y_title = "Upper 95% CLs limit on #sigma(pp #rightarrow {}) / {}".format(
+        to_root_latex(hh_process), to_root_latex(xsec_unit or "#sigma_{SM}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))

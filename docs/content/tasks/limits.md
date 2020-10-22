@@ -92,5 +92,5 @@ law run PlotUpperLimits --version dev --xsec fb --br bbwwllvv --y-log --plot-fla
 
 - `--plot-flavor STRING`: Either `root` or `mpl`. Defaults to `root`.
 - `--xsec STRING`: Convert limits to cross sections in this unit rather than on the signal strength. An empty value (identical to `NO_STR`) will use the latter. Choices are `pb`, `fb` and `""` (`NO_STR`). Defaults to `NO_STR`.
-- `--br FLOAT/STRING`: When using `--xsec`, scale the cross section with the BR of the corresponding HH decay. The value can be either a float value or the name of final state as defined [here](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/dhi/config.py#L14-49). No default.
+- `--br STRING`: When using `--xsec`, scale the cross section with the BR of the corresponding HH decay. The value should be the name of a final state defined in the `br_hh` mapping in [`dhi.config`](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/dhi/config.py). No default.
 - `--y-log BOOL`: Logarithmic y-axis. Defaults to `False`.

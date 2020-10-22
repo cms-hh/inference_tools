@@ -83,10 +83,11 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
         description="convert limits to cross sections in this unit; only supported for poi's kl "
         "and C2V; choices: '',pb,fb; default: empty",
     )
-    br = luigi.Parameter(
-        default="1",
-        description="branching ratio or name of a branching ratio stored at dhi.config.br_hh to "
-        "scale the cross section when xsec is used; default: 1.0",
+    br = luigi.ChoiceParameter(
+        default=law.NO_STR,
+        choices=[law.NO_STR, ""] + list(br_hh.keys()),
+        description="name of a branching ratio defined in dhi.config.br_hh to scale the cross "
+        "section when xsec is used; choices: '',{}; default: empty".format(",".join(br_hh.keys())),
     )
     y_log = luigi.BoolParameter(
         default=False,
@@ -112,8 +113,8 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
         parts = []
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
-            if str(self.br) != "1":
-                parts.append(str(self.br))
+            if self.br not in (law.NO_STR, ""):
+                parts.append(self.br)
         if self.y_log:
             parts.append("log")
         postfix = ("__" + "_".join(parts)) if parts else ""
@@ -128,18 +129,20 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
         output = self.output()
         output.parent.touch()
 
-        # load limit data
-        data = self.input().load(formatter="numpy")["data"]
-        limit_keys = [key for key in data.dtype.names if key.startswith("limit")]
+        # load expected limit values
+        expected_values = self.input().load(formatter="numpy")["data"]
+        limit_keys = [key for key in expected_values.dtype.names if key.startswith("limit")]
 
         # rescale from limit on r to limit on xsec when requested, depending on the poi
         theory_values = None
         xsec_unit = None
+        hh_process = "HH"
         if self.xsec in ["pb", "fb"]:
-            # determine the scaling factor
+            # determine the scaling factor and set the hh_process name for plotting
             scale = {"pb": 1., "fb": 1000.}[self.xsec]
-            scale *= k_factor  # NLO -> NNLO
-            scale *= br_hh[self.br] if self.br in br_hh else float(self.br)
+            if self.br in br_hh:
+                scale *= br_hh[self.br]
+                hh_process = br_hh_names[self.br]
 
             # perform the scaling
             if self.poi == "kl":
@@ -172,8 +175,9 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
             poi=self.poi,
             data=data,
             theory_values=theory_values,
-            xsec_unit=xsec_unit,
             y_log=self.y_log,
+            xsec_unit=xsec_unit,
+            hh_process=hh_process,
             campaign=self.campaign,
         )
 

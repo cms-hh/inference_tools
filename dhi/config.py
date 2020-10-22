@@ -48,8 +48,18 @@ br_hh = DotDict(
     bbgg=2.0 * br_h.bb * br_h.gg,
 )
 
-# NLO -> NNLO k-factor
-k_factor = 1.115
+# HH branching names (TODO: find prettier abbreviations)
+br_hh_names = DotDict(
+    bbbb=r"HH $\rightarrow$ bbbb",
+    bbww=r"HH $\rightarrow$ bbWW",
+    bbwwqqlv=r"HH $\rightarrow$ bbWW$_{qql\nu}$",
+    bbwwllvv=r"HH $\rightarrow$ bbWW$_{2l2\nu}$",
+    bbzz=r"HH $\rightarrow bbZZ$",
+    bbzzqqll=r"HH $\rightarrow$ bbZZ$_{qqll}$",
+    bbzzllll=r"HH $\rightarrow$ bbZZ$_{4l}$",
+    bbtautau=r"HH $\rightarrow bb\tau\tau$",
+    bbgg=r"HH $\rightarrow bb\gamma\gamma$",
+)
 
 # campaign labels
 campaign_labels = DotDict(
@@ -57,7 +67,7 @@ campaign_labels = DotDict(
         "2016": "2016 (13 TeV)",
         "2017": "2017 (13 TeV)",
         "2018": "2018 (13 TeV)",
-        "FullRun2": "2016+2017+2018 (13 TeV)",
+        "FullRun2": "Run 2 (13 TeV)",
     }
 )
 

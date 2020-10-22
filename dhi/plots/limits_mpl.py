@@ -24,6 +24,7 @@ def plot_limit_scan(
     y_min=None,
     y_max=None,
     xsec_unit=None,
+    hh_process="HH",
     campaign="2017",
 ):
     """
@@ -123,8 +124,8 @@ def plot_limit_scan(
 
     # legend, labels, titles, etc
     ax.set_xlabel(poi_data[poi].label_math)
-    y_unit = xsec_unit or r"$\sigma_{SM}$"
-    ax.set_ylabel(r"Upper $95\%$ CLs limit on $\sigma$ / " + y_unit)
+    ax.set_ylabel(r"Upper 95\% CLs limit on $\sigma$ (pp $\rightarrow$ {}) / {}".format(
+        hh_process, xsec_unit or r"$\sigma_{SM}$"))
     if y_log:
         ax.set_yscale("log")
     if y_min is not None:
