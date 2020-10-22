@@ -12,8 +12,7 @@ from dhi.tasks.nlo.base import POITask1D, POIScanTask1D, POIScanTask2D
 from dhi.tasks.nlo.inference import (
     MergeUpperLimits, MergeLikelihoodScan1D, MergeLikelihoodScan2D, MergePullsAndImpacts,
 )
-from dhi.config import br_hh, k_factor, nuisance_labels
-from dhi.util import get_ggf_xsec, get_vbf_xsec
+from dhi.config import br_hh, br_hh_names, nuisance_labels
 
 
 @law.decorator.factory(accept_generator=True)
@@ -145,19 +144,19 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
             # perform the scaling
             if self.poi == "kl":
                 xsec_unit = self.xsec
-                formula = self.load_hh_model()[0].ggf_formula
+                get_ggf_xsec = self.load_hh_model()[0].get_ggf_xsec
                 theory_values = []
-                for point in data:
-                    xsec = get_ggf_xsec(formula, kl=point["kl"])
+                for point in expected_values:
+                    xsec = get_ggf_xsec(kl=point["kl"])
                     theory_values.append(xsec * scale)
                     for key in limit_keys:
                         point[key] *= xsec * scale
             elif self.poi == "C2V":
                 xsec_unit = self.xsec
-                formula = self.load_hh_model()[0].vbf_formula
+                get_vbf_xsec = self.load_hh_model()[0].get_vbf_xsec
                 theory_values = []
-                for point in data:
-                    xsec = get_vbf_xsec(formula, c2v=point["C2V"])
+                for point in expected_values:
+                    xsec = get_vbf_xsec(c2v=point["C2V"])
                     theory_values.append(xsec * scale)
                     for key in limit_keys:
                         point[key] *= xsec * scale

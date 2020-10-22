@@ -49,9 +49,9 @@ class DatacardBaseTask(AnalysisTask):
         description="prefix to prepend to output file paths; default: ''",
     )
     hh_model = luigi.Parameter(
-        default="hh:HHdefault",
+        default="HHModelPinv:HHdefault",
         description="the name of the HH model relative to dhi.models in the format "
-        "module:model_name; default: hh:HHdefault",
+        "module:model_name; default: HHModelPinv:HHdefault",
     )
 
     hash_datacards_in_repr = True
