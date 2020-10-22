@@ -15,8 +15,8 @@ from dhi.util import import_ROOT, to_root_latex
 def plot_limit_scan(
     path,
     poi,
-    data,
-    injected_values=None,
+    expected_values,
+    observed_values=None,
     theory_values=None,
     y_log=False,
     x_min=None,
@@ -28,36 +28,40 @@ def plot_limit_scan(
     campaign="2017",
 ):
     """
-    Creates a plot for the upper limit scan of a *poi* and saves it at *path*. *data* should be a
-    mapping to lists of values or a record array with keys "<poi_name>" and "limit", and optionally
-    "limit_p1" (plus 1 sigma), "limit_m1" (minus 1 sigma), "limit_p2" and "limit_m2". When the
-    variations by 1 or 2 sigma are missing, the plot is created without them. When *injected_values*
-    or *theory_values* are given, they should be single lists of values. Therefore, they must have
-    the same length as the lists given in *data*. When *y_log* is *True*, the y-axis is plotted with
-    a logarithmic scale. *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to
-    the range of the given values. *xsec_unit* denotes whether the passed values are given as real
-    cross sections in this unit or, when *None*, as a ratio over the theory prediction. *campaign*
-    should refer to the name of a campaign label defined in dhi.config.campaign_labels.
+    Creates a plot for the upper limit scan of a *poi* and saves it at *path*. *expected_values*
+    should be a mapping to lists of values or a record array with keys "<poi_name>" and "limit", and
+    optionally "limit_p1" (plus 1 sigma), "limit_m1" (minus 1 sigma), "limit_p2" and "limit_m2".
+    When the variations by 1 or 2 sigma are missing, the plot is created without them. When
+    *observed_values* or *theory_values* are given, they should be single lists of values.
+    Therefore, they must have the same length as the lists given in *expected_values*. When *y_log*
+    is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*, *y_min* and *y_max*
+    define the axis ranges and default to the range of the given values. *xsec_unit* denotes whether
+    the passed values are given as real cross sections in this unit or, when *None*, as a ratio over
+    the theory prediction. *hh_process* is inserted to the process name in the title of the y-axis
+    and indicates that the plotted cross section data was (e.g.) scaled by a branching ratio.
+    *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
 
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#upper-limits
     """
     import plotlib.root as r
     ROOT = import_ROOT()
 
-    # convert record array to dict
-    if isinstance(data, np.ndarray):
-        data = {key: data[key] for key in data.dtype.names}
+    # convert record array to dict mapping to arrays
+    if isinstance(expected_values, np.ndarray):
+        expected_values = {key: expected_values[key] for key in expected_values.dtype.names}
 
     # input checks
-    assert poi in data
-    poi_values = data[poi]
+    assert poi in expected_values
+    poi_values = expected_values[poi]
     n_points = len(poi_values)
-    assert "limit" in data
-    assert all(len(d) == n_points for d in data.values())
-    if injected_values is not None:
-        assert len(injected_values) == n_points
+    assert "limit" in expected_values
+    assert all(len(d) == n_points for d in expected_values.values())
+    if observed_values is not None:
+        assert len(observed_values) == n_points
+        observed_values = np.array(observed_values)
     if theory_values is not None:
         assert len(theory_values) == n_points
+        theory_values = np.array(theory_values)
 
     # set default ranges
     if x_min is None:
@@ -82,11 +86,11 @@ def plot_limit_scan(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
-    # helper to read data into graphs
+    # helper to read values into graphs
     def create_graph(sigma=None, values=None):
         # repeat the edges by padding to prevent bouncing effects of interpolated lines
         pad = lambda arr: np.pad(np.array(arr, dtype=np.float32), 1, mode="edge")
-        arr = lambda key: pad(np.array(data[key], dtype=np.float32))
+        arr = lambda key: pad(np.array(expected_values[key], dtype=np.float32))
         zeros = np.zeros(n_points + 2, dtype=np.float32)
         return ROOT.TGraphAsymmErrors(
             n_points + 2,
@@ -99,24 +103,24 @@ def plot_limit_scan(
         )
 
     # 2 sigma band
-    if "limit_p2" in data and "limit_m2" in data:
+    if "limit_p2" in expected_values and "limit_m2" in expected_values:
         g_2sigma = create_graph(sigma=2)
         r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
             "MarkerSize": 0, "FillColor": colors.root.yellow})
         draw_objs.append((g_2sigma, "SAME,4"))
         legend_entries.insert(0, (g_2sigma, r"#pm 95% expected"))
-        y_max_value = max(y_max_value, max(data["limit_p2"]))
-        y_min_value = min(y_min_value, min(data["limit_m2"]))
+        y_max_value = max(y_max_value, max(expected_values["limit_p2"]))
+        y_min_value = min(y_min_value, min(expected_values["limit_m2"]))
 
     # 1 sigma band
-    if "limit_p1" in data and "limit_m1" in data:
+    if "limit_p1" in expected_values and "limit_m1" in expected_values:
         g_1sigma = create_graph(sigma=1)
         r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
             "MarkerSize": 0, "FillColor": colors.root.green})
         draw_objs.append((g_1sigma, "SAME,4"))
         legend_entries.insert(0, (g_1sigma, r"#pm 68% expected"))
-        y_max_value = max(y_max_value, max(data["limit_p1"]))
-        y_min_value = min(y_min_value, min(data["limit_m1"]))
+        y_max_value = max(y_max_value, max(expected_values["limit_p1"]))
+        y_min_value = min(y_min_value, min(expected_values["limit_m1"]))
 
     # central values
     g_exp = create_graph(sigma=0)
@@ -124,16 +128,18 @@ def plot_limit_scan(
         "MarkerSize": 0})
     draw_objs.append((g_exp, "SAME,LEZ"))
     legend_entries.insert(0, (g_exp, "Expected limit"))
-    y_max_value = max(y_max_value, max(data["limit"]))
-    y_min_value = min(y_min_value, min(data["limit"]))
+    y_max_value = max(y_max_value, max(expected_values["limit"]))
+    y_min_value = min(y_min_value, min(expected_values["limit"]))
 
-    # injected values
-    if injected_values is not None:
-        g_inj = create_graph(values=injected_values)
+    # observed values
+    if observed_values is not None:
+        g_inj = create_graph(values=observed_values)
         r.setup_graph(g_inj, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
             "MarkerSize": 0})
         draw_objs.append((g_inj, "SAME,L"))
-        legend_entries.append((g_inj, "Injected limit"))
+        legend_entries.insert(0, (g_inj, "Observed limit"))
+        y_max_value = max(y_max_value, max(observed_values))
+        y_min_value = min(y_min_value, min(observed_values))
 
     # theory prediction
     if theory_values is not None:

@@ -173,7 +173,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
         plot_limit_scan(
             path=output.path,
             poi=self.poi,
-            data=data,
+            expected_values=expected_values,
             theory_values=theory_values,
             y_log=self.y_log,
             xsec_unit=xsec_unit,
