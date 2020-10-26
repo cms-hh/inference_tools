@@ -149,22 +149,22 @@ class POITask(DatacardBaseTask):
     all_pois = k_pois + r_pois
 
     @classmethod
-    def get_frozen_parameters(cls, other_pois):
+    def get_frozen_pois(cls, other_pois):
         return ",".join(other_pois)
 
     @classmethod
-    def get_set_parameters(cls, other_pois, values=1.0):
+    def get_set_pois(cls, other_pois, values=1.0):
         if not isinstance(values, dict):
             values = {poi: values for poi in other_pois}
         return ",".join(["{}={}".format(p, values.get(p, 1.0)) for p in other_pois])
 
     @property
-    def frozen_params(self):
-        return self.get_frozen_parameters(self.other_pois)
+    def frozen_pois(self):
+        return self.get_frozen_pois(self.other_pois)
 
     @property
-    def fixed_params(self):
-        return self.get_set_parameters(self.other_pois)
+    def set_pois(self):
+        return self.get_set_pois(self.other_pois)
 
 
 class POITask1D(POITask):
@@ -172,7 +172,7 @@ class POITask1D(POITask):
     poi = luigi.ChoiceParameter(
         default="kl",
         choices=POITask.k_pois,
-        description="name of the poi; default: kl",
+        description="name of the poi; choices: {}; default: kl".format(",".join(POITask.all_pois)),
     )
     poi_value = luigi.FloatParameter(
         default=1.0,
@@ -190,7 +190,7 @@ class POITask1D(POITask):
         parts["poi"] = self.poi
         return parts
 
-    def get_output_postfix(self):
+    def get_poi_postfix(self):
         return "{}_{}".format(self.poi, self.poi_value)
 
 
@@ -225,8 +225,32 @@ class POIScanTask1D(POITask1D):
 
         return params
 
-    def get_output_postfix(self):
+    def get_poi_postfix(self):
         return "{}_n{}_{}_{}".format(self.poi, self.poi_points, *self.poi_range)
+
+
+class POIScanTask1DWithR(POIScanTask1D):
+    """
+    Same as POIScanTask1D but besides the actual poi, it keeps track of a separate r-poi that is
+    also encoded in output paths. This is helpful for (e.g.) limit calculations where results are
+    extracted for a certain r-poi while scanning an other parameter.
+    """
+
+    r_poi = luigi.ChoiceParameter(
+        default="r",
+        choices=POIScanTask1D.r_pois,
+        description="name of the r POI; choices: {}; default: r".format(
+            ",".join(POIScanTask1D.r_pois)),
+    )
+
+    def store_parts(self):
+        parts = super(POIScanTask1DWithR, self).store_parts()
+        parts["poi"] = "{}__{}".format(self.r_poi, self.poi)
+        return parts
+
+    def get_poi_postfix(self):
+        postfix = super(POIScanTask1DWithR, self).get_poi_postfix()
+        return "{}__{}".format(self.r_poi, postfix)
 
 
 class POITask2D(POITask):
@@ -234,12 +258,14 @@ class POITask2D(POITask):
     poi1 = luigi.ChoiceParameter(
         default="kl",
         choices=POITask.k_pois,
-        description="name of the first poi; default: kl",
+        description="name of the first poi; choices: {}; default: kl".format(
+            ",".join(POITask.all_pois)),
     )
     poi2 = luigi.ChoiceParameter(
         default="kt",
         choices=POITask.k_pois,
-        description="name of the first poi; default: kt",
+        description="name of the second poi; choices: {}; default: kt".format(
+            ",".join(POITask.all_pois)),
     )
     poi1_value = luigi.FloatParameter(
         default=1.0,
@@ -288,7 +314,7 @@ class POITask2D(POITask):
 
         return parts
 
-    def get_output_postfix(self):
+    def get_poi_postfix(self):
         if self.store_pois_sorted:
             tmpl = "{poiA}_{poiA_value}__{poiB}_{poiB_value}"
         else:
@@ -347,7 +373,7 @@ class POIScanTask2D(POITask2D):
     def get_poi_info(self, attributes=("", "_range", "_points")):
         return super(POIScanTask2D, self).get_poi_info(attributes=attributes)
 
-    def get_output_postfix(self):
+    def get_poi_postfix(self):
         if self.store_pois_sorted:
             tmpl = (
                 "{poiA}_n{poiA_points}_{poiA_range[0]}_{poiA_range[1]}"

@@ -8,7 +8,7 @@ import law
 import luigi
 
 from dhi.tasks.base import AnalysisTask
-from dhi.tasks.nlo.base import POITask1D, POIScanTask1D, POIScanTask2D
+from dhi.tasks.nlo.base import POITask1D, POIScanTask1D, POIScanTask1DWithR, POIScanTask2D
 from dhi.tasks.nlo.inference import (
     MergeUpperLimits, MergeLikelihoodScan1D, MergeLikelihoodScan2D, MergePullsAndImpacts,
 )
@@ -67,15 +67,14 @@ class PlotTask(AnalysisTask):
         description="a command to execute after the task has run to visualize plots right in the "
         "terminal; default: empty",
     )
-    campaign = luigi.ChoiceParameter(
-        default="2017",
-        choices=["2016", "2017", "2018", "FullRun2"],
+    campaign = luigi.Parameter(
+        default=law.NO_STR,
         significant=False,
-        description="the year/campaign (mainly for plotting); default: 2017",
+        description="the campaign name used for plotting; no default",
     )
 
 
-class PlotUpperLimits(PlotTask, POIScanTask1D):
+class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
 
     xsec = luigi.ChoiceParameter(
         default=law.NO_STR,
@@ -120,7 +119,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
         postfix = ("__" + "_".join(parts)) if parts else ""
 
         return self.local_target_dc("limits__{}{}.{}".format(
-            self.get_output_postfix(), postfix, self.file_type))
+            self.get_poi_postfix(), postfix, self.file_type))
 
     @view_output_plots
     @law.decorator.safe_output
@@ -164,6 +163,12 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
                     for key in limit_keys:
                         point[key] *= xsec * scale
 
+        # some printing
+        for v in range(-2, 4 + 1):
+            if v in expected_values[self.poi]:
+                record = expected_values[expected_values[self.poi] == v][0]
+                self.publish_message("{} = {} -> {}".format(self.poi, v, record["limit"]))
+
         # get the proper plot function and call it
         if self.plot_flavor == "root":
             from dhi.plots.limits_root import plot_limit_scan
@@ -178,7 +183,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1D):
             y_log=self.y_log,
             xsec_unit=xsec_unit,
             hh_process=hh_process,
-            campaign=self.campaign,
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
 
 
@@ -200,7 +205,7 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
         postfix = ("__" + "_".join(parts)) if parts else ""
 
         return self.local_target_dc("nll1d__{}{}.{}".format(
-            self.get_output_postfix(), postfix, self.file_type))
+            self.get_poi_postfix(), postfix, self.file_type))
 
     @view_output_plots
     @law.decorator.safe_output
@@ -232,8 +237,8 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
             poi=self.poi,
             expected_values=expected_values,
             poi_min=poi_min,
-            campaign=self.campaign,
             y_log=self.y_log,
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
 
 
@@ -255,7 +260,7 @@ class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
         postfix = ("__" + "_".join(parts)) if parts else ""
 
         return self.local_target_dc("nll2d__{}{}.{}".format(
-            self.get_output_postfix(), postfix, self.file_type))
+            self.get_poi_postfix(), postfix, self.file_type))
 
     @view_output_plots
     @law.decorator.safe_output
@@ -290,8 +295,8 @@ class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
             expected_values=expected_values,
             poi1_min=poi1_min,
             poi2_min=poi2_min,
-            campaign=self.campaign,
             z_log=self.z_log,
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
 
 
@@ -362,5 +367,5 @@ class PlotPullsAndImpacts(PlotTask, POITask1D):
             order_parameters=self.order_parameters,
             order_by_impact=self.order_by_impact,
             labels=nuisance_labels,
-            campaign=self.campaign,
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
