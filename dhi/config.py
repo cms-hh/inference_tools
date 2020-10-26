@@ -38,6 +38,7 @@ br_zz = DotDict(
 )
 br_hh = DotDict(
     bbbb=br_h.bb ** 2.0,
+    bbvv=2.0 * br_h.bb * (br_h.ww + br_h.zz),
     bbww=2.0 * br_h.bb * br_h.ww,
     bbwwqqlv=2.0 * br_h.bb * br_h.ww * br_ww.qqlv,
     bbwwllvv=2.0 * br_h.bb * br_h.ww * br_ww.llvv,
@@ -50,39 +51,36 @@ br_hh = DotDict(
 
 # HH branching names (TODO: find prettier abbreviations)
 br_hh_names = DotDict(
-    bbbb=r"HH $\rightarrow$ bbbb",
-    bbww=r"HH $\rightarrow$ bbWW",
-    bbwwqqlv=r"HH $\rightarrow$ bbWW$_{qql\nu}$",
-    bbwwllvv=r"HH $\rightarrow$ bbWW$_{2l2\nu}$",
+    bbbb=r"bbbb",
+    bbvv=r"bbVV",
+    bbww=r"bbWW",
+    bbwwqqlv=r"bbWW$_{qql\nu}$",
+    bbwwllvv=r"bbWW$_{2l2\nu}$",
     bbzz=r"HH $\rightarrow bbZZ$",
-    bbzzqqll=r"HH $\rightarrow$ bbZZ$_{qqll}$",
-    bbzzllll=r"HH $\rightarrow$ bbZZ$_{4l}$",
-    bbtautau=r"HH $\rightarrow bb\tau\tau$",
-    bbgg=r"HH $\rightarrow bb\gamma\gamma$",
+    bbzzqqll=r"bbZZ$_{qqll}$",
+    bbzzllll=r"bbZZ$_{4l}$",
+    bbtautau=r"bb\tau\tau$",
+    bbgg=r"bb\gamma\gamma$",
 )
 
 # campaign labels
-campaign_labels = DotDict(
-    {
-        "2016": "2016 (13 TeV)",
-        "2017": "2017 (13 TeV)",
-        "2018": "2018 (13 TeV)",
-        "FullRun2": "Run 2 (13 TeV)",
-    }
-)
+campaign_labels = DotDict({
+    "2016": "2016 (13 TeV)",
+    "2017": "2017 (13 TeV)",
+    "2018": "2018 (13 TeV)",
+    "FullRun2": "Run 2 (13 TeV)",
+})
 
 # poi defaults (value, range, points, taken from physics model) and labels
-poi_data = DotDict(
-    {
-        "r": DotDict(range=(0.0, 10.0), label="r"),
-        "r_gghh": DotDict(range=(0.0, 10.0), label="r_{gghh}"),
-        "r_qqhh": DotDict(range=(0.0, 10.0), label="r_{qqhh}"),
-        "kl": DotDict(range=(-30.0, 30.0), label=r"\kappa_{\lambda}"),
-        "kt": DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}"),
-        "C2V": DotDict(range=(-10.0, 10.0), label="C_{2V}"),
-        "CV": DotDict(range=(-10.0, 10.0), label="C_{V}"),
-    }
-)
+poi_data = DotDict({
+    "r": DotDict(range=(0.0, 10.0), label="r"),
+    "r_gghh": DotDict(range=(0.0, 10.0), label="r_{gghh}"),
+    "r_qqhh": DotDict(range=(0.0, 10.0), label="r_{qqhh}"),
+    "kl": DotDict(range=(-30.0, 30.0), label=r"\kappa_{\lambda}"),
+    "kt": DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}"),
+    "C2V": DotDict(range=(-10.0, 10.0), label="C_{2V}"),
+    "CV": DotDict(range=(-10.0, 10.0), label="C_{V}"),
+})
 # add "$" embedded labels
 for poi, data in poi_data.items():
     data["label_math"] = "${}$".format(data.label)

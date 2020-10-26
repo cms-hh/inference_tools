@@ -7,6 +7,7 @@ Helpers and utilities.
 import re
 import fnmatch
 import itertools
+import array
 
 
 # modules and objects from lazy imports
@@ -155,3 +156,21 @@ def minimize_1d(objective, bounds, niter=10, **kwargs):
     res = scipy.optimize.basinhopping(objective, start, niter=10, minimizer_kwargs=kwargs)
 
     return res.lowest_optimization_result
+
+
+def create_tgraph(n, *args):
+    """
+    Creates a ROOT graph with *n* points, where the type is *TGraph* for two, *TGraphErrors* for
+    4 and *TGraphAsymmErrors* for six *args*. Each argument is converted to a python array with
+    typecode "f".
+    """
+    ROOT = import_ROOT()
+
+    if len(args) <= 2:
+        cls = ROOT.TGraph
+    elif len(args) <= 4:
+        cls = ROOT.TGraphErrors
+    else:
+        cls = ROOT.TGraphAsymmErrors
+
+    return cls(n, *(array.array("f", a) for a in args))

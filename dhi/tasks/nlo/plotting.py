@@ -141,7 +141,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
             scale = {"pb": 1., "fb": 1000.}[self.xsec]
             if self.br in br_hh:
                 scale *= br_hh[self.br]
-                hh_process = br_hh_names[self.br]
+                hh_process = r"HH $\rightarrow$ " + br_hh_names[self.br]
 
             # perform the scaling
             if self.poi == "kl":
@@ -182,6 +182,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
             theory_values=theory_values,
             y_log=self.y_log,
             xsec_unit=xsec_unit,
+            pp_process={"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}[self.r_poi],
             hh_process=hh_process,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
