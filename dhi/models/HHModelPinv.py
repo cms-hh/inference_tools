@@ -15,6 +15,8 @@ from numpy import matrix
 from numpy import linalg
 from sympy import Matrix
 from collections import OrderedDict
+import functools
+
 
 class VBFHHSample:
     def __init__(self, val_CV, val_C2V, val_kl, val_xs, label):
@@ -39,9 +41,9 @@ class GGFHHFormula:
     def __init__(self, sample_list):
         self.sample_list = sample_list
         self.build_matrix()
-        self.calculatecoeffients()        
+        self.calculatecoeffients()
 
-    def build_matrix(self):    
+    def build_matrix(self):
         """ create the matrix M in this object """
 
         # the code will combine as many samples as passed to the input
@@ -51,7 +53,7 @@ class GGFHHFormula:
         M_tofill = [[None]*ncols for i in range(nrows)]
 
         for isample, sample in enumerate(self.sample_list):
-            
+
             ## implement the 3 scalings - box, triangle, interf
             M_tofill[isample][0] = sample.val_kt**4
             M_tofill[isample][1] = sample.val_kt**2 * sample.val_kl**2
@@ -66,14 +68,14 @@ class GGFHHFormula:
         try: self.M
         except AttributeError: self.build_matrix()
 
-        # ##############################################    
+        # ##############################################
         kl, kt, box, tri, interf = symbols('kl kt box tri interf')
         samples_symb = OrderedDict() # order is essential -> OrderedDict
         Nsamples     = self.M.shape[0] #num rows
         for i in range(Nsamples):
             sname = 's%i' % i
             samples_symb[sname] = Symbol(sname)
-        
+
         ### the vector of couplings
         c = Matrix([
             [kt**4]         ,
@@ -86,13 +88,13 @@ class GGFHHFormula:
             [box]   ,
             [tri]   ,
             [interf],
-        ])    
+        ])
 
         ### the vector of samples (i.e. cross sections)
         symb_list = [[sam] for sam in samples_symb.values()]
         s = Matrix(symb_list)
 
-        ####    
+        ####
         Minv   = self.M.pinv()
         self.coeffs = c.transpose() * Minv # coeffs * s is the sigma, accessing per component gives each sample scaling
         self.sigma  = self.coeffs*s
@@ -103,9 +105,9 @@ class VBFHHFormula:
     def __init__(self, sample_list):
         self.sample_list = sample_list
         self.build_matrix()
-        self.calculatecoeffients()        
+        self.calculatecoeffients()
 
-    def build_matrix(self):    
+    def build_matrix(self):
         """ create the matrix M in this object """
 
         # the code will combine as many samples as passed to the input
@@ -115,7 +117,7 @@ class VBFHHFormula:
         M_tofill = [[None]*ncols for i in range(nrows)]
 
         for isample, sample in enumerate(self.sample_list):
-            
+
             # implement the 3 scalings - box, triangle, interf
             M_tofill[isample][0] = sample.val_CV**2 * sample.val_kl**2
             M_tofill[isample][1] = sample.val_CV**4
@@ -133,9 +135,9 @@ class VBFHHFormula:
 
         try: self.M
         except AttributeError: self.build_matrix()
-        
-        ##############################################    
-        CV, C2V, kl, a, b, c, iab, iac, ibc = symbols('CV C2V kl a b c iab iac ibc')    
+
+        ##############################################
+        CV, C2V, kl, a, b, c, iab, iac, ibc = symbols('CV C2V kl a b c iab iac ibc')
         samples_symb = OrderedDict() # order is essential -> OrderedDict
         Nsamples     = self.M.shape[0] #num rows
         for i in range(Nsamples):
@@ -149,9 +151,9 @@ class VBFHHFormula:
             [C2V**2]        ,
             [CV**3 * kl]    ,
             [CV * C2V * kl] ,
-            [CV**2 * C2V]   
+            [CV**2 * C2V]
         ])
-        
+
         ### the vector of components
         v = Matrix([
             [a]   ,
@@ -159,14 +161,14 @@ class VBFHHFormula:
             [c]   ,
             [iab] ,
             [iac] ,
-            [ibc]  
-        ])    
-        
+            [ibc]
+        ])
+
         ### the vector of samples (i.e. cross sections)
         symb_list = [[sam] for sam in samples_symb.values()]
         s = Matrix(symb_list)
- 
-        ####    
+
+        ####
         Minv   = self.M.pinv()
         self.coeffs = c.transpose() * Minv # coeffs * s is the sigma, accessing per component gives each sample scaling
         self.sigma  = self.coeffs*s
@@ -175,7 +177,7 @@ class VBFHHFormula:
 
 class HHModel(PhysicsModel):
     """ Models the HH production as linear sum of the input components for VBF (>= 6) and GGF (>= 3) """
-    
+
     def __init__(self, ggf_sample_list, vbf_sample_list, name):
         PhysicsModel.__init__(self)
 
@@ -219,14 +221,14 @@ class HHModel(PhysicsModel):
 
 
     def doParametersOfInterest(self):
-        
+
         ## the model is built with:
         ## r x [GGF + VBF]
-        ## GGF = r_GGF x [sum samples(kl, kt)] 
-        ## VBF = r_VBF x [sum samples(kl, CV, C2V)] 
-        
+        ## GGF = r_GGF x [sum samples(kl, kt)]
+        ## VBF = r_VBF x [sum samples(kl, CV, C2V)]
+
         POIs = "r,r_gghh,r_qqhh,CV,C2V,kl,kt"
-        
+
         self.modelBuilder.doVar("r[1,-20,20]")
         self.modelBuilder.doVar("r_gghh[1,-20,20]")
         self.modelBuilder.doVar("r_qqhh[1,-20,20]")
@@ -234,7 +236,7 @@ class HHModel(PhysicsModel):
         self.modelBuilder.doVar("C2V[1,-10,10]")
         self.modelBuilder.doVar("kl[1,-30,30]")
         self.modelBuilder.doVar("kt[1,-10,10]")
-        
+
         self.modelBuilder.doSet("POI",POIs)
 
         self.modelBuilder.out.var("r_gghh") .setConstant(True)
@@ -280,7 +282,7 @@ class HHModel(PhysicsModel):
             # no constant expressions are expected
             if len(couplings_in_expr) == 0:
                 raise RuntimeError('GGF HH : scaling expression has no coefficients')
-            
+
             for idx, ce in enumerate(couplings_in_expr):
                 # print '..replacing', ce
                 symb = '@{}'.format(idx)
@@ -321,7 +323,7 @@ class HHModel(PhysicsModel):
             # no constant expressions are expected
             if len(couplings_in_expr) == 0:
                 raise RuntimeError('VBF HH : scaling expression has no coefficients')
-            
+
             for idx, ce in enumerate(couplings_in_expr):
                 # print '..replacing', ce
                 symb = '@{}'.format(idx)
@@ -345,7 +347,7 @@ class HHModel(PhysicsModel):
             self.f_r_vbf_names.append(f_prod_name) #bookkeep the scaling that has been created
 
     def getYieldScale(self,bin,process):
-        
+
         ## my control to verify for a unique association between process <-> scaling function
         try:
             self.scalingMap
@@ -381,7 +383,7 @@ class HHModel(PhysicsModel):
             isample = imatched_ggf[0]
             self.scalingMap[process].append((isample, 'GGF'))
             return self.f_r_ggf_names[isample]
-        
+
         if len(imatched_vbf) == 1:
             isample = imatched_vbf[0]
             self.scalingMap[process].append((isample, 'VBF'))
@@ -418,19 +420,75 @@ HHdefault = HHModel(
     name            = 'HHdefault'
 )
 
-# f = GGFHHFormula(GGF_sample_list)
-# f = VBFHHFormula(VBF_sample_list)
+
+def create_ggf_xsec_func(formula=None, nnlo=True):
+    """
+    Creates and returns a function that can be used to calculate numeric ggF cross section values
+    given an appropriate *formula*, which defaults to *HHdefault.ggf_formula*. The returned function
+    has the signature ``(kl=1.0, kt=1.0)``. When *nnlo* is *True*, a k-factor for the conversion
+    from NLO to NNLO is applied. Example:
+
+    .. code-block:: python
+
+        get_ggf_xec = create_ggf_xsec_func()
+
+        print(get_ggf_xec(2.))
+        # -> 0.0133045... (or similar)
+    """
+    if formula is None:
+        formula = HHdefault.ggf_formula
+
+    # create the lambdify'ed evaluation function
+    func = lambdify(symbols("kl kt s0 s1 s2"), formula.sigma)
+
+    # scaling functions in case nnlo is set
+    scale_nlo = lambda kl: 62.5339 - 44.3231 * kl + 9.6340 * kl**2.
+    scale_nnlo = lambda kl: 70.3874 - 50.4111 * kl + 11.0595 * kl**2.
+    nlo2nnlo = lambda xsec, kl: xsec * scale_nnlo(kl) / (1.115 * scale_nlo(kl))
+
+    # wrap into another function to apply defaults and nlo-to-nnlo scaling
+    @functools.wraps(func)
+    def wrapper(kl=1., kt=1.):
+        xsec = func(kl, kt, *(formula.sample_list[i].val_xs for i in range(3)))[0, 0]
+
+        if nnlo:
+            xsec = nlo2nnlo(xsec, kl)
+
+        return xsec
+
+    return wrapper
 
 
+def create_vbf_xsec_func(formula=None):
+    """
+    Creates and returns a function that can be used to calculate numeric VBF cross section values
+    given an appropriate *formula*, which defaults to *HHdefault.vbf_formula*. The returned function
+    has the signature ``(c2v=1.0, cv=1.0, kl=1.0)``.
+
+    .. code-block:: python
+
+        get_vbf_xsec = create_vbf_xsec_func()
+
+        print(get_vbf_xsec(2.))
+        # -> 0.0156445... (or similar)
+    """
+    if formula is None:
+        formula = HHdefault.vbf_formula
+
+    # create the lambdify'ed evaluation function
+    func = lambdify(symbols("C2V CV kl s0 s1 s2 s3 s4 s5"), formula.sigma)
+
+    # wrap into another function to apply defaults
+    @functools.wraps(func)
+    def wrapper(c2v=1., cv=1., kl=1.):
+        xsec = func(c2v, cv, kl, *(formula.sample_list[i].val_xs for i in range(6)))[0, 0]
+        return xsec
+
+    return wrapper
 
 
+#: Default function for getting ggF cross sections using the formula of the HHdefault model.
+get_ggf_xsec = create_ggf_xsec_func()
 
-
-
-
-
-
-
-
-
-
+#: Default function for getting VBF cross sections using the formula of the HHdefault model.
+get_vbf_xsec = create_vbf_xsec_func()
