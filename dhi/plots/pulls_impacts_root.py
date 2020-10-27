@@ -253,13 +253,14 @@ def plot_pulls_impacts(
             draw_objs.append(fit_label)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad, y_offset=50)
+        cms_labels = r.routines.create_cms_labels(pad=pad, x_offset=8, y_offset=50)
         draw_objs.extend(cms_labels)
 
         # campaign label
         if campaign:
             campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
-            campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, y_offset=80)
+            campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, x_offset=8,
+                y_offset=80)
             draw_objs.append(campaign_label)
 
         # draw objects

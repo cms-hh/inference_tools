@@ -144,7 +144,8 @@ def plot_likelihood_scan_1d(
     ax.tick_params(bottom=True, top=True, left=True, right=True, direction="in")
     ax.legend(legend_handles, [h.get_label() for h in legend_handles], loc="best")
     ax.set_title(r"\textbf{CMS} \textit{Preliminary}", loc="left")
-    ax.set_title(campaign_labels.get(campaign, campaign), loc="right")
+    if campaign:
+        ax.set_title(campaign_labels.get(campaign, campaign), loc="right")
     ax.grid()
 
     # save
@@ -279,7 +280,8 @@ def plot_likelihood_scan_2d(
     ax.set_ylim(x2_min, x2_max)
     ax.tick_params(bottom=True, top=True, left=True, right=True, direction="in")
     ax.set_title(r"\textbf{CMS} \textit{Preliminary}", loc="left")
-    ax.set_title(campaign_labels.get(campaign, campaign), loc="right")
+    if campaign:
+        ax.set_title(campaign_labels.get(campaign, campaign), loc="right")
 
     # save
     fig.tight_layout()
