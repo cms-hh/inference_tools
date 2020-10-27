@@ -6,17 +6,17 @@ You can check the status of this task with:
 law run LikelihoodScan1D --version dev --print-status 2
 print task status with max_depth 2 and target_depth 0
 
-> check status of LikelihoodScan1D(branch=-1, start_branch=0, end_branch=61, branches=, version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi=kl, poi_range=-30.0,30.0, poi_points=61, workflow=local)
-|  collection: SiblingFileCollection(len=61, threshold=61.0, dir=$DHI_STORE/LikelihoodScan1D/m125.0/model_hh_HHdefault/kl/dev)
-|    absent (0/61)
+> LikelihoodScan1D(branch=-1, start_branch=0, end_branch=51, branches=, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault, poi=kl, poi_range=-25.0,25.0, poi_points=51, workflow=local)
+|   collection: SiblingFileCollection(len=51, threshold=51.0, dir=$DHI_STORE/LikelihoodScan1D/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev)
+|     absent (0/51)
 |
-|  > check status of CreateWorkspace(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  |  - LocalFileTarget(path=$DHI_STORE/CreateWorkspace/m125.0/model_hh_HHdefault/dev/workspace.root)
-|  |    absent
+|  > CreateWorkspace(version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault)
+|  |   LocalFileTarget(path=$DHI_STORE/CreateWorkspace/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/dev/workspace.root)
+|  |     existent
 |  |
-|  |  > check status of CombineDatacards(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  |  |  - LocalFileTarget(path=$DHI_STORE/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
-|  |  |    absent
+|  |  > CombineDatacards(version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault)
+|  |  |   LocalFileTarget(path=$DHI_STORE/CombineDatacards/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/dev/datacard.txt)
+|  |  |     existent
 ```
 
 As you can see `LikelihoodScan1D` produces by default a kappa lambda scan with a granularity of 61 points from `-30..30`.
@@ -76,7 +76,7 @@ Use `root` for the ROOT version,
 law run PlotLikelihoodScan1D --version dev --plot-flavor root
 ```
 
-![1D likelihood scan with ROOT](../images/nll1d__kl_n61_-30.0_30.0__root.png)
+![1D likelihood scan with ROOT](../images/nll1d__kl_n51_-25.0_25.0__root.png)
 
 and `mpl`for the matplotlib version,
 
@@ -84,7 +84,7 @@ and `mpl`for the matplotlib version,
 law run PlotLikelihoodScan1D --version dev --plot-flavor mpl
 ```
 
-![1D likelihood scan with matplotlib](../images/nll1d__kl_n61_-30.0_30.0__mpl.png)
+![1D likelihood scan with matplotlib](../images/nll1d__kl_n51_-25.0_25.0__mpl.png)
 
 **Parameters**:
 

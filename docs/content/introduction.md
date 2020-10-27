@@ -31,6 +31,12 @@ source setup.sh some_name
 where the value of `some_name` is your choice, and the script interactively guides you through the quick setup process.
 To use the same configuration the next time, ==make sure to use the same value you passed before.==
 
+**Note**: In case you want to reinstall the software stack or combine from scratch, prepend `DHI_REINSTALL_SOFTWARE=1` or `DHI_REINSTALL_COMBINE=1` to the `source` commend, e.g.
+
+```shell
+DHI_REINSTALL_SOFTWARE=1 source setup.sh some_name
+```
+
 
 2. Let law index your tasks and their parameters:
 
@@ -66,21 +72,23 @@ module 'dhi.tasks.nlo.inference', 10 task(s):
     - CombineDatacards
     - CreateWorkspace
     - MergePullsAndImpacts
-    - MergeUpperLimits
     - MergeLikelihoodScan1D
     - MergeLikelihoodScan2D
+    - MergeUpperLimits
 
-module 'dhi.tasks.nlo.plotting', 4 task(s):
+module 'dhi.tasks.nlo.plotting', 6 task(s):
     - PlotUpperLimits
+    - PlotUpperLimitsAtPOI
     - PlotLikelihoodScan1D
     - PlotLikelihoodScan2D
     - PlotPullsAndImpacts
+    - PlotMultipleUpperLimits
 
 module 'dhi.tasks.misc', 2 task(s):
     - PostFitShapes
     - CompareNuisances
 
-written 19 task(s) to index file '/your/path/inference/.law/index'
+written 21 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type
