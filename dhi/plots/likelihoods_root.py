@@ -10,7 +10,7 @@ import array
 import numpy as np
 
 from dhi.plots.likelihoods_mpl import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
-from dhi.config import poi_data, campaign_labels, chi2_levels, colors
+from dhi.config import poi_data, campaign_labels, chi2_levels, colors as _colors
 from dhi.util import import_ROOT, to_root_latex, get_neighbor_coordinates
 
 
@@ -85,14 +85,14 @@ def plot_likelihood_scan_1d(
     for value in [scan.poi_p1, scan.poi_m1, scan.poi_p2, scan.poi_m2]:
         if value is not None:
             line = ROOT.TLine(value, y_min, value, scan.interp(value))
-            r.setup_line(line, props={"LineColor": colors.root.red, "LineStyle": 2, "NDC": False})
+            r.setup_line(line, props={"LineColor": _colors.root.red, "LineStyle": 2, "NDC": False})
             draw_objs.append(line)
 
     # lines at chi2_1 intervals
     for n in [chi2_levels[1][1], chi2_levels[1][2]]:
         if n < max(dnll2_values):
             line = ROOT.TLine(x_min, n, x_max, n)
-            r.setup_line(line, props={"LineColor": colors.root.red, "LineStyle": 2, "NDC": False})
+            r.setup_line(line, props={"LineColor": _colors.root.red, "LineStyle": 2, "NDC": False})
             draw_objs.append(line)
 
     # theory prediction with uncertainties
@@ -102,16 +102,16 @@ def plot_likelihood_scan_1d(
         g_thy = ROOT.TGraphAsymmErrors(1, arr(theory_value[0]), arr(0), arr(theory_value[2]),
             arr(theory_value[1]), arr(0), arr(y_max_value))
         r.setup_graph(g_thy, props={"FillStyle": 3345, "MarkerStyle": 20, "MarkerSize": 0},
-            color=colors.root.red, color_flags="lfm")
+            color=_colors.root.red, color_flags="lfm")
         line_thy = ROOT.TLine(theory_value[0], 0., theory_value[0], y_max_value)
-        r.setup_line(line_thy, props={"NDC": False}, color=colors.root.red)
+        r.setup_line(line_thy, props={"NDC": False}, color=_colors.root.red)
         draw_objs.append((g_thy, "SAME,2"))
         draw_objs.append(line_thy)
         legend_entries.append((g_thy, "SM prediction"))
 
     # line for best fit value
     line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_value)
-    r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors.root.black)
+    r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=_colors.root.black)
     fit_label = "{} = {}".format(to_root_latex(poi_data[poi].label),
         scan.num_min.str(format="%.2f", style="root"))
     draw_objs.append(line_fit)
@@ -247,14 +247,14 @@ def plot_likelihood_scan_2d(
     if scan.num2_min.uncertainties:
         g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
         g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
-    r.setup_graph(g_fit, color=colors.root.red)
+    r.setup_graph(g_fit, color=_colors.root.red)
     draw_objs.append((g_fit, "PEZ"))
 
     # contours
     h_contours68 = ROOT.TH2F(h_nll)
     h_contours95 = ROOT.TH2F(h_nll)
-    r.setup_hist(h_contours68, props={"LineWidth": 2, "LineColor": colors.root.green})
-    r.setup_hist(h_contours95, props={"LineWidth": 2, "LineColor": colors.root.yellow})
+    r.setup_hist(h_contours68, props={"LineWidth": 2, "LineColor": _colors.root.green})
+    r.setup_hist(h_contours95, props={"LineWidth": 2, "LineColor": _colors.root.yellow})
     h_contours68.SetContour(1, array.array("d", [chi2_levels[2][1]]))
     h_contours95.SetContour(1, array.array("d", [chi2_levels[2][2]]))
     draw_objs.append((h_contours68, "SAME,CONT3"))

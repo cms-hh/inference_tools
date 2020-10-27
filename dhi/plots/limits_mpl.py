@@ -24,6 +24,7 @@ def plot_limit_scan(
     y_min=None,
     y_max=None,
     xsec_unit=None,
+    pp_process="pp",
     hh_process="HH",
     campaign="2017",
 ):
@@ -33,13 +34,16 @@ def plot_limit_scan(
     optionally "limit_p1" (plus 1 sigma), "limit_m1" (minus 1 sigma), "limit_p2" and "limit_m2".
     When the variations by 1 or 2 sigma are missing, the plot is created without them. When
     *observed_values* or *theory_values* are given, they should be single lists of values.
-    Therefore, they must have the same length as the lists given in *expected_values*. When *y_log*
-    is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*, *y_min* and *y_max*
-    define the axis ranges and default to the range of the given values. *xsec_unit* denotes whether
-    the passed values are given as real cross sections in this unit or, when *None*, as a ratio over
-    the theory prediction. *hh_process* is inserted to the process name in the title of the y-axis
-    and indicates that the plotted cross section data was (e.g.) scaled by a branching ratio.
-    *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
+    Therefore, they must have the same length as the lists given in *expected_values*.
+
+    When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*,
+    *y_min* and *y_max* define the axis ranges and default to the range of the given values.
+    *xsec_unit* denotes whether the passed values are given as real cross sections in this unit or,
+    when *None*, as a ratio over the theory prediction. The *pp_process* label is shown in the
+    x-axis title to denote the physics process the computed values are corresponding to.
+    *hh_process* is inserted to the process name in the title of the y-axis and indicates that the
+    plotted cross section data was (e.g.) scaled by a branching ratio. *campaign* should refer to
+    the name of a campaign label defined in dhi.config.campaign_labels.
 
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#upper-limits
     """
@@ -74,7 +78,7 @@ def plot_limit_scan(
     p = ax.plot(
         poi_values,
         expected_values["limit"],
-        label="Expected limit",
+        label="Median expected",
         color="black",
         linestyle="dashed",
     )
@@ -109,7 +113,7 @@ def plot_limit_scan(
         p = ax.plot(
             poi_values,
             observed_values,
-            label=r"Observed limit",
+            label=r"Observed",
             color="black",
             linestyle="-",
         )
@@ -128,8 +132,8 @@ def plot_limit_scan(
 
     # legend, labels, titles, etc
     ax.set_xlabel(poi_data[poi].label_math)
-    ax.set_ylabel(r"Upper 95\% CLs limit on $\sigma$ (pp $\rightarrow$ {}) / {}".format(
-        hh_process, xsec_unit or r"$\sigma_{SM}$"))
+    ax.set_ylabel(r"Upper 95\% CLs limit on $\sigma$ ({} $\rightarrow$ {}) / {}".format(
+        pp_process, hh_process, xsec_unit or r"$\sigma_{SM}$"))
     if y_log:
         ax.set_yscale("log")
     if y_min is not None:

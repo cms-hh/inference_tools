@@ -170,19 +170,23 @@ class MergeUpperLimits(POIScanTask1DWithR):
         ]
         limit_scan_task = self.requires()
         for branch, inp in self.input()["collection"].targets.items():
-            f = inp.load(formatter="uproot")["limit"]
-            limits = f.array("limit")
-            kl = limit_scan_task.branch_map[branch]
-            if len(limits) == 1:
-                # only the central limit exists
-                # TODO: shouldn't we raise an error when this happens?
-                records.append((kl, limits[0], 0.0, 0.0, 0.0, 0.0))
-            else:
-                # also 1 and 2 sigma variations exist
-                records.append((kl, limits[2], limits[3], limits[1], limits[4], limits[0]))
+            poi_value = limit_scan_task.branch_map[branch]
+            records.append((poi_value,) + self.load_limits(inp))
 
         data = np.array(records, dtype=dtype)
         self.output().dump(data=data, formatter="numpy")
+
+    @classmethod
+    def load_limits(cls, inp):
+        f = inp.load(formatter="uproot")["limit"]
+        limits = f.array("limit")
+        if len(limits) == 1:
+            # only the central limit exists
+            # TODO: shouldn't we raise an error when this happens?
+            return (limits[0], 0.0, 0.0, 0.0, 0.0)
+        else:
+            # also 1 and 2 sigma variations exist
+            return (limits[2], limits[3], limits[1], limits[4], limits[0])
 
 
 class LikelihoodScan1D(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
