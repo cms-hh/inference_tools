@@ -16,24 +16,24 @@ law run PlotPullsAndImpacts --version dev --print-status -4
 
 print task status with max_depth -1 and target_depth 0
 
-> check status of PlotPullsAndImpacts(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi=kl, poi_value=1.0, mc_stats=False, parameters_per_page=-1, skip_parameters=, order_parameters=, order_by_impact=False)
-|   LocalFileTarget(path=$DHI_STORE/PlotPullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/pulls_impacts__kl.pdf)
+> PlotPullsAndImpacts(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault, poi=kl, poi_value=1.0, mc_stats=False, file_type=pdf, parameters_per_page=-1, skip_parameters=, order_parameters=, order_by_impact=False)
+|   LocalFileTarget(path=$DHI_STORE/PlotPullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/pulls_impacts__kl.pdf)
 |     absent
 |
-|  > check status of MergePullsAndImpacts(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi=kl, poi_value=1.0, mc_stats=False)
-|  |   LocalFileTarget(path=$DHI_STORE/MergePullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/pulls_impacts__kl.json)
+|  > MergePullsAndImpacts(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault, poi=kl, poi_value=1.0, mc_stats=False)
+|  |   LocalFileTarget(path=$DHI_STORE/MergePullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/pulls_impacts__kl.json)
 |  |     absent
 |  |
-|  |  > check status of PullsAndImpacts(branch=-1, start_branch=0, end_branch=1, branches=, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi=kl, poi_value=1.0, mc_stats=False, workflow=local)
-|  |  |   collection: SiblingFileCollection(len=1, threshold=1.0, dir=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev)
+|  |  > PullsAndImpacts(branch=-1, start_branch=0, end_branch=14, branches=, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault, poi=kl, poi_value=1.0, mc_stats=False, workflow=local)
+|  |  |   collection: SiblingFileCollection(len=14, threshold=14.0, dir=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev)
 |  |  |     absent (0/14)
 |  |  |
-|  |  |  > check status of CreateWorkspace(version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  |  |  |   LocalFileTarget(path=$DHI_STORE/CreateWorkspace/m125.0/model_hh_HHdefault/dev/workspace.root)
+|  |  |  > CreateWorkspace(version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault)
+|  |  |  |   LocalFileTarget(path=$DHI_STORE/CreateWorkspace/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/dev/workspace.root)
 |  |  |  |     existent
 |  |  |  |
-|  |  |  |  > check status of CombineDatacards(version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  |  |  |  |   LocalFileTarget(path=$DHI_STORE/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
+|  |  |  |  > CombineDatacards(version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault)
+|  |  |  |  |   LocalFileTarget(path=$DHI_STORE/CombineDatacards/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/dev/datacard.txt)
 |  |  |  |  |     existent
 ```
 
@@ -63,23 +63,23 @@ law run PullsAndImpacts --version dev --print-status 0,1
 
 print task status with max_depth 0 and target_depth 1
 
-> check status of PullsAndImpacts(branch=-1, start_branch=0, end_branch=14, branches=, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi=kl, poi_value=1.0, mc_stats=False, workflow=local)
-|   collection: SiblingFileCollection(len=14, threshold=14.0, dir=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev)
+> PullsAndImpacts(branch=-1, start_branch=0, end_branch=14, branches=, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault, poi=kl, poi_value=1.0, mc_stats=False, workflow=local)
+|   collection: SiblingFileCollection(len=14, threshold=14.0, dir=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev)
 |     absent (0/14)
-|     0: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__nominal.root))
-|     1: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__electron_id_loose_ptlt20.root))
-|     2: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__electron_id_tight.root))
-|     3: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__electron_iso_loose_01.root))
-|     4: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__electron_iso_loose_02.root))
-|     5: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__l1_ecal_prefiring.root))
-|     6: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__lumi_13TeV.root))
-|     7: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__muon_id_tight.root))
-|     8: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__muon_idiso_loose.root))
-|     9: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__r.root))
-|     10: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__top_pT_reweighting.root))
-|     11: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__trigger_ee_sf.root))
-|     12: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__trigger_emu_sf.root))
-|     13: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__trigger_mumu_sf.root))
+|     0: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__nominal.root))
+|     1: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__electron_id_loose_ptlt20.root))
+|     2: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__electron_id_tight.root))
+|     3: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__electron_iso_loose_01.root))
+|     4: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__electron_iso_loose_02.root))
+|     5: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__l1_ecal_prefiring.root))
+|     6: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__lumi_13TeV.root))
+|     7: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__muon_id_tight.root))
+|     8: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__muon_idiso_loose.root))
+|     9: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__r.root))
+|     10: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__top_pT_reweighting.root))
+|     11: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__trigger_ee_sf.root))
+|     12: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__trigger_emu_sf.root))
+|     13: absent (LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__trigger_mumu_sf.root))
 ```
 
 To get the pull and impact only for a particular nuisance, say `lumi_13TeV` which corresponds to branch 6, we could just run `law run PullsAndImpacts --version dev --branch 6`.
@@ -89,8 +89,8 @@ law run PullsAndImpacts --version dev --branch 6 --print-status 0
 
 print task status with max_depth 0 and target_depth 0
 
-> check status of PullsAndImpacts(branch=6, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi=kl, poi_value=1.0, mc_stats=False)
-|   LocalFileTarget(path=/eos/user/m/mrieger/dhi/store/PullsAndImpacts/m125.0/model_hh_HHdefault/kl/dev/fit__kl__lumi_13TeV.root)
+> PullsAndImpacts(branch=6, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault, poi=kl, poi_value=1.0, mc_stats=False)
+|   LocalFileTarget(path=$DHI_STORE/PullsAndImpacts/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl/dev/fit__kl__lumi_13TeV.root)
 |     absent
 ```
 

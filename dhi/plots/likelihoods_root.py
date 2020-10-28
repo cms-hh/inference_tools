@@ -10,14 +10,15 @@ import array
 import numpy as np
 
 from dhi.plots.likelihoods_mpl import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
-from dhi.config import poi_data, campaign_labels, chi2_levels, colors
+from dhi.config import poi_data, campaign_labels, chi2_levels, colors as _colors
 from dhi.util import import_ROOT, to_root_latex, get_neighbor_coordinates
 
 
 def plot_likelihood_scan_1d(
     path,
     poi,
-    data,
+    expected_values,
+    theory_value=None,
     poi_min=None,
     campaign="2017",
     y_log=False,
@@ -25,13 +26,14 @@ def plot_likelihood_scan_1d(
     x_max=None,
 ):
     """
-    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *path*. *data* should be a
-    mapping to lists of values or a record array with keys "<poi_name>" and "dnll2". When *poi_min*
-    is set, it should be the value of the poi that leads to the best likelihood. Otherwise, it is
-    estimated from the interpolated curve. *campaign* should refer to the name of a campaign label
-    defined in dhi.config.campaign_labels. When *y_log* is *True*, the y-axis is plotted with a
-    logarithmic scale. *x_min* and *x_max* define the x-axis range and default to the range of poi
-    values.
+    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *path*. *expected_values*
+    should be a mapping to lists of values or a record array with keys "<poi_name>" and "dnll2".
+    *theory_value* can be a 3-tuple denoting the nominal theory prediction and its up and down
+    uncertainties which is drawn as a vertical bar. When *poi_min* is set, it should be the value of
+    the poi that leads to the best likelihood. Otherwise, it is estimated from the interpolated
+    curve. *campaign* should refer to the name of a campaign label defined in
+    dhi.config.campaign_labels. When *y_log* is *True*, the y-axis is plotted with a logarithmic
+    scale. *x_min* and *x_max* define the x-axis range and default to the range of poi values.
 
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#1d-likelihood-scans
     """
@@ -39,8 +41,8 @@ def plot_likelihood_scan_1d(
     ROOT = import_ROOT()
 
     # get valid poi and delta nll values
-    poi_values = np.array(data[poi], dtype=np.float32)
-    dnll2_values = np.array(data["dnll2"], dtype=np.float32)
+    poi_values = np.array(expected_values[poi], dtype=np.float32)
+    dnll2_values = np.array(expected_values["dnll2"], dtype=np.float32)
 
     # set default range
     if x_min is None:
@@ -70,6 +72,7 @@ def plot_likelihood_scan_1d(
     canvas, (pad,) = r.routines.create_canvas(pad_props={"Logy": y_log})
     pad.cd()
     draw_objs = []
+    legend_entries = []
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[poi].label)
@@ -82,31 +85,50 @@ def plot_likelihood_scan_1d(
     for value in [scan.poi_p1, scan.poi_m1, scan.poi_p2, scan.poi_m2]:
         if value is not None:
             line = ROOT.TLine(value, y_min, value, scan.interp(value))
-            r.setup_line(line, props={"LineColor": colors.root.red, "LineStyle": 2, "NDC": False})
+            r.setup_line(line, props={"LineColor": _colors.root.red, "LineStyle": 2, "NDC": False})
             draw_objs.append(line)
 
     # lines at chi2_1 intervals
     for n in [chi2_levels[1][1], chi2_levels[1][2]]:
         if n < max(dnll2_values):
             line = ROOT.TLine(x_min, n, x_max, n)
-            r.setup_line(line, props={"LineColor": colors.root.red, "LineStyle": 2, "NDC": False})
+            r.setup_line(line, props={"LineColor": _colors.root.red, "LineStyle": 2, "NDC": False})
             draw_objs.append(line)
 
-    # line and label for best fit value
-    line = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_value)
-    r.setup_line(line, props={"LineColor": colors.root.red, "LineWidth": 2, "NDC": False})
-    draw_objs.append(line)
+    # theory prediction with uncertainties
+    if theory_value:
+        # theory graph and line
+        arr = lambda value: np.array([value], dtype=np.float32)
+        g_thy = ROOT.TGraphAsymmErrors(1, arr(theory_value[0]), arr(0), arr(theory_value[2]),
+            arr(theory_value[1]), arr(0), arr(y_max_value))
+        r.setup_graph(g_thy, props={"FillStyle": 3345, "MarkerStyle": 20, "MarkerSize": 0},
+            color=_colors.root.red, color_flags="lfm")
+        line_thy = ROOT.TLine(theory_value[0], 0., theory_value[0], y_max_value)
+        r.setup_line(line_thy, props={"NDC": False}, color=_colors.root.red)
+        draw_objs.append((g_thy, "SAME,2"))
+        draw_objs.append(line_thy)
+        legend_entries.append((g_thy, "SM prediction"))
+
+    # line for best fit value
+    line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_value)
+    r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=_colors.root.black)
     fit_label = "{} = {}".format(to_root_latex(poi_data[poi].label),
         scan.num_min.str(format="%.2f", style="root"))
-    fit_label = r.routines.create_top_left_label(fit_label, pad=pad, y_offset=80,
-        x=0.5 * (r.get_x(0, pad, "right") + r.get_x(0, pad)), props={"TextAlign": 21})
-    draw_objs.append(fit_label)
+    draw_objs.append(line_fit)
+    legend_entries.insert(0, (line_fit, fit_label, "l"))
 
     # nll curve
     np2arr = lambda a: array.array("f", a.tolist())
     g_nll = ROOT.TGraph(len(poi_values), np2arr(poi_values), np2arr(dnll2_values))
     r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75})
     draw_objs.append((g_nll, "SAME,CP"))
+
+    # legend
+    legend = r.routines.create_legend(pad=pad, width=230, height=len(legend_entries) * 35)
+    r.setup_legend(legend)
+    for tpl in legend_entries:
+        legend.AddEntry(*tpl)
+    draw_objs.append(legend)
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -130,7 +152,7 @@ def plot_likelihood_scan_2d(
     path,
     poi1,
     poi2,
-    data,
+    expected_values,
     poi1_min=None,
     poi2_min=None,
     campaign="2017",
@@ -143,9 +165,9 @@ def plot_likelihood_scan_2d(
 ):
     """
     Creates a likelihood plot of the 2D scan of two pois *poi1* and *poi2*, and saves it at *path*.
-    *data* should be a mapping to lists of values or a record array with keys "<poi1_name>",
-    "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be the values
-    of the pois that lead to the best likelihood. Otherwise, they are  estimated from the
+    *expected_values* should be a mapping to lists of values or a record array with keys
+    "<poi1_name>", "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be
+    the values of the pois that lead to the best likelihood. Otherwise, they are  estimated from the
     interpolated curve. *campaign* should refer to the name of a campaign label defined in
     dhi.config.campaign_labels. When *z_log* is *True*, the z-axis is plotted with a logarithmic
     scale. *x1_min*, *x1_max*, *x2_min* and *x2_max* define the axis range of poi1 and poi2,
@@ -158,9 +180,9 @@ def plot_likelihood_scan_2d(
     ROOT = import_ROOT()
 
     # get poi and delta nll values
-    poi1_values = np.array(data[poi1], dtype=np.float32)
-    poi2_values = np.array(data[poi2], dtype=np.float32)
-    dnll2_values = np.array(data["dnll2"], dtype=np.float32)
+    poi1_values = np.array(expected_values[poi1], dtype=np.float32)
+    poi2_values = np.array(expected_values[poi2], dtype=np.float32)
+    dnll2_values = np.array(expected_values["dnll2"], dtype=np.float32)
 
     # set default ranges
     if x1_min is None:
@@ -225,14 +247,14 @@ def plot_likelihood_scan_2d(
     if scan.num2_min.uncertainties:
         g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
         g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
-    r.setup_graph(g_fit, color=colors.root.red)
+    r.setup_graph(g_fit, color=_colors.root.red)
     draw_objs.append((g_fit, "PEZ"))
 
     # contours
     h_contours68 = ROOT.TH2F(h_nll)
     h_contours95 = ROOT.TH2F(h_nll)
-    r.setup_hist(h_contours68, props={"LineWidth": 2, "LineColor": colors.root.green})
-    r.setup_hist(h_contours95, props={"LineWidth": 2, "LineColor": colors.root.yellow})
+    r.setup_hist(h_contours68, props={"LineWidth": 2, "LineColor": _colors.root.green})
+    r.setup_hist(h_contours95, props={"LineWidth": 2, "LineColor": _colors.root.yellow})
     h_contours68.SetContour(1, array.array("d", [chi2_levels[2][1]]))
     h_contours95.SetContour(1, array.array("d", [chi2_levels[2][2]]))
     draw_objs.append((h_contours68, "SAME,CONT3"))

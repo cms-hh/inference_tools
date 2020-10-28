@@ -49,11 +49,12 @@ class DatacardBaseTask(AnalysisTask):
         description="prefix to prepend to output file paths; default: ''",
     )
     hh_model = luigi.Parameter(
-        default="hh:HHdefault",
+        default="HHModelPinv:HHdefault",
         description="the name of the HH model relative to dhi.models in the format "
-        "module:model_name; default: hh:HHdefault",
+        "module:model_name; default: HHModelPinv:HHdefault",
     )
 
+    hash_datacards_in_store = True
     hash_datacards_in_repr = True
 
     @classmethod
@@ -63,26 +64,17 @@ class DatacardBaseTask(AnalysisTask):
         When a pattern did not resolve to valid paths it is reconsidered relative to the
         datacards_run2 directory. Bin statements, e.g. "mybin=datacard.txt" are accepted.
         """
-        cards = params.get("datacards")
-        if isinstance(cards, (tuple, list)):
-            _cards = []
-            dc_path = os.path.expandvars("$DHI_BASE/datacards_run2")
-            for pattern in cards:
-                pattern, bin_name = cls.split_datacard_path(pattern)
-                pattern = os.path.expandvars(os.path.expanduser(pattern))
-                paths = list(glob.glob(pattern))
-                if not paths:
-                    # try relative to datacards_run2
-                    paths = list(glob.glob(os.path.join(dc_path, pattern)))
-                for path in paths:
-                    _cards.append("{}={}".format(bin_name, path) if bin_name else path)
-            _cards = sorted(law.util.make_unique(_cards))
+        params = super(DatacardBaseTask, cls).modify_param_values(params)
 
-            # complain when cards are empty
-            if not _cards:
+        datacards = params.get("datacards")
+        if isinstance(datacards, (tuple, list)):
+            datacards = cls.resolve_datacards(datacards)
+
+            # complain when datacards are empty
+            if not datacards:
                 raise ValueError("datacards parameter did not match any existing datacard files")
 
-            params["datacards"] = tuple(_cards)
+            params["datacards"] = tuple(datacards)
         return params
 
     @classmethod
@@ -100,10 +92,28 @@ class DatacardBaseTask(AnalysisTask):
         bin_name, path = re.match(r"^(([^\/]+)=)?(.+)$", path).groups()[1:]
         return path, bin_name
 
+    @classmethod
+    def resolve_datacards(cls, datacards):
+        _datacards = []
+        dc_path = os.path.expandvars("$DHI_BASE/datacards_run2")
+        for pattern in datacards:
+            pattern, bin_name = cls.split_datacard_path(pattern)
+            pattern = os.path.expandvars(os.path.expanduser(pattern))
+            paths = list(glob.glob(pattern))
+            if not paths:
+                # try relative to datacards_run2
+                paths = list(glob.glob(os.path.join(dc_path, pattern)))
+            for path in paths:
+                _datacards.append("{}={}".format(bin_name, path) if bin_name else path)
+        _datacards = sorted(law.util.make_unique(_datacards))
+        return _datacards
+
     def store_parts(self):
         parts = super(DatacardBaseTask, self).store_parts()
-        parts["mass"] = "m{}".format(self.mass)
         parts["hh_model"] = "model_" + self.hh_model.replace(".", "_").replace(":", "_")
+        if self.hash_datacards_in_store:
+            parts["datacards"] = "datacards_{}".format(law.util.create_hash(self.datacards))
+        parts["mass"] = "m{}".format(self.mass)
         return parts
 
     def local_target_dc(self, *path, **kwargs):
@@ -142,6 +152,66 @@ class DatacardBaseTask(AnalysisTask):
         return mod, getattr(mod, model_name)
 
 
+class MultiDatacardBaseTask(DatacardBaseTask):
+
+    multi_datacards = law.MultiCSVParameter(
+        default=(tuple(os.getenv("DHI_EXAMPLE_CARDS").split()),),
+        description="path to input datacards separated by comma; supports globbing",
+    )
+    datacard_order = law.CSVParameter(
+        default=(),
+        cls=luigi.IntParameter,
+        significant=False,
+        description="indices of datacard sequences in multi_datacards for reordering; not used "
+        "when empty; default: empty",
+    )
+    datacard_names = law.CSVParameter(
+        default=(),
+        significant=False,
+        description="names of datacard sequences for plotting purposes; applied before reordering "
+        "with datacard_order; default: empty",
+    )
+
+    datacards = None
+
+    @classmethod
+    def modify_param_values(cls, params):
+        params = super(MultiDatacardBaseTask, cls).modify_param_values(params)
+
+        multi_datacards = params.get("multi_datacards")
+        if isinstance(multi_datacards, (tuple, list)):
+            _multi_datacards = []
+            for i, datacards in enumerate(multi_datacards):
+                datacards = cls.resolve_datacards(datacards)
+
+                # complain when datacards are empty
+                if not datacards:
+                    raise ValueError("datacards at position {} of multi_datacards parameter did "
+                        "not match any existing datacard files".format(i))
+
+                _multi_datacards.append(tuple(datacards))
+
+            params["multi_datacards"] = tuple(_multi_datacards)
+        return params
+
+    def __init__(self, *args, **kwargs):
+        super(MultiDatacardBaseTask, self).__init__(*args, **kwargs)
+
+        # the lengths of names and order indices must match multi_datacards when given
+        if len(self.datacard_names) not in (0, len(self.multi_datacards)):
+            raise Exception("when datacard_names is set, its length ({}) must match that of "
+                "multi_datacards ({})".format(len(self.datacard_names), len(self.multi_datacards)))
+        if len(self.datacard_order) not in (0, len(self.multi_datacards)):
+            raise Exception("when datacard_order is set, its length ({}) must match that of "
+                "multi_datacards ({})".format(len(self.datacard_order), len(self.multi_datacards)))
+
+    def store_parts(self):
+        parts = super(MultiDatacardBaseTask, self).store_parts()
+        if self.hash_datacards_in_store:
+            parts["datacards"] = "datacards_{}".format(law.util.create_hash(self.multi_datacards))
+        return parts
+
+
 class POITask(DatacardBaseTask):
 
     k_pois = ("kl", "kt", "CV", "C2V")
@@ -149,22 +219,22 @@ class POITask(DatacardBaseTask):
     all_pois = k_pois + r_pois
 
     @classmethod
-    def get_frozen_parameters(cls, other_pois):
+    def get_frozen_pois(cls, other_pois):
         return ",".join(other_pois)
 
     @classmethod
-    def get_set_parameters(cls, other_pois, values=1.0):
+    def get_set_pois(cls, other_pois, values=1.0):
         if not isinstance(values, dict):
             values = {poi: values for poi in other_pois}
         return ",".join(["{}={}".format(p, values.get(p, 1.0)) for p in other_pois])
 
     @property
-    def frozen_params(self):
-        return self.get_frozen_parameters(self.other_pois)
+    def frozen_pois(self):
+        return self.get_frozen_pois(self.other_pois)
 
     @property
-    def fixed_params(self):
-        return self.get_set_parameters(self.other_pois)
+    def set_pois(self):
+        return self.get_set_pois(self.other_pois)
 
 
 class POITask1D(POITask):
@@ -172,7 +242,7 @@ class POITask1D(POITask):
     poi = luigi.ChoiceParameter(
         default="kl",
         choices=POITask.k_pois,
-        description="name of the poi; default: kl",
+        description="name of the poi; choices: {}; default: kl".format(",".join(POITask.all_pois)),
     )
     poi_value = luigi.FloatParameter(
         default=1.0,
@@ -190,7 +260,7 @@ class POITask1D(POITask):
         parts["poi"] = self.poi
         return parts
 
-    def get_output_postfix(self):
+    def get_poi_postfix(self):
         return "{}_{}".format(self.poi, self.poi_value)
 
 
@@ -225,8 +295,40 @@ class POIScanTask1D(POITask1D):
 
         return params
 
-    def get_output_postfix(self):
+    def get_poi_postfix(self):
         return "{}_n{}_{}_{}".format(self.poi, self.poi_points, *self.poi_range)
+
+
+class POITask1DWithR(POITask1D):
+    """
+    Same as POITask1D but besides the actual poi, it keeps track of a separate r-poi that is also
+    encoded in output paths. This is helpful for (e.g.) limit calculations where results are
+    extracted for a certain r-poi while scanning an other parameter.
+    """
+
+    r_poi = luigi.ChoiceParameter(
+        default="r",
+        choices=POITask1D.r_pois,
+        description="name of the r POI; choices: {}; default: r".format(
+            ",".join(POITask1D.r_pois)),
+    )
+
+    def store_parts(self):
+        parts = super(POITask1DWithR, self).store_parts()
+        parts["poi"] = "{}__{}".format(self.r_poi, self.poi)
+        return parts
+
+    def get_poi_postfix(self):
+        postfix = super(POITask1DWithR, self).get_poi_postfix()
+        return "{}__{}".format(self.r_poi, postfix)
+
+
+class POIScanTask1DWithR(POITask1DWithR, POIScanTask1D):
+    """
+    Same as POIScanTask1D but besides the actual poi, it keeps track of a separate r-poi that is
+    also encoded in output paths. This is helpful for (e.g.) limit calculations where results are
+    extracted for a certain r-poi while scanning an other parameter.
+    """
 
 
 class POITask2D(POITask):
@@ -234,12 +336,14 @@ class POITask2D(POITask):
     poi1 = luigi.ChoiceParameter(
         default="kl",
         choices=POITask.k_pois,
-        description="name of the first poi; default: kl",
+        description="name of the first poi; choices: {}; default: kl".format(
+            ",".join(POITask.all_pois)),
     )
     poi2 = luigi.ChoiceParameter(
         default="kt",
         choices=POITask.k_pois,
-        description="name of the first poi; default: kt",
+        description="name of the second poi; choices: {}; default: kt".format(
+            ",".join(POITask.all_pois)),
     )
     poi1_value = luigi.FloatParameter(
         default=1.0,
@@ -288,7 +392,7 @@ class POITask2D(POITask):
 
         return parts
 
-    def get_output_postfix(self):
+    def get_poi_postfix(self):
         if self.store_pois_sorted:
             tmpl = "{poiA}_{poiA_value}__{poiB}_{poiB_value}"
         else:
@@ -347,7 +451,7 @@ class POIScanTask2D(POITask2D):
     def get_poi_info(self, attributes=("", "_range", "_points")):
         return super(POIScanTask2D, self).get_poi_info(attributes=attributes)
 
-    def get_output_postfix(self):
+    def get_poi_postfix(self):
         if self.store_pois_sorted:
             tmpl = (
                 "{poiA}_n{poiA_points}_{poiA_range[0]}_{poiA_range[1]}"

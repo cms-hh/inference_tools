@@ -11,7 +11,7 @@ import array
 
 import six
 
-from dhi.config import poi_data, campaign_labels, colors
+from dhi.config import poi_data, campaign_labels, colors as _colors
 from dhi.util import import_ROOT, multi_match, to_root_latex, linspace
 
 
@@ -208,9 +208,9 @@ def plot_pulls_impacts(
             if u * d > 0 and abs(d) > abs(u):
                 g_impact_overlap.SetPoint(idx, 0, idx - 0.5)
                 g_impact_overlap.SetPointError(idx, 0 if u > 0 else -u, u if u > 0 else 0, 0.5, 0.5)
-        r.setup_graph(g_impact_hi, color=colors.root.red_cream, color_flags="lmf")
-        r.setup_graph(g_impact_lo, color=colors.root.blue_cream, color_flags="lmf")
-        r.setup_graph(g_impact_overlap, color=colors.root.red_cream, color_flags="lmf")
+        r.setup_graph(g_impact_hi, color=_colors.root.red_cream, color_flags="lmf")
+        r.setup_graph(g_impact_lo, color=_colors.root.blue_cream, color_flags="lmf")
+        r.setup_graph(g_impact_overlap, color=_colors.root.red_cream, color_flags="lmf")
         draw_objs.append((g_impact_hi, "2"))
         draw_objs.append((g_impact_lo, "2"))
         draw_objs.append((g_impact_overlap, "2"))
@@ -253,13 +253,14 @@ def plot_pulls_impacts(
             draw_objs.append(fit_label)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad, y_offset=50)
+        cms_labels = r.routines.create_cms_labels(pad=pad, x_offset=8, y_offset=50)
         draw_objs.extend(cms_labels)
 
         # campaign label
         if campaign:
             campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
-            campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, y_offset=80)
+            campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, x_offset=8,
+                y_offset=80)
             draw_objs.append(campaign_label)
 
         # draw objects

@@ -7,6 +7,7 @@ Helpers and utilities.
 import re
 import fnmatch
 import itertools
+import array
 
 
 # modules and objects from lazy imports
@@ -105,41 +106,6 @@ def linspace(start, stop, steps, precision=7):
     return np.linspace(start, stop, steps).round(precision).tolist()
 
 
-def get_ggf_xsec(ggf_formula, kl=1.0, kt=1.0):
-    """
-    Returns the ggF cross section for a combination of *kl* and *kt*, given a *ggf_formula* object.
-    """
-    return ggf_formula.sigma.evalf(
-        subs={
-            "kl": kl,
-            "kt": kt,
-            "s1": ggf_formula.sample_list[0].val_xs,
-            "s2": ggf_formula.sample_list[1].val_xs,
-            "s3": ggf_formula.sample_list[2].val_xs,
-        }
-    )[0]
-
-
-def get_vbf_xsec(vbf_formula, c2v=1.0, cv=1.0, kl=1.0):
-    """
-    Returns the VBF cross section for a combination of *c2v*, *cv* and *kl*, given a *vbf_formula*
-    object.
-    """
-    return vbf_formula.sigma.evalf(
-        subs={
-            "C2V": c2v,
-            "CV": cv,
-            "kl": kl,
-            "s1": vbf_formula.sample_list[0].val_xs,
-            "s2": vbf_formula.sample_list[1].val_xs,
-            "s3": vbf_formula.sample_list[2].val_xs,
-            "s4": vbf_formula.sample_list[3].val_xs,
-            "s5": vbf_formula.sample_list[4].val_xs,
-            "s6": vbf_formula.sample_list[5].val_xs,
-        }
-    )[0]
-
-
 def get_neighbor_coordinates(shape, i, j):
     """
     Given a 2D shape and the coordinates *i* and *j* of a "pixel", returns a list of coordinates of
@@ -190,3 +156,21 @@ def minimize_1d(objective, bounds, niter=10, **kwargs):
     res = scipy.optimize.basinhopping(objective, start, niter=10, minimizer_kwargs=kwargs)
 
     return res.lowest_optimization_result
+
+
+def create_tgraph(n, *args):
+    """
+    Creates a ROOT graph with *n* points, where the type is *TGraph* for two, *TGraphErrors* for
+    4 and *TGraphAsymmErrors* for six *args*. Each argument is converted to a python array with
+    typecode "f".
+    """
+    ROOT = import_ROOT()
+
+    if len(args) <= 2:
+        cls = ROOT.TGraph
+    elif len(args) <= 4:
+        cls = ROOT.TGraphErrors
+    else:
+        cls = ROOT.TGraphAsymmErrors
+
+    return cls(n, *(array.array("f", a) for a in args))

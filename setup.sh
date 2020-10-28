@@ -301,6 +301,7 @@ interactive_setup() {
         query DHI_SCHEDULER_HOST "Address of a central scheduler for law tasks" "hh:cmshhcombr2@hh-scheduler1.cern.ch"
         query DHI_SCHEDULER_PORT "Port of a central scheduler for law tasks" "80"
     else
+        export_and_save DHI_SCHEDULER_HOST "hh:cmshhcombr2@hh-scheduler1.cern.ch"
         export_and_save DHI_SCHEDULER_PORT "80"
     fi
 

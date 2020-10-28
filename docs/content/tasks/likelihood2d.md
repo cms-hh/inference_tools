@@ -6,17 +6,17 @@ You can check the status of this task with:
 law run LikelihoodScan2D --version dev --print-status 2
 print task status with max_depth 2 and target_depth 0
 
-> check status of LikelihoodScan2D(branch=-1, start_branch=0, end_branch=1281, branches=, version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault, poi1=kl, poi2=kt, poi1_range=-30.0,30.0, poi2_range=-10.0,10.0, poi1_points=61, poi2_points=21, workflow=local)
-|  collection: SiblingFileCollection(len=1281, threshold=1281.0, dir=$DHI_STORE/LikelihoodScan2D/m125.0/model_hh_HHdefault/kl__kt/dev)
-|    absent (0/1281)
+> LikelihoodScan2D(branch=-1, start_branch=0, end_branch=1071, branches=, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault, poi1=kl, poi2=kt, poi1_range=-25.0,25.0, poi2_range=-10.0,10.0, poi1_points=51, poi2_points=21, workflow=local)
+|   collection: SiblingFileCollection(len=1071, threshold=1071.0, dir=$DHI_STORE/LikelihoodScan2D/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/kl__kt/dev)
+|     absent (0/1071)
 |
-|  > check status of CreateWorkspace(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  |  - LocalFileTarget(path=$DHI_STORE/CreateWorkspace/m125.0/model_hh_HHdefault/dev/workspace.root)
-|  |    absent
+|  > CreateWorkspace(version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault)
+|  |   LocalFileTarget(path=$DHI_STORE/CreateWorkspace/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/dev/workspace.root)
+|  |     existent
 |  |
-|  |  > check status of CombineDatacards(version=dev, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=hh:HHdefault)
-|  |  |  - LocalFileTarget(path=$DHI_STORE/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
-|  |  |    absent
+|  |  > CombineDatacards(version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault)
+|  |  |   LocalFileTarget(path=$DHI_STORE/CombineDatacards/model_HHModelPinv_HHdefault/datacards_d481e43b9e/m125.0/dev/datacard.txt)
+|  |  |     existent
 ```
 
 As you can see `LikelihoodScan2D` produces by default a kappa lambda vs kappa top scan with a granularity of 1281 points (kl: `-30..30`, kt: `-10..10`, stepsize: 1).

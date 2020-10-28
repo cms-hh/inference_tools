@@ -13,7 +13,8 @@ import luigi
 
 from dhi.tasks.base import HTCondorWorkflow
 from dhi.tasks.nlo.base import (
-    CombineCommandTask, DatacardBaseTask, POITask1D, POIScanTask1D, POIScanTask2D,
+    CombineCommandTask, DatacardBaseTask, POITask1D, POIScanTask1D, POIScanTask1DWithR,
+    POIScanTask2D,
 )
 from dhi.util import linspace
 from dhi.config import poi_data
@@ -66,9 +67,8 @@ class CombineDatacards(DatacardBaseTask, CombineCommandTask):
         # update shape files in datacards to new basenames and save them in the tmp dir
         tmp_datacards = []
         for i, (card, bin_name) in enumerate(zip(datacards, bin_names)):
-
             def func(rel_shape, *args):
-                shape = os.path.join(os.path.dirname(card), rel_shape)
+                shape = os.path.realpath(os.path.join(os.path.dirname(card), rel_shape))
                 return shape_data[shape]["target_basename"]
 
             tmp_card = "datacard_{}.txt".format(i)
@@ -106,7 +106,7 @@ class CreateWorkspace(DatacardBaseTask, CombineCommandTask):
         )
 
 
-class UpperLimits(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+class UpperLimits(POIScanTask1DWithR, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     run_command_in_tmp = True
 
@@ -122,7 +122,8 @@ class UpperLimits(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondor
         return CreateWorkspace.req(self)
 
     def output(self):
-        return self.local_target_dc("limit__{}_{}.root".format(self.poi, self.branch_data))
+        return self.local_target_dc("limit__{}__{}_{}.root".format(
+            self.r_poi, self.poi, self.branch_data))
 
     def build_command(self):
         return (
@@ -131,8 +132,9 @@ class UpperLimits(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondor
             " -v 1"
             " --run expected"
             " --noFitAsimov"
-            " --redefineSignalPOIs r"  # TODO: shouldn't this be {poi}?
-            " --setParameters {set_params},{self.poi}={point}"
+            " --redefineSignalPOIs {self.r_poi}"
+            " --setParameters {self.set_pois},{self.poi}={point}"
+            " --freezeParameters {frozen_pois}"
             " {self.combine_stable_options}"
             " {self.custom_args}"
             " && "
@@ -142,16 +144,17 @@ class UpperLimits(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondor
             workspace=self.input().path,
             output=self.output().path,
             point=self.branch_data,
-            set_params=self.fixed_params,
+            frozen_pois=self.get_frozen_pois([p for p in self.all_pois if p != self.r_poi])
         )
 
 
-class MergeUpperLimits(POIScanTask1D):
+class MergeUpperLimits(POIScanTask1DWithR):
+
     def requires(self):
         return UpperLimits.req(self)
 
     def output(self):
-        return self.local_target_dc("limits__{}.npz".format(self.get_output_postfix()))
+        return self.local_target_dc("limits__{}.npz".format(self.get_poi_postfix()))
 
     def run(self):
         import numpy as np
@@ -167,19 +170,23 @@ class MergeUpperLimits(POIScanTask1D):
         ]
         limit_scan_task = self.requires()
         for branch, inp in self.input()["collection"].targets.items():
-            f = inp.load(formatter="uproot")["limit"]
-            limits = f.array("limit")
-            kl = limit_scan_task.branch_map[branch]
-            if len(limits) == 1:
-                # only the central limit exists
-                # TODO: shouldn't we raise an error when this happens?
-                records.append((kl, limits[0], 0.0, 0.0, 0.0, 0.0))
-            else:
-                # also 1 and 2 sigma variations exist
-                records.append((kl, limits[2], limits[3], limits[1], limits[4], limits[0]))
+            poi_value = limit_scan_task.branch_map[branch]
+            records.append((poi_value,) + self.load_limits(inp))
 
         data = np.array(records, dtype=dtype)
         self.output().dump(data=data, formatter="numpy")
+
+    @classmethod
+    def load_limits(cls, inp):
+        f = inp.load(formatter="uproot")["limit"]
+        limits = f.array("limit")
+        if len(limits) == 1:
+            # only the central limit exists
+            # TODO: shouldn't we raise an error when this happens?
+            return (limits[0], 0.0, 0.0, 0.0, 0.0)
+        else:
+            # also 1 and 2 sigma variations exist
+            return (limits[2], limits[3], limits[1], limits[4], limits[0])
 
 
 class LikelihoodScan1D(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
@@ -213,8 +220,8 @@ class LikelihoodScan1D(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTC
             " --lastPoint {self.branch}"
             " --alignEdges 1"
             " --redefineSignalPOIs {self.poi}"
-            " --setParameters {self.fixed_params}"
-            " --freezeParameters {self.frozen_params}"
+            " --setParameters {self.set_pois}"
+            " --freezeParameters {self.frozen_pois}"
             " --robustFit 1"
             " --X-rtd MINIMIZER_analytic"
             " {self.combine_stable_options}"
@@ -234,7 +241,7 @@ class MergeLikelihoodScan1D(POIScanTask1D):
         return LikelihoodScan1D.req(self)
 
     def output(self):
-        return self.local_target_dc("likelihoods__{}.npz".format(self.get_output_postfix()))
+        return self.local_target_dc("likelihoods__{}.npz".format(self.get_poi_postfix()))
 
     def run(self):
         import numpy as np
@@ -300,8 +307,8 @@ class LikelihoodScan2D(POIScanTask2D, CombineCommandTask, law.LocalWorkflow, HTC
             " --lastPoint {self.branch}"
             " --alignEdges 1"
             " --redefineSignalPOIs {self.poi1},{self.poi2}"
-            " --setParameters {self.fixed_params}"
-            " --freezeParameters {self.frozen_params}"
+            " --setParameters {self.set_pois}"
+            " --freezeParameters {self.frozen_pois}"
             " --robustFit 1"
             " --X-rtd MINIMIZER_analytic"
             " {self.combine_stable_options}"
@@ -323,7 +330,7 @@ class MergeLikelihoodScan2D(POIScanTask2D):
         return LikelihoodScan2D.req(self)
 
     def output(self):
-        return self.local_target_dc("likelihoods__{}.npz".format(self.get_output_postfix()))
+        return self.local_target_dc("likelihoods__{}.npz".format(self.get_poi_postfix()))
 
     def run(self):
         import numpy as np
@@ -422,8 +429,8 @@ class PullsAndImpacts(POITask1D, CombineCommandTask, law.LocalWorkflow, HTCondor
             " --robustFit 1"
             " --redefineSignalPOIs {self.poi}"
             " --setParameterRanges {self.poi}={start},{stop}"
-            " --setParameters {self.fixed_params}"
-            " --freezeParameters {self.frozen_params}"
+            " --setParameters {self.set_pois}"
+            " --freezeParameters {self.frozen_pois}"
             " --X-rtd MINIMIZER_analytic"
             " {self.combine_stable_options}"
             " {self.custom_args}"

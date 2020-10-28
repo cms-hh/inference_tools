@@ -22,7 +22,8 @@ plt = import_plt()
 def plot_likelihood_scan_1d(
     path,
     poi,
-    data,
+    expected_values,
+    theory_value=None,
     poi_min=None,
     campaign="2017",
     y_log=False,
@@ -30,19 +31,20 @@ def plot_likelihood_scan_1d(
     x_max=None,
 ):
     """
-    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *path*. *data* should be a
-    mapping to lists of values or a record array with keys "<poi_name>" and "dnll2". When *poi_min*
-    is set, it should be the value of the poi that leads to the best likelihood. Otherwise, it is
-    estimated from the interpolated curve. *campaign* should refer to the name of a campaign label
-    defined in dhi.config.campaign_labels. When *y_log* is *True*, the y-axis is plotted with a
-    logarithmic scale. *x_min* and *x_max* define the x-axis range and default to the range of poi
-    values.
+    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *path*. *expected_values*
+    should be a mapping to lists of values or a record array with keys "<poi_name>" and "dnll2".
+    *theory_value* can be a 3-tuple denoting the nominal theory prediction and its up and down
+    uncertainties which is drawn as a vertical bar. When *poi_min* is set, it should be the value of
+    the poi that leads to the best likelihood. Otherwise, it is estimated from the interpolated
+    curve. *campaign* should refer to the name of a campaign label defined in
+    dhi.config.campaign_labels. When *y_log* is *True*, the y-axis is plotted with a logarithmic
+    scale. *x_min* and *x_max* define the x-axis range and default to the range of poi values.
 
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#1d-likelihood-scans
     """
     # get valid poi and delta nll values
-    poi_values = np.array(data[poi])
-    dnll2_values = np.array(data["dnll2"])
+    poi_values = np.array(expected_values[poi])
+    dnll2_values = np.array(expected_values["dnll2"])
 
     # set default range
     if x_min is None:
@@ -60,6 +62,7 @@ def plot_likelihood_scan_1d(
 
     # start plotting
     fig, ax = plt.subplots()
+    legend_handles = []
 
     # 1 and 2 sigma indicators
     for value in [scan.poi_p1, scan.poi_m1, scan.poi_p2, scan.poi_m2]:
@@ -83,21 +86,43 @@ def plot_likelihood_scan_1d(
                 color=rgb(161, 16, 53),
             )
 
-    # line and text indicating the best fit value
+    # theory prediction with uncertainties
     dnll2_max_visible = dnll2_values[(poi_values >= x_min) & (poi_values <= x_max)].max()
     best_line_max = dnll2_max_visible * 0.85
+    if theory_value:
+        p = ax.fill_between(
+            [theory_value[0] - theory_value[2], theory_value[0] + theory_value[1]],
+            best_line_max,
+            edgecolor="red",
+            hatch="\\\\\\\\",
+            facecolor="none",
+            linewidth=0.,
+            alpha=0.5,
+            label="SM prediction",
+
+        )
+        ax.plot(
+            2 * [theory_value[0]],
+            [0, best_line_max],
+            "-",
+            color="red",
+        )
+        legend_handles.append(p)
+
+    # line and text indicating the best fit value
     best_label = r"${} = {}$".format(
         poi_data[poi].label,
         scan.num_min.str(format="%.2f", style="latex"),
     )
-    ax.plot(
+    p = ax.plot(
         (scan.poi_min, scan.poi_min),
         (0, best_line_max),
         linestyle="-",
         linewidth=1,
-        color=rgb(161, 16, 53),
+        color="black",
+        label=best_label,
     )
-    ax.annotate(best_label, (scan.poi_min, best_line_max * 1.02), ha="center")
+    legend_handles.insert(0, p[0])
 
     # nll curve
     ax.plot(
@@ -105,7 +130,7 @@ def plot_likelihood_scan_1d(
         dnll2_values,
         linestyle="-",
         marker=".",
-        color=rgb(0, 84, 159),
+        color="black",
     )
 
     # legend, labels, titles, etc
@@ -117,8 +142,10 @@ def plot_likelihood_scan_1d(
         ax.set_ylim(bottom=0.0)
     ax.set_xlim(x_min, x_max)
     ax.tick_params(bottom=True, top=True, left=True, right=True, direction="in")
+    ax.legend(legend_handles, [h.get_label() for h in legend_handles], loc="best")
     ax.set_title(r"\textbf{CMS} \textit{Preliminary}", loc="left")
-    ax.set_title(campaign_labels.get(campaign, campaign), loc="right")
+    if campaign:
+        ax.set_title(campaign_labels.get(campaign, campaign), loc="right")
     ax.grid()
 
     # save
@@ -130,7 +157,7 @@ def plot_likelihood_scan_2d(
     path,
     poi1,
     poi2,
-    data,
+    expected_values,
     poi1_min=None,
     poi2_min=None,
     campaign="2017",
@@ -143,9 +170,9 @@ def plot_likelihood_scan_2d(
 ):
     """
     Creates a likelihood plot of the 2D scan of two pois *poi1* and *poi2*, and saves it at *path*.
-    *data* should be a mapping to lists of values or a record array with keys "<poi1_name>",
-    "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be the values
-    of the pois that lead to the best likelihood. Otherwise, they are  estimated from the
+    *expected_values* should be a mapping to lists of values or a record array with keys
+    "<poi1_name>", "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be
+    the values of the pois that lead to the best likelihood. Otherwise, they are  estimated from the
     interpolated curve. *campaign* should refer to the name of a campaign label defined in
     dhi.config.campaign_labels. When *z_log* is *True*, the z-axis is plotted with a logarithmic
     scale. *x1_min*, *x1_max*, *x2_min* and *x2_max* define the axis range of poi1 and poi2,
@@ -155,9 +182,9 @@ def plot_likelihood_scan_2d(
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#2d-likelihood-scans
     """
     # get poi and delta nll values
-    poi1_values = np.array(data[poi1])
-    poi2_values = np.array(data[poi2])
-    dnll2_values = np.array(data["dnll2"])
+    poi1_values = np.array(expected_values[poi1])
+    poi2_values = np.array(expected_values[poi2])
+    dnll2_values = np.array(expected_values["dnll2"])
 
     # set default ranges
     if x1_min is None:
@@ -253,7 +280,8 @@ def plot_likelihood_scan_2d(
     ax.set_ylim(x2_min, x2_max)
     ax.tick_params(bottom=True, top=True, left=True, right=True, direction="in")
     ax.set_title(r"\textbf{CMS} \textit{Preliminary}", loc="left")
-    ax.set_title(campaign_labels.get(campaign, campaign), loc="right")
+    if campaign:
+        ax.set_title(campaign_labels.get(campaign, campaign), loc="right")
 
     # save
     fig.tight_layout()
