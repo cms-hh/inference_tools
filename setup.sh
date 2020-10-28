@@ -142,6 +142,7 @@ action() {
     [ "$DHI_REINSTALL_SOFTWARE" = "1" ] && rm -f "$flag_file_sw"
     if [ ! -f "$flag_file_sw" ]; then
         echo "installing software stack into $DHI_SOFTWARE"
+        rm -rf "$DHI_SOFTWARE/lib"
         mkdir -p "$DHI_SOFTWARE"
 
         # python packages
