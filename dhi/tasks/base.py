@@ -238,25 +238,36 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         self.transfer(bundle)
 
 
-class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile, law.tasks.RunOnceTask):
+class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile):
 
     replicas = luigi.IntParameter(
         default=10,
         description="number of replicas to generate, default: 10",
     )
-    force_upload = luigi.BoolParameter(default=False, description="force uploading")
 
     version = None
     default_store = "$DHI_STORE_BUNDLES"
 
-    def complete(self):
-        if self.force_upload and not self.has_run:
-            return False
-        else:
-            return AnalysisTask.complete(self)
+    def __init__(self, *args, **kwargs):
+        super(BundleSoftware, self).__init__(*args, **kwargs)
+
+        self._checksum = None
+
+    @property
+    def checksum(self):
+        if not self._checksum:
+            # read content of all software flag files and create a hash
+            contents = []
+            for flag_file in os.environ["DHI_SOFTWARE_FLAG_FILES"].strip().split():
+                if os.path.exists(flag_file):
+                    with open(flag_file, "r") as f:
+                        contents.append((flag_file, f.read().strip()))
+            self._checksum = law.util.create_hash(contents)
+
+        return self._checksum
 
     def single_output(self):
-        return self.local_target("software.tgz")
+        return self.local_target("software.{}.tgz".format(self.checksum))
 
     def get_file_pattern(self):
         path = os.path.expandvars(os.path.expanduser(self.single_output().path))
@@ -284,9 +295,8 @@ class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile, law.tasks.RunOnc
             )
         )
 
-        # transfer the bundle and mark the task as complete
+        # transfer the bundle
         self.transfer(bundle)
-        self.mark_complete()
 
 
 class CommandTask(AnalysisTask):

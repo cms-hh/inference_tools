@@ -97,7 +97,7 @@ action() {
             make || return "3"
         )
 
-        touch "$flag_file_combine"
+        date "+%s" > "$flag_file_combine"
     fi
 
     cd "$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
@@ -162,7 +162,7 @@ action() {
             pip install black==20.8b1 || return "$?"
         )
 
-        touch "$flag_file_sw"
+        date "+%s" > "$flag_file_sw"
     fi
 
     # gfal2 bindings
@@ -187,8 +187,11 @@ action() {
         ln -s $lcg_dir/lib64/python2.7/site-packages/gfal2.so "$DHI_GFAL_DIR"
         ln -s $lcg_dir/lib64/gfal2-plugins/libgfal_plugin_* "$GFAL_PLUGIN_DIR"
 
-        touch "$flag_file_gfal"
+        date "+%s" > "$flag_file_gfal"
     fi
+
+    # store software flag files for later use
+    export DHI_SOFTWARE_FLAG_FILES="$flag_file_combine $flag_file_sw $flag_file_gfal"
 
 
     #
