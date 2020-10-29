@@ -28,7 +28,7 @@ class CombineCommandTask(CommandTask):
     )
 
 
-class DatacardBaseTask(AnalysisTask):
+class DatacardTask(AnalysisTask):
     """
     A task that requires datacards in its downstream dependencies that can have quite longish names
     and are therefore not encoded in the output paths of tasks inheriting from this class. Instead,
@@ -64,7 +64,7 @@ class DatacardBaseTask(AnalysisTask):
         When a pattern did not resolve to valid paths it is reconsidered relative to the
         datacards_run2 directory. Bin statements, e.g. "mybin=datacard.txt" are accepted.
         """
-        params = super(DatacardBaseTask, cls).modify_param_values(params)
+        params = super(DatacardTask, cls).modify_param_values(params)
 
         datacards = params.get("datacards")
         if isinstance(datacards, (tuple, list)):
@@ -81,7 +81,7 @@ class DatacardBaseTask(AnalysisTask):
     def _repr_param(cls, name, value, **kwargs):
         if cls.hash_datacards_in_repr and name == "datacards":
             value = "hash:{}".format(law.util.create_hash(value))
-        return super(DatacardBaseTask, cls)._repr_param(name, value, **kwargs)
+        return super(DatacardTask, cls)._repr_param(name, value, **kwargs)
 
     @classmethod
     def split_datacard_path(cls, path):
@@ -109,7 +109,7 @@ class DatacardBaseTask(AnalysisTask):
         return _datacards
 
     def store_parts(self):
-        parts = super(DatacardBaseTask, self).store_parts()
+        parts = super(DatacardTask, self).store_parts()
         parts["hh_model"] = "model_" + self.hh_model.replace(".", "_").replace(":", "_")
         if self.hash_datacards_in_store:
             parts["datacards"] = "datacards_{}".format(law.util.create_hash(self.datacards))
@@ -152,7 +152,7 @@ class DatacardBaseTask(AnalysisTask):
         return mod, getattr(mod, model_name)
 
 
-class MultiDatacardBaseTask(DatacardBaseTask):
+class MultiDatacardTask(DatacardTask):
 
     multi_datacards = law.MultiCSVParameter(
         default=(tuple(os.getenv("DHI_EXAMPLE_CARDS").split()),),
@@ -176,7 +176,7 @@ class MultiDatacardBaseTask(DatacardBaseTask):
 
     @classmethod
     def modify_param_values(cls, params):
-        params = super(MultiDatacardBaseTask, cls).modify_param_values(params)
+        params = super(MultiDatacardTask, cls).modify_param_values(params)
 
         multi_datacards = params.get("multi_datacards")
         if isinstance(multi_datacards, (tuple, list)):
@@ -195,7 +195,7 @@ class MultiDatacardBaseTask(DatacardBaseTask):
         return params
 
     def __init__(self, *args, **kwargs):
-        super(MultiDatacardBaseTask, self).__init__(*args, **kwargs)
+        super(MultiDatacardTask, self).__init__(*args, **kwargs)
 
         # the lengths of names and order indices must match multi_datacards when given
         if len(self.datacard_names) not in (0, len(self.multi_datacards)):
@@ -206,13 +206,13 @@ class MultiDatacardBaseTask(DatacardBaseTask):
                 "multi_datacards ({})".format(len(self.datacard_order), len(self.multi_datacards)))
 
     def store_parts(self):
-        parts = super(MultiDatacardBaseTask, self).store_parts()
+        parts = super(MultiDatacardTask, self).store_parts()
         if self.hash_datacards_in_store:
             parts["datacards"] = "datacards_{}".format(law.util.create_hash(self.multi_datacards))
         return parts
 
 
-class POITask(DatacardBaseTask):
+class POITask(DatacardTask):
 
     k_pois = ("kl", "kt", "CV", "C2V")
     r_pois = ("r", "r_qqhh", "r_gghh")

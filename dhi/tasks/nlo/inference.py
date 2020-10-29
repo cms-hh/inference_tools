@@ -13,7 +13,7 @@ import luigi
 
 from dhi.tasks.base import HTCondorWorkflow
 from dhi.tasks.nlo.base import (
-    CombineCommandTask, DatacardBaseTask, POITask1D, POIScanTask1D, POIScanTask1DWithR,
+    CombineCommandTask, DatacardTask, POITask1D, POIScanTask1D, POIScanTask1DWithR,
     POIScanTask2D,
 )
 from dhi.util import linspace
@@ -21,7 +21,7 @@ from dhi.config import poi_data
 from dhi.datacard_tools import extract_shape_files, update_shape_files, get_workspace_parameters
 
 
-class CombineDatacards(DatacardBaseTask, CombineCommandTask):
+class CombineDatacards(DatacardTask, CombineCommandTask):
     def output(self):
         return self.local_target_dc("datacard.txt")
 
@@ -85,7 +85,7 @@ class CombineDatacards(DatacardBaseTask, CombineCommandTask):
             tmp_dir.child(data["target_basename"], type="f").copy_to(output_dir)
 
 
-class CreateWorkspace(DatacardBaseTask, CombineCommandTask):
+class CreateWorkspace(DatacardTask, CombineCommandTask):
     def requires(self):
         return CombineDatacards.req(self)
 

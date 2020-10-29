@@ -9,7 +9,7 @@ import luigi
 
 from dhi.tasks.base import AnalysisTask
 from dhi.tasks.nlo.base import (
-    MultiDatacardBaseTask, POITask1D, POIScanTask1D, POITask1DWithR, POIScanTask1DWithR,
+    MultiDatacardTask, POITask1D, POIScanTask1D, POITask1DWithR, POIScanTask1DWithR,
     POIScanTask2D,
 )
 from dhi.tasks.nlo.inference import (
@@ -216,11 +216,11 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
         )
 
 
-class PlotMultipleUpperLimits(MultiDatacardBaseTask, PlotUpperLimits):
+class PlotMultipleUpperLimits(MultiDatacardTask, PlotUpperLimits):
 
     @classmethod
     def modify_param_values(cls, params):
-        params = MultiDatacardBaseTask.modify_param_values(params)
+        params = MultiDatacardTask.modify_param_values(params)
         params = PlotUpperLimits.modify_param_values(params)
         return params
 
@@ -297,7 +297,7 @@ class PlotMultipleUpperLimits(MultiDatacardBaseTask, PlotUpperLimits):
         )
 
 
-class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardBaseTask, POITask1DWithR):
+class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
 
     x_log = luigi.BoolParameter(
         default=False,
