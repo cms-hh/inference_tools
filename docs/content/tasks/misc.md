@@ -23,7 +23,8 @@ graph TD;
 Example command:
 
 ```shell
-law run PlotBestFitAndExclusion --version dev \
+law run PlotBestFitAndExclusion \
+    --version dev \
     --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/*/datacard.txt \
     --datacard-names ee,emu,mumu,Combined \
     --r-poi r_gghh --poi kl \
