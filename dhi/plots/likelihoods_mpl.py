@@ -308,7 +308,10 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
       calculation failed.
     - ``num_min``: A Number instance representing the best fit value and its 1 sigma uncertainty.
     """
-    # first, obtain an interpolation function and sample new points
+    poi_values = np.array(poi_values)
+    dnll2_values = np.array(dnll2_values)
+
+    # first, obtain an interpolation function
     mask = ~np.isnan(dnll2_values)
     interp = scipy.interpolate.interp1d(poi_values[mask], dnll2_values[mask], kind="cubic")
 
@@ -393,7 +396,11 @@ def evaluate_likelihood_scan_2d(
     - ``num1_min``: A Number instance representing the poi1 minimum and its 1 sigma uncertainty.
     - ``num2_min``: A Number instance representing the poi2 minimum and its 1 sigma uncertainty.
     """
-    # first, obtain an interpolation function and sample new points
+    poi1_values = np.array(poi1_values)
+    poi2_values = np.array(poi2_values)
+    dnll2_values = np.array(dnll2_values)
+
+    # first, obtain an interpolation function
     mask = ~np.isnan(dnll2_values)
     interp = scipy.interpolate.interp2d(
         poi1_values[mask], poi2_values[mask], dnll2_values[mask], kind="cubic"

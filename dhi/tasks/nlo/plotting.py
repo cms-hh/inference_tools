@@ -271,7 +271,7 @@ class PlotMultipleUpperLimits(MultiDatacardTask, PlotUpperLimits):
             expected_values.append(_expected_values)
             names.append("datacards {}".format(i + 1))
 
-        # add names if requested
+        # set names if requested
         if self.datacard_names:
             names = list(self.datacard_names)
 
@@ -337,7 +337,7 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
                 "expected": MergeUpperLimits.load_limits(inp)
             })
 
-        # add names if requested
+        # set names if requested
         if self.datacard_names:
             for d, name in zip(data, self.datacard_names):
                 d["name"] = name
@@ -387,14 +387,14 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
         output = self.output()
         output.parent.touch()
 
-        # load limit data
-        inp = self.input().load(formatter="numpy")
-        expected_values = inp["data"]
-        poi_min = float(inp["poi_min"]) if not np.isnan(inp["poi_min"]) else None
+        # load scan data
+        data = self.input().load(formatter="numpy")
+        expected_values = data["data"]
+        poi_min = float(data["poi_min"]) if not np.isnan(data["poi_min"]) else None
 
         # insert a dnll2 column
-        expected_values = rec.append_fields(expected_values, ["dnll2"],
-            [expected_values["delta_nll"] * 2.0])
+        expected_values = np.array(rec.append_fields(expected_values, ["dnll2"],
+            [expected_values["delta_nll"] * 2.0]))
 
         # get the proper plot function and call it
         if self.plot_flavor == "root":
@@ -441,15 +441,15 @@ class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
         output = self.output()
         output.parent.touch()
 
-        # load limit data
-        inp = self.input().load(formatter="numpy")
-        expected_values = inp["data"]
-        poi1_min = float(inp["poi1_min"]) if not np.isnan(inp["poi1_min"]) else None
-        poi2_min = float(inp["poi2_min"]) if not np.isnan(inp["poi2_min"]) else None
+        # load scan data
+        data = self.input().load(formatter="numpy")
+        expected_values = data["data"]
+        poi1_min = float(data["poi1_min"]) if not np.isnan(data["poi1_min"]) else None
+        poi2_min = float(data["poi2_min"]) if not np.isnan(data["poi2_min"]) else None
 
         # insert a dnll2 column
-        expected_values = rec.append_fields(expected_values, ["dnll2"],
-            [expected_values["delta_nll"] * 2.0])
+        expected_values = np.array(rec.append_fields(expected_values, ["dnll2"],
+            [expected_values["delta_nll"] * 2.0]))
 
         # get the proper plot function and call it
         if self.plot_flavor == "root":
@@ -536,5 +536,73 @@ class PlotPullsAndImpacts(PlotTask, POITask1D):
             order_parameters=self.order_parameters,
             order_by_impact=self.order_by_impact,
             labels=nuisance_labels,
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
+        )
+
+
+class PlotBestFitAndExclusion(PlotTask, MultiDatacardTask, POIScanTask1DWithR):
+
+    def requires(self):
+        return [
+            {
+                "limits": MergeUpperLimits.req(self, datacards=datacards),
+                "likelihoods": MergeLikelihoodScan1D.req(self, datacards=datacards),
+            }
+            for datacards in self.multi_datacards
+        ]
+
+    def output(self):
+        name = self.create_plot_name("bestfitexclusion", self.get_poi_postfix())
+        return self.local_target_dc(name)
+
+    @view_output_plots
+    @law.decorator.safe_output
+    def run(self):
+        import numpy as np
+        import numpy.lib.recfunctions as rec
+
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
+
+        # load input data
+        data = []
+        for i, inp in enumerate(self.input()):
+            # load limits
+            limit_data = inp["limits"].load(formatter="numpy")
+            expected_limits = limit_data["data"]
+
+            # load likelihoods
+            ll_data = inp["likelihoods"].load(formatter="numpy")
+            poi_min = float(ll_data["poi_min"]) if not np.isnan(ll_data["poi_min"]) else None
+            expected_nll = ll_data["data"]
+            # insert a dnll2 column
+            expected_nll = np.array(rec.append_fields(expected_nll, ["dnll2"],
+                [expected_nll["delta_nll"] * 2.0]))
+
+            # store data
+            data.append({
+                "name": "datacards {}".format(i + 1),
+                "expected_limits": expected_limits,
+                "expected_nll": expected_nll,
+                "poi_min": poi_min,
+            })
+
+        # set names if requested
+        if self.datacard_names:
+            for d, name in zip(data, self.datacard_names):
+                d["name"] = name
+
+        # reoder if requested
+        if self.datacard_order:
+            data = [data[i] for i in self.datacard_order]
+
+        # get the proper plot function and call it
+        from dhi.plots.misc_root import plot_bestfit_and_exclusion
+
+        plot_bestfit_and_exclusion(
+            path=output.path,
+            data=data,
+            poi=self.poi,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )

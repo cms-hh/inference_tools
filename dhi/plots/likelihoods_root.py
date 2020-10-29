@@ -9,9 +9,9 @@ import array
 
 import numpy as np
 
-from dhi.plots.likelihoods_mpl import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
 from dhi.config import poi_data, campaign_labels, chi2_levels, colors as _colors
-from dhi.util import import_ROOT, to_root_latex, get_neighbor_coordinates
+from dhi.util import import_ROOT, to_root_latex, get_neighbor_coordinates, create_tgraph
+from dhi.plots.likelihoods_mpl import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
 
 
 def plot_likelihood_scan_1d(
@@ -98,9 +98,8 @@ def plot_likelihood_scan_1d(
     # theory prediction with uncertainties
     if theory_value:
         # theory graph and line
-        arr = lambda value: np.array([value], dtype=np.float32)
-        g_thy = ROOT.TGraphAsymmErrors(1, arr(theory_value[0]), arr(0), arr(theory_value[2]),
-            arr(theory_value[1]), arr(0), arr(y_max_value))
+        g_thy = create_tgraph(0, theory_value[0], 0, theory_value[2], theory_value[1], 0,
+            y_max_value)
         r.setup_graph(g_thy, props={"FillStyle": 3345, "MarkerStyle": 20, "MarkerSize": 0},
             color=_colors.root.red, color_flags="lfm")
         line_thy = ROOT.TLine(theory_value[0], 0., theory_value[0], y_max_value)
@@ -118,8 +117,7 @@ def plot_likelihood_scan_1d(
     legend_entries.insert(0, (line_fit, fit_label, "l"))
 
     # nll curve
-    np2arr = lambda a: array.array("f", a.tolist())
-    g_nll = ROOT.TGraph(len(poi_values), np2arr(poi_values), np2arr(dnll2_values))
+    g_nll = create_tgraph(len(poi_values), poi_values, dnll2_values)
     r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75})
     draw_objs.append((g_nll, "SAME,CP"))
 

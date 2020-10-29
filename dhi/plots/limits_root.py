@@ -45,7 +45,7 @@ def plot_limit_scan(
     plotted cross section data was (e.g.) scaled by a branching ratio. *campaign* should refer to
     the name of a campaign label defined in dhi.config.campaign_labels.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#upper-limits
+    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html#limits-vs-poi
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -229,7 +229,7 @@ def plot_limit_scans(
     plotted cross section data was (e.g.) scaled by a branching ratio. *campaign* should refer to
     the name of a campaign label defined in dhi.config.campaign_labels.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#upper-limits
+    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html#multiple-limits-vs-poi
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -355,16 +355,30 @@ def plot_limit_points(
 ):
     """
     Creates a plot showing a comparison of limits of multiple analysis (or channels) and saves it at
-    *path*. *data* should be a list of dictionaries with fields "name" (shown on the y axis),
-    "expected" (a sequence of five values, i.e., central limit, +1 sigma, -1 sigma, +2 sigma, and
-    -2 sigma), and "observed" (optional). When the name is a key of dhi.config.br_hh_names, its
-    value is used as a label instead.
+    *path*. *data* should be a list of dictionaries with fields "expected" (a sequence of five
+    values, i.e., central limit, +1 sigma, -1 sigma, +2 sigma, and -2 sigma), and optionally
+    "observed" and "name" (shown on the y-axis). When the name is a key of dhi.config.br_hh_names,
+    its value is used as a label instead.
+
+    .. code-block:: python
+
+        plot_limit_points(
+            path="plot.pdf",
+            data=[{
+                "expected": (40., 10., 12., 18., 22.),
+                "observed": 45.
+            }, {
+                ...
+            }],
+        )
 
     When *x_log* is *True*, the x-axis is scaled logarithmically. *x_min* and *x_max* define the
     range of the x-axis and default to the maximum range of values passed in data, including
     uncertainties. The *pp_process* label is shown in the x-axis title to denote the physics process
     the computed values are corresponding to. *campaign* should refer to the name of a campaign
     label defined in dhi.config.campaign_labels.
+
+    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html#multiple-limits-at-a-certain-poi-value
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -480,7 +494,7 @@ def plot_limit_points(
     # line to separate combined result
     if data[-1]["name"].lower() == "combined":
         line_obs = ROOT.TLine(x_min, 1., x_max, 1)
-        r.setup_line(line_obs, props={"NDC": False, "LineStyle": 3})
+        r.setup_line(line_obs, props={"NDC": False}, color=15)
         draw_objs.append(line_obs)
 
     # y axis labels and ticks

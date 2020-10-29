@@ -136,20 +136,22 @@ def get_neighbor_coordinates(shape, i, j):
     return neighbors
 
 
-def minimize_1d(objective, bounds, niter=10, **kwargs):
+def minimize_1d(objective, bounds, start=None, niter=10, **kwargs):
     """
     Performs a 1D minimization of an *objective* using scipy.optimize.basinhopping over *niter*
-    iterations within certain parameter *bounds*. These bounds are used initially to get a good
-    starting point. *kwargs* are forwarded as *minimizer_kwargs* to the underlying minimizer
-    function. The optimizer result of the lowest optimization iteration is returned.
+    iterations within certain parameter *bounds*. When *start* is *None*, these bounds are used
+    initially to get a good starting point. *kwargs* are forwarded as *minimizer_kwargs* to the
+    underlying minimizer function. The optimizer result of the lowest optimization iteration is
+    returned.
     """
     import numpy as np
     import scipy.optimize
 
-    # get the minimal starting point from a simple scan
-    x = np.linspace(bounds[0], bounds[1], 100)
-    y = objective(x).flatten()
-    start = x[np.argmin(y)]
+    # get the minimal starting point from a simple scan within bounds
+    if start is None:
+        x = np.linspace(bounds[0], bounds[1], 100)
+        y = objective(x).flatten()
+        start = x[np.argmin(y)]
 
     # minimization using basin hopping
     kwargs["bounds"] = [bounds]
@@ -173,4 +175,13 @@ def create_tgraph(n, *args):
     else:
         cls = ROOT.TGraphAsymmErrors
 
-    return cls(n, *(array.array("f", a) for a in args))
+    # expand single values
+    _args = []
+    for a in args:
+        if not getattr(a, "__len__", None):
+            a = n * [a]
+        elif len(a) == 1:
+            a = n * list(a)
+        _args.append(a)
+
+    return cls(n, *(array.array("f", a) for a in _args))
