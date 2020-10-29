@@ -3,11 +3,11 @@ This section documents the usage of various miscellaneous tasks.
 
 ## `PlotBestFitAndExclusion`
 
-The task `PlotBestFitAndExclusion` creates a plot showing the best fit values of a POI as well as its exlcuded region for multiple *configurations* - these can be different versions of datacards, or even channels or analyses as shown in the following plot.
+The task `PlotBestFitAndExclusion` creates a plot showing the best fit values of a POI as well as its excluded region for multiple *configurations* - these can be different versions of datacards, or even channels or analyses as shown in the following plot.
 
 ![Best fit values and exlusions](../images/bestfitexclusion__r_gghh__kl_n51_-25.0_25.0__root.png)
 
-The best fit values are extracted via likelihood profiling done by the [`LikelihoodScan1D` task](likelihood1d.md). Excluded regions are inferred from an upper limit scan in steps of the same POI as measured on a `--r-poi`, e.g., `r` itself or `r_gghh`. Thus, the depency tree looks like
+The best fit values are extracted via likelihood profiling done by the [`LikelihoodScan1D`](likelihood1d.md) task. Excluded regions are inferred from the [`UpperLimits`](limits.md) task which scans limits in steps of the same POI as measured on a `--r-poi`, i.e., `r` itself, `r_gghh`or `r_qqhh`. Thus, the depency tree looks like
 
 ```mermaid
 graph TD;
@@ -20,7 +20,8 @@ graph TD;
     F --> G(CombineDatacards);
 ```
 
-Example command:
+
+#### Example command
 
 ```shell
 law run PlotBestFitAndExclusion \
@@ -31,7 +32,8 @@ law run PlotBestFitAndExclusion \
     --campaign FAKE
 ```
 
-**Parameters**
+
+#### Parameters
 
 - `--multi-datacards STRINGS:STRINGS`: Multiple CSV sequences of datacard paths, separated by colons. Defaults to DHI_EXAMPLE_CARDS in a single sequence.
 - `--datacard-names STRINGS`: Names of datacard sequences for plotting purposes. When set, the number of names must match the number of sequences in `--multi-datacards`. No default.
