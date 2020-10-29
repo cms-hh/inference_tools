@@ -175,12 +175,13 @@ class VBFHHFormula:
 
 #########################################
 
+
 class HHModel(PhysicsModel):
     """ Models the HH production as linear sum of the input components for VBF (>= 6) and GGF (>= 3) """
 
     def __init__(self, ggf_sample_list, vbf_sample_list, name):
         PhysicsModel.__init__(self)
-
+        self.doNNLOscaling = True
         self.name = name
 
         self.check_validity_ggf(ggf_sample_list)
@@ -189,7 +190,14 @@ class HHModel(PhysicsModel):
         self.ggf_formula = GGFHHFormula(ggf_sample_list)
         self.vbf_formula = VBFHHFormula(vbf_sample_list)
 
-        self.dump_inputs()
+        #self.dump_inputs()
+
+    def setPhysicsOptions(self,physOptions):
+        for po in physOptions:
+            if po.startswith("doNNLOscaling="):
+                self.doNNLOscaling = (po.replace("doNNLOscaling=","") in [ "yes", "1", "Yes", "True", "true" ])
+            #print "[DEBUG]","[setPhysicsOptions]","Uncertainties are set to be",self.doNNLOscaling
+
 
     def check_validity_ggf(self, ggf_sample_list):
         if len(ggf_sample_list) < 3:
@@ -271,6 +279,12 @@ class HHModel(PhysicsModel):
             f_name = 'f_ggfhhscale_sample_{0}'.format(s.label)
             f_expr = self.ggf_formula.coeffs[i] # the function that multiplies each sample
 
+            kl = symbols('kl')
+            #NLO xsec formula
+            f_NLO_xsec = '62.5339 - 44.3231*kl + 9.6340*kl*kl'
+            #NNLO xsec formula https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH#Latest_recommendations_for_gluon
+            f_NNLO_xsec = '70.3874 - 50.4111*kl + 11.0595*kl*kl'
+
             # print f_expr
             # for ROOFit, this will convert expressions as a**2 to a*a
             s_expr = pow_to_mul_string(f_expr)
@@ -278,7 +292,7 @@ class HHModel(PhysicsModel):
             couplings_in_expr = []
             if 'kl'  in s_expr: couplings_in_expr.append('kl')
             if 'kt'  in s_expr: couplings_in_expr.append('kt')
-
+            
             # no constant expressions are expected
             if len(couplings_in_expr) == 0:
                 raise RuntimeError('GGF HH : scaling expression has no coefficients')
@@ -288,10 +302,27 @@ class HHModel(PhysicsModel):
                 symb = '@{}'.format(idx)
                 s_expr = s_expr.replace(ce, symb)
 
-            arglist = ','.join(couplings_in_expr)
-            exprname = 'expr::{}(\"{}\" , {})'.format(f_name, s_expr, arglist)
-            # print exprname
-            self.modelBuilder.factory_(exprname) # the function that scales each VBF sample
+            if(self.doNNLOscaling):
+                #print str(f_expr)
+                if('kl' not in str(f_expr)): couplings_in_expr.append('kl')
+
+                for idx, ce in enumerate(couplings_in_expr):
+                    symb = '@{}'.format(idx)
+                    f_NLO_xsec = f_NLO_xsec.replace(ce, symb)
+                    f_NNLO_xsec = f_NNLO_xsec.replace(ce, symb)
+
+                arglist = ','.join(couplings_in_expr)
+                #this will scale NNLO_xsec
+                exprname = 'expr::{}(\"({}) / (1.115 * ({}) / ({}))\" , {})'.format(f_name, s_expr, f_NLO_xsec, f_NNLO_xsec, arglist)
+                #print exprname
+                self.modelBuilder.factory_(exprname) # the function that scales each VBF sample
+                #self.modelBuilder.out.function(f_name).Print("")
+
+            else:
+                arglist = ','.join(couplings_in_expr)
+                exprname = 'expr::{}(\"{}\" , {})'.format(f_name, s_expr, arglist)
+                #print exprname
+                self.modelBuilder.factory_(exprname) # the function that scales each VBF sample
 
             f_prod_name_pmode = f_name + '_r_gghh'
             prodname_pmode = 'prod::{}(r_gghh,{})'.format(f_prod_name_pmode, f_name)
@@ -420,6 +451,26 @@ HHdefault = HHModel(
     name            = 'HHdefault'
 )
 
+#bbZZ_model = False
+
+#if(bbZZ_model):
+
+#    GGF_sample_list_bbZZ = [
+#        GGFHHSample(1,1,   val_xs = 0.02675, label = 'ggHH_hbbhzz_process'  ),
+#        GGFHHSample(2,1,   val_xs = 0.01238, label = 'klambda2_process'  ),
+        #GGFHHSample(0,1,   val_xs = 0.06007, label = 'klambda0_process'  ),
+#        GGFHHSample(5,1,   val_xs = 0.07903, label = 'klambda5_process'  ),
+        # GGFHHSample(2.45,1,   val_xs = 0.01133, label = 'ggHH_kl_2p45_kt_1'  ),
+#    ]
+
+#    HHbbZZ4l = HHModel(
+#        ggf_sample_list = GGF_sample_list_bbZZ,
+#        vbf_sample_list = VBF_sample_list,
+#        name            = 'HH_bbZZ_default'
+#    )
+
+# f = GGFHHFormula(GGF_sample_list)
+# f = VBFHHFormula(VBF_sample_list)
 
 def create_ggf_xsec_func(formula=None, nnlo=True):
     """
