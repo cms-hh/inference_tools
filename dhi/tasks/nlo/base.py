@@ -96,13 +96,24 @@ class DatacardTask(AnalysisTask):
     def resolve_datacards(cls, datacards):
         _datacards = []
         dc_path = os.path.expandvars("$DHI_BASE/datacards_run2")
+
         for pattern in datacards:
             pattern, bin_name = cls.split_datacard_path(pattern)
             pattern = os.path.expandvars(os.path.expanduser(pattern))
             paths = list(glob.glob(pattern))
+
+            # when the pattern did not match anything, repeat relative to the dc_path
             if not paths:
                 # try relative to datacards_run2
                 paths = list(glob.glob(os.path.join(dc_path, pattern)))
+
+            # make all paths deterministic, i.e., make absolute and resolve symlinks
+            paths = [
+                os.path.realpath(os.path.abspath(path))
+                for path in paths
+            ]
+
+            # add back with optional bin prefix
             for path in paths:
                 _datacards.append("{}={}".format(bin_name, path) if bin_name else path)
         _datacards = sorted(law.util.make_unique(_datacards))

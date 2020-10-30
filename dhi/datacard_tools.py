@@ -14,60 +14,110 @@ import law
 from dhi.util import import_ROOT, multi_match
 
 
-def read_datacard_blocks(datacard, is_separator=None):
+def read_datacard_blocks(datacard):
     """
-    Reads the content of *datacard*, divides the lines into blocks according to a certain separator
-    and returns a list containing lines per block as lists. *is_separator* can be a function
-    accepting a line string as its sole argument to check whether a line is a separator. By default,
-    a line is treated as a separator when it starts with at least three "-".
+    Reads the content of a *datacard*, divides the lines into blocks named "preamble", "counts",
+    "shapes", "observation", "rates", "parameters", "groups", "mc_stats", "nuisance_edits", and
+    "unknown". These blocks are returned in an ordered dictionary for further inspection.
     """
-    if not callable(is_separator):
-        is_separator = lambda line: line.startswith("---")
+    # create the returned mapping
+    fields = [
+        "preamble", "counts", "shapes", "observation", "rates", "parameters", "groups", "mc_stats",
+        "nuisance_edits", "unknown",
+    ]
+    blocks = OrderedDict((field, []) for field in fields)
 
-    blocks = []
-
-    # go through datacard line by line
+    # read lines
     datacard = os.path.abspath(os.path.expandvars(os.path.expanduser(datacard)))
     with open(datacard, "r") as f:
-        blocks.append([])
+        lines = []
         for line in f.readlines():
-            line = line.strip()
+            line = line.strip().lstrip("- ")
+            if line and not line.startswith("#"):
+                lines.append(line)
 
-            # check if we reach a new block
-            if is_separator(line):
-                blocks.append([])
-                continue
+    # store and remove preamble, i.e., everything before {i,j,k}max
+    for preamble_offset, line in enumerate(lines):
+        if line.startswith(("imax", "jmax", "kmax")):
+            break
+    else:
+        raise Exception("datacard {} contains no counter section (imax|jmax|kmax)".format(datacard))
+    blocks["preamble"].extend(lines[:preamble_offset])
+    del lines[:preamble_offset]
 
-            # store the line in the last block
-            blocks[-1].append(line)
+    # trace interdependent lines describing observations
+    for obs_offset in range(len(lines) - 1):
+        line = lines[obs_offset]
+        if not line.startswith("bin "):
+            continue
+        next_line = lines[obs_offset + 1]
+        if next_line.startswith("observation "):
+            blocks["observation"].extend([line, next_line])
+            del lines[obs_offset:obs_offset + 2]
+            break
+
+    # trace interdependent lines describing process rates
+    for rate_offset in range(len(lines) - 3):
+        line = lines[rate_offset]
+        if not line.startswith("bin "):
+            continue
+        next_lines = lines[rate_offset + 1:rate_offset + 4]
+        if next_lines[0].startswith("process ") and next_lines[1].startswith("process ") \
+                and next_lines[2].startswith("rate "):
+            blocks["rates"].extend([line] + next_lines)
+            del lines[rate_offset:rate_offset + 4]
+            break
+
+    # go through lines one by one and assign to blocks based on directive names
+    param_directives = ["lnN", "lnU", "gmN", "shape*", "discrete", "param", "rateParam", "extArgs"]
+    for line in lines:
+        words = line.split()
+        if words[0] in ("imax", "jmax", "kmax"):
+            field = "counts"
+        elif words[0] == "shapes":
+            field = "shapes"
+        elif words[0] == "autoMCStats":
+            field = "mc_stats"
+        elif len(words) >= 2 and words[0] == "nuisance" and words[1] == "edit":
+            field = "nuisance_edits"
+        elif words[1] == "group":
+            field = "groups"
+        elif multi_match(words[1], param_directives):
+            field = "parameters"
+        else:
+            # the above cases should match every line but still store unknown cases
+            field = "unknown"
+        blocks[field].append(line)
 
     return blocks
 
 
 @contextlib.contextmanager
-def manipulate_shape_lines(datacard, target_datacard=None):
+def manipulate_datacard(datacard, target_datacard=None, read_only=False):
     """
-    Context manager that opens a *datacard* and yields a list of lines (strings) with the contained
-    shape descriptions. The list can be updated in-place to make changes to the datacard. When a
-    *target_datacard* is defined, the changes are saved in a new datacard at this location and the
-    original datacard remains unchanged. When the datacard contains no shape block, the context
-    manager yields an empty list. If this list is filled by the calling frame, a new shape block is
-    added with these lines upon closure.
+    Context manager that opens a *datacard* and yields its contents as a dictionary of specific
+    content blocks as returned by :py:func:`read_datacard_blocks`. Each block is a list of lines
+    which can be updated in-place to make changes to the datacard. When a *target_datacard* is
+    defined, the changes are saved in a new datacard at this location and the original datacard
+    remains unchanged. When no changes are to be made to the datacard, you may set *read_only* to
+    *True* to disable the tracking of changes. Just note that the *target_datacard* is still written
+    when given. Example:
+
+    .. code-block:: python
+
+        # add a new (rate) parameter to the datacard and remove autoMCStats
+        with manipulate_datacard("datacard.txt") as content:
+            content["parameters"].append("beta rateParam B bkg 50")
+            del content["mc_stats"]
     """
     # read the datacard content in blocks
     datacard = os.path.abspath(os.path.expandvars(os.path.expanduser(datacard)))
     blocks = read_datacard_blocks(datacard)
 
-    # the datacard contains shapes when the first line of the second block starts with "shapes "
-    had_shapes = len(blocks) >= 2 and blocks[1][0].startswith("shapes ")
-
-    # get shape lines
-    shape_lines = blocks[1] if had_shapes else []
-
-    # yield shape lines and keep track of changes via hashes
-    hash_before = law.util.create_hash(shape_lines)
-    yield shape_lines
-    hash_after = law.util.create_hash(shape_lines)
+    # yield blocks and keep track of changes via hashes
+    hash_before = None if read_only else law.util.create_hash(blocks)
+    yield blocks
+    hash_after = None if read_only else law.util.create_hash(blocks)
     has_changes = hash_after != hash_before
 
     # prepare the target location when given
@@ -79,17 +129,12 @@ def manipulate_shape_lines(datacard, target_datacard=None):
 
     # handle saving of changes
     if has_changes:
-        # inject shape lines into block of there were none before
-        # or remove the shape block if there was one, but there are no shape lines left
-        if shape_lines and not had_shapes:
-            blocks.insert(1, shape_lines)
-        elif not shape_lines and had_shapes:
-            blocks.pop(1)
-
-        # write the new lines
         with open(target_datacard or datacard, "w") as f:
-            block_sep = "\n" + 80 * "-" + "\n"
-            f.write(block_sep.join("\n".join(block) for block in blocks))
+            for field, lines in blocks.items():
+                if lines:
+                    f.write("\n".join(lines) + "\n")
+                    if field in ["counts", "shapes", "observation", "rates"]:
+                        f.write(80 * "-" + "\n")
 
     elif target_datacard:
         # no changes, just copy the original file
@@ -105,8 +150,8 @@ def extract_shape_files(datacard, absolute=True, resolve=True, skip=("FAKE",)):
     """
     # read shape lines and extract file paths
     shape_files = []
-    with manipulate_shape_lines(datacard) as shape_lines:
-        for line in shape_lines:
+    with manipulate_datacard(datacard) as content:
+        for line in content["shapes"]:
             # the shape file is the 4th part
             parts = line.split()
             if len(parts) < 4:
@@ -146,10 +191,10 @@ def update_shape_files(func, datacard, target_datacard=None, skip=("FAKE",)):
 
         update_shape_files(func, "datacard.txt")
     """
-    # use the shape line manipulation helper
-    with manipulate_shape_lines(datacard, target_datacard=target_datacard) as shape_lines:
+    # use the content manipulation helper
+    with manipulate_datacard(datacard, target_datacard=target_datacard) as content:
         # iterate through shape lines and change them in-place
-        for i, line in enumerate(shape_lines):
+        for i, line in enumerate(content["shapes"]):
             parts = line.split()
             if len(parts) < 4:
                 continue
@@ -171,7 +216,7 @@ def update_shape_files(func, datacard, target_datacard=None, skip=("FAKE",)):
             # update if needed
             if new_shape_file != shape_file:
                 new_line = " ".join([prefix, process, channel, new_shape_file] + patterns)
-                shape_lines[i] = new_line
+                content["shapes"][i] = new_line
 
 
 def get_workspace_parameters(workspace, workspace_name="w", config_name="ModelConfig"):
