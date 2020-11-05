@@ -120,12 +120,12 @@ if __name__ == "__main__":
 
     parser.add_argument("input", help="the datacard to read and possibly update (see --directory)")
     parser.add_argument("names", nargs="+", help="names of parameters or files containing "
-        "parameter names to remove; supports patterns")
+        "parameter names to remove line by line; supports patterns")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
         "the output directory when --directory is set")
-    parser.add_argument("--log-level", "-l", default="INFO", help="pythonic log level")
+    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
     args = parser.parse_args()
 
     # configure the logger

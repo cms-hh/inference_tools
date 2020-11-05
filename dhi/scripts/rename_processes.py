@@ -173,13 +173,13 @@ if __name__ == "__main__":
     parser.add_argument("input", help="the datacard to read and possibly update (see --directory)")
     parser.add_argument("rules", nargs="+", metavar="OLD_NAME=NEW_NAME", help="translation rules "
         "for one or multiple process names in the format 'old_name=new_name', or files containing "
-        "these rules in the same format")
+        "these rules in the same format line by line")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not change process "
         "names in shape files")
     parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
-    parser.add_argument("--log-level", "-l", default="INFO", help="pythonic log level")
+    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
     args = parser.parse_args()
 
     # configure the logger

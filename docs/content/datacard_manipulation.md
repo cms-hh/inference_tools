@@ -38,7 +38,7 @@ positional arguments:
   input                 the datacard to read and possibly update (see
                         --directory)
   names                 names of parameters or files containing parameter
-                        names to remove; supports patterns
+                        names to remove line by line; supports patterns
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -49,7 +49,7 @@ optional arguments:
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
-                        pythonic log level
+                        python log level; default: INFO
 ```
 
 
@@ -78,7 +78,7 @@ positional arguments:
                         --directory)
   OLD_NAME=NEW_NAME     translation rules for one or multiple parameter names
                         in the format 'old_name=new_name', or files containing
-                        these rules in the same format
+                        these rules in the same format line by line
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -89,7 +89,7 @@ optional arguments:
   --no-shapes, -n       do not change parameter names in shape files
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
-                        pythonic log level
+                        python log level; default: INFO
 ```
 
 
@@ -120,7 +120,7 @@ positional arguments:
   input                 the datacard to read and possibly update (see
                         --directory)
   names                 names of processes or files containing process names
-                        to remove; supports patterns
+                        to remove line by line; supports patterns
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -131,7 +131,7 @@ optional arguments:
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
-                        pythonic log level
+                        python log level; default: INFO
 ```
 
 
@@ -160,7 +160,7 @@ positional arguments:
                         --directory)
   OLD_NAME=NEW_NAME     translation rules for one or multiple process names in
                         the format 'old_name=new_name', or files containing
-                        these rules in the same format
+                        these rules in the same format line by line
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -171,5 +171,5 @@ optional arguments:
   --no-shapes, -n       do not change process names in shape files
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
-                        pythonic log level
+                        python log level; default: INFO
 ```
