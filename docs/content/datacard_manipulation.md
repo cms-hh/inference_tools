@@ -8,13 +8,13 @@ The argument to configure this directory is identical across all scripts.
 script_name.py DATACARD [OTHER_ARGUMENTS] --directory/-d DIRECTORY
 ```
 
-Please note that, when no output directory is given, ==the content of datacard and shape files is changed in-place==.
+Please note that, when no output directory is given, ==the content of datacards and shape files is changed in-place==.
 
 
 ## Remove parameters
 
 ```shell hl_lines="1"
-> remove_processes.py --help
+> remove_parameters.py --help
 
 usage: remove_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--log-level LOG_LEVEL]
@@ -56,7 +56,7 @@ optional arguments:
 ## Rename parameters
 
 ```shell hl_lines="1"
-> rename_processes.py --help
+> rename_parameters.py --help
 
 usage: rename_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--mass MASS] [--log-level LOG_LEVEL]
