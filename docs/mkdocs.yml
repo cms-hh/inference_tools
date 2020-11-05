@@ -90,6 +90,7 @@ nav:
     - 2D Likelihood Scans: tasks/likelihood2d.md
     - Pulls and Impacts: tasks/pullsandimpacts.md
     - Miscellaneous Tasks: tasks/misc.md
+  - Datacard Manipulation: datacard_manipulation.md
   - Datacard Validation: datacardvalidation.md
   - Pre- and Postfit Shapes: postfit.md
   - Interactive Datacard Viewer: http://cms-hh.web.cern.ch/cms-hh/tools/inference/view_datacard.html

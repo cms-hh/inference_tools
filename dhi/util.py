@@ -4,10 +4,13 @@
 Helpers and utilities.
 """
 
+import os
 import re
 import fnmatch
+import shutil
 import itertools
 import array
+import logging
 
 
 # modules and objects from lazy imports
@@ -59,6 +62,18 @@ class DotDict(dict):
 
     def __getattr__(self, attr):
         return self[attr]
+
+    def copy(self):
+        return self.__class__(super(DotDict, self).copy())
+
+
+def real_path(path):
+    """
+    Takes a *path* and returns its real, absolute location with all variables expanded.
+    """
+    path = os.path.expandvars(os.path.expanduser(path))
+    path = os.path.realpath(path)
+    return path
 
 
 def rgb(r, g, b):
@@ -185,3 +200,63 @@ def create_tgraph(n, *args):
         _args.append(a)
 
     return cls(n, *(array.array("f", a) for a in _args))
+
+
+def copy_no_collisions(path, directory, postfix_format="_{}"):
+    """
+    Copies a file given by *path* into a *directory*. When a file with the same basename already
+    exists in this directory, a number is added as a postfix using *postfix_format* before the last
+    file extension. The full path to the created file is returned.
+    """
+    # prepare the dst directory
+    directory = os.path.expandvars(os.path.expanduser(directory))
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    # get the expanded src path
+    src_path = os.path.expandvars(os.path.expanduser(path))
+
+    # determine the collision-free dst path
+    dst_path = os.path.join(directory, os.path.basename(src_path))
+    i = 0
+    while os.path.exists(dst_path):
+        i += 1
+        dst_path = "{1}{0}{2}".format(postfix_format.format(i), *os.path.splitext(dst_path))
+
+    # copy
+    shutil.copy2(src_path, dst_path)
+
+    return dst_path
+
+
+def create_console_logger(name, level="INFO", formatter=None):
+    """
+    Creates a console logger named *name* and returns it. The initial log *level* can either be an
+    integer or a string denoting a Python log level. When *formatter* is not set, the default log
+    formatter of law is used.
+    """
+    if formatter is None:
+        import law
+        formatter = law.logger.LogFormatter()
+
+    logger = logging.getLogger(name)
+
+    # add handler and its formatter
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    # patch setLevel to accept more level types
+    set_level_orig = logger.setLevel
+    def set_level(level):
+        if not isinstance(level, int):
+            try:
+                level = int(level)
+            except:
+                level = getattr(logging, level.upper(), 0)
+        set_level_orig(level)
+
+    # set the initial level
+    logger.setLevel(level)
+
+    return logger
