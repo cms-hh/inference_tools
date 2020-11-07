@@ -27,11 +27,13 @@ logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 def rename_parameter(datacard, rules, directory=None, skip_shapes=False, mass="125"):
     """
     Reads a *datacard* and renames parameters according to translation *rules*. A rule should be a
-    sequence of length 2 containing the old and the new parameter name. When *directory* is *None*,
-    the input *datacard* and all shape files it refers to are updated in-place. Otherwise, both the
-    changed datacard and its shape files are stored in the specified directory. For consistency,
-    this will also update the location of shape files in the datacard. When *skip_shapes* is *True*,
-    all shape files remain unchanged (the shape lines in the datacard itself are still changed).
+    sequence of length 2 containing the old and the new parameter name.
+
+    When *directory* is *None*, the input *datacard* and all shape files it refers to are updated
+    in-place. Otherwise, both the changed datacard and its shape files are stored in the specified
+    directory. For consistency, this will also update the location of shape files in the datacard.
+    When *skip_shapes* is *True*, all shape files remain unchanged (the shape lines in the datacard
+    itself are still changed).
     """
     # create a DatacardRenamer to work with
     renamer = DatacardRenamer(datacard, rules, directory=directory, skip_shapes=skip_shapes,

@@ -30,9 +30,10 @@ logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
     """
     Reads a *datacard* and removes parameters given by a list of *patterns*. A pattern can be a
-    parameter name, a pattern that is matched via fnmatch, or a file containing patterns. When
-    *directory* is *None*, the input *datacard* is updated in-place. Otherwise, both the changed
-    datacard and all the shape files it refers to are stored in the specified directory. For
+    parameter name, a pattern that is matched via fnmatch, or a file containing patterns.
+
+    When *directory* is *None*, the input *datacard* is updated in-place. Otherwise, both the
+    changed datacard and all the shape files it refers to are stored in the specified directory. For
     consistency, this will also update the location of shape files in the datacard. When
     *skip_shapes* is *True*, all shape files remain unchanged (the shape lines in the datacard
     itself are still changed).
@@ -45,7 +46,7 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
     for pattern_or_path in patterns:
         # first try to interpret it as a file
         path = real_path(pattern_or_path)
-        if not os.path.exists(path):
+        if not os.path.isfile(path):
             # not a file, use as is
             _patterns.append(pattern_or_path)
         else:
@@ -109,6 +110,20 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
             lines = [line for j, line in enumerate(content["groups"]) if j not in to_remove]
             del content["groups"][:]
             content["groups"].extend(lines)
+
+        # remove auto mc stats
+        if content.get("auto_mc_stats"):
+            to_remove = []
+            for i, stats_line in enumerate(content["auto_mc_stats"]):
+                bin_name = stats_line.split()[0]
+                if bin_name != "*" and multi_match(bin_name, patterns):
+                    logger.info("remove autoMCStats in bin {}".format(bin_name))
+                    to_remove.append(i)
+
+            # change lines in-place
+            lines = [line for j, line in enumerate(content["auto_mc_stats"]) if j not in to_remove]
+            del content["auto_mc_stats"][:]
+            content["auto_mc_stats"].extend(lines)
 
 
 if __name__ == "__main__":

@@ -218,10 +218,11 @@ def copy_no_collisions(path, directory, postfix_format="_{}"):
 
     # determine the collision-free dst path
     dst_path = os.path.join(directory, os.path.basename(src_path))
+    dst_tmpl = "{}{{}}{}".format(*os.path.splitext(dst_path))
     i = 0
     while os.path.exists(dst_path):
         i += 1
-        dst_path = "{1}{0}{2}".format(postfix_format.format(i), *os.path.splitext(dst_path))
+        dst_path = dst_tmpl.format(postfix_format.format(i))
 
     # copy
     shutil.copy2(src_path, dst_path)

@@ -26,11 +26,13 @@ logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="125"):
     """
     Reads a *datacard* and renames processes according to translation *rules*. A rule should be a
-    sequence of length 2 containing the old and the new process name. When *directory* is *None*,
-    the input *datacard* and all shape files it refers to are updated in-place. Otherwise, both the
-    changed datacard and its shape files are stored in the specified directory. For consistency,
-    this will also update the location of shape files in the datacard. When *skip_shapes* is *True*,
-    all shape files remain unchanged (the shape lines in the datacard itself are still changed).
+    sequence of length 2 containing the old and the new process name.
+
+    When *directory* is *None*, the input *datacard* and all shape files it refers to are updated
+    in-place. Otherwise, both the changed datacard and its shape files are stored in the specified
+    directory. For consistency, this will also update the location of shape files in the datacard.
+    When *skip_shapes* is *True*, all shape files remain unchanged (the shape lines in the datacard
+    itself are still changed).
     """
     # create a DatacardRenamer to work with
     renamer = DatacardRenamer(datacard, rules, directory=directory, skip_shapes=skip_shapes,
@@ -153,7 +155,7 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                                         "bin {}".format(old_name, new_name, process_name, bin_name))
                                     update_shape_name(towner, old_name, new_name)
                                 if not process_is_wildcard:
-                                    new_shape_line["syst_pattern"] = new_pattern
+                                    new_shape_line.syst_pattern = new_pattern
 
                     # rename the process when specified
                     if not process_is_wildcard:

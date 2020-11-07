@@ -42,7 +42,7 @@ class DatacardRenamer(object):
         for rule_or_path in rules:
             # first try to interpret it as a file
             path = real_path(rule_or_path)
-            if not os.path.exists(path):
+            if not os.path.isfile(path):
                 # not a file, use as is
                 _rules = [rule_or_path]
             else:
@@ -536,8 +536,7 @@ def bundle_datacard(datacard, directory, skip_shapes=False):
 
     # copy the card itself
     src_datacard = real_path(datacard)
-    dst_datacard = os.path.join(directory, os.path.basename(src_datacard))
-    shutil.copy2(src_datacard, dst_datacard)
+    dst_datacard = copy_no_collisions(src_datacard, directory)
 
     # copy shape files and update the datacard shape lines
     copied_files = {}
@@ -561,28 +560,73 @@ def update_shape_name(towner, old_name, new_name):
     *towner* (a ROOT file or ROOFit workspace) from *old_name* to *new_name*. When the object to
     rename is a RooFit PDF, its normalization formula is renamed also as required by combine.
     """
-    if towner.InheritsFrom("TDirectoryFile"):
+    if not towner:
+        raise Exception("owner object is null pointer, cannot rename shape {} to {}".format(
+            old_name, new_name))
+
+    elif towner.InheritsFrom("TDirectoryFile"):
         # strategy: get the object, make a copy with the new name, delete all cycles of the old
         # object and write the new one
+
+        # also consider intermediate tdirectories
+        if old_name.count("/") != new_name.count("/"):
+            raise Exception("when renamening shapes in TDirectoryFile's, the old, '{}', and new "
+                "name, '{}',  must have to same amount of '/' characters for the object to remain "
+                "at the same depth".format(old_name, new_name))
+
+        if "/" in old_name:
+            # get the next, intermediate directory and check if the renaming affects it
+            old_owner_name, old_rest = old_name.split("/", 1)
+            new_owner_name, new_rest = new_name.split("/", 1)
+
+            if old_owner_name == new_owner_name:
+                # the directory name is not changed, just get it
+                towner = towner.Get(old_owner_name)
+            else:
+                # the directory name is changed, use recursion
+                towner = update_shape_name(towner, old_owner_name, new_owner_name)
+
+            # do the actual renaming of the rest
+            return update_shape_name(towner, old_rest, new_rest)
+
+        # get the object and check if it's valid
         tobj_orig = towner.Get(old_name)
         if not tobj_orig:
             raise Exception("no object named {} found in {}".format(old_name, towner))
 
+        # stop here when the name does not change at all
+        if new_name == old_name:
+            return tobj_orig
+
+        # check if there is already an object with the new name
+        tobj_clone = towner.Get(new_name)
+        if tobj_clone:
+            raise Exception("object named {} already present in {}".format(new_name, towner))
+
+        # go ahead and rename
         towner.cd()
         tobj_clone = tobj_orig.Clone(new_name)
         tobj_clone.SetTitle(tobj_clone.GetTitle().replace(old_name, new_name))
         towner.Delete(old_name + ";*")
         tobj_clone.Write(new_name)
 
+        return tobj_clone
+
     elif towner.InheritsFrom("RooWorkspace"):
         # strategy: get the pdf and optional norm object, simply rename them
         pdf = towner.pdf(old_name)
         if not pdf:
-            if not pdf:
-                raise Exception("no pdf named {} found in {}".format(old_name, towner))
+            raise Exception("no pdf named {} found in {}".format(old_name, towner))
+
+        # stop here when the name does not change at all
+        if new_name == old_name:
+            return pdf
+
+        # go ahead and rename
         pdf.SetName(new_name)
         pdf.SetTitle(pdf.GetTitle().replace(old_name, new_name))
 
+        # also rename the norm object when existing
         old_norm_name = old_name + "_norm"
         new_norm_name = new_name + "_norm"
         norm = towner.arg(old_norm_name)

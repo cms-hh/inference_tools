@@ -32,9 +32,10 @@ logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 def remove_processes(datacard, patterns, directory=None, skip_shapes=False):
     """
     Reads a *datacard* and removes processes given by a list of *patterns*. A pattern can be a
-    parameter name, a pattern that is matched via fnmatch, or a file containing patterns. When
-    *directory* is *None*, the input *datacard* is updated in-place. Otherwise, both the changed
-    datacard and all the shape files it refers to are stored in the specified directory. For
+    parameter name, a pattern that is matched via fnmatch, or a file containing patterns.
+
+    When *directory* is *None*, the input *datacard* is updated in-place. Otherwise, both the
+    changed datacard and all the shape files it refers to are stored in the specified directory. For
     consistency, this will also update the location of shape files in the datacard. When
     *skip_shapes* is *True*, all shape files remain unchanged (the shape lines in the datacard
     itself are still changed).
@@ -47,7 +48,7 @@ def remove_processes(datacard, patterns, directory=None, skip_shapes=False):
     for pattern_or_path in patterns:
         # first try to interpret it as a file
         path = real_path(pattern_or_path)
-        if not os.path.exists(path):
+        if not os.path.isfile(path):
             # not a file, use as is
             _patterns.append(pattern_or_path)
         else:
