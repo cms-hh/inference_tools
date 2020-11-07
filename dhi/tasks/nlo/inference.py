@@ -18,7 +18,7 @@ from dhi.tasks.nlo.base import (
 )
 from dhi.util import linspace
 from dhi.config import poi_data
-from dhi.datacard_tools import extract_shape_files, update_shape_files, get_workspace_parameters
+from dhi.datacard_tools import extract_shape_files, update_shape_files, get_workspace_parameters, bundle_datacard
 
 
 class CombineDatacards(DatacardTask, CombineCommandTask):
@@ -45,44 +45,23 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         datacards = [self.split_datacard_path(card)[0] for card in self.datacards]
         bin_names = [self.split_datacard_path(card)[1] for card in self.datacards]
 
-        # create a map shape file -> datacards, basename
-        shape_data = {}
-        for card in datacards:
-            for shape in extract_shape_files(card):
-                if shape not in shape_data:
-                    shape_data[shape] = {"datacards": [], "basename": os.path.basename(shape)}
-                shape_data[shape]["datacards"].append(card)
+        # run the bundling for all cards which handles collision-free copying on its own
+        datacards = [os.path.basename(bundle_datacard(card, tmp_dir.path)) for card in datacards]
 
-        # determine the final basenames of shape files, handle collisions and copy shapes
-        basenames = [data["basename"] for data in shape_data.values()]
-        for shape, data in shape_data.items():
-            if basenames.count(data["basename"]) > 1:
-                data["target_basename"] = "{1}_{0}{2}".format(
-                    law.util.create_hash(shape), *os.path.splitext(data["basename"])
-                )
-            else:
-                data["target_basename"] = data["basename"]
-            tmp_dir.child(data["target_basename"], type="f").copy_from(shape)
-
-        # update shape files in datacards to new basenames and save them in the tmp dir
-        tmp_datacards = []
-        for i, (card, bin_name) in enumerate(zip(datacards, bin_names)):
-            def func(rel_shape, *args):
-                shape = os.path.realpath(os.path.join(os.path.dirname(card), rel_shape))
-                return shape_data[shape]["target_basename"]
-
-            tmp_card = "datacard_{}.txt".format(i)
-            update_shape_files(func, card, os.path.join(tmp_dir.path, tmp_card))
-            tmp_datacards.append((bin_name + "=" if bin_name else "") + tmp_card)
+        # add back bin names
+        datacards = [
+            ("{}={}".format(bin_name, card) if bin_name else card)
+            for bin_name, card in zip(bin_names, datacards)
+        ]
 
         # build and run the command
         output_dir = self.output().parent
         output_dir.touch()
-        self.run_command(self.build_command(tmp_datacards), cwd=tmp_dir.path)
+        self.run_command(self.build_command(datacards), cwd=tmp_dir.path)
 
         # finally, copy shape files to output location
-        for data in shape_data.values():
-            tmp_dir.child(data["target_basename"], type="f").copy_to(output_dir)
+        for basename in tmp_dir.listdir(pattern="*.root", type="f"):
+            tmp_dir.child(basename).copy_to(output_dir)
 
 
 class CreateWorkspace(DatacardTask, CombineCommandTask):

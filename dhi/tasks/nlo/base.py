@@ -93,31 +93,53 @@ class DatacardTask(AnalysisTask):
         return path, bin_name
 
     @classmethod
-    def resolve_datacards(cls, datacards):
-        _datacards = []
-        dc_path = os.path.expandvars("$DHI_BASE/datacards_run2")
+    def resolve_datacards(cls, patterns):
+        datacards = []
 
-        for pattern in datacards:
+        for pattern in patterns:
+            # extract a bin name when given
             pattern, bin_name = cls.split_datacard_path(pattern)
             pattern = os.path.expandvars(os.path.expanduser(pattern))
+
+            # get matching paths
             paths = list(glob.glob(pattern))
 
-            # when the pattern did not match anything, repeat relative to the dc_path
+            # when the pattern did not match anything, repeat relative to the datacard submodule
             if not paths:
-                # try relative to datacards_run2
+                dc_path = os.path.expandvars("$DHI_BASE/datacards_run2")
                 paths = list(glob.glob(os.path.join(dc_path, pattern)))
 
-            # make all paths deterministic, i.e., make absolute and resolve symlinks
+            # when directories are given, assume to find a file "datacard.txt"
             paths = [
-                os.path.realpath(os.path.abspath(path))
+                (os.path.join(path, "datacard.txt") if os.path.isdir(path) else path)
                 for path in paths
             ]
 
+            # keep only existing cards
+            paths = filter(os.path.exists, paths)
+
+            # complain when no file matched, files don't exist, or more than one file is found and
+            # a bin name is set
+            if not paths:
+                if law.util.is_pattern(pattern):
+                    raise Exception("no matching datacards found for pattern {}".format(pattern))
+                else:
+                    raise Exception("datacard {} does not exist".format(pattern))
+            elif len(paths) > 1 and bin_name:
+                raise Exception("{} matches more than one datacard, bin names not supported".format(
+                    pattern))
+
+            # resolve paths to make them fully deterministic as a hash might be built later on
+            paths = map(os.path.realpath, paths)
+
             # add back with optional bin prefix
             for path in paths:
-                _datacards.append("{}={}".format(bin_name, path) if bin_name else path)
-        _datacards = sorted(law.util.make_unique(_datacards))
-        return _datacards
+                datacards.append("{}={}".format(bin_name, path) if bin_name else path)
+
+        # make unique and sort
+        datacards = sorted(law.util.make_unique(datacards))
+
+        return datacards
 
     def store_parts(self):
         parts = super(DatacardTask, self).store_parts()
