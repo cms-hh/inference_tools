@@ -11,7 +11,9 @@ script_name.py DATACARD [OTHER_ARGUMENTS] --directory/-d DIRECTORY
 Please note that, when no output directory is given, ==the content of datacards and shape files is changed in-place==.
 
 
-## Remove parameters
+## Adjusting parameters
+
+### Remove
 
 ```shell hl_lines="1"
 > remove_parameters.py --help
@@ -53,7 +55,7 @@ optional arguments:
 ```
 
 
-## Rename parameters
+### Rename
 
 ```shell hl_lines="1"
 > rename_parameters.py --help
@@ -93,7 +95,58 @@ optional arguments:
 ```
 
 
-## Remove processes
+### Add
+
+```shell hl_lines="1"
+> add_parameter.py --help
+
+usage: add_parameter.py [-h] [--directory [DIRECTORY]] [--no-shapes]
+                        [--log-level LOG_LEVEL]
+                        input name type [spec [spec ...]]
+
+Script to add arbitrary parameters to the datacard.
+Example usage:
+
+# add auto MC stats
+> add_parameter.py datacard.txt "*" autoMCStats 10 -d output_directory
+
+# add a lnN nuisance for a specific process across all bins
+> add_parameter.py datacard.txt new_nuisance lnN "*,ttZ,1.05" -d output_directory
+
+# add a lnN nuisance for a all processes in two specific bins
+> add_parameter.py datacard.txt new_nuisance lnN "bin1,*,1.05" "bin2,*,1.07" -d output_directory
+
+Note: The use of an output directory is recommended to keep input files unchanged.
+
+positional arguments:
+  input                 the datacard to read and possibly update (see
+                        --directory)
+  name                  name of the parameter to add
+  type                  type of the parameter to add
+  spec                  specification of parameter arguments; for columnar
+                        parameters types (e.g. lnN or shape* nuisances),
+                        comma-separated triplets in the format
+                        'bin,process,value' are expected; patterns are
+                        supported and evaluated in the given order for all
+                        existing bin process pairs; for all other types, the
+                        specification is used as is
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --no-shapes, -n       do not copy shape files to the output directory when
+                        --directory is set
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+```
+
+
+## Adjusting processes
+
+### Remove
 
 ```shell hl_lines="1"
 > remove_processes.py --help
@@ -135,7 +188,7 @@ optional arguments:
 ```
 
 
-## Rename processes
+### Rename
 
 ```shell hl_lines="1"
 > rename_processes.py --help
@@ -170,6 +223,50 @@ optional arguments:
                         changed in-place
   --no-shapes, -n       do not change process names in shape files
   --mass MASS, -m MASS  mass hypothesis; default: 125
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+```
+
+
+## Adjusting bins
+
+### Remove
+
+```shell hl_lines="1"
+> remove_bins.py --help
+
+usage: remove_bins.py [-h] [--directory [DIRECTORY]] [--no-shapes]
+                      [--log-level LOG_LEVEL]
+                      input names [names ...]
+
+Script to remove one or multiple bins from a datacard.
+Example usage:
+
+# remove certain bins
+> remove_bins.py datacard.txt ch1 -d output_directory
+
+# remove bins via fnmatch wildcards (note the quotes)
+> remove_bins.py datacard.txt "ch*" -d output_directory
+
+# remove bins listed in a file
+> remove_bins.py datacard.txt bins.txt -d output_directory
+
+Note: The use of an output directory is recommended to keep input files unchanged.
+
+positional arguments:
+  input                 the datacard to read and possibly update (see
+                        --directory)
+  names                 names of bins or files containing bin names to remove
+                        line by line; supports patterns
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --no-shapes, -n       do not copy shape files to the output directory when
+                        --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
 ```
