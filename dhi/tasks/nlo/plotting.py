@@ -154,10 +154,14 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
         if br in br_hh:
             scale *= br_hh[br]
 
-        # get the proper xsec getter
-        getter_attr = "get_ggf_xsec" if poi == "kl" else "get_vbf_xsec"
-        getter = getattr(self.load_hh_model()[0], getter_attr)
-        get_xsec = lambda r: getter(**{("kl" if poi == "kl" else "c2v"): r})
+        # get the proper xsec getter for the formula of the current model
+        module, model = self.load_hh_model()
+        if self.poi == "kl":
+            formula = model.ggf_formula
+            get_xsec = create_ggf_xsec_func(formula)
+        else:  # C2V
+            formula = model.vbf_formula
+            get_xsec = create_vbf_xsec_func(formula)
 
         # convert values and remember theory values
         expected_values = np.array(expected_values)
