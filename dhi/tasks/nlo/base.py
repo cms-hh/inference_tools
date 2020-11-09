@@ -9,9 +9,11 @@ import sys
 import re
 import glob
 import importlib
+from collections import defaultdict
 
 import law
 import luigi
+import six
 
 from dhi.config import poi_data
 from dhi.tasks.base import AnalysisTask, CommandTask
@@ -36,8 +38,9 @@ class DatacardTask(AnalysisTask):
     that are significant for the datacard handling.
     """
 
-    datacards = law.CSVParameter(
-        description="path to input datacards separated by comma; supports globbing; no default",
+    datacards = luigi.Parameter(
+        description="paths to input datacards separated by comma; supports globbing and brace "
+        "expansion; no default",
     )
     mass = luigi.FloatParameter(
         default=125.0,
@@ -66,7 +69,7 @@ class DatacardTask(AnalysisTask):
         params = super(DatacardTask, cls).modify_param_values(params)
 
         datacards = params.get("datacards")
-        if isinstance(datacards, (tuple, list)):
+        if datacards:
             datacards = cls.resolve_datacards(datacards)
 
             # complain when datacards are empty
@@ -74,6 +77,7 @@ class DatacardTask(AnalysisTask):
                 raise ValueError("datacards parameter did not match any existing datacard files")
 
             params["datacards"] = tuple(datacards)
+
         return params
 
     @classmethod
@@ -93,50 +97,64 @@ class DatacardTask(AnalysisTask):
 
     @classmethod
     def resolve_datacards(cls, patterns):
-        datacards = []
+        paths = []
+        bin_names = []
 
+        # when patterns is a single string, split it by comma and consider brace expansion
+        if isinstance(patterns, six.string_types):
+            patterns = law.util.brace_expand(patterns, split_csv=True)
+
+        # try to resolve all patterns
         for pattern in patterns:
             # extract a bin name when given
             pattern, bin_name = cls.split_datacard_path(pattern)
             pattern = os.path.expandvars(os.path.expanduser(pattern))
 
             # get matching paths
-            paths = list(glob.glob(pattern))
+            _paths = list(glob.glob(pattern))
 
             # when the pattern did not match anything, repeat relative to the datacard submodule
-            if not paths:
+            if not _paths:
                 dc_path = os.path.expandvars("$DHI_BASE/datacards_run2")
-                paths = list(glob.glob(os.path.join(dc_path, pattern)))
+                _paths = list(glob.glob(os.path.join(dc_path, pattern)))
 
             # when directories are given, assume to find a file "datacard.txt"
-            paths = [
+            _paths = [
                 (os.path.join(path, "datacard.txt") if os.path.isdir(path) else path)
-                for path in paths
+                for path in _paths
             ]
 
             # keep only existing cards
-            paths = filter(os.path.exists, paths)
+            _paths = filter(os.path.exists, _paths)
 
             # complain when no file matched, files don't exist, or more than one file is found and
             # a bin name is set
-            if not paths:
+            if not _paths:
                 if law.util.is_pattern(pattern):
                     raise Exception("no matching datacards found for pattern {}".format(pattern))
                 else:
                     raise Exception("datacard {} does not exist".format(pattern))
-            elif len(paths) > 1 and bin_name:
-                raise Exception("{} matches more than one datacard, bin names not supported".format(
-                    pattern))
 
             # resolve paths to make them fully deterministic as a hash might be built later on
-            paths = map(os.path.realpath, paths)
+            _paths = map(os.path.realpath, _paths)
 
-            # add back with optional bin prefix
-            for path in paths:
-                datacards.append("{}={}".format(bin_name, path) if bin_name else path)
+            # add datacard path and optional bin name
+            for path in _paths:
+                if path not in paths:
+                    paths.append(path)
+                    bin_names.append(bin_name)
 
-        # make unique and sort
-        datacards = sorted(law.util.make_unique(datacards))
+        # zip datacard paths again with bin names when given
+        bin_name_counter = defaultdict(int)
+        datacards = []
+        for path, bin_name in zip(paths, bin_names):
+            if bin_name and bin_names.count(bin_name) > 1:
+                bin_name_counter[bin_name] += 1
+                bin_name += str(bin_name_counter[bin_name])
+            datacards.append("{}={}".format(bin_name, path) if bin_name else path)
+
+        # sort
+        datacards = sorted(datacards)
 
         return datacards
 
@@ -186,8 +204,9 @@ class DatacardTask(AnalysisTask):
 
 class MultiDatacardTask(DatacardTask):
 
-    multi_datacards = law.MultiCSVParameter(
-        description="path to input datacards separated by comma; supports globbing; no default",
+    multi_datacards = luigi.Parameter(
+        description="multiple paths to comma-separated input datacard sequences, each one "
+        "separated by colon; supports globbing and brace expansion; no default",
     )
     datacard_order = law.CSVParameter(
         default=(),
@@ -210,9 +229,9 @@ class MultiDatacardTask(DatacardTask):
         params = super(MultiDatacardTask, cls).modify_param_values(params)
 
         multi_datacards = params.get("multi_datacards")
-        if isinstance(multi_datacards, (tuple, list)):
+        if multi_datacards:
             _multi_datacards = []
-            for i, datacards in enumerate(multi_datacards):
+            for i, datacards in enumerate(multi_datacards.split(":")):
                 datacards = cls.resolve_datacards(datacards)
 
                 # complain when datacards are empty
@@ -223,6 +242,7 @@ class MultiDatacardTask(DatacardTask):
                 _multi_datacards.append(tuple(datacards))
 
             params["multi_datacards"] = tuple(_multi_datacards)
+
         return params
 
     def __init__(self, *args, **kwargs):
