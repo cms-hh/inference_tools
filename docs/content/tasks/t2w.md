@@ -3,14 +3,15 @@ After combining your datacards you need to create a workspace using a PhysicsMod
 This task can be run with:
 
 ```shell
-law run CreateWorkspace --version dev
+law run CreateWorkspace --version dev --datacards $DHI_EXAMPLE_CARDS
 ```
 
-Now since we require a combined datacard, we will see the power of `law` workflows. This task does indeed require the output of the `CombineDatacards` task.
+Now since we require a combined datacard, we will see the power of `law` workflows.
+This task does indeed require the output of the `CombineDatacards` task.
 
 Let's have a look at a higher task depth:
 ```shell
-law run CreateWorkspace --version dev --print-status 1
+law run CreateWorkspace --version dev --datacards $DHI_EXAMPLE_CARDS --print-status 1
 ```
 Output:
 ```shell
@@ -24,15 +25,20 @@ print task status with max_depth 1 and target_depth 0
 |  |  - LocalFileTarget(path=$DHI_STORE/CombineDatacards/m125.0/model_hh_HHdefault/dev/datacard.txt)
 |  |    absent
 ```
-As you can see there is a task hierarchy and in fact `CreateWorkspace` will not be exectued until the output of `CombineDatacards` exists. Another thing to notice is that cli options (here: `--datacards`) are upstreamed to all required tasks.
 
-Here we can use a new cli option: `--hh-model`, which default is the standard HH PhysicsModel. In case you want to use a new PhysicsModel, you just have to add it to `dhi/models` and pass it to `--hh-model` (relative to `dhi/models`), such as:
+As you can see there is a task hierarchy and in fact `CreateWorkspace` will not be exectued until the output of `CombineDatacards` exists.
+Another thing to notice is that cli options (here: `--datacards`) are upstreamed to all required tasks.
+
+Here we can use a new cli option: `--hh-model`, which default is the standard HH PhysicsModel.
+In case you want to use a new PhysicsModel, you just have to add it to `dhi/models` and pass it to `--hh-model` (relative to `dhi/models`), such as:
 
 (Assume we created a PhysicsModel called `MyCoolPhysicsModel` in `dhi/models/my_model.py`)
 ```shell
-law run CreateWorkspace --version dev --hh-model my_model:MyCoolPhysicsModel --print-status 0
+law run CreateWorkspace --version dev --datacards $DHI_EXAMPLE_CARDS --hh-model my_model:MyCoolPhysicsModel --print-status 0
 ```
+
 Output:
+
 ```shell
 print task status with max_depth 0 and target_depth 0
 
@@ -40,6 +46,7 @@ print task status with max_depth 0 and target_depth 0
 |  - LocalFileTarget(path=$DHI_STORE/CreateWorkspace/m125.0/model_my_model_MyCoolPhysicsModel/dev/workspace.root)
 |    absent
 ```
+
 It will automatically look for `MyCoolPhysicsModel` in `dhi/models/my_model.py` and will use this to create the workspace.
 
 ---

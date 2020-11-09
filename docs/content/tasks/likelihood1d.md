@@ -3,7 +3,7 @@ This section will explain how you can run one dimensional likelihood scans.
 You can check the status of this task with:
 
 ```shell hl_lines="1"
-law run LikelihoodScan1D --version dev --print-status 2
+law run LikelihoodScan1D --version dev --datacards $DHI_EXAMPLE_CARDS --print-status 2
 print task status with max_depth 2 and target_depth 0
 
 > LikelihoodScan1D(branch=-1, start_branch=0, end_branch=51, branches=, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault, poi=kl, poi_range=-25.0,25.0, poi_points=51, workflow=local)
@@ -44,7 +44,7 @@ As you can see there will be one output file in the `SiblingFileCollection` for 
 Example usage:
 
 ```shell hl_lines="1"
-law run LikelihoodScan1D --version dev --workflow local --workers 4
+law run LikelihoodScan1D --version dev --datacards $DHI_EXAMPLE_CARDS --workflow local --workers 4
 ```
 
 
@@ -55,13 +55,13 @@ For heavy workloads, where you need to scan tens or hundreds of points and each 
 Example usage:
 
 ```shell hl_lines="1"
-law run LikelihoodScan1D --version dev --workflow htcondor --poll-interval 30sec
+law run LikelihoodScan1D --version dev --datacards $DHI_EXAMPLE_CARDS --workflow htcondor --poll-interval 30sec
 ```
 
 If you want to merge e.g. 3 fits in one job you can use the `--tasks-per-job` cli option:
 
 ```shell hl_lines="1"
-law run LikelihoodScan1D --version dev --workflow htcondor --poll-interval 30sec --tasks-per-job 3
+law run LikelihoodScan1D --version dev --datacards $DHI_EXAMPLE_CARDS --workflow htcondor --poll-interval 30sec --tasks-per-job 3
 ```
 
 
@@ -73,7 +73,7 @@ There is a ROOT and a matplotlib version of the plot, which can be controlled wi
 Use `root` for the ROOT version,
 
 ```shell hl_lines="1"
-law run PlotLikelihoodScan1D --version dev --plot-flavor root
+law run PlotLikelihoodScan1D --version dev --datacards $DHI_EXAMPLE_CARDS --plot-flavor root
 ```
 
 ![1D likelihood scan with ROOT](../images/nll1d__kl_n51_-25.0_25.0__root.png)
@@ -81,7 +81,7 @@ law run PlotLikelihoodScan1D --version dev --plot-flavor root
 and `mpl`for the matplotlib version,
 
 ```shell hl_lines="1"
-law run PlotLikelihoodScan1D --version dev --plot-flavor mpl
+law run PlotLikelihoodScan1D --version dev --datacards $DHI_EXAMPLE_CARDS --plot-flavor mpl
 ```
 
 ![1D likelihood scan with matplotlib](../images/nll1d__kl_n51_-25.0_25.0__mpl.png)

@@ -3,7 +3,7 @@ This section will explain how you can run two dimensional likelihood scans.
 You can check the status of this task with:
 
 ```shell hl_lines="1"
-law run LikelihoodScan2D --version dev --print-status 2
+law run LikelihoodScan2D --version dev --datacards $DHI_EXAMPLE_CARDS --print-status 2
 print task status with max_depth 2 and target_depth 0
 
 > LikelihoodScan2D(branch=-1, start_branch=0, end_branch=1071, branches=, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault, poi1=kl, poi2=kt, poi1_range=-25.0,25.0, poi2_range=-10.0,10.0, poi1_points=51, poi2_points=21, workflow=local)
@@ -46,7 +46,7 @@ As you can see there will be one output file in the `SiblingFileCollection` for 
 Example usage:
 
 ```shell hl_lines="1"
-law run LikelihoodScan2D --version dev --workflow local --workers 4
+law run LikelihoodScan2D --version dev --datacards $DHI_EXAMPLE_CARDS --workflow local --workers 4
 ```
 
 
@@ -57,13 +57,13 @@ For heavy workloads, where you need to scan tens or hundreds of points and each 
 Example usage:
 
 ```shell hl_lines="1"
-law run LikelihoodScan2D --version dev --workflow htcondor --poll-interval 30sec
+law run LikelihoodScan2D --version dev --datacards $DHI_EXAMPLE_CARDS --workflow htcondor --poll-interval 30sec
 ```
 
 If you want to merge e.g. 3 fits in one job you can use the `--tasks-per-job` cli option:
 
 ```shell hl_lines="1"
-law run LikelihoodScan2D --version dev --workflow htcondor --poll-interval 30sec --tasks-per-job 3
+law run LikelihoodScan2D --version dev --datacards $DHI_EXAMPLE_CARDS --workflow htcondor --poll-interval 30sec --tasks-per-job 3
 ```
 
 
@@ -75,7 +75,7 @@ There is a ROOT and a matplotlib version of the plot, which can be controlled wi
 Use `root` for the ROOT version,
 
 ```shell hl_lines="1"
-law run PlotLikelihoodScan2D --version dev --poi1-points 61 --poi2-points 41 --plot-flavor root
+law run PlotLikelihoodScan2D --version dev --datacards $DHI_EXAMPLE_CARDS --poi1-points 61 --poi2-points 41 --plot-flavor root
 ```
 
 ![2D likelihood scan with ROOT](../images/nll2d__kl_n61_-30.0_30.0__kt_n41_-10.0_10.0__log__root.png)
@@ -83,7 +83,7 @@ law run PlotLikelihoodScan2D --version dev --poi1-points 61 --poi2-points 41 --p
 and `mpl`for the matplotlib version,
 
 ```shell hl_lines="1"
-law run PlotLikelihoodScan2D --version dev --poi1-points 61 --poi2-points 41 --plot-flavor mpl
+law run PlotLikelihoodScan2D --version dev --datacards $DHI_EXAMPLE_CARDS --poi1-points 61 --poi2-points 41 --plot-flavor mpl
 ```
 
 ![2D likelihood scan with matplotlib](../images/nll2d__kl_n61_-30.0_30.0__kt_n41_-10.0_10.0__log__mpl.png)

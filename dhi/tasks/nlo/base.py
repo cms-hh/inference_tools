@@ -37,8 +37,7 @@ class DatacardTask(AnalysisTask):
     """
 
     datacards = law.CSVParameter(
-        default=tuple(os.getenv("DHI_EXAMPLE_CARDS").split()),
-        description="path to input datacards separated by comma; supports globbing",
+        description="path to input datacards separated by comma; supports globbing; no default",
     )
     mass = luigi.FloatParameter(
         default=125.0,
@@ -188,8 +187,7 @@ class DatacardTask(AnalysisTask):
 class MultiDatacardTask(DatacardTask):
 
     multi_datacards = law.MultiCSVParameter(
-        default=(tuple(os.getenv("DHI_EXAMPLE_CARDS").split()),),
-        description="path to input datacards separated by comma; supports globbing",
+        description="path to input datacards separated by comma; supports globbing; no default",
     )
     datacard_order = law.CSVParameter(
         default=(),

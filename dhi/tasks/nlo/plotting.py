@@ -225,8 +225,8 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
         for v in range(-2, 4 + 1):
             if v in expected_values[self.poi]:
                 record = expected_values[expected_values[self.poi] == v][0]
-                self.publish_message("{} = {} -> {}{}".format(self.poi, v, record["limit"],
-                    (" " + xsec_unit) if xsec_unit else ""))
+                self.publish_message("{} = {} -> {} {}".format(self.poi, v, record["limit"],
+                    xsec_unit or "()".format(self.r_poi)))
 
         # get the proper plot function and call it
         if self.plot_flavor == "root":
