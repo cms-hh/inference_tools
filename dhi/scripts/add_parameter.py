@@ -11,7 +11,7 @@ Example usage:
 # add a lnN nuisance for a specific process across all bins
 > add_parameter.py datacard.txt new_nuisance lnN "*,ttZ,1.05" -d output_directory
 
-# add a lnN nuisance for a all processes in two specific bins
+# add a lnN nuisance for all processes in two specific bins
 > add_parameter.py datacard.txt new_nuisance lnN "bin1,*,1.05" "bin2,*,1.07" -d output_directory
 
 Note: The use of an output directory is recommended to keep input files unchanged.

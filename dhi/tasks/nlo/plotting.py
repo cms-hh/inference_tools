@@ -6,6 +6,7 @@ NLO Plotting tasks.
 
 import law
 import luigi
+import six
 
 from dhi.tasks.base import AnalysisTask
 from dhi.tasks.nlo.base import (
@@ -76,6 +77,26 @@ class PlotTask(AnalysisTask):
         significant=False,
         description="the campaign name used for plotting; no default",
     )
+    x_min = luigi.FloatParameter(
+        default=-1000.,
+        significant=False,
+        description="the lower x-axis limit; no default",
+    )
+    x_max = luigi.FloatParameter(
+        default=-1000.,
+        significant=False,
+        description="the upper x-axis limit; no default",
+    )
+    y_min = luigi.FloatParameter(
+        default=-1000.,
+        significant=False,
+        description="the lower y-axis limit; no default",
+    )
+    y_max = luigi.FloatParameter(
+        default=-1000.,
+        significant=False,
+        description="the upper y-axis limit; no default",
+    )
 
     def create_plot_name(self, *parts):
         # join lists/tuples in parts by "_"
@@ -90,6 +111,11 @@ class PlotTask(AnalysisTask):
         name = "__".join(_parts) + "." + self.file_type
 
         return name
+
+    def get_axis_limit(self, value):
+        if isinstance(value, six.string_types):
+            value = getattr(self, value)
+        return None if value == -1000. else value
 
 
 class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
@@ -158,10 +184,10 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
         module, model = self.load_hh_model()
         if self.poi == "kl":
             formula = model.ggf_formula
-            get_xsec = create_ggf_xsec_func(formula)
+            get_xsec = module.create_ggf_xsec_func(formula)
         else:  # C2V
             formula = model.vbf_formula
-            get_xsec = create_vbf_xsec_func(formula)
+            get_xsec = module.create_vbf_xsec_func(formula)
 
         # convert values and remember theory values
         expected_values = np.array(expected_values)
@@ -199,7 +225,8 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
         for v in range(-2, 4 + 1):
             if v in expected_values[self.poi]:
                 record = expected_values[expected_values[self.poi] == v][0]
-                self.publish_message("{} = {} -> {}".format(self.poi, v, record["limit"]))
+                self.publish_message("{} = {} -> {}{}".format(self.poi, v, record["limit"],
+                    (" " + xsec_unit) if xsec_unit else ""))
 
         # get the proper plot function and call it
         if self.plot_flavor == "root":
@@ -212,8 +239,12 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
             poi=self.poi,
             expected_values=expected_values,
             theory_values=theory_values,
-            y_log=self.y_log,
             xsec_unit=xsec_unit,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
+            y_min=self.get_axis_limit("y_min"),
+            y_max=self.get_axis_limit("y_max"),
+            y_log=self.y_log,
             pp_process={"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}[self.r_poi],
             hh_process=hh_process,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
@@ -293,8 +324,12 @@ class PlotMultipleUpperLimits(MultiDatacardTask, PlotUpperLimits):
             expected_values=expected_values,
             names=names,
             theory_values=theory_values,
-            y_log=self.y_log,
             xsec_unit=xsec_unit,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
+            y_min=self.get_axis_limit("y_min"),
+            y_max=self.get_axis_limit("y_max"),
+            y_log=self.y_log,
             pp_process={"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}[self.r_poi],
             hh_process=hh_process,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
@@ -307,6 +342,8 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
         default=False,
         description="apply log scaling to the x-axis; default: False",
     )
+    y_min = None
+    y_max = None
 
     def requires(self):
         return [
@@ -356,6 +393,8 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
         plot_limit_points(
             path=output.path,
             data=data,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
             x_log=self.x_log,
             pp_process={"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}[self.r_poi],
             campaign=self.campaign if self.campaign != law.NO_STR else None,
@@ -368,6 +407,7 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
         default=False,
         description="apply log scaling to the y-axis; default: False",
     )
+    y_max = None
 
     def requires(self):
         return MergeLikelihoodScan1D.req(self)
@@ -411,6 +451,9 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
             poi=self.poi,
             expected_values=expected_values,
             poi_min=poi_min,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
+            y_min=self.get_axis_limit("y_min"),
             y_log=self.y_log,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
@@ -468,6 +511,10 @@ class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
             expected_values=expected_values,
             poi1_min=poi1_min,
             poi2_min=poi2_min,
+            x1_min=self.get_axis_limit("x_min"),
+            x1_max=self.get_axis_limit("x_max"),
+            x2_min=self.get_axis_limit("y_min"),
+            x2_max=self.get_axis_limit("y_max"),
             z_log=self.z_log,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
@@ -496,6 +543,10 @@ class PlotPullsAndImpacts(PlotTask, POITask1D):
         description="when True, --parameter-order is neglected and parameters are ordered by "
         "absolute maximum impact; default: False",
     )
+    x_min = None
+    x_max = None
+    y_min = None
+    y_max = None
 
     def __init__(self, *args, **kwargs):
         super(PlotPullsAndImpacts, self).__init__(*args, **kwargs)
@@ -545,6 +596,9 @@ class PlotPullsAndImpacts(PlotTask, POITask1D):
 
 
 class PlotBestFitAndExclusion(PlotTask, MultiDatacardTask, POIScanTask1DWithR):
+
+    y_min = None
+    y_max = None
 
     def requires(self):
         return [
@@ -608,5 +662,7 @@ class PlotBestFitAndExclusion(PlotTask, MultiDatacardTask, POIScanTask1DWithR):
             path=output.path,
             data=data,
             poi=self.poi,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )

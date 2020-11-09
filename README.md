@@ -7,8 +7,13 @@
 This repository uses submodules (currently only one), so clone it recursivel via
 
 ```shell
+# ssh
+git clone --recursive ssh://git@gitlab.cern.ch:7999/hh/tools/inference.git
+
+# or
+
+# https
 git clone --recursive https://gitlab.cern.ch/hh/tools/inference.git
-cd inference
 ```
 
 Now proceed with setting up the software and environment.
@@ -18,6 +23,7 @@ Now proceed with setting up the software and environment.
 The `setup.sh` script will install (and compile if necessary) all relevant software packages.
 
 ```shell
+cd inference
 source setup.sh
 ```
 

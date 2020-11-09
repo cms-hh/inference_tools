@@ -290,7 +290,8 @@ def plot_limit_scans(
 
     # central values
     for i, ev in enumerate(expected_values[::-1]):
-        g_exp = create_tgraph(n_points, poi_values, ev["limit"])
+        mask = ~np.isnan(ev["limit"])
+        g_exp = create_tgraph(mask.sum(), poi_values[mask], ev["limit"][mask])
         r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.7})
         if colors:
             color = colors[n_graphs - i - 1]
@@ -499,8 +500,8 @@ def plot_limit_points(
 
     # y axis labels and ticks
     h_dummy.GetYaxis().SetBinLabel(1, "")
-    label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{Expected %.1f}}"
-    label_tmpl_obs = "#splitline{#bf{%s}}{#scale[0.75]{#splitline{Expected %.1f}{Observed %.1f}}}"
+    label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{Expected %.2f}}"
+    label_tmpl_obs = "#splitline{#bf{%s}}{#scale[0.75]{#splitline{Expected %.2f}{Observed %.2f}}}"
     for i, d in enumerate(data):
         # name labels
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))

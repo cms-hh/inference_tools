@@ -238,10 +238,17 @@ class MultiDatacardTask(DatacardTask):
             raise Exception("when datacard_order is set, its length ({}) must match that of "
                 "multi_datacards ({})".format(len(self.datacard_order), len(self.multi_datacards)))
 
+    @classmethod
+    def _repr_param(cls, name, value, **kwargs):
+        if cls.hash_datacards_in_repr and name == "multi_datacards":
+            value = "hash:{}".format(law.util.create_hash(value))
+        return super(MultiDatacardTask, cls)._repr_param(name, value, **kwargs)
+
     def store_parts(self):
         parts = super(MultiDatacardTask, self).store_parts()
         if self.hash_datacards_in_store:
-            parts["datacards"] = "datacards_{}".format(law.util.create_hash(self.multi_datacards))
+            parts["datacards"] = "multidatacards_{}".format(
+                law.util.create_hash(self.multi_datacards))
         return parts
 
 
