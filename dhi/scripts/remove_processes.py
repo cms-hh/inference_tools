@@ -55,8 +55,8 @@ def remove_processes(datacard, patterns, directory=None, skip_shapes=False):
             # read the file line by line, accounting for empty lines and comments
             with open(path, "r") as f:
                 for line in f.readlines():
-                    pattern = line.split("#", 1)[0].strip()
-                    if pattern:
+                    pattern = line.strip()
+                    if pattern and not pattern.startswith(("#", "//")):
                         _patterns.append(pattern)
     patterns = _patterns
 
@@ -92,7 +92,7 @@ def remove_processes(datacard, patterns, directory=None, skip_shapes=False):
         if content.get("parameters") and removed_columns:
             expr = r"^([^\s]+)\s+({})\s+(.+)$".format("|".join(columnar_parameter_directives))
             for i, param_line in enumerate(list(content["parameters"])):
-                m = re.match(expr, param_line.split("#")[0].strip())
+                m = re.match(expr, param_line.strip())
                 if not m:
                     continue
 

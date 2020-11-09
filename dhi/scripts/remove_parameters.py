@@ -53,8 +53,8 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
             # read the file line by line, accounting for empty lines and comments
             with open(path, "r") as f:
                 for line in f.readlines():
-                    pattern = line.split("#", 1)[0].strip()
-                    if pattern:
+                    pattern = line.strip()
+                    if pattern and not pattern.startswith(("#", "//")):
                         _patterns.append(pattern)
     patterns = _patterns
 
@@ -83,7 +83,7 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
         # remove from group listings
         if content.get("groups"):
             for i, group_line in enumerate(list(content["groups"])):
-                m = re.match(r"^([^\s]+)\s+group\s+\=\s+(.+)$", group_line.split("#")[0].strip())
+                m = re.match(r"^([^\s]+)\s+group\s+\=\s+(.+)$", group_line.strip())
                 if not m:
                     logger.error("invalid group line format: {}".format(group_line))
                     continue
