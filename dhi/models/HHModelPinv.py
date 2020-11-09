@@ -483,12 +483,22 @@ def get_vbf_samples(keys):
     return [vbf_samples[key] for key in keys]
 
 
-def create_model(name, ggf_keys, vbf_keys):
+def create_model(name, skip_ggf=None, skip_vbf=None):
     """
     Returns a new :py:class:`HHModel` instance named *name*. Its ggf and vbf sample lists are
-    created through :py:func:`get_ggf_samples` and :py:func:`get_vbf_samples` by forwarding
-    *ggf_keys* and *vbf_keys*, respectively.
+    using all availabe samples except those defined in *skip_ggf* and *skip_vbf*, respectively,
+    through :py:func:`get_ggf_samples` and :py:func:`get_vbf_samples`. The order of passed keys to
+    be skipped does not matter.
     """
+    # get all use sample keys
+    ggf_keys = list(ggf_samples.keys())
+    vbf_keys = list(vbf_samples.keys())
+    for key in skip_ggf or []:
+        ggf_keys.remove(key)
+    for key in skip_vbf or []:
+        vbf_keys.remove(key)
+
+    # create the return the model
     return HHModel(
         ggf_sample_list=get_ggf_samples(ggf_keys),
         vbf_sample_list=get_vbf_samples(vbf_keys),
@@ -497,27 +507,41 @@ def create_model(name, ggf_keys, vbf_keys):
 
 
 # standard of models
-model_default = create_model("model_default", [1, 2, 3], [0, 1, 2, 4, 5, 6])
-model_bbgg    = create_model("model_bbgg",    [1, 2, 3], [0, 1, 2, 3, 4, 6])
+model_all     = create_model("model_all")
+model_default = create_model("model_default", skip_ggf=[(0, 1)], skip_vbf=[(1, 0, 1)])
+model_bbgg    = create_model("model_bbgg",    skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)])
 
 # ggf test models
-model_no_ggf_kl0    = create_model("model_no_ggf_kl0",    [1, 2, 3], [0, 1, 2, 4, 5, 6])
-model_no_ggf_kl1    = create_model("model_no_ggf_kl1",    [0, 2, 3], [0, 1, 2, 4, 5, 6])
-model_no_ggf_kl2p45 = create_model("model_no_ggf_kl2p45", [0, 1, 3], [0, 1, 2, 4, 5, 6])
-model_no_ggf_kl5    = create_model("model_no_ggf_kl5",    [0, 1, 2], [0, 1, 2, 4, 5, 6])
+model_no_ggf_kl0    = create_model("model_no_ggf_kl0",    skip_ggf=[(0, 1)],    skip_vbf=[(1, 0, 1)])
+model_no_ggf_kl1    = create_model("model_no_ggf_kl1",    skip_ggf=[(1, 1)],    skip_vbf=[(1, 0, 1)])
+model_no_ggf_kl2p45 = create_model("model_no_ggf_kl2p45", skip_ggf=[(2.45, 1)], skip_vbf=[(1, 0, 1)])
+model_no_ggf_kl5    = create_model("model_no_ggf_kl5",    skip_ggf=[(5, 1)],    skip_vbf=[(1, 0, 1)])
 
 # vbf test models
-model_no_vbf_sm    = create_model("model_no_vbf_sm",    [1, 2, 3], [1, 2, 3, 4, 5, 6])
-model_no_vbf_kl0   = create_model("model_no_vbf_kl0",   [1, 2, 3], [0, 2, 3, 4, 5, 6])
-model_no_vbf_kl2   = create_model("model_no_vbf_kl2",   [1, 2, 3], [0, 1, 3, 4, 5, 6])
-model_no_vbf_C2V0  = create_model("model_no_vbf_C2V0",  [1, 2, 3], [0, 1, 2, 4, 5, 6])
-model_no_vbf_C2V2  = create_model("model_no_vbf_C2V2",  [1, 2, 3], [0, 1, 2, 3, 5, 6])
-model_no_vbf_CV0p5 = create_model("model_no_vbf_CV0p5", [1, 2, 3], [0, 1, 2, 3, 4, 6])
-model_no_vbf_CV1p5 = create_model("model_no_vbf_CV1p5", [1, 2, 3], [0, 1, 2, 3, 4, 5])
+model_no_vbf_sm    = create_model("model_no_vbf_sm",    skip_ggf=[(0, 1)], skip_vbf=[(1, 1, 1)])
+model_no_vbf_kl0   = create_model("model_no_vbf_kl0",   skip_ggf=[(0, 1)], skip_vbf=[(1, 1, 0)])
+model_no_vbf_kl2   = create_model("model_no_vbf_kl2",   skip_ggf=[(0, 1)], skip_vbf=[(1, 1, 2)])
+model_no_vbf_C2V0  = create_model("model_no_vbf_C2V0",  skip_ggf=[(0, 1)], skip_vbf=[(1, 0, 1)])
+model_no_vbf_C2V2  = create_model("model_no_vbf_C2V2",  skip_ggf=[(0, 1)], skip_vbf=[(1, 2, 1)])
+model_no_vbf_CV0p5 = create_model("model_no_vbf_CV0p5", skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)])
+model_no_vbf_CV1p5 = create_model("model_no_vbf_CV1p5", skip_ggf=[(0, 1)], skip_vbf=[(1.5, 1, 1)])
 
-# legacy objects
-GGF_sample_list = get_ggf_samples([1, 2, 3])  # all but (kl=0, kt=1)
-VBF_sample_list = get_vbf_samples([0, 1, 2, 4, 5, 6])  # all but (CV=1, C2V=0, kl=1)
+# legacy objects for development
+GGF_sample_list = [
+    # GGFHHSample(0,    1, val_xs=0.06007, label="ggHH_kl_0_kt_1"),
+    GGFHHSample(1,    1, val_xs=0.02675, label="ggHH_kl_1_kt_1"),
+    GGFHHSample(2.45, 1, val_xs=0.01133, label="ggHH_kl_2p45_kt_1"),
+    GGFHHSample(5,    1, val_xs=0.07903, label="ggHH_kl_5_kt_1"),
+]
+VBF_sample_list = [
+    VBFHHSample(1,   1, 1, val_xs=0.00054 / 0.3364, label="qqHH_CV_1_C2V_1_kl_1"),
+    VBFHHSample(1,   1, 0, val_xs=0.00145 / 0.3364, label="qqHH_CV_1_C2V_1_kl_0"),
+    VBFHHSample(1,   1, 2, val_xs=0.00044 / 0.3364, label="qqHH_CV_1_C2V_1_kl_2"),
+    # VBFHHSample(1,   0, 1, val_xs=0.00880 / 0.3364, label="qqHH_CV_1_C2V_0_kl_1"),
+    VBFHHSample(1,   2, 1, val_xs=0.00472 / 0.3364, label="qqHH_CV_1_C2V_2_kl_1"),
+    VBFHHSample(0.5, 1, 1, val_xs=0.00353 / 0.3364, label="qqHH_CV_0p5_C2V_1_kl_1"),
+    VBFHHSample(1.5, 1, 1, val_xs=0.02149 / 0.3364, label="qqHH_CV_1p5_C2V_1_kl_1"),
+]
 HHdefault = HHModel(
     ggf_sample_list=GGF_sample_list,
     vbf_sample_list=VBF_sample_list,
