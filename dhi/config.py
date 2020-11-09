@@ -68,7 +68,7 @@ campaign_labels = DotDict({
     "2016": "2016 (13 TeV)",
     "2017": "2017 (13 TeV)",
     "2018": "2018 (13 TeV)",
-    "FullRun2": "Run 2 (13 TeV)",
+    "run2": "Run 2 (13 TeV)",
 })
 
 # poi defaults (value, range, points, taken from physics model) and labels

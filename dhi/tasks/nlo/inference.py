@@ -157,11 +157,15 @@ class MergeUpperLimits(POIScanTask1DWithR):
 
     @classmethod
     def load_limits(cls, inp):
+        import numpy as np
+
         f = inp.load(formatter="uproot")["limit"]
         limits = f.array("limit")
-        if len(limits) == 1:
+        # TODO: what to do when errors occurred?
+        if len(limits) == 0:
+            return (np.nan, 0.0, 0.0, 0.0, 0.0)
+        elif len(limits) == 1:
             # only the central limit exists
-            # TODO: shouldn't we raise an error when this happens?
             return (limits[0], 0.0, 0.0, 0.0, 0.0)
         else:
             # also 1 and 2 sigma variations exist

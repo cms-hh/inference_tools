@@ -1,7 +1,7 @@
 Run upper limits on the cross-section with the `UpperLimits` task.
 
 ```shell hl_lines="1"
-law run UpperLimits --version dev --print-status 2
+law run UpperLimits --version dev --datacards $DHI_EXAMPLE_CARDS --print-status 2
 print task status with max_depth 2 and target_depth 0
 
 > UpperLimits(branch=-1, start_branch=0, end_branch=51, branches=, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault, poi=kl, poi_range=-25.0,25.0, poi_points=51, r_poi=r, workflow=local)
@@ -34,7 +34,7 @@ The parameter of interest (poi) can be changed to any of those:
 Example:
 
 ```shell hl_lines="1"
-law run UpperLimits --version dev --r-poi r_qqhh --poi C2V --poi-range=-5,5 --poi-points 20 --print-status 0
+law run UpperLimits --version dev --datacards $DHI_EXAMPLE_CARDS --r-poi r_qqhh --poi C2V --poi-range=-5,5 --poi-points 20 --print-status 0
 print task status with max_depth 0 and target_depth 0
 
 > UpperLimits(branch=-1, start_branch=0, end_branch=20, branches=, version=dev, custom_args=, datacards=hash:0101a84036, mass=125.0, dc_prefix=, hh_model=HHModelPinv:HHdefault, poi=C2V, poi_range=-5.0,5.0, poi_points=20, r_poi=r_qqhh, workflow=local)
@@ -50,7 +50,7 @@ As you can see there will be one output file in the `SiblingFileCollection` for 
 Example:
 
 ```shell hl_lines="1"
-law run UpperLimits --version dev --workflow local --workers 4
+law run UpperLimits --version dev --datacards $DHI_EXAMPLE_CARDS --workflow local --workers 4
 ```
 
 
@@ -61,13 +61,13 @@ For heavy workloads, where you need to scan tens or hundreds of points and each 
 Example:
 
 ```shell hl_lines="1"
-law run UpperLimits --version dev --workflow htcondor --poll-interval 30sec
+law run UpperLimits --version dev --datacards $DHI_EXAMPLE_CARDS --workflow htcondor --poll-interval 30sec
 ```
 
 If you want to merge e.g. 3 fits in one job you can use the `--tasks-per-job` cli option:
 
 ```shell hl_lines="1"
-law run UpperLimits --version dev --workflow htcondor --poll-interval 30sec --tasks-per-job 3
+law run UpperLimits --version dev --datacards $DHI_EXAMPLE_CARDS --workflow htcondor --poll-interval 30sec --tasks-per-job 3
 ```
 
 
@@ -81,7 +81,7 @@ There is a ROOT and a matplotlib version of the plot, which can be controlled wi
 Use `root` for the ROOT version,
 
 ```shell hl_lines="1"
-law run PlotUpperLimits --version dev --r-poi r --xsec fb --br bbwwllvv --y-log --plot-flavor root
+law run PlotUpperLimits --version dev --datacards $DHI_EXAMPLE_CARDS --r-poi r --xsec fb --br bbwwllvv --y-log --plot-flavor root
 ```
 
 ![Upper limits with ROOT](../images/limits__r__kl_n51_-25.0_25.0__fb_bbwwllvv_log__root.png)
@@ -89,7 +89,7 @@ law run PlotUpperLimits --version dev --r-poi r --xsec fb --br bbwwllvv --y-log 
 and `mpl`for the matplotlib version,
 
 ```shell hl_lines="1"
-law run PlotUpperLimits --version dev --r-poi r --xsec fb --br bbwwllvv --y-log --plot-flavor mpl
+law run PlotUpperLimits --version dev --datacards $DHI_EXAMPLE_CARDS --r-poi r --xsec fb --br bbwwllvv --y-log --plot-flavor mpl
 ```
 
 ![Upper limits with matplotlib](../images/limits__r__kl_n51_-25.0_25.0__fb_bbwwllvv_log__mpl.png)
@@ -125,7 +125,7 @@ law run PlotMultipleUpperLimits --version dev \
 
 Same as `UpperLimits` plus:
 
-- `--multi-datacards STRINGS:STRINGS`: Multiple CSV sequences of datacard paths, separated by colons. Defaults to DHI_EXAMPLE_CARDS in a single sequence.
+- `--multi-datacards STRINGS:STRINGS`: Multiple CSV sequences of datacard paths, separated by colons. Mandatory.
 - `--datacard-names STRINGS`: Names of datacard sequences for plotting purposes. When set, the number of names must match the number of sequences in `--multi-datacards`. No default.
 - `--datacard-order INTS`: Indices of datacard sequences for reordering during plotting. When set, the number of ids must match the number of sequences in `--multi-datacards`. No default.
 - `--xsec STRING`: Convert limits to cross sections in this unit rather than on the signal strength. An empty value (identical to `NO_STR`) will use the latter. Choices are `pb`, `fb` and `""` (`NO_STR`). Defaults to `NO_STR`.
@@ -152,7 +152,7 @@ law run PlotUpperLimitsAtPOI --version dev \
 
 Same as `UpperLimits` plus:
 
-- `--multi-datacards STRINGS:STRINGS`: Multiple CSV sequences of datacard paths, separated by colons. Defaults to DHI_EXAMPLE_CARDS in a single sequence.
+- `--multi-datacards STRINGS:STRINGS`: Multiple CSV sequences of datacard paths, separated by colons. Mandatory.
 - `--datacard-names STRINGS`: Names of datacard sequences for plotting purposes. When set, the number of names must match the number of sequences in `--multi-datacards`. No default.
 - `--datacard-order INTS`: Indices of datacard sequences for reordering during plotting. When set, the number of ids must match the number of sequences in `--multi-datacards`. No default.
 - `--poi-value FLOAT`: The value of the POI at which limits on the `--r-poi` are obtained. Defaults to `1.`.

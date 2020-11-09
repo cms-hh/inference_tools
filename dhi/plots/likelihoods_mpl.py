@@ -27,6 +27,7 @@ def plot_likelihood_scan_1d(
     poi_min=None,
     campaign="2017",
     y_log=False,
+    y_min=None,
     x_min=None,
     x_max=None,
 ):
@@ -38,7 +39,8 @@ def plot_likelihood_scan_1d(
     the poi that leads to the best likelihood. Otherwise, it is estimated from the interpolated
     curve. *campaign* should refer to the name of a campaign label defined in
     dhi.config.campaign_labels. When *y_log* is *True*, the y-axis is plotted with a logarithmic
-    scale. *x_min* and *x_max* define the x-axis range and default to the range of poi values.
+    scale. *y_min* sets the lower limit of the y-axis and defaults to 0, or 0.01 when *y_log* is
+    *True*. *x_min* and *x_max* define the x-axis range and default to the range of poi values.
 
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#1d-likelihood-scans
     """
@@ -138,8 +140,9 @@ def plot_likelihood_scan_1d(
     ax.set_ylabel(r"$-2 \Delta \text{ln}\mathcal{L}$")
     if y_log:
         ax.set_yscale("log")
-    else:
-        ax.set_ylim(bottom=0.0)
+    if y_min is None:
+        y_min = 1e-2 if y_log else 0.
+        ax.set_ylim(bottom=y_min)
     ax.set_xlim(x_min, x_max)
     ax.tick_params(bottom=True, top=True, left=True, right=True, direction="in")
     ax.legend(legend_handles, [h.get_label() for h in legend_handles], loc="best")

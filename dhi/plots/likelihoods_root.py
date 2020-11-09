@@ -21,9 +21,10 @@ def plot_likelihood_scan_1d(
     theory_value=None,
     poi_min=None,
     campaign="2017",
-    y_log=False,
     x_min=None,
     x_max=None,
+    y_min=None,
+    y_log=False,
 ):
     """
     Creates a likelihood plot of the 1D scan of a *poi* and saves it at *path*. *expected_values*
@@ -33,7 +34,8 @@ def plot_likelihood_scan_1d(
     the poi that leads to the best likelihood. Otherwise, it is estimated from the interpolated
     curve. *campaign* should refer to the name of a campaign label defined in
     dhi.config.campaign_labels. When *y_log* is *True*, the y-axis is plotted with a logarithmic
-    scale. *x_min* and *x_max* define the x-axis range and default to the range of poi values.
+    scale. *y_min* sets the lower limit of the y-axis and defaults to 0, or 0.01 when *y_log* is
+    *True*. *x_min* and *x_max* define the x-axis range and default to the range of poi values.
 
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#1d-likelihood-scans
     """
@@ -58,10 +60,12 @@ def plot_likelihood_scan_1d(
     # define limits
     y_max_value = max(dnll2_values)
     if y_log:
-        y_min = 1e-1
+        if y_min is None:
+            y_min = 1e-2
         y_max = y_min * 10**(1.35 * math.log10(y_max_value / y_min))
     else:
-        y_min = 0.
+        if y_min is None:
+           y_min = 0.
         y_max = 1.35 * (y_max_value - y_min)
 
     # evaluate the scan, run interpolation and error estimation

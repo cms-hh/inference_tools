@@ -5,7 +5,7 @@
 Use `--print-status N` (N: task depth) to show the output status of the current task up to a certain requirement depth:
 
 ```shell
-law run CreateWorkspace --version dev --print-status 1
+law run CreateWorkspace --datacards $DHI_EXAMPLE_CARDS --version dev --print-status 1
 ```
 
 Output:
@@ -26,7 +26,7 @@ print task status with max_depth 1 and target_depth 0
 Use `--print-command N` (N: task depth) to show the underlying bash command of the current task up to a certain requirement depth:
 
 ```shell
-law run CreateWorkspace --version dev --print-command 1
+law run CreateWorkspace --version dev --datacards $DHI_EXAMPLE_CARDS --print-command 1
 ```
 
 Output:
@@ -48,7 +48,7 @@ In case there is no underlying bash command, it will print `not a CommandTask`.
 Use `--print-deps N` (N: task depth) to show the dependency tree of the current task up to a certain requirement depth:
 
 ```shell
-law run CreateWorkspace --version dev --print-deps 1
+law run CreateWorkspace --version dev --datacards $DHI_EXAMPLE_CARDS --print-deps 1
 ```
 
 Output:
@@ -65,7 +65,7 @@ print task dependencies with max_depth 1
 Use `--print-output N` (N: task depth) to show the outputs of the current task up to a certain requirement depth:
 
 ```shell
-law run CreateWorkspace --version dev --print-output 1
+law run CreateWorkspace --version dev --datacards $DHI_EXAMPLE_CARDS --print-output 1
 ```
 
 Output:
@@ -82,7 +82,7 @@ file:///afs/cern.ch/user/m/mfackeld/repos/inference/data/store/CombineDatacards/
 Use `--remove-output N` (N: task depth) to remove the outputs of the current task up to a certain requirement depth:
 
 ```shell
-law run CreateWorkspace --version dev --fetch-output 1
+law run CreateWorkspace --version dev --datacards $DHI_EXAMPLE_CARDS --fetch-output 1
 ```
 
 Output (prompt):
@@ -100,7 +100,7 @@ Choose from three different modes: `interactive`, `dry`, `all`. Recommendation: 
 Use `--remove-output N` (N: task depth) to remove the outputs of the current task up to a certain requirement depth:
 
 ```shell
-law run CreateWorkspace --version dev --remove-output 1
+law run CreateWorkspace --version dev --datacards $DHI_EXAMPLE_CARDS --remove-output 1
 ```
 
 Output (prompt):
@@ -110,6 +110,13 @@ removal mode? [i*(interactive), d(dry), a(all)]
 ```
 
 Choose from three different modes: `interactive`, `dry`, `all`. Recommendation: `interactive`.
+
+
+## Datacards
+
+Use `--datacards` to define the input datacards, will be combined in the first step (supports globbing).
+This parameter has **no default value**.
+See more info in [Combine Datacards](tasks/combinedatacards.md).
 
 
 ## Version
@@ -124,9 +131,5 @@ Use `--mass XY` (default: `125.0`) to pass a different mass to the combine calls
 
 ## HHModel
 
-Use `--hh-model` to create a workspace with a different PhysicsModel. PhysicsModel needs exist relative to `dhi/models`. See more in [Text to workspace](tasks/t2w.md).
-
-
-## Datacards
-
-Use `--datacards` to define the input datacards, will be combined in the first step (supports globbing). See more in [Combine Datacards](tasks/combinedatacards.md).
+Use `--hh-model` to create a workspace with a different PhysicsModel.
+PhysicsModel needs exist relative to `dhi/models`. See more in [Text to workspace](tasks/t2w.md).

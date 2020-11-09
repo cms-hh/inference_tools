@@ -101,16 +101,18 @@ def plot_bestfit_and_exclusion(
 
     # expected exclusion area from intersections of limit with 1
     def create_exclusion_graph(data_key):
-        excl_x, excl_y, excl_w = [], [], []
+        excl_x, excl_y, excl_d, excl_u = [], [], [], []
         for i, d in enumerate(data):
             if data_key not in d:
                 continue
             ranges = evaluate_limit_scan_1d(poi_values, d[data_key]["limit"]).excluded_ranges
             for start, stop in ranges:
-                excl_x.append(start)
+                is_left = start < 1 and stop < 1
+                excl_x.append(stop if is_left else start)
                 excl_y.append(n - i - 0.5)
-                excl_w.append(stop - start)
-        return create_tgraph(len(excl_x), excl_x, excl_y, 0, excl_w, 0.5, 0.5)
+                excl_d.append((stop - start) if is_left else 0)
+                excl_u.append(0 if is_left else (stop - start))
+        return create_tgraph(len(excl_x), excl_x, excl_y, excl_d, excl_u, 0.5, 0.5)
 
     # expected
     g_excl_exp = create_exclusion_graph("expected_limits")

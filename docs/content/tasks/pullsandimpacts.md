@@ -6,13 +6,13 @@ This section documents the usage of the tasks `PullsAndImpacts`, `MergePullsAndI
 The default command to run the entire task chain is
 
 ```shell hl_lines="1"
-law run PlotPullsAndImpacts --version dev
+law run PlotPullsAndImpacts --version dev --datacards $DHI_EXAMPLE_CARDS
 ```
 
 and, as usual, you can check the task structure and current output status beforehand by appending `--print-status TASK_DEPTH` to the command. Let's choose -1 to see the structure down to the first task (`CombineDatacards`):
 
 ```shell hl_lines="1"
-law run PlotPullsAndImpacts --version dev --print-status -4
+law run PlotPullsAndImpacts --version dev --datacards $DHI_EXAMPLE_CARDS --print-status -4
 
 print task status with max_depth -1 and target_depth 0
 
@@ -59,7 +59,7 @@ Passing -1 would trigger the entire workflow to be run (which is done locally by
 To get more insight into this mechanism, we can check the detailed output by passing a target depth (here 1) as a second value to `--print-status`. Note that the first line of the output now says `... and target_depth 1`.
 
 ```shell hl_lines="1"
-law run PullsAndImpacts --version dev --print-status 0,1
+law run PullsAndImpacts --version dev --datacards $DHI_EXAMPLE_CARDS --print-status 0,1
 
 print task status with max_depth 0 and target_depth 1
 
@@ -85,7 +85,7 @@ print task status with max_depth 0 and target_depth 1
 To get the pull and impact only for a particular nuisance, say `lumi_13TeV` which corresponds to branch 6, we could just run `law run PullsAndImpacts --version dev --branch 6`.
 
 ```shell hl_lines="1"
-law run PullsAndImpacts --version dev --branch 6 --print-status 0
+law run PullsAndImpacts --version dev --datacards $DHI_EXAMPLE_CARDS --branch 6 --print-status 0
 
 print task status with max_depth 0 and target_depth 0
 
@@ -98,8 +98,8 @@ print task status with max_depth 0 and target_depth 0
 
 - `--mass FLOAT`: The hypothetical mass of the underlying resonance. Defaults to `125.0`.
 - `--hh-model MODULE`: The name of the HH model relative to `dhi.models` in the format `module:model_name`. Defaults to `hh:HHdefault`.
-- `--version STRING`: Task version.
-- `--datacards STRINGS`: Comma-separated paths or patterns to datacards to use. Accepts bin statements such as `emu=datacard.txt,...`. Defaults to `$DHI_EXAMPLE_DATACARDS`.
+- `--version STRING`: Task version. Mandatory.
+- `--datacards STRINGS`: Comma-separated paths or patterns to datacards to use. Accepts bin statements such as `emu=datacard.txt,...`. Mandatory.
 - `--poi STRING`: The name of the POI.
 - `--mc-stats BOOL`: Whether to include nuisance parameters related to `autoMCStats`. Defaults to `False`.
 - `--custom-args STRING`: Custom arguments to be passed to executed combine commands. Defaults to `''`.

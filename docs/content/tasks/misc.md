@@ -35,7 +35,7 @@ law run PlotBestFitAndExclusion \
 
 #### Parameters
 
-- `--multi-datacards STRINGS:STRINGS`: Multiple CSV sequences of datacard paths, separated by colons. Defaults to DHI_EXAMPLE_CARDS in a single sequence.
+- `--multi-datacards STRINGS:STRINGS`: Multiple CSV sequences of datacard paths, separated by colons. Mandatory.
 - `--datacard-names STRINGS`: Names of datacard sequences for plotting purposes. When set, the number of names must match the number of sequences in `--multi-datacards`. No default.
 - `--datacard-order INTS`: Indices of datacard sequences for reordering during plotting. When set, the number of ids must match the number of sequences in `--multi-datacards`. No default.
 - `--file-type`: The file type of the produced plot. Should be `pdf` or `png`. Defaults to `pdf`.
