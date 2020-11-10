@@ -55,8 +55,8 @@ def remove_processes(datacard, patterns, directory=None, skip_shapes=False):
             # read the file line by line, accounting for empty lines and comments
             with open(path, "r") as f:
                 for line in f.readlines():
-                    pattern = line.split("#", 1)[0].strip()
-                    if pattern:
+                    pattern = line.strip()
+                    if pattern and not pattern.startswith(("#", "//")):
                         _patterns.append(pattern)
     patterns = _patterns
 
@@ -68,6 +68,9 @@ def remove_processes(datacard, patterns, directory=None, skip_shapes=False):
 
     # start removing
     with manipulate_datacard(datacard) as content:
+        # keep track of which exact processes were removed
+        removed_process_names = set()
+
         # remove from process rates and remember column indices for removal in parameters
         removed_columns = []
         if content.get("rates"):
@@ -81,6 +84,7 @@ def remove_processes(datacard, patterns, directory=None, skip_shapes=False):
                     logger.info("remove process {} from rates in bin {}".format(
                         process_name, bin_names[i]))
                     removed_columns.append(i)
+                    removed_process_names.add(process_name)
 
             mask = lambda l: [elem for j, elem in enumerate(l) if j not in removed_columns]
             content["rates"][0] = "bin " + " ".join(mask(bin_names))
@@ -92,7 +96,7 @@ def remove_processes(datacard, patterns, directory=None, skip_shapes=False):
         if content.get("parameters") and removed_columns:
             expr = r"^([^\s]+)\s+({})\s+(.+)$".format("|".join(columnar_parameter_directives))
             for i, param_line in enumerate(list(content["parameters"])):
-                m = re.match(expr, param_line.split("#")[0].strip())
+                m = re.match(expr, param_line.strip())
                 if not m:
                     continue
 
@@ -124,6 +128,20 @@ def remove_processes(datacard, patterns, directory=None, skip_shapes=False):
             lines = [line for j, line in enumerate(content["shapes"]) if j not in to_remove]
             del content["shapes"][:]
             content["shapes"].extend(lines)
+
+        # decrease jmax in counts
+        if content.get("counts") and removed_process_names:
+            # decrement jmax when specified
+            for i, count_line in enumerate(list(content["counts"])):
+                if count_line.startswith("jmax"):
+                    parts = count_line.split()
+                    if len(parts) >= 2 and parts[1] != "*":
+                        n_old = int(parts[1])
+                        n_new = n_old - len(removed_process_names)
+                        logger.info("decrease jmax from {} to {}".format(n_old, n_new))
+                        parts[1] = str(n_new)
+                        content["counts"][i] = " ".join(parts)
+                    break
 
 
 if __name__ == "__main__":

@@ -50,8 +50,8 @@ class DatacardRenamer(object):
                 _rules = []
                 with open(path, "r") as f:
                     for line in f.readlines():
-                        rule = line.split("#", 1)[0].strip()
-                        if rule:
+                        rule = line.strip()
+                        if rule and not rule.startswith(("#", "//")):
                             _rules.append(rule)
             # split rules
             for rule in _rules:
@@ -251,7 +251,7 @@ class ShapeLine(object):
 
     @classmethod
     def parse(cls, line):
-        parts = line.split("#")[0].split()
+        parts = line.strip().split()
         if len(parts) < 5:
             raise Exception("invalid shape line format: {}".format(line))
 
@@ -337,7 +337,7 @@ def read_datacard_blocks(datacard):
         lines = []
         for line in f.readlines():
             line = line.strip().lstrip("- ")
-            if line and not line.startswith("#"):
+            if line and not line.startswith(("#", "//")):
                 lines.append(line)
 
     # store and remove preamble, i.e., everything before {i,j,k}max
