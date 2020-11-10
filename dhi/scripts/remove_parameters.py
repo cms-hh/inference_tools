@@ -66,6 +66,9 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
 
     # start removing
     with manipulate_datacard(datacard) as content:
+        # keep track of which exact parameters were removed that describe nuisances
+        removed_nuisance_names = set()
+
         # remove from parameters
         if content.get("parameters"):
             to_remove = []
@@ -74,6 +77,7 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                 if multi_match(param_name, patterns):
                     logger.info("remove parameter {}".format(param_name))
                     to_remove.append(i)
+                    removed_nuisance_names.add(param_name)  # TODO: are all of them nuisances?
 
             # change lines in-place
             lines = [line for i, line in enumerate(content["parameters"]) if i not in to_remove]
@@ -124,6 +128,20 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
             lines = [line for j, line in enumerate(content["auto_mc_stats"]) if j not in to_remove]
             del content["auto_mc_stats"][:]
             content["auto_mc_stats"].extend(lines)
+
+        # decrease kmax in counts
+        if content.get("counts") and removed_nuisance_names:
+            # decrement kmax when specified
+            for i, count_line in enumerate(list(content["counts"])):
+                if count_line.startswith("kmax"):
+                    parts = count_line.split()
+                    if len(parts) >= 2 and parts[1] != "*":
+                        n_old = int(parts[1])
+                        n_new = n_old - len(removed_nuisance_names)
+                        logger.info("decrease kmax from {} to {}".format(n_old, n_new))
+                        parts[1] = str(n_new)
+                        content["counts"][i] = " ".join(parts)
+                    break
 
 
 if __name__ == "__main__":

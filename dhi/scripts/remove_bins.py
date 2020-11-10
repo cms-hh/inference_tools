@@ -68,6 +68,9 @@ def remove_bins(datacard, patterns, directory=None, skip_shapes=False):
 
     # start removing
     with manipulate_datacard(datacard) as content:
+        # keep track of which exact bins were removed
+        removed_bin_names = set()
+
         # remove from observations
         if content.get("observations"):
             bin_names = content["observations"][0].split()[1:]
@@ -78,6 +81,7 @@ def remove_bins(datacard, patterns, directory=None, skip_shapes=False):
                 if multi_match(bin_name, patterns):
                     logger.info("remove bin {} from observations".format(bin_name))
                     removed_obs_columns.append(i)
+                    removed_bin_names.add(bin_name)
 
             mask = lambda l: [elem for j, elem in enumerate(l) if j not in removed_obs_columns]
             content["observations"][0] = "bin " + " ".join(mask(bin_names))
@@ -96,6 +100,7 @@ def remove_bins(datacard, patterns, directory=None, skip_shapes=False):
                     logger.info("remove bin {} from rates for process {}".format(
                         bin_name, process_names[i]))
                     removed_rate_columns.append(i)
+                    removed_bin_names.add(bin_name)
 
             mask = lambda l: [elem for j, elem in enumerate(l) if j not in removed_rate_columns]
             content["rates"][0] = "bin " + " ".join(mask(bin_names))
@@ -139,6 +144,20 @@ def remove_bins(datacard, patterns, directory=None, skip_shapes=False):
             lines = [line for j, line in enumerate(content["shapes"]) if j not in to_remove]
             del content["shapes"][:]
             content["shapes"].extend(lines)
+
+        # decrease imax in counts
+        if content.get("counts") and removed_bin_names:
+            # decrement imax when specified
+            for i, count_line in enumerate(list(content["counts"])):
+                if count_line.startswith("imax"):
+                    parts = count_line.split()
+                    if len(parts) >= 2 and parts[1] != "*":
+                        n_old = int(parts[1])
+                        n_new = n_old - len(removed_bin_names)
+                        logger.info("decrease imax from {} to {}".format(n_old, n_new))
+                        parts[1] = str(n_new)
+                        content["counts"][i] = " ".join(parts)
+                    break
 
 
 if __name__ == "__main__":
