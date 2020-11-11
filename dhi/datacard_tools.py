@@ -14,6 +14,7 @@ from optparse import OptionParser
 from collections import OrderedDict, defaultdict
 
 import law
+import six
 
 from dhi.util import import_ROOT, real_path, multi_match, copy_no_collisions
 
@@ -37,27 +38,16 @@ class DatacardRenamer(object):
         ``old=new`` or refer to files containing rules in this format line by line. Returns a list
         of 2-tuples ``(old, new)``.
         """
-        pairs = []
 
-        for rule_or_path in rules:
-            # first try to interpret it as a file
-            path = real_path(rule_or_path)
-            if not os.path.isfile(path):
-                # not a file, use as is
-                _rules = [rule_or_path]
-            else:
-                # read the file line by line, accounting for empty lines and comments
-                _rules = []
-                with open(path, "r") as f:
-                    for line in f.readlines():
-                        rule = line.strip()
-                        if rule and not rule.startswith(("#", "//")):
-                            _rules.append(rule)
-            # split rules
-            for rule in _rules:
-                if rule.count("=") != 1:
-                    raise ValueError("invalid rule {}, must contain exactly one '='".format(rule))
-                pairs.append(rule.strip().split("=", 1))
+        # expand lines in possible files
+        rules = expand_file_lines(rules)
+
+        # parse and fill pairs
+        pairs = []
+        for rule in rules:
+            if rule.count("=") != 1:
+                raise ValueError("invalid rule {}, must contain exactly one '='".format(rule))
+            pairs.append(rule.strip().split("=", 1))
 
         return pairs
 
@@ -321,12 +311,12 @@ def create_datacard_instance(datacard, create_shape_builder=False):
 def read_datacard_blocks(datacard):
     """
     Reads the content of a *datacard* and divides the lines into blocks named "preamble", "counts",
-    "shapes", "observation", "rates", "parameters", "groups", "auto_mc_stats", "nuisance_edits", and
-    "unknown". These blocks are returned in an ordered dictionary for further inspection.
+    "shapes", "observations", "rates", "parameters", "groups", "auto_mc_stats", "nuisance_edits",
+    and "unknown". These blocks are returned in an ordered dictionary for further inspection.
     """
     # create the returned mapping
     fields = [
-        "preamble", "counts", "shapes", "observation", "rates", "parameters", "groups",
+        "preamble", "counts", "shapes", "observations", "rates", "parameters", "groups",
         "auto_mc_stats", "nuisance_edits", "unknown",
     ]
     blocks = OrderedDict((field, []) for field in fields)
@@ -356,7 +346,7 @@ def read_datacard_blocks(datacard):
             continue
         next_line = lines[obs_offset + 1]
         if next_line.startswith("observation "):
-            blocks["observation"].extend([line, next_line])
+            blocks["observations"].extend([line, next_line])
             del lines[obs_offset:obs_offset + 2]
             break
 
@@ -436,7 +426,7 @@ def manipulate_datacard(datacard, target_datacard=None, read_only=False):
                 if not lines:
                     continue
                 f.write("\n".join(lines) + "\n")
-                if field in ["counts", "shapes", "observation", "rates"]:
+                if field in ["preamble", "counts", "shapes", "observations", "rates"]:
                     f.write(80 * "-" + "\n")
 
     elif target_datacard:
@@ -652,6 +642,29 @@ def expand_variables(s, process=None, channel=None, systematic=None, mass=None):
     if mass is not None:
         s = s.replace("$MASS", mass)
     return s
+
+
+def expand_file_lines(paths, skip_comments=True):
+    """
+    Returns a concatenated list of lines in files given by *paths*. When *skip_comments* is *True*,
+    lines starting with "#" or "/" are skipped. When a path is not a string or does not point to an
+    existing file, the value is added to the returned list as is.
+    """
+    lines = []
+    for path in paths:
+        # first try to interpret it as a file
+        _path = real_path(path) if isinstance(path, six.string_types) else ""
+        if not os.path.isfile(_path):
+            # not a file, use as is
+            lines.append(path)
+        else:
+            # read the file line by line, accounting for empty lines and comments
+            with open(_path, "r") as f:
+                for line in f.readlines():
+                    line = line.strip()
+                    if line and (not skip_comments or not line.startswith(("#", "//"))):
+                        lines.append(line)
+    return lines
 
 
 def get_workspace_parameters(workspace, workspace_name="w", config_name="ModelConfig"):

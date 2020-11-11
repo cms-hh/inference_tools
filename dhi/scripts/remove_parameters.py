@@ -117,17 +117,17 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
 
         # remove auto mc stats
         if content.get("auto_mc_stats"):
-            to_remove = []
-            for i, stats_line in enumerate(content["auto_mc_stats"]):
-                bin_name = stats_line.split()[0]
+            new_lines = []
+            for line in content["auto_mc_stats"]:
+                bin_name = line.strip().split()[0]
                 if bin_name != "*" and multi_match(bin_name, patterns):
-                    logger.info("remove autoMCStats in bin {}".format(bin_name))
-                    to_remove.append(i)
+                    logger.info("remove autoMCStats for bin {}".format(bin_name))
+                else:
+                    new_lines.append(line)
 
             # change lines in-place
-            lines = [line for j, line in enumerate(content["auto_mc_stats"]) if j not in to_remove]
             del content["auto_mc_stats"][:]
-            content["auto_mc_stats"].extend(lines)
+            content["auto_mc_stats"].extend(new_lines)
 
         # decrease kmax in counts
         if content.get("counts") and removed_nuisance_names:

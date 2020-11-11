@@ -227,6 +227,55 @@ optional arguments:
                         python log level; default: INFO
 ```
 
+## Adjusting bin process pairs
+
+### Remove
+
+```shell hl_lines="1"
+remove_bin_process_pairs.py --help
+
+usage: remove_bin_process_pairs.py [-h] [--directory [DIRECTORY]]
+                                   [--no-shapes] [--log-level LOG_LEVEL]
+                                   input BIN_NAME,PROCESS_NAME
+                                   [BIN_NAME,PROCESS_NAME ...]
+
+Script to remove one or multiple bin process pairs from a datacard.
+Example usage:
+
+# remove a certain bin process pair
+> remove_bin_process_pairs.py datacard.txt ch1,ttZ -d output_directory
+
+# remove all processes for a specific bin via wildcards (note the quotes)
+> remove_bin_process_pairs.py datacard.txt "ch1,*" -d output_directory
+
+# remove all bins for a specific process via wildcards (note the quotes)
+> remove_bin_process_pairs.py datacard.txt "*,ttZ" -d output_directory
+
+# remove bin process pairs listed in a file
+> remove_bin_process_pairs.py datacard.txt pairs.txt -d output_directory
+
+Note: The use of an output directory is recommended to keep input files unchanged.
+
+positional arguments:
+  input                 the datacard to read and possibly update (see
+                        --directory)
+  BIN_NAME,PROCESS_NAME
+                        names of bin process pairs to remove in the format
+                        'bin_name,process_name' or files containing these
+                        pairs line by line; supports patterns
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --no-shapes, -n       do not copy shape files to the output directory when
+                        --directory is set
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+```
+
 
 ## Adjusting bins
 

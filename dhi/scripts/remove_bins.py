@@ -18,12 +18,10 @@ Note: The use of an output directory is recommended to keep input files unchange
 """
 
 import os
-import re
 
-from dhi.datacard_tools import (
-    columnar_parameter_directives, ShapeLine, bundle_datacard, manipulate_datacard,
-)
-from dhi.util import real_path, multi_match, create_console_logger
+from dhi.scripts import remove_bin_process_pairs
+from dhi.datacard_tools import expand_file_lines
+from dhi.util import create_console_logger, patch_object
 
 
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
@@ -40,124 +38,16 @@ def remove_bins(datacard, patterns, directory=None, skip_shapes=False):
     *skip_shapes* is *True*, all shape files remain unchanged (the shape lines in the datacard
     itself are still changed).
     """
-    # prepare the datacard path
-    datacard = real_path(datacard)
-
     # expand patterns from files
-    _patterns = []
-    for pattern_or_path in patterns:
-        # first try to interpret it as a file
-        path = real_path(pattern_or_path)
-        if not os.path.isfile(path):
-            # not a file, use as is
-            _patterns.append(pattern_or_path)
-        else:
-            # read the file line by line, accounting for empty lines and comments
-            with open(path, "r") as f:
-                for line in f.readlines():
-                    pattern = line.strip()
-                    if pattern and not pattern.startswith(("#", "//")):
-                        _patterns.append(pattern)
-    patterns = _patterns
+    patterns = expand_file_lines(patterns)
 
-    # when a directory is given, copy the datacard (and all its shape files when not skipping them)
-    # into that directory and continue working on copies
-    if directory:
-        logger.info("bundle datacard files into directory {}".format(directory))
-        datacard = bundle_datacard(datacard, directory, skip_shapes=skip_shapes)
+    # add a process wildcard to all of them
+    pairs = [(p, "*") for p in patterns]
 
-    # start removing
-    with manipulate_datacard(datacard) as content:
-        # keep track of which exact bins were removed
-        removed_bin_names = set()
-
-        # remove from observations
-        if content.get("observations"):
-            bin_names = content["observations"][0].split()[1:]
-            observations = content["observations"][1].split()[1:]
-
-            removed_obs_columns = []
-            for i, bin_name in enumerate(bin_names):
-                if multi_match(bin_name, patterns):
-                    logger.info("remove bin {} from observations".format(bin_name))
-                    removed_obs_columns.append(i)
-                    removed_bin_names.add(bin_name)
-
-            mask = lambda l: [elem for j, elem in enumerate(l) if j not in removed_obs_columns]
-            content["observations"][0] = "bin " + " ".join(mask(bin_names))
-            content["observations"][1] = "process " + " ".join(mask(observations))
-
-        # remove from process rates and remember column indices for removal in parameters
-        removed_rate_columns = []
-        if content.get("rates"):
-            bin_names = content["rates"][0].split()[1:]
-            process_names = content["rates"][1].split()[1:]
-            process_ids = content["rates"][2].split()[1:]
-            rates = content["rates"][3].split()[1:]
-
-            for i, bin_name in enumerate(bin_names):
-                if multi_match(bin_name, patterns):
-                    logger.info("remove bin {} from rates for process {}".format(
-                        bin_name, process_names[i]))
-                    removed_rate_columns.append(i)
-                    removed_bin_names.add(bin_name)
-
-            mask = lambda l: [elem for j, elem in enumerate(l) if j not in removed_rate_columns]
-            content["rates"][0] = "bin " + " ".join(mask(bin_names))
-            content["rates"][1] = "process " + " ".join(mask(process_names))
-            content["rates"][2] = "process " + " ".join(mask(process_ids))
-            content["rates"][3] = "rate " + " ".join(mask(rates))
-
-        # remove from certain parameters
-        if content.get("parameters") and removed_rate_columns:
-            expr = r"^([^\s]+)\s+({})\s+(.+)$".format("|".join(columnar_parameter_directives))
-            for i, param_line in enumerate(list(content["parameters"])):
-                m = re.match(expr, param_line.strip())
-                if not m:
-                    continue
-
-                # split the line
-                param_name = m.group(1)
-                param_type = m.group(2)
-                columns = m.group(3).split()
-                if max(removed_rate_columns) >= len(columns):
-                    raise Exception("parameter line {} '{} {} ...' has less columns than defined "
-                        "in rates".format(i, param_name, param_name))
-
-                # remove columns and update the line
-                logger.info("remove {} column(s) from parameter {}".format(
-                    len(removed_rate_columns), param_name))
-                columns = [c for j, c in enumerate(columns) if j not in removed_rate_columns]
-                content["parameters"][i] = " ".join([param_name, param_type] + columns)
-
-        # remove from shape lines
-        if content.get("shapes"):
-            shape_lines = [ShapeLine(line, j) for j, line in enumerate(content["shapes"])]
-            to_remove = []
-            for shape_line in shape_lines:
-                if shape_line.bin != "*" and multi_match(shape_line.bin, patterns):
-                    logger.info("remove shape line for bin {} and process {}".format(
-                        shape_line.bin, shape_line.process))
-                    to_remove.append((shape_line.i))
-
-            # change lines in-place
-            lines = [line for j, line in enumerate(content["shapes"]) if j not in to_remove]
-            del content["shapes"][:]
-            content["shapes"].extend(lines)
-
-        # decrease imax in counts
-        if content.get("counts") and removed_bin_names:
-            # decrement imax when specified
-            for i, count_line in enumerate(list(content["counts"])):
-                if count_line.startswith("imax"):
-                    parts = count_line.split()
-                    if len(parts) >= 2 and parts[1] != "*":
-                        n_old = int(parts[1])
-                        n_new = n_old - len(removed_bin_names)
-                        logger.info("decrease imax from {} to {}".format(n_old, n_new))
-                        parts[1] = str(n_new)
-                        content["counts"][i] = " ".join(parts)
-                    break
+    # just call remove_bin_process_pairs with our own logger
+    with patch_object(remove_bin_process_pairs, "logger", logger):
+        remove_bin_process_pairs.remove_bin_process_pairs(datacard, pairs, directory=directory,
+            skip_shapes=skip_shapes)
 
 
 if __name__ == "__main__":

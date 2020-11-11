@@ -10,6 +10,7 @@ import fnmatch
 import shutil
 import itertools
 import array
+import contextlib
 import logging
 
 
@@ -261,3 +262,26 @@ def create_console_logger(name, level="INFO", formatter=None):
     logger.setLevel(level)
 
     return logger
+
+
+@contextlib.contextmanager
+def patch_object(obj, attr, value):
+    """
+    Context manager that temporarily patches an object *obj* by replacing its attribute *attr* with
+    *value*. The original value is set again when the context is closed.
+    """
+    no_value = object()
+    orig = getattr(obj, attr, no_value)
+
+    try:
+        setattr(obj, attr, value)
+
+        yield obj
+    finally:
+        try:
+            if orig is no_value:
+                delattr(obj, attr)
+            else:
+                setattr(obj, attr, orig)
+        except:
+            pass
