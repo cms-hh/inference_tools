@@ -439,14 +439,19 @@ def manipulate_datacard(datacard, target_datacard=None, read_only=False, writer=
         shutil.copy2(datacard, target_datacard)
 
 
-def write_datacard_simple(f, blocks):
+def write_datacard_simple(f, blocks, skip_fields=None):
     """
     Writes the contents of a datacard given in *blocks* (in the format returned by
     :py:meth:`read_datacard_blocks`) into a open file objected *f* the most simple way possible.
+    *skip_fields* can be a sequence of names of fields whose lines are not written.
     """
     for field, lines in blocks.items():
         # skip empty lines
         if not lines:
+            continue
+
+        # skip certain filds
+        if skip_fields and field in skip_fields:
             continue
 
         # simply write all lines of the block
@@ -457,12 +462,15 @@ def write_datacard_simple(f, blocks):
             f.write(80 * "-" + "\n")
 
 
-def write_datacard_pretty(f, blocks):
+def write_datacard_pretty(f, blocks, skip_fields=False):
     """
     Writes the contents of a datacard given in *blocks* (in the format returned by
     :py:meth:`read_datacard_blocks`) into a open file objected *f* in a pretty way, i.e., with
-    proper offsets between values across columnar lines.
+    proper offsets between values across columnar lines. *skip_fields* can be a sequence of names of
+    fields whose lines are not written.
     """
+    skip_fields = skip_fields or []
+
     # default spacing and block separator
     spacing = 2 * " "
     sep = 80 * "-"
@@ -482,7 +490,7 @@ def write_datacard_pretty(f, blocks):
         ]
         # add or remove columns
         if not n_cols:
-            n_cols = max(map(len, rows))
+            n_cols = max([len(row) for row in rows] + [0])
         for row in rows:
             diff = n_cols - len(row)
             if diff > 0:
@@ -491,7 +499,7 @@ def write_datacard_pretty(f, blocks):
                 del row[n_cols:]
         # get the maximum width per column
         widths = [
-            max([len(row[i]) for row in rows])
+            max([len(row[i]) for row in rows] + [0])
             for i in range(n_cols)
         ]
         # combine to lines again and return
@@ -501,28 +509,30 @@ def write_datacard_pretty(f, blocks):
         ]
 
     # print the premble as is when existing
-    if blocks.get("preamble"):
+    if "preamble" not in skip_fields and blocks.get("preamble"):
         write("\n".join(blocks["preamble"]))
         write(sep)
 
     # print "*max" counts without subsequent comments
-    for line in blocks["counts"]:
-        write(line.split()[:2])
-    write(sep)
+    if "counts" not in skip_fields:
+        for line in blocks["counts"]:
+            write(line.split()[:2])
+        write(sep)
 
     # write shape lines
-    if blocks.get("shapes"):
+    if "shapes" not in skip_fields and blocks.get("shapes"):
         for line in align(blocks["shapes"], n_cols=6):
             write(line)
         write(sep)
 
     # write observations
-    for line in align(blocks["observations"]):
-        write(line)
-    write(sep)
+    if "observations" not in skip_fields:
+        for line in align(blocks["observations"]):
+            write(line)
+        write(sep)
 
     # align process rates and columnar parameters combined
-    parameter_lines = blocks.get("parameters")
+    parameter_lines = blocks.get("parameters") if "parameters" not in skip_fields else []
     columnar_parameter_lines, other_parameter_lines = [], []
     if parameter_lines:
         for line in parameter_lines:
@@ -533,13 +543,14 @@ def write_datacard_pretty(f, blocks):
                 other_parameter_lines.append(parts)
 
     rate_lines = []
-    for rate_line in blocks["rates"]:
-        parts = rate_line.strip().split()
-        # insert an empty space when columnar parameter lines exist as they have an additional
-        # column for the parameter type before columnar values start
-        if columnar_parameter_lines:
-            parts = parts[:1] + [""] + parts[1:]
-        rate_lines.append(parts)
+    if "rates" not in skip_fields:
+        for rate_line in blocks["rates"]:
+            parts = rate_line.strip().split()
+            # insert an empty space when columnar parameter lines exist as they have an additional
+            # column for the parameter type before columnar values start
+            if columnar_parameter_lines:
+                parts = parts[:1] + [""] + parts[1:]
+            rate_lines.append(parts)
 
     # align lines and split into rate and parameters again
     aligned_lines = align(rate_lines + columnar_parameter_lines)
@@ -547,9 +558,10 @@ def write_datacard_pretty(f, blocks):
     columnar_parameter_lines = aligned_lines[len(rate_lines):]
 
     # write rates
-    for line in rate_lines:
-        write(line)
-    write(sep)
+    if rate_lines:
+        for line in rate_lines:
+            write(line)
+        write(sep)
 
     # write columnar parameters
     for line in columnar_parameter_lines:
@@ -561,13 +573,13 @@ def write_datacard_pretty(f, blocks):
 
     # write groups and auto mc stats aligned
     for field in ["groups", "auto_mc_stats"]:
-        if blocks.get(field):
+        if field not in skip_fields and blocks.get(field):
             for line in align(blocks[field]):
                 write(line)
 
     # write nuisance edits and unknown lines with proper spacing
     for field in ["nuisance_edits", "unknown"]:
-        if blocks.get(field):
+        if field not in skip_fields and blocks.get(field):
             for line in blocks[field]:
                 write(line.strip().split())
 

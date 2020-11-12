@@ -19,7 +19,7 @@ from dhi.util import real_path, create_console_logger
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
-def prettify_datacard(datacard, directory=None, skip_shapes=False):
+def prettify_datacard(datacard, directory=None, skip_shapes=False, skip_preamble=False):
     """
     Adds a new parameter with *param_name* and *param_type* to a *datacard*. When *param_spec* is
     given, it should be a list configuring the arguments to be placed behind the parameter
@@ -33,6 +33,8 @@ def prettify_datacard(datacard, directory=None, skip_shapes=False):
     consistency, this will also update the location of shape files in the datacard. When
     *skip_shapes* is *True*, all shape files remain unchanged (the shape lines in the datacard
     itself are still changed).
+
+    When *skip_preamble* is *True*, any existing preamble before the count block is removed.
     """
     # prepare the datacard path
     datacard = real_path(datacard)
@@ -49,7 +51,7 @@ def prettify_datacard(datacard, directory=None, skip_shapes=False):
     # open the datacard and write prettified content
     with open(datacard, "w") as f:
         logger.info("write prettified datacard {}".format(datacard))
-        write_datacard_pretty(f, blocks)
+        write_datacard_pretty(f, blocks, skip_fields=["preamble"] if skip_preamble else None)
 
 
 if __name__ == "__main__":
@@ -64,6 +66,7 @@ if __name__ == "__main__":
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
         "the output directory when --directory is set")
+    parser.add_argument("--no-preamble", action="store_true", help="remove any existing preamble")
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
     args = parser.parse_args()
 
@@ -71,4 +74,5 @@ if __name__ == "__main__":
     logger.setLevel(args.log_level)
 
     # add the parameter
-    prettify_datacard(args.input, directory=args.directory, skip_shapes=args.no_shapes)
+    prettify_datacard(args.input, directory=args.directory, skip_shapes=args.no_shapes,
+        skip_preamble=args.no_preamble)

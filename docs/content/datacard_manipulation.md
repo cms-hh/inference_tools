@@ -329,7 +329,7 @@ optional arguments:
 >prettify_datacard.py --help
 
 usage: prettify_datacard.py [-h] [--directory [DIRECTORY]] [--no-shapes]
-                            [--log-level LOG_LEVEL]
+                            [--no-preamble] [--log-level LOG_LEVEL]
                             input
 
 Script to prettify a datacard.
@@ -351,6 +351,7 @@ optional arguments:
                         changed in-place
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
+  --no-preamble         remove any existing preamble
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
 ```
