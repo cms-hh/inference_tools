@@ -128,8 +128,6 @@ def add_parameter(datacard, param_name, param_type, param_spec=None, directory=N
             content["parameters"].append(param_line)
 
 
-
-
 if __name__ == "__main__":
     import argparse
 

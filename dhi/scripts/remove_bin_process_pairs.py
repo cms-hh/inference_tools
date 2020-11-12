@@ -151,7 +151,7 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
 
             mask = lambda l: [elem for j, elem in enumerate(l) if j not in removed_obs_columns]
             content["observations"][0] = "bin " + " ".join(mask(bin_names))
-            content["observations"][1] = "process " + " ".join(mask(observations))
+            content["observations"][1] = "observation " + " ".join(mask(observations))
 
         # remove from shape lines
         if content.get("shapes"):
