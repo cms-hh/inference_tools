@@ -385,7 +385,7 @@ def read_datacard_blocks(datacard):
 
 
 @contextlib.contextmanager
-def manipulate_datacard(datacard, target_datacard=None, read_only=False):
+def manipulate_datacard(datacard, target_datacard=None, read_only=False, writer="pretty"):
     """
     Context manager that opens a *datacard* and yields its contents as a dictionary of specific
     content blocks as returned by :py:func:`read_datacard_blocks`. Each block is a list of lines
@@ -401,6 +401,10 @@ def manipulate_datacard(datacard, target_datacard=None, read_only=False):
         with manipulate_datacard("datacard.txt") as content:
             content["parameters"].append("beta rateParam B bkg 50")
             del content["auto_mc_stats"][:]
+
+    *writer* should be a function receiving a file object and the changed datacard blocks to write
+    the contents of the new datacard. When its value is ``"simple"`` or ``"pretty"`` (strings),
+    :py:meth:`write_datacard_simple` or :py:meth:`write_datacard_pretty`, respectively, are used.
     """
     # read the datacard content in blocks
     datacard = real_path(datacard)
@@ -419,19 +423,153 @@ def manipulate_datacard(datacard, target_datacard=None, read_only=False):
         if not os.path.exists(target_dirname):
             os.makedirs(target_dirname)
 
+    # prepare the writer
+    if writer == "simple":
+        writer = write_datacard_simple
+    elif writer == "pretty":
+        writer = write_datacard_pretty
+
     # handle saving of changes
     if has_changes:
         with open(target_datacard or datacard, "w") as f:
-            for field, lines in blocks.items():
-                if not lines:
-                    continue
-                f.write("\n".join(lines) + "\n")
-                if field in ["preamble", "counts", "shapes", "observations", "rates"]:
-                    f.write(80 * "-" + "\n")
+            writer(f, blocks)
 
     elif target_datacard:
         # no changes, just copy the original file
         shutil.copy2(datacard, target_datacard)
+
+
+def write_datacard_simple(f, blocks):
+    """
+    Writes the contents of a datacard given in *blocks* (in the format returned by
+    :py:meth:`read_datacard_blocks`) into a open file objected *f* the most simple way possible.
+    """
+    for field, lines in blocks.items():
+        # skip empty lines
+        if not lines:
+            continue
+
+        # simply write all lines of the block
+        f.write("\n".join(lines) + "\n")
+
+        # add a separator after certain fields
+        if field in ["preamble", "counts", "shapes", "observations", "rates"]:
+            f.write(80 * "-" + "\n")
+
+
+def write_datacard_pretty(f, blocks):
+    """
+    Writes the contents of a datacard given in *blocks* (in the format returned by
+    :py:meth:`read_datacard_blocks`) into a open file objected *f* in a pretty way, i.e., with
+    proper offsets between values across columnar lines.
+    """
+    # default spacing and block separator
+    spacing = 2 * " "
+    sep = 80 * "-"
+
+    # helper for writing lines
+    def write(l):
+        if not isinstance(l, six.string_types):
+            l = spacing.join(map(str, l))
+        f.write(l.strip() + "\n")
+
+    # helper to write a block of lines with aligned columns
+    def align(lines, n_cols=None):
+        # split into columns
+        rows = [
+            (line.strip().split() if isinstance(line, six.string_types) else line)
+            for line in lines
+        ]
+        # add or remove columns
+        if not n_cols:
+            n_cols = max(map(len, rows))
+        for row in rows:
+            diff = n_cols - len(row)
+            if diff > 0:
+                row.extend(diff * [""])
+            elif diff < 0:
+                del row[n_cols:]
+        # get the maximum width per column
+        widths = [
+            max([len(row[i]) for row in rows])
+            for i in range(n_cols)
+        ]
+        # combine to lines again and return
+        return [
+            spacing.join(value.ljust(width) for value, width in zip(row, widths))
+            for row in rows
+        ]
+
+    # print the premble as is when existing
+    if blocks.get("preamble"):
+        write("\n".join(blocks["preamble"]))
+        write(sep)
+
+    # print "*max" counts without subsequent comments
+    for line in blocks["counts"]:
+        write(line.split()[:2])
+    write(sep)
+
+    # write shape lines
+    if blocks.get("shapes"):
+        for line in align(blocks["shapes"], n_cols=6):
+            write(line)
+        write(sep)
+
+    # write observations
+    for line in align(blocks["observations"]):
+        write(line)
+    write(sep)
+
+    # align process rates and columnar parameters combined
+    parameter_lines = blocks.get("parameters")
+    columnar_parameter_lines, other_parameter_lines = [], []
+    if parameter_lines:
+        for line in parameter_lines:
+            parts = line.strip().split()
+            if len(parts) >= 2 and multi_match(parts[1], columnar_parameter_directives):
+                columnar_parameter_lines.append(parts)
+            else:
+                other_parameter_lines.append(parts)
+
+    rate_lines = []
+    for rate_line in blocks["rates"]:
+        parts = rate_line.strip().split()
+        # insert an empty space when columnar parameter lines exist as they have an additional
+        # column for the parameter type before columnar values start
+        if columnar_parameter_lines:
+            parts = parts[:1] + [""] + parts[1:]
+        rate_lines.append(parts)
+
+    # align lines and split into rate and parameters again
+    aligned_lines = align(rate_lines + columnar_parameter_lines)
+    rate_lines = aligned_lines[:len(rate_lines)]
+    columnar_parameter_lines = aligned_lines[len(rate_lines):]
+
+    # write rates
+    for line in rate_lines:
+        write(line)
+    write(sep)
+
+    # write columnar parameters
+    for line in columnar_parameter_lines:
+        write(line)
+
+    # write non-columnar parameters
+    for line in other_parameter_lines:
+        write(line)
+
+    # write groups and auto mc stats aligned
+    for field in ["groups", "auto_mc_stats"]:
+        if blocks.get(field):
+            for line in align(blocks[field]):
+                write(line)
+
+    # write nuisance edits and unknown lines with proper spacing
+    for field in ["nuisance_edits", "unknown"]:
+        if blocks.get(field):
+            for line in blocks[field]:
+                write(line.strip().split())
 
 
 def extract_shape_files(datacard, absolute=True, resolve=True, skip=("FAKE",)):

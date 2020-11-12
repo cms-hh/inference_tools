@@ -319,3 +319,38 @@ optional arguments:
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
 ```
+
+
+## Miscellaneous
+
+### Prettify datacard
+
+```shell hl_lines="1"
+>prettify_datacard.py --help
+
+usage: prettify_datacard.py [-h] [--directory [DIRECTORY]] [--no-shapes]
+                            [--log-level LOG_LEVEL]
+                            input
+
+Script to prettify a datacard.
+Example usage:
+
+> prettify_datacard.py datacard.txt -d output_directory
+
+Note: The use of an output directory is recommended to keep input files unchanged.
+
+positional arguments:
+  input                 the datacard to read and possibly update (see
+                        --directory)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --no-shapes, -n       do not copy shape files to the output directory when
+                        --directory is set
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+```
