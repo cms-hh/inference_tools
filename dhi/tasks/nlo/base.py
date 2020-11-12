@@ -229,7 +229,7 @@ class MultiDatacardTask(DatacardTask):
         multi_datacards = params.get("multi_datacards")
         if multi_datacards:
             _multi_datacards = []
-            for i, patterns in enumerate(multi_datacards.split(":")):
+            for i, patterns in enumerate(multi_datacards):
                 datacards = cls.resolve_datacards(patterns)
 
                 # complain when datacards are empty
