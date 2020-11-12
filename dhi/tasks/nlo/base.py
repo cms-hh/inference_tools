@@ -13,7 +13,6 @@ from collections import defaultdict
 
 import law
 import luigi
-import six
 
 from dhi.config import poi_data
 from dhi.tasks.base import AnalysisTask, CommandTask
@@ -38,7 +37,7 @@ class DatacardTask(AnalysisTask):
     that are significant for the datacard handling.
     """
 
-    datacards = luigi.Parameter(
+    datacards = law.CSVParameter(
         description="paths to input datacards separated by comma; supports globbing and brace "
         "expansion; no default",
     )
@@ -100,9 +99,9 @@ class DatacardTask(AnalysisTask):
         paths = []
         bin_names = []
 
-        # when patterns is a single string, split it by comma and consider brace expansion
-        if isinstance(patterns, six.string_types):
-            patterns = law.util.brace_expand(patterns, split_csv=True)
+        # when a pattern contains a "{", join again and perform brace expansion
+        if any("{" in pattern for pattern in patterns):
+            patterns = law.util.brace_expand(",".join(patterns), split_csv=True)
 
         # try to resolve all patterns
         for pattern in patterns:
@@ -127,8 +126,7 @@ class DatacardTask(AnalysisTask):
             # keep only existing cards
             _paths = filter(os.path.exists, _paths)
 
-            # complain when no file matched, files don't exist, or more than one file is found and
-            # a bin name is set
+            # complain when no files matched
             if not _paths:
                 if law.util.is_pattern(pattern):
                     raise Exception("no matching datacards found for pattern {}".format(pattern))
@@ -204,7 +202,7 @@ class DatacardTask(AnalysisTask):
 
 class MultiDatacardTask(DatacardTask):
 
-    multi_datacards = luigi.Parameter(
+    multi_datacards = law.MultiCSVParameter(
         description="multiple paths to comma-separated input datacard sequences, each one "
         "separated by colon; supports globbing and brace expansion; no default",
     )
@@ -231,8 +229,8 @@ class MultiDatacardTask(DatacardTask):
         multi_datacards = params.get("multi_datacards")
         if multi_datacards:
             _multi_datacards = []
-            for i, datacards in enumerate(multi_datacards.split(":")):
-                datacards = cls.resolve_datacards(datacards)
+            for i, patterns in enumerate(multi_datacards.split(":")):
+                datacards = cls.resolve_datacards(patterns)
 
                 # complain when datacards are empty
                 if not datacards:
