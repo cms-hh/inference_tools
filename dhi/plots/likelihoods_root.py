@@ -65,7 +65,7 @@ def plot_likelihood_scan_1d(
         y_max = y_min * 10**(1.35 * math.log10(y_max_value / y_min))
     else:
         if y_min is None:
-           y_min = 0.
+            y_min = 0.
         y_max = 1.35 * (y_max_value - y_min)
 
     # evaluate the scan, run interpolation and error estimation

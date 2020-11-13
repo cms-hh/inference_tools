@@ -204,6 +204,8 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
     @view_output_plots
     @law.decorator.safe_output
     def run(self):
+        import numpy as np
+
         # prepare the output
         output = self.output()
         output.parent.touch()
@@ -220,13 +222,15 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
             xsec_unit = self.xsec
             if self.br in br_hh:
                 hh_process = r"HH $\rightarrow$ " + br_hh_names[self.br]
+        else:
+            theory_values = np.ones(expected_values.size, dtype=np.float32)
 
         # some printing
         for v in range(-2, 4 + 1):
             if v in expected_values[self.poi]:
                 record = expected_values[expected_values[self.poi] == v][0]
                 self.publish_message("{} = {} -> {} {}".format(self.poi, v, record["limit"],
-                    xsec_unit or "()".format(self.r_poi)))
+                    xsec_unit or "({})".format(self.r_poi)))
 
         # get the proper plot function and call it
         if self.plot_flavor == "root":
