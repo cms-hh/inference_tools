@@ -142,17 +142,17 @@ class DatacardTask(AnalysisTask):
                     paths.append(path)
                     bin_names.append(bin_name)
 
-        # zip datacard paths again with bin names when given
+        # join to pairs and sorted by path
+        pairs = sorted(list(zip(paths, bin_names)), key=lambda pair: pair[0])
+
+        # merge bin names and paths again
         bin_name_counter = defaultdict(int)
         datacards = []
-        for path, bin_name in zip(paths, bin_names):
+        for path, bin_name in pairs:
             if bin_name and bin_names.count(bin_name) > 1:
                 bin_name_counter[bin_name] += 1
                 bin_name += str(bin_name_counter[bin_name])
             datacards.append("{}={}".format(bin_name, path) if bin_name else path)
-
-        # sort
-        datacards = sorted(datacards)
 
         return datacards
 

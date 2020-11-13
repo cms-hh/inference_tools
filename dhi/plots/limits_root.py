@@ -495,7 +495,7 @@ def plot_limit_points(
     # line to separate combined result
     if data[-1]["name"].lower() == "combined":
         line_obs = ROOT.TLine(x_min, 1., x_max, 1)
-        r.setup_line(line_obs, props={"NDC": False}, color=15)
+        r.setup_line(line_obs, props={"NDC": False}, color=12)
         draw_objs.append(line_obs)
 
     # y axis labels and ticks

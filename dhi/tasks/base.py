@@ -114,6 +114,11 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         significant=False,
         description="transfer job logs to the output directory, default: True",
     )
+    only_missing = luigi.BoolParameter(
+        default=True,
+        significant=False,
+        description="skip tasks that are considered complete; default: True",
+    )
     max_runtime = law.DurationParameter(
         default=2.0,
         unit="h",
@@ -200,7 +205,7 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         description="number of replicas to generate, default: 10",
     )
 
-    exclude_files = ["docs", "githooks", ".data", ".law", ".setups", "datacards_run2/*/hig-*"]
+    exclude_files = ["docs", "githooks", "data", ".law", ".setups", "datacards_run2/*"]
 
     version = None
     task_namespace = None
