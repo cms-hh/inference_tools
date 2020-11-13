@@ -407,7 +407,9 @@ class HHModel(PhysicsModel):
 
         ## this checks that a process finds a unique scaling
         if len(imatched_ggf) + len(imatched_vbf) != 1:
-            print "[ERROR] : in HH model named", self.name, "there are", len(imatched_ggf), "GGF name matches and", len(imatched_vbf), "VBF name matches"
+            print("ERROR: in HH model {} for process {} in bin {}: {} GGF and {} VBF name matches".format(
+                self.name, process, bin, len(imatched_ggf), len(imatched_vbf)))
+            # print "[ERROR] : in HH model named", self.name, "there are", len(imatched_ggf), "GGF name matches and", len(imatched_vbf), "VBF name matches"
             # raise RuntimeError('HHModel : could not uniquely match the process %s to the expected sample list' % process)
 
         if len(imatched_ggf) == 1:
