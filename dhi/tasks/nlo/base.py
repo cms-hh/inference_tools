@@ -13,9 +13,10 @@ from collections import defaultdict
 
 import law
 import luigi
+import six
 
-from dhi.config import poi_data
 from dhi.tasks.base import AnalysisTask, CommandTask
+from dhi.config import poi_data, br_hh
 
 
 class CombineCommandTask(CommandTask):
@@ -29,7 +30,66 @@ class CombineCommandTask(CommandTask):
     )
 
 
-class DatacardTask(AnalysisTask):
+class HHModelTask(AnalysisTask):
+    """
+    A task that essentially adds a hh_model parameter to locate the physics model file and that
+    provides a few convenience functions for working with it.
+    """
+
+    hh_model = luigi.Parameter(
+        default="HHModelPinv:HHdefault",
+        description="the name of the HH model relative to dhi.models in the format "
+        "module:model_name; default: HHModelPinv:HHdefault",
+    )
+
+    def store_parts(self):
+        parts = super(HHModelTask, self).store_parts()
+        parts["hh_model"] = "model_" + self.hh_model.replace(".", "_").replace(":", "_")
+        return parts
+
+    def load_hh_model(self, hh_model=None):
+        """
+        Returns the module of the requested *hh_model* and the model instance itself in a 2-tuple.
+        """
+        if not hh_model:
+            hh_model = self.hh_model
+
+        full_hh_model = "dhi.models." + hh_model
+        module_id, model_name = full_hh_model.split(":", 1)
+
+        with open("/dev/null", "w") as null_stream:
+            with law.util.patch_object(sys, "stdout", null_stream):
+                mod = importlib.import_module(module_id)
+
+        return mod, getattr(mod, model_name)
+
+    def create_xsec_func(self, poi, unit, br=None):
+        if poi not in ["kl", "C2V"]:
+            raise ValueError("cross section conversion not supported for poi {}".format(poi))
+        if unit not in ["fb", "pb"]:
+            raise ValueError("cross section conversion not supported for unit {}".format(unit))
+        if isinstance(br, six.string_types) and br not in br_hh:
+            raise ValueError("unknown decay channel name {}".format(br))
+
+        # compute the scale conversion
+        scale = {"pb": 1., "fb": 1000.}[unit]
+        if br:
+            scale *= br_hh[br] if isinstance(br, six.string_types) else br
+
+        # get the proper xsec getter for the formula of the current model
+        module, model = self.load_hh_model()
+        if poi == "kl":
+            formula = model.ggf_formula
+            get_xsec = module.create_ggf_xsec_func(formula)
+        else:  # C2V
+            formula = model.vbf_formula
+            get_xsec = module.create_vbf_xsec_func(formula)
+
+        # create and return the function including scaling
+        return lambda *args, **kwargs: get_xsec(*args, **kwargs) * scale
+
+
+class DatacardTask(HHModelTask):
     """
     A task that requires datacards in its downstream dependencies that can have quite longish names
     and are therefore not encoded in the output paths of tasks inheriting from this class. Instead,
@@ -48,11 +108,6 @@ class DatacardTask(AnalysisTask):
     dc_prefix = luigi.Parameter(
         default="",
         description="prefix to prepend to output file paths; default: ''",
-    )
-    hh_model = luigi.Parameter(
-        default="HHModelPinv:HHdefault",
-        description="the name of the HH model relative to dhi.models in the format "
-        "module:model_name; default: HHModelPinv:HHdefault",
     )
 
     hash_datacards_in_store = True
@@ -158,7 +213,6 @@ class DatacardTask(AnalysisTask):
 
     def store_parts(self):
         parts = super(DatacardTask, self).store_parts()
-        parts["hh_model"] = "model_" + self.hh_model.replace(".", "_").replace(":", "_")
         if self.hash_datacards_in_store:
             parts["datacards"] = "datacards_{}".format(law.util.create_hash(self.datacards))
         parts["mass"] = "m{}".format(self.mass)
@@ -182,22 +236,6 @@ class DatacardTask(AnalysisTask):
     @property
     def mass_int(self):
         return law.util.try_int(self.mass)
-
-    def load_hh_model(self, hh_model=None):
-        """
-        Returns the module of the requested *hh_model* and the model instance itself in a 2-tuple.
-        """
-        if not hh_model:
-            hh_model = self.hh_model
-
-        full_hh_model = "dhi.models." + hh_model
-        module_id, model_name = full_hh_model.split(":", 1)
-
-        with open("/dev/null", "w") as null_stream:
-            with law.util.patch_object(sys, "stdout", null_stream):
-                mod = importlib.import_module(module_id)
-
-        return mod, getattr(mod, model_name)
 
 
 class MultiDatacardTask(DatacardTask):

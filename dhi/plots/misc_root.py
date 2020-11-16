@@ -68,7 +68,7 @@ def plot_bestfit_and_exclusion(
     canvas_width = 800  # pixels
     top_margin = 35  # pixels
     bottom_margin = 70  # pixels
-    left_margin = 130  # pixels
+    left_margin = 150  # pixels
     entry_height = 90  # pixels
     head_space = 100  # pixels
 
@@ -158,9 +158,9 @@ def plot_bestfit_and_exclusion(
         legend_entries.append((line_one, "SM prediction", "l"))
 
     # line to separate combined result
-    if data[-1]["name"].lower() == "combined":
+    if len(data) > 1 and data[-1]["name"].lower() == "combined":
         line_obs = ROOT.TLine(x_min, 1., x_max, 1)
-        r.setup_line(line_obs, props={"NDC": False}, color=15)
+        r.setup_line(line_obs, props={"NDC": False}, color=12)
         draw_objs.append(line_obs)
 
     # y axis labels and ticks

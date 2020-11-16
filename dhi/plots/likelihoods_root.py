@@ -46,7 +46,7 @@ def plot_likelihood_scan_1d(
     poi_values = np.array(expected_values[poi], dtype=np.float32)
     dnll2_values = np.array(expected_values["dnll2"], dtype=np.float32)
 
-    # set default range
+    # set x range
     if x_min is None:
         x_min = min(poi_values)
     if x_max is None:
@@ -57,8 +57,8 @@ def plot_likelihood_scan_1d(
     poi_values = poi_values[mask]
     dnll2_values = dnll2_values[mask]
 
-    # define limits
-    y_max_value = max(dnll2_values)
+    # set y range
+    y_max_value = max(dnll2_values[(poi_values >= x_min) & (poi_values <= x_min)])
     if y_log:
         if y_min is None:
             y_min = 1e-2
@@ -186,7 +186,7 @@ def plot_likelihood_scan_2d(
     poi2_values = np.array(expected_values[poi2], dtype=np.float32)
     dnll2_values = np.array(expected_values["dnll2"], dtype=np.float32)
 
-    # set default ranges
+    # set ranges
     if x1_min is None:
         x1_min = min(poi1_values)
     if x1_max is None:

@@ -78,7 +78,6 @@ def plot_limit_scan(
     canvas, (pad,) = r.routines.create_canvas(pad_props={"Logy": y_log})
     pad.cd()
     draw_objs = []
-    legend_entries = []
     y_max_value = -1e5
     y_min_value = 1e5
 
@@ -90,6 +89,9 @@ def plot_limit_scan(
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
+
+    # setup up to 6 legend entries that are inserted by index downstream
+    legend_entries = 6 * [(h_dummy, " ", "")]
 
     # helper to read values into graphs
     def create_graph(sigma=None, values=None):
@@ -113,7 +115,7 @@ def plot_limit_scan(
         r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
             "MarkerSize": 0, "FillColor": _colors.root.yellow})
         draw_objs.append((g_2sigma, "SAME,4"))
-        legend_entries.insert(0, (g_2sigma, r"#pm 95% expected"))
+        legend_entries[5] = (g_2sigma, r"#pm 95% expected")
         y_max_value = max(y_max_value, max(expected_values["limit_p2"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m2"]))
 
@@ -123,7 +125,7 @@ def plot_limit_scan(
         r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
             "MarkerSize": 0, "FillColor": _colors.root.green})
         draw_objs.append((g_1sigma, "SAME,4"))
-        legend_entries.insert(0, (g_1sigma, r"#pm 68% expected"))
+        legend_entries[4] = (g_1sigma, r"#pm 68% expected")
         y_max_value = max(y_max_value, max(expected_values["limit_p1"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m1"]))
 
@@ -132,7 +134,7 @@ def plot_limit_scan(
     r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
         "MarkerSize": 0})
     draw_objs.append((g_exp, "SAME,LEZ"))
-    legend_entries.insert(0, (g_exp, "Median expected"))
+    legend_entries[3] = (g_exp, "Median expected")
     y_max_value = max(y_max_value, max(expected_values["limit"]))
     y_min_value = min(y_min_value, min(expected_values["limit"]))
 
@@ -142,7 +144,7 @@ def plot_limit_scan(
         r.setup_graph(g_inj, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
             "MarkerSize": 0})
         draw_objs.append((g_inj, "SAME,L"))
-        legend_entries.insert(0, (g_inj, "Observed"))
+        legend_entries[0] = (g_inj, "Observed")
         y_max_value = max(y_max_value, max(observed_values))
         y_min_value = min(y_min_value, min(observed_values))
 
@@ -152,7 +154,7 @@ def plot_limit_scan(
         r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
             "MarkerSize": 0, "LineColor": _colors.root.red})
         draw_objs.append((g_thy, "SAME,L"))
-        legend_entries.append((g_thy, "SM prediction"))
+        legend_entries[0 if observed_values is None else 1] = (g_thy, "SM prediction")
 
     # set limits
     if y_min is None:
@@ -169,10 +171,9 @@ def plot_limit_scan(
     h_dummy.SetMaximum(y_max)
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=230, height=len(legend_entries) * 35)
-    r.setup_legend(legend)
-    for obj, label in legend_entries:
-        legend.AddEntry(obj, label)
+    legend = r.routines.create_legend(pad=pad, width=440, height=100)
+    r.setup_legend(legend, props={"NColumns": 2})
+    r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
     # cms label
@@ -348,9 +349,11 @@ def plot_limit_scans(
 def plot_limit_points(
     path,
     data,
+    theory_value=None,
     x_log=False,
     x_min=None,
     x_max=None,
+    xsec_unit=None,
     pp_process="pp",
     campaign="2017",
 ):
@@ -373,11 +376,14 @@ def plot_limit_points(
             }],
         )
 
-    When *x_log* is *True*, the x-axis is scaled logarithmically. *x_min* and *x_max* define the
-    range of the x-axis and default to the maximum range of values passed in data, including
-    uncertainties. The *pp_process* label is shown in the x-axis title to denote the physics process
-    the computed values are corresponding to. *campaign* should refer to the name of a campaign
-    label defined in dhi.config.campaign_labels.
+    When *theory_value* is not *None*, a vertical red line is drawn at this value to denote the
+    predicted value. When *x_log* is *True*, the x-axis is scaled logarithmically. *x_min* and
+    *x_max* define the range of the x-axis and default to the maximum range of values passed in
+    data, including uncertainties. *xsec_unit* denotes whether the passed values are given as real
+    cross sections in this unit or, when *None*, as a ratio over the theory prediction. The
+    *pp_process* label is shown in the x-axis title to denote the physics process the computed
+    values are corresponding to. *campaign* should refer to the name of a campaign label defined in
+    dhi.config.campaign_labels.
 
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html#multiple-limits-at-a-certain-poi-value
     """
@@ -392,7 +398,13 @@ def plot_limit_points(
 
     # set default ranges
     if x_min is None:
-        x_min = 0.8 if x_log else 0.
+        if not xsec_unit:
+            x_min = 0.75 if x_log else 0.
+        else:
+            x_min_value = min(sum(([e["expected"][3], e.get("observed", 1e6)] for e in data), []))
+            if theory_value:
+                x_min_value = min(x_min_value, theory_value)
+            x_min = 0.75 * x_min_value
     if x_max is None:
         x_max_value = max(sum(([e["expected"][3], e.get("observed", 0)] for e in data), []))
         x_max = x_max_value * 1.33
@@ -401,9 +413,9 @@ def plot_limit_points(
     canvas_width = 800  # pixels
     top_margin = 35  # pixels
     bottom_margin = 70  # pixels
-    left_margin = 130  # pixels
+    left_margin = 150  # pixels
     entry_height = 90  # pixels
-    head_space = 100  # pixels
+    head_space = 130  # pixels
 
     # get the canvas height
     canvas_height = n * entry_height + head_space + top_margin + bottom_margin
@@ -425,15 +437,17 @@ def plot_limit_points(
         pad_props=pad_margins)
     pad.cd()
     draw_objs = []
-    legend_entries = []
 
     # dummy histogram to control axes
-    x_title = "Upper 95% CLs limit on #sigma({} #rightarrow HH) / #sigma_{{SM}}".format(
-        to_root_latex(pp_process))
+    x_title = "Upper 95% CLs limit on #sigma({} #rightarrow HH) / {}".format(
+        to_root_latex(pp_process), to_root_latex(xsec_unit or "#sigma_{SM}"))
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad, props={"TitleOffset": 1.2})
     draw_objs.append((h_dummy, "HIST"))
+
+    # setup up to 6 legend entries that are inserted by index downstream
+    legend_entries = 6 * [(h_dummy, " ", "")]
 
     # helper to read values into graphs
     def create_graph(sigma=None, obs=False):
@@ -459,21 +473,21 @@ def plot_limit_points(
     r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
         "MarkerSize": 0, "FillColor": _colors.root.yellow})
     draw_objs.append((g_2sigma, "SAME,2"))
-    legend_entries.insert(0, (g_2sigma, r"#pm 95% expected"))
+    legend_entries[5] = (g_2sigma, r"#pm 95% expected")
 
     # 1 sigma band
     g_1sigma = create_graph(sigma=1)
     r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
         "MarkerSize": 0, "FillColor": _colors.root.green})
     draw_objs.append((g_1sigma, "SAME,2"))
-    legend_entries.insert(0, (g_1sigma, r"#pm 68% expected"))
+    legend_entries[4] = (g_1sigma, r"#pm 68% expected")
 
     # central values
     g_exp = create_graph(sigma=0)
     r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
         "MarkerSize": 0})
     draw_objs.append((g_exp, "SAME,EZ"))
-    legend_entries.insert(0, (g_exp, "Median expected"))
+    legend_entries[3] = (g_exp, "Median expected")
 
     # observed values
     if has_obs:
@@ -481,34 +495,37 @@ def plot_limit_points(
         r.setup_graph(g_inj, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
             "MarkerSiz2e": 2})
         draw_objs.append((g_inj, "SAME,PEZ"))
-        legend_entries.insert(0, (g_inj, "Observed limit"))
-    else:
-        # add a dummy to the legend entries
-        legend_entries.insert(1, (h_dummy, " ", ""))
+        legend_entries[0] = (g_inj, "Observed limit")
 
-    # vertical line at 1
-    # if x_min < 1:
-    #     line_one = ROOT.TLine(1., 0., 1., n)
-    #     r.setup_line(line_one, props={"NDC": False, "LineColor": _colors.root.red})
-    #     draw_objs.append(line_one)
+    # vertical line for theory prediction
+    if theory_value is not None:
+        line_thy = ROOT.TLine(theory_value, 0., theory_value, n)
+        r.setup_line(line_thy, props={"NDC": False}, color=_colors.root.red)
+        draw_objs.append(line_thy)
+        legend_entries[1 if has_obs else 0] = (line_thy, "SM prediction", "l")
 
     # line to separate combined result
-    if data[-1]["name"].lower() == "combined":
+    if len(data) > 1 and data[-1]["name"].lower() == "combined":
         line_obs = ROOT.TLine(x_min, 1., x_max, 1)
         r.setup_line(line_obs, props={"NDC": False}, color=12)
         draw_objs.append(line_obs)
 
     # y axis labels and ticks
+    y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{Expected %s}}"
+    y_label_tmpl_obs = "#splitline{#bf{%s}}{#scale[0.75]{#splitline{Expected %s}{Observed %s}}}"
+
+    def make_y_label(name, exp, obs=None):
+        fmt = lambda v: "{:.1f} {}".format(v, xsec_unit) if xsec_unit else "{:.2f}".format(v)
+        if obs is None:
+            return y_label_tmpl % (label, fmt(exp))
+        else:
+            return y_label_tmpl_obs % (label, fmt(exp), fmt(obs))
+
     h_dummy.GetYaxis().SetBinLabel(1, "")
-    label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{Expected %.2f}}"
-    label_tmpl_obs = "#splitline{#bf{%s}}{#scale[0.75]{#splitline{Expected %.2f}{Observed %.2f}}}"
     for i, d in enumerate(data):
         # name labels
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
-        if "observed" in d:
-            label = label_tmpl_obs % (label, d["expected"][0], d["observed"])
-        else:
-            label = label_tmpl % (label, d["expected"][0])
+        label = make_y_label(label, d["expected"][0], d.get("observed"))
         label_x = r.get_x(10, canvas)
         label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
         label = ROOT.TLatex(label_x, label_y, label)
@@ -529,7 +546,7 @@ def plot_limit_points(
         draw_objs.extend([tl, tr])
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=440, height=70,
+    legend = r.routines.create_legend(pad=pad, width=440, height=100,
         x2=r.get_x(0, pad, anchor="right"), y2=r.get_y(16, pad, anchor="top"))
     r.setup_legend(legend, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)

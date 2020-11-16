@@ -155,5 +155,6 @@ Same as `UpperLimits` plus:
 - `--multi-datacards STRINGS:STRINGS`: Multiple CSV sequences of datacard paths, separated by colons. Mandatory.
 - `--datacard-names STRINGS`: Names of datacard sequences for plotting purposes. When set, the number of names must match the number of sequences in `--multi-datacards`. No default.
 - `--datacard-order INTS`: Indices of datacard sequences for reordering during plotting. When set, the number of ids must match the number of sequences in `--multi-datacards`. No default.
+- `--xsec STRING`: Convert limits to cross sections in this unit rather than on the signal strength. An empty value (identical to `NO_STR`) will use the latter. Choices are `pb`, `fb` and `""` (`NO_STR`). Defaults to `NO_STR`.
 - `--poi-value FLOAT`: The value of the POI at which limits on the `--r-poi` are obtained. Defaults to `1.`.
 - `--x-log BOOL`: Logarithmic x-axis. Defaults to `False`.

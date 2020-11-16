@@ -18,7 +18,7 @@ from dhi.tasks.nlo.base import (
 )
 from dhi.util import linspace
 from dhi.config import poi_data
-from dhi.datacard_tools import extract_shape_files, update_shape_files, get_workspace_parameters, bundle_datacard
+from dhi.datacard_tools import get_workspace_parameters, bundle_datacard
 
 
 class CombineDatacards(DatacardTask, CombineCommandTask):
@@ -159,16 +159,22 @@ class MergeUpperLimits(POIScanTask1DWithR):
     def load_limits(cls, inp):
         import numpy as np
 
-        f = inp.load(formatter="uproot")["limit"]
-        limits = f.array("limit")
+        # load raw values
+        limits = inp.load(formatter="uproot")["limit"].array("limit")
+
+        # convert to (nominal, err1_up, err1_down, err2_up, err2_down)
         # TODO: what to do when errors occurred?
         if len(limits) == 0:
-            return (np.nan, 0.0, 0.0, 0.0, 0.0)
+            # no values, fit failed completely
+            return (np.nan, np.nan, np.nan, np.nan, np.nan)
         elif len(limits) == 1:
-            # only the central limit exists
-            return (limits[0], 0.0, 0.0, 0.0, 0.0)
+            # only nominal value
+            return (limits[0], np.nan, np.nan, np.nan, np.nan)
+        elif len(limits) == 3:
+            # 1 sigma variations exist, but not 2 sigma
+            return (limits[1], limits[2], limits[0], np.nan, np.nan)
         else:
-            # also 1 and 2 sigma variations exist
+            # both 1 and 2 sigma variations exist
             return (limits[2], limits[3], limits[1], limits[4], limits[0])
 
 

@@ -166,28 +166,13 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
         # set defaults
         if poi is None:
             poi = self.poi
-        if xsec is None:
+        if xsec is None and self.xsec != law.NO_STR:
             xsec = self.xsec
-        if br is None:
+        if br is None and self.br != law.NO_STR:
             br = self.br
 
-        # check if poi and xsec are valid for conversion
-        if poi not in ["kl", "C2V"] or xsec not in ["pb", "fb"]:
-            return None, None
-
-        # compute the scale conversion
-        scale = {"pb": 1., "fb": 1000.}[xsec]
-        if br in br_hh:
-            scale *= br_hh[br]
-
-        # get the proper xsec getter for the formula of the current model
-        module, model = self.load_hh_model()
-        if self.poi == "kl":
-            formula = model.ggf_formula
-            get_xsec = module.create_ggf_xsec_func(formula)
-        else:  # C2V
-            formula = model.vbf_formula
-            get_xsec = module.create_vbf_xsec_func(formula)
+        # create the conversion function
+        get_xsec = self.create_xsec_func(poi, xsec, br=br)
 
         # convert values and remember theory values
         expected_values = np.array(expected_values)
@@ -195,9 +180,9 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
         limit_keys = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
         for point in expected_values:
             xsec = get_xsec(point[poi])
-            theory_values.append(xsec * scale)
+            theory_values.append(xsec)
             for key in limit_keys:
-                point[key] *= xsec * scale
+                point[key] *= xsec
 
         return expected_values, np.array(theory_values)
 
@@ -243,12 +228,12 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
             poi=self.poi,
             expected_values=expected_values,
             theory_values=theory_values,
-            xsec_unit=xsec_unit,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
+            xsec_unit=xsec_unit,
             pp_process={"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}[self.r_poi],
             hh_process=hh_process,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
@@ -328,12 +313,12 @@ class PlotMultipleUpperLimits(MultiDatacardTask, PlotUpperLimits):
             expected_values=expected_values,
             names=names,
             theory_values=theory_values,
-            xsec_unit=xsec_unit,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
+            xsec_unit=xsec_unit,
             pp_process={"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}[self.r_poi],
             hh_process=hh_process,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
@@ -342,6 +327,7 @@ class PlotMultipleUpperLimits(MultiDatacardTask, PlotUpperLimits):
 
 class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
 
+    xsec = PlotUpperLimits.xsec
     x_log = luigi.BoolParameter(
         default=False,
         description="apply log scaling to the x-axis; default: False",
@@ -359,6 +345,8 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
     def output(self):
         # additional postfix
         parts = []
+        if self.xsec in ["pb", "fb"]:
+            parts.append(self.xsec)
         if self.x_log:
             parts.append("log")
 
@@ -372,14 +360,26 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
         output = self.output()
         output.parent.touch()
 
+        # prepare theory value and xsec converter
+        theory_value = 1.0
+        xsec_unit = None
+        get_xsec = None
+        if self.xsec in ["fb", "pb"] and self.poi in ["kl", "C2V"]:
+            xsec_unit = self.xsec
+            get_xsec = self.create_xsec_func(self.poi, xsec_unit)
+            theory_value = get_xsec(theory_value)
+
         # load limit values
         data = []
         for i, inp in enumerate(self.input()):
+            # get limits and convert to xsec when requested
+            limits = MergeUpperLimits.load_limits(inp)
+            limits = tuple(l * theory_value for l in limits)
+
+            # add data entry
             data.append({
-                # default name
                 "name": "datacards {}".format(i + 1),
-                # expected limits
-                "expected": MergeUpperLimits.load_limits(inp)
+                "expected": limits,
             })
 
         # set names if requested
@@ -397,9 +397,11 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
         plot_limit_points(
             path=output.path,
             data=data,
+            theory_value=theory_value,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             x_log=self.x_log,
+            xsec_unit=xsec_unit,
             pp_process={"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}[self.r_poi],
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
