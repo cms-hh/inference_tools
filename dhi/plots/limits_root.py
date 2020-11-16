@@ -115,7 +115,7 @@ def plot_limit_scan(
         r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
             "MarkerSize": 0, "FillColor": _colors.root.yellow})
         draw_objs.append((g_2sigma, "SAME,4"))
-        legend_entries[5] = (g_2sigma, r"#pm 95% expected")
+        legend_entries[5] = (g_2sigma, r"#pm 1#sigma expected")
         y_max_value = max(y_max_value, max(expected_values["limit_p2"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m2"]))
 
@@ -125,7 +125,7 @@ def plot_limit_scan(
         r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
             "MarkerSize": 0, "FillColor": _colors.root.green})
         draw_objs.append((g_1sigma, "SAME,4"))
-        legend_entries[4] = (g_1sigma, r"#pm 68% expected")
+        legend_entries[4] = (g_1sigma, r"#pm 2#sigma expected")
         y_max_value = max(y_max_value, max(expected_values["limit_p1"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m1"]))
 
@@ -473,14 +473,14 @@ def plot_limit_points(
     r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
         "MarkerSize": 0, "FillColor": _colors.root.yellow})
     draw_objs.append((g_2sigma, "SAME,2"))
-    legend_entries[5] = (g_2sigma, r"#pm 95% expected")
+    legend_entries[5] = (g_2sigma, r"#pm 2#sigma expected")
 
     # 1 sigma band
     g_1sigma = create_graph(sigma=1)
     r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
         "MarkerSize": 0, "FillColor": _colors.root.green})
     draw_objs.append((g_1sigma, "SAME,2"))
-    legend_entries[4] = (g_1sigma, r"#pm 68% expected")
+    legend_entries[4] = (g_1sigma, r"#pm 1#sigma expected")
 
     # central values
     g_exp = create_graph(sigma=0)

@@ -91,7 +91,7 @@ def plot_limit_scan(
             expected_values["limit_p2"],
             expected_values["limit_m2"],
             color="yellow",
-            label=r"$\pm$ 95\% expected",
+            label=r"$\pm 2\sigma$ expected",
             interpolate=True,
         )
         legend_handles.append(p)
@@ -103,7 +103,7 @@ def plot_limit_scan(
             expected_values["limit_p1"],
             expected_values["limit_m1"],
             color="limegreen",
-            label=r"$\pm$ 68\% expected",
+            label=r"$\pm 1\sigma$ expected",
             interpolate=True,
         )
         legend_handles.insert(1, p)
