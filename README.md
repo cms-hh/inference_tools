@@ -4,7 +4,7 @@
 
 ## Introduction
 
-This repository uses submodules (currently only one), so clone it recursivel via
+This repository uses submodules (currently only one), so you should clone it recursively via
 
 ```shell
 # ssh

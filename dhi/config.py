@@ -55,7 +55,6 @@ br_hh = DotDict(
     wwzz=2.0 * br_h.ww * br_h.zz,
 )
 
-
 # HH branching names (TODO: find prettier abbreviations)
 br_hh_names = DotDict(
     bbbb=r"bbbb",
