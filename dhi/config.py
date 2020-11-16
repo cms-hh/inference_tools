@@ -7,7 +7,7 @@ Constants such as cross sections and branchings, and common configs such as labe
 from dhi.util import DotDict
 
 
-# branching ratios, m_H = 125 GeV
+# branching ratios at m_H = 125 GeV, using the decay mode naming scheme suggested by HIG and HComb
 # https://pdg.lbl.gov/2020/listings/rpp2020-list-w-boson.pdf
 # https://pdg.lbl.gov/2020/listings/rpp2020-list-z-boson.pdf
 # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageBR?rev=22
@@ -22,7 +22,7 @@ br_z = DotDict(
 br_h = DotDict(
     bb=0.5824,
     ww=0.2137,
-    tautau=0.06272,
+    tt=0.06272,
     zz=0.02619,
     gg=0.002270,
 )
@@ -45,9 +45,16 @@ br_hh = DotDict(
     bbzz=2.0 * br_h.bb * br_h.zz,
     bbzzqqll=2.0 * br_h.bb * br_h.zz * br_zz.qqll,
     bbzzllll=2.0 * br_h.bb * br_h.zz * br_zz.llll,
-    bbtautau=2.0 * br_h.bb * br_h.tautau,
+    bbtt=2.0 * br_h.bb * br_h.tt,
     bbgg=2.0 * br_h.bb * br_h.gg,
+    ttww=2.0 * br_h.tt * br_h.ww,
+    ttzz=2.0 * br_h.tt * br_h.zz,
+    tttt=br_h.tt ** 2.0,
+    wwww=br_h.ww ** 2.0,
+    zzzz=br_h.zz ** 2.0,
+    wwzz=2.0 * br_h.ww * br_h.zz,
 )
+
 
 # HH branching names (TODO: find prettier abbreviations)
 br_hh_names = DotDict(
@@ -59,8 +66,14 @@ br_hh_names = DotDict(
     bbzz=r"HH $\rightarrow bbZZ$",
     bbzzqqll=r"bbZZ$_{qqll}$",
     bbzzllll=r"bbZZ$_{4l}$",
-    bbtautau=r"bb\tau\tau$",
+    bbtt=r"bb\tau\tau$",
     bbgg=r"bb\gamma\gamma$",
+    ttww=r"WW\tau\tau",
+    ttzz=r"ZZ\tau\tau",
+    tttt=r"\tau\tau\tau\tau",
+    wwww=r"WWWW",
+    zzzz=r"ZZZZ",
+    wwzz=r"WWZZ",
 )
 
 # campaign labels
