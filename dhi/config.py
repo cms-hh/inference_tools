@@ -90,8 +90,8 @@ poi_data = DotDict({
     "r_qqhh": DotDict(range=(0.0, 10.0), label="r_{qqhh}"),
     "kl": DotDict(range=(-30.0, 30.0), label=r"\kappa_{\lambda}"),
     "kt": DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}"),
-    "C2V": DotDict(range=(-10.0, 10.0), label="C_{2V}"),
-    "CV": DotDict(range=(-10.0, 10.0), label="C_{V}"),
+    "C2V": DotDict(range=(-10.0, 10.0), label=r"\kappa_{VV}"),
+    "CV": DotDict(range=(-10.0, 10.0), label=r"\kappa_{V}"),
 })
 # add "$" embedded labels
 for poi, data in poi_data.items():
