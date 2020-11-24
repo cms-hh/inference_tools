@@ -17,7 +17,7 @@ action() {
     #
 
     export DHI_BASE="$this_dir"
-    interactive_setup "$setup_name"
+    interactive_setup "$setup_name" || return "$?"
     export DHI_STORE_REPO="$DHI_BASE/data/store"
     export DHI_BLACK_PATH="$DHI_SOFTWARE/black"
     export DHI_EXAMPLE_CARDS="$( echo /afs/cern.ch/user/m/mfackeld/public/datacards/*/*.txt | sed 's/ /,/g' )"
@@ -90,18 +90,19 @@ action() {
             # TODO: the following branch is based on v8.1.0 and adds the --gridPoints parameter to
             # likelihood scans to improve control over the scan grid, so switch back again to the
             # original repo once merged, https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/pull/623
-            git clone --depth 1 --branch feature/control_2d_grid https://github.com/riga/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit || return "1"
-            cd HiggsAnalysis/CombinedLimit
-            source env_standalone.sh "" || return "2"
+            git clone --depth 1 --branch feature/control_2d_grid https://github.com/riga/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit || return "$?"
+            cd HiggsAnalysis/CombinedLimit || return "$?"
+            source env_standalone.sh "" || return "$?"
             make -j
-            make || return "3"
+            make || return "$?"
         )
 
         date "+%s" > "$flag_file_combine"
     fi
+    export DHI_SOFTWARE_FLAG_FILES="$flag_file_combine"
 
     cd "$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
-    source env_standalone.sh ""
+    source env_standalone.sh "" || return "$?"
     cd "$orig"
 
 
@@ -126,7 +127,7 @@ action() {
             py2-ipython/5.5.0-ogkkac \
             py2-backports/1.0 \
             ; do
-        source "/cvmfs/cms.cern.ch/slc7_amd64_gcc700/external/$pkg/etc/profile.d/init.sh" ""
+        source "/cvmfs/cms.cern.ch/slc7_amd64_gcc700/external/$pkg/etc/profile.d/init.sh" "" || return "$?"
     done
 
     # update paths and flags
@@ -164,34 +165,32 @@ action() {
 
         date "+%s" > "$flag_file_sw"
     fi
+    export DHI_SOFTWARE_FLAG_FILES="$DHI_SOFTWARE_FLAG_FILES $flag_file_sw"
 
-    # gfal2 bindings
+    # gfal2 bindings (optional)
     local lcg_dir="/cvmfs/grid.cern.ch/centos7-ui-4.0.3-1_umd4v3/usr"
     if [ ! -d "$lcg_dir" ]; then
         2>&1 echo "lcg directory $lcg_dir not existing, cannot setup gfal2 bindings"
-        return "4"
+    else
+        export DHI_GFAL_DIR="$DHI_SOFTWARE/gfal2"
+        export GFAL_PLUGIN_DIR="$DHI_GFAL_DIR/plugins"
+        export PYTHONPATH="$DHI_GFAL_DIR:$PYTHONPATH"
+
+        local flag_file_gfal="$DHI_SOFTWARE/.gfal_good"
+        [ "$DHI_REINSTALL_GFAL" = "1" ] && rm -f "$flag_file_gfal"
+        if [ ! -f "$flag_file_gfal" ]; then
+            echo "linking gfal2 bindings"
+
+            rm -rf "$DHI_GFAL_DIR"
+            mkdir -p "$GFAL_PLUGIN_DIR"
+
+            ln -s $lcg_dir/lib64/python2.7/site-packages/gfal2.so "$DHI_GFAL_DIR" || return "$?"
+            ln -s $lcg_dir/lib64/gfal2-plugins/libgfal_plugin_* "$GFAL_PLUGIN_DIR" || return "$?"
+
+            date "+%s" > "$flag_file_gfal"
+        fi
+        export DHI_SOFTWARE_FLAG_FILES="$DHI_SOFTWARE_FLAG_FILES $flag_file_gfal"
     fi
-
-    export DHI_GFAL_DIR="$DHI_SOFTWARE/gfal2"
-    export GFAL_PLUGIN_DIR="$DHI_GFAL_DIR/plugins"
-    export PYTHONPATH="$DHI_GFAL_DIR:$PYTHONPATH"
-
-    local flag_file_gfal="$DHI_SOFTWARE/.gfal_good"
-    [ "$DHI_REINSTALL_GFAL" = "1" ] && rm -f "$flag_file_gfal"
-    if [ ! -f "$flag_file_gfal" ]; then
-        echo "linking gfal2 bindings"
-
-        rm -rf "$DHI_GFAL_DIR"
-        mkdir -p "$GFAL_PLUGIN_DIR"
-
-        ln -s $lcg_dir/lib64/python2.7/site-packages/gfal2.so "$DHI_GFAL_DIR"
-        ln -s $lcg_dir/lib64/gfal2-plugins/libgfal_plugin_* "$GFAL_PLUGIN_DIR"
-
-        date "+%s" > "$flag_file_gfal"
-    fi
-
-    # store software flag files for later use
-    export DHI_SOFTWARE_FLAG_FILES="$flag_file_combine $flag_file_sw $flag_file_gfal"
 
 
     #
