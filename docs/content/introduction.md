@@ -1,15 +1,24 @@
 # Introduction
 
-## First steps (setup)
+## Cloning the repository
 
 This repository uses submodules (currently only one), so you should clone it recursively via
 
 ```shell
+# ssh
+git clone --recursive ssh://git@gitlab.cern.ch:7999/hh/tools/inference.git
+
+# or
+
+# https
 git clone --recursive https://gitlab.cern.ch/hh/tools/inference.git
-cd inference
 ```
 
-Now proceed with setting up the software and environment.
+This will also clone the *protected* [datacards_run2](https://gitlab.cern.ch/hh/results/datacards_run2) repository with a collection of datacards used in the HH combination.
+Therefore, you might be asked for your CERN username and password.
+
+
+## Environment and software setup
 
 1. Source the setup:
 
