@@ -215,9 +215,6 @@ action() {
     #         ln -s "../../githooks/$hook" "$this_dir/.git/hooks/$hook" &> /dev/null
     #     fi
     # done
-
-
-    echo -e "\x1b[0;49;35mHH inference tools successfully setup\x1b[0m"
 }
 
 interactive_setup() {
@@ -315,4 +312,8 @@ interactive_setup() {
     fi
 }
 
-action "$@"
+if action "$@"; then
+    echo -e "\x1b[0;49;35mHH inference tools successfully setup\x1b[0m"
+else
+    echo -e "\x1b[0;49;31msetup failed with code $?\x1b[0m"
+fi
