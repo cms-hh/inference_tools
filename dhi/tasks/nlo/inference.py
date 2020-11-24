@@ -19,6 +19,7 @@ from dhi.tasks.nlo.base import (
 from dhi.util import linspace
 from dhi.config import poi_data
 from dhi.datacard_tools import get_workspace_parameters, bundle_datacard
+from dhi.scripts.prettify_datacard import prettify_datacard
 
 
 class CombineDatacards(DatacardTask, CombineCommandTask):
@@ -55,13 +56,16 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         ]
 
         # build and run the command
-        output_dir = self.output().parent
-        output_dir.touch()
+        output = self.output()
+        output.parent.touch()
         self.run_command(self.build_command(datacards), cwd=tmp_dir.path)
+
+        # prettify the output card
+        prettify_datacard(output.path)
 
         # finally, copy shape files to output location
         for basename in tmp_dir.listdir(pattern="*.root", type="f"):
-            tmp_dir.child(basename).copy_to(output_dir)
+            tmp_dir.child(basename).copy_to(output.parent)
 
 
 class CreateWorkspace(DatacardTask, CombineCommandTask):
