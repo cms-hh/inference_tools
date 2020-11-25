@@ -15,7 +15,6 @@ from numpy import matrix
 from numpy import linalg
 from sympy import Matrix
 from collections import OrderedDict
-import functools
 
 
 class VBFHHSample:
@@ -438,14 +437,15 @@ ggf_samples = OrderedDict([
 ])
 
 # vbf samples with keys (CV, C2V, kl), SM point first, then ordered by kl, then C2V, then CV
+br_hh_4b = 0.33919
 vbf_samples = OrderedDict([
-    ((1,   1, 1), VBFHHSample(1,   1, 1, val_xs=0.00054 / 0.3364, label="qqHH_CV_1_C2V_1_kl_1")),
-    ((1,   1, 0), VBFHHSample(1,   1, 0, val_xs=0.00145 / 0.3364, label="qqHH_CV_1_C2V_1_kl_0")),
-    ((1,   1, 2), VBFHHSample(1,   1, 2, val_xs=0.00044 / 0.3364, label="qqHH_CV_1_C2V_1_kl_2")),
-    ((1,   0, 1), VBFHHSample(1,   0, 1, val_xs=0.00880 / 0.3364, label="qqHH_CV_1_C2V_0_kl_1")),
-    ((1,   2, 1), VBFHHSample(1,   2, 1, val_xs=0.00472 / 0.3364, label="qqHH_CV_1_C2V_2_kl_1")),
-    ((0.5, 1, 1), VBFHHSample(0.5, 1, 1, val_xs=0.00353 / 0.3364, label="qqHH_CV_0p5_C2V_1_kl_1")),
-    ((1.5, 1, 1), VBFHHSample(1.5, 1, 1, val_xs=0.02149 / 0.3364, label="qqHH_CV_1p5_C2V_1_kl_1")),
+    ((1,   1, 1), VBFHHSample(1,   1, 1, val_xs=0.00054 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_1")),
+    ((1,   1, 0), VBFHHSample(1,   1, 0, val_xs=0.00145 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_0")),
+    ((1,   1, 2), VBFHHSample(1,   1, 2, val_xs=0.00044 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_2")),
+    ((1,   0, 1), VBFHHSample(1,   0, 1, val_xs=0.00880 / br_hh_4b, label="qqHH_CV_1_C2V_0_kl_1")),
+    ((1,   2, 1), VBFHHSample(1,   2, 1, val_xs=0.00472 / br_hh_4b, label="qqHH_CV_1_C2V_2_kl_1")),
+    ((0.5, 1, 1), VBFHHSample(0.5, 1, 1, val_xs=0.00353 / br_hh_4b, label="qqHH_CV_0p5_C2V_1_kl_1")),
+    ((1.5, 1, 1), VBFHHSample(1.5, 1, 1, val_xs=0.02149 / br_hh_4b, label="qqHH_CV_1p5_C2V_1_kl_1")),
 ])
 
 
@@ -528,6 +528,7 @@ model_no_vbf_C2V2  = create_model("model_no_vbf_C2V2",  skip_ggf=[(0, 1)], skip_
 model_no_vbf_CV0p5 = create_model("model_no_vbf_CV0p5", skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)])
 model_no_vbf_CV1p5 = create_model("model_no_vbf_CV1p5", skip_ggf=[(0, 1)], skip_vbf=[(1.5, 1, 1)])
 
+
 # legacy objects for development
 GGF_sample_list = [
     # GGFHHSample(0,    1, val_xs=0.06007, label="ggHH_kl_0_kt_1"),
@@ -536,13 +537,13 @@ GGF_sample_list = [
     GGFHHSample(5,    1, val_xs=0.07903, label="ggHH_kl_5_kt_1"),
 ]
 VBF_sample_list = [
-    VBFHHSample(1,   1, 1, val_xs=0.00054 / 0.3364, label="qqHH_CV_1_C2V_1_kl_1"),
-    VBFHHSample(1,   1, 0, val_xs=0.00145 / 0.3364, label="qqHH_CV_1_C2V_1_kl_0"),
-    VBFHHSample(1,   1, 2, val_xs=0.00044 / 0.3364, label="qqHH_CV_1_C2V_1_kl_2"),
-    # VBFHHSample(1,   0, 1, val_xs=0.00880 / 0.3364, label="qqHH_CV_1_C2V_0_kl_1"),
-    VBFHHSample(1,   2, 1, val_xs=0.00472 / 0.3364, label="qqHH_CV_1_C2V_2_kl_1"),
-    VBFHHSample(0.5, 1, 1, val_xs=0.00353 / 0.3364, label="qqHH_CV_0p5_C2V_1_kl_1"),
-    VBFHHSample(1.5, 1, 1, val_xs=0.02149 / 0.3364, label="qqHH_CV_1p5_C2V_1_kl_1"),
+    VBFHHSample(1,   1, 1, val_xs=0.00054 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_1"),
+    VBFHHSample(1,   1, 0, val_xs=0.00145 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_0"),
+    VBFHHSample(1,   1, 2, val_xs=0.00044 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_2"),
+    # VBFHHSample(1,   0, 1, val_xs=0.00880 / br_hh_4b, label="qqHH_CV_1_C2V_0_kl_1"),
+    VBFHHSample(1,   2, 1, val_xs=0.00472 / br_hh_4b, label="qqHH_CV_1_C2V_2_kl_1"),
+    VBFHHSample(0.5, 1, 1, val_xs=0.00353 / br_hh_4b, label="qqHH_CV_0p5_C2V_1_kl_1"),
+    VBFHHSample(1.5, 1, 1, val_xs=0.02149 / br_hh_4b, label="qqHH_CV_1p5_C2V_1_kl_1"),
 ]
 HHdefault = HHModel(
     ggf_sample_list=GGF_sample_list,
@@ -551,49 +552,48 @@ HHdefault = HHModel(
 )
 
 
-def create_ggf_xsec_func(formula=None, nnlo=True):
+def get_ggf_xsec(kl=1.0, unc=None):
     """
-    Creates and returns a function that can be used to calculate numeric ggF cross section values
-    given an appropriate *formula*, which defaults to *HHdefault.ggf_formula*. The returned function
-    has the signature ``(kl=1.0, kt=1.0)``. When *nnlo* is *True*, a k-factor for the conversion
-    from NLO to NNLO is applied. Example:
+    Calculates the numeric ggF cross section value at NNLO for a certain *kl* value. When *unc* is
+    "down" ("up"), the down (up) variation of the cross section is returned instead, composed of a
+    *kl* dependent scale uncertainty and an independent PDF uncertainty of 3%.
 
-    .. code-block:: python
-
-        get_ggf_xec = create_ggf_xsec_func()
-
-        print(get_ggf_xec(2.))
-        # -> 0.0133045... (or similar)
+    Formulas taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=60.
     """
-    if formula is None:
-        formula = HHdefault.ggf_formula
+    # compute the nominal cross section
+    xsec_nom = 70.3874 - 50.4111 * kl + 11.0595 * kl**2.
 
-    # create the lambdify'ed evaluation function
-    func = lambdify(symbols("kl kt s0 s1 s2"), formula.sigma)
+    if unc is None:
+        # nothing to do when no uncertainty is requested
+        return xsec_nom
+    else:
+        # compute absolute values of the scale uncertainties, preserving signs
+        if unc.lower() == "up":
+            xsec_unc = max(
+                72.0744 - 51.7362 * kl + 11.3712 * kl**2.,
+                70.9286 - 51.5708 * kl + 11.4497 * kl**2.,
+            ) - xsec_nom
+        elif unc.lower() == "down":
+            xsec_unc = min(
+                66.0621 - 46.7458 * kl + 10.1673 * kl**2.,
+                66.7581 - 47.7210 * kl + 10.4535 * kl**2.,
+            ) - xsec_nom
+        else:
+            raise ValueError("when set, unc must be 'up' or 'down', got '{}'".format(unc))
 
-    # scaling functions in case nnlo is set
-    scale_nlo = lambda kl: 62.5339 - 44.3231 * kl + 9.6340 * kl**2.
-    scale_nnlo = lambda kl: 70.3874 - 50.4111 * kl + 11.0595 * kl**2.
-    nlo2nnlo = lambda xsec, kl: xsec * scale_nnlo(kl) / (1.115 * scale_nlo(kl))
+        # combine with flat 3% PDF uncertainty
+        scale_unc_sign = 1 if xsec_unc > 0 else -1
+        xsec_unc = scale_unc_sign * ((0.03 * xsec_nom)**2. + (xsec_unc)**2.)**0.5
 
-    # wrap into another function to apply defaults and nlo-to-nnlo scaling
-    @functools.wraps(func)
-    def wrapper(kl=1., kt=1.):
-        xsec = func(kl, kt, *(formula.sample_list[i].val_xs for i in range(3)))[0, 0]
-
-        if nnlo:
-            xsec = nlo2nnlo(xsec, kl)
-
-        return xsec
-
-    return wrapper
+        # add signed uncertainty back to nominal value and return
+        return xsec_nom + xsec_unc
 
 
 def create_vbf_xsec_func(formula=None):
     """
     Creates and returns a function that can be used to calculate numeric VBF cross section values
-    given an appropriate *formula*, which defaults to *HHdefault.vbf_formula*. The returned function
-    has the signature ``(c2v=1.0, cv=1.0, kl=1.0)``.
+    given an appropriate *formula*, which defaults to *model_default.vbf_formula*. The returned
+    function has the signature ``(c2v=1.0, cv=1.0, kl=1.0)``.
 
     .. code-block:: python
 
@@ -603,45 +603,20 @@ def create_vbf_xsec_func(formula=None):
         # -> 0.0156445... (or similar)
     """
     if formula is None:
-        formula = HHdefault.vbf_formula
+        formula = model_default.vbf_formula
+    n_samples = len(formula.sample_list)
 
     # create the lambdify'ed evaluation function
-    func = lambdify(symbols("C2V CV kl s0 s1 s2 s3 s4 s5"), formula.sigma)
+    symbol_names = ["C2V", "CV", "kl"] + list(map("s{}".format, range(n_samples)))
+    func = lambdify(symbols(symbol_names), formula.sigma)
 
     # wrap into another function to apply defaults
-    @functools.wraps(func)
     def wrapper(c2v=1., cv=1., kl=1.):
-        xsec = func(c2v, cv, kl, *(formula.sample_list[i].val_xs for i in range(6)))[0, 0]
+        xsec = func(c2v, cv, kl, *(formula.sample_list[i].val_xs for i in range(n_samples)))[0, 0]
         return xsec
 
     return wrapper
 
 
-#: Default function for getting ggF cross sections using the formula of the HHdefault model.
-get_ggf_xsec = create_ggf_xsec_func()
-
-#: Default function for getting VBF cross sections using the formula of the HHdefault model.
+#: Default function for getting VBF cross sections using the formula of the *model_default* model.
 get_vbf_xsec = create_vbf_xsec_func()
-
-
-# debug
-#bbZZ_model = False
-
-#if(bbZZ_model):
-
-#    GGF_sample_list_bbZZ = [
-#        GGFHHSample(1,1,   val_xs = 0.02675, label = 'ggHH_hbbhzz_process'  ),
-#        GGFHHSample(2,1,   val_xs = 0.01238, label = 'klambda2_process'  ),
-        #GGFHHSample(0,1,   val_xs = 0.06007, label = 'klambda0_process'  ),
-#        GGFHHSample(5,1,   val_xs = 0.07903, label = 'klambda5_process'  ),
-        # GGFHHSample(2.45,1,   val_xs = 0.01133, label = 'ggHH_kl_2p45_kt_1'  ),
-#    ]
-
-#    HHbbZZ4l = HHModel(
-#        ggf_sample_list = GGF_sample_list_bbZZ,
-#        vbf_sample_list = VBF_sample_list,
-#        name            = 'HH_bbZZ_default'
-#    )
-
-# f = GGFHHFormula(GGF_sample_list)
-# f = VBFHHFormula(VBF_sample_list)

@@ -79,11 +79,9 @@ class HHModelTask(AnalysisTask):
         # get the proper xsec getter for the formula of the current model
         module, model = self.load_hh_model()
         if poi == "kl":
-            formula = model.ggf_formula
-            get_xsec = module.create_ggf_xsec_func(formula)
+            get_xsec = module.get_ggf_xsec
         else:  # C2V
-            formula = model.vbf_formula
-            get_xsec = module.create_vbf_xsec_func(formula)
+            get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
 
         # create and return the function including scaling
         return lambda *args, **kwargs: get_xsec(*args, **kwargs) * scale
