@@ -376,53 +376,45 @@ class HHModel(PhysicsModel):
 
             self.f_r_vbf_names.append(f_prod_name) #bookkeep the scaling that has been created
 
-    def getYieldScale(self,bin,process):
+    def getYieldScale(self, bin, process):
+        # only deal with signal processes here
+        if not self.DC.isSignal[process]:
+            return 1.
 
-        ## my control to verify for a unique association between process <-> scaling function
-        try:
-            self.scalingMap
-        except AttributeError:
-            self.scalingMap = {}
+        def find_matches(samples, kind):
+            # get the matching ggf sample index
+            matching_indices = []
+            for i, sample in enumerate(samples):
+                if process.startswith(sample.label):
+                    matching_indices.append(i)
 
-        if not self.DC.isSignal[process]: return 1
-        # match the process name in the datacard to the input sample of the calculation
-        # this is the only point where the two things must be matched
+            # complain when there is more than one hit
+            if len(matching_indices) > 1:
+                raise Exception("found {} matches for {} signal process {} in bin {}".format(
+                    len(matching_indices), kind, process, bin))
 
-        if not process in self.scalingMap:
-            self.scalingMap[process] = []
+            # return the index when there is only one hit
+            if len(matching_indices) == 1:
+                return matching_indices[0]
 
-        imatched_ggf = []
-        imatched_vbf = []
+            # otherwise, return nothing
+            return None
 
-        for isample, sample in enumerate(self.ggf_formula.sample_list):
-            if process.startswith(sample.label):
-                # print self.name, ": {:>40}  ===> {:>40}".format(process, sample.label)
-                imatched_ggf.append(isample)
-
-        for isample, sample in enumerate(self.vbf_formula.sample_list):
-            if process.startswith(sample.label):
-                # print self.name, ": {:>40}  ===> {:>40}".format(process, sample.label)
-                imatched_vbf.append(isample)
-
-        ## this checks that a process finds a unique scaling
-        if len(imatched_ggf) + len(imatched_vbf) != 1:
-            print("ERROR: in HH model {} for process {} in bin {}: {} GGF and {} VBF name matches".format(
-                self.name, process, bin, len(imatched_ggf), len(imatched_vbf)))
-            # print "[ERROR] : in HH model named", self.name, "there are", len(imatched_ggf), "GGF name matches and", len(imatched_vbf), "VBF name matches"
-            # raise RuntimeError('HHModel : could not uniquely match the process %s to the expected sample list' % process)
-
-        if len(imatched_ggf) == 1:
-            isample = imatched_ggf[0]
-            self.scalingMap[process].append((isample, 'GGF'))
+        # ggf match?
+        isample = find_matches(self.ggf_formula.sample_list, "GGF")
+        if isample is not None:
+            self.scalingMap[process].append((isample, "GGF"))
             return self.f_r_ggf_names[isample]
 
-        if len(imatched_vbf) == 1:
-            isample = imatched_vbf[0]
-            self.scalingMap[process].append((isample, 'VBF'))
+        # vbf match?
+        isample = find_matches(self.vbf_formula.sample_list, "VBF")
+        if isample is not None:
+            self.scalingMap[process].append((isample, "VBF"))
             return self.f_r_vbf_names[isample]
 
-        return 1 ## for signal processes that are not ggHH or qqHH -> to implement here the single H scaling
-        # raise RuntimeError('HHModel : fatal error in getYieldScale - this should never happen')
+        # complain when neither a ggf nor a vbf match was found
+        raise Exception("singal process {} did not match any GGF or VBF samples in bin {}".format(
+            process, bin))
 
 
 #########################################
