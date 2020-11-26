@@ -526,10 +526,10 @@ model_no_vbf_CV1p5 = create_model("model_no_vbf_CV1p5", skip_ggf=[(0, 1)], skip_
 
 # legacy objects for development
 GGF_sample_list = [
-    # GGFHHSample(0,    1, val_xs=0.06007, label="ggHH_kl_0_kt_1"),
-    GGFHHSample(1,    1, val_xs=0.02675, label="ggHH_kl_1_kt_1"),
-    GGFHHSample(2.45, 1, val_xs=0.01133, label="ggHH_kl_2p45_kt_1"),
-    GGFHHSample(5,    1, val_xs=0.07903, label="ggHH_kl_5_kt_1"),
+    # GGFHHSample(0,    1, val_xs=0.069725, label="ggHH_kl_0_kt_1"),
+    GGFHHSample(1,    1, val_xs=0.031047, label="ggHH_kl_1_kt_1"),
+    GGFHHSample(2.45, 1, val_xs=0.013124, label="ggHH_kl_2p45_kt_1"),
+    GGFHHSample(5,    1, val_xs=0.091172, label="ggHH_kl_5_kt_1"),
 ]
 VBF_sample_list = [
     VBFHHSample(1,   1, 1, val_xs=0.00054 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_1"),
@@ -551,10 +551,11 @@ def create_ggf_xsec_func(formula=None):
     """
     Creates and returns a function that can be used to calculate numeric ggF cross section values in
     pb given an appropriate *formula*, which defaults to *model_default.ggf_formula*. The returned
-    function has the signature ``(kl=1.0, kt=1.0, nnlo=True, unc=None)``. When *nnlo* is *True*, a
-    the return value is in next-to-next-to-leading order. In this case, *unc* can be set to eiher
-    "up" or "down" to return the up / down varied cross section instead where the uncertainty is
-    composed of a *kl* dependent scale uncertainty and an independent PDF uncertainty of 3%.
+    function has the signature ``(kl=1.0, kt=1.0, nnlo=True, unc=None)``. When *nnlo* is *False*,
+    the constant k-factor is still applied. Otherwise, the returned value is in full
+    next-to-next-to-leading order. In this case, *unc* can be set to eiher "up" or "down" to return
+    the up / down varied cross section instead where the uncertainty is composed of a *kl* dependent
+    scale uncertainty and an independent PDF uncertainty of 3%.
 
     Example:
 
@@ -637,7 +638,9 @@ def create_vbf_xsec_func(formula=None):
     """
     Creates and returns a function that can be used to calculate numeric VBF cross section values in
     pb given an appropriate *formula*, which defaults to *model_default.vbf_formula*. The returned
-    function has the signature ``(c2v=1.0, cv=1.0, kl=1.0)``. Example:
+    function has the signature ``(c2v=1.0, cv=1.0, kl=1.0)``.
+
+    Example:
 
     .. code-block:: python
 
