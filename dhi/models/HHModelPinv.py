@@ -420,6 +420,7 @@ class HHModel(PhysicsModel):
 #########################################
 
 # ggf samples with keys (kl, kt), ordered by kl
+# (the cross section values are not used in the model, they are listed just for completeness)
 ggf_samples = OrderedDict([
     ((0, 1),    GGFHHSample(0,    1, val_xs=0.06007, label="ggHH_kl_0_kt_1")),
     ((1, 1),    GGFHHSample(1,    1, val_xs=0.02675, label="ggHH_kl_1_kt_1")),
@@ -429,6 +430,7 @@ ggf_samples = OrderedDict([
 ])
 
 # vbf samples with keys (CV, C2V, kl), SM point first, then ordered by kl, then C2V, then CV
+# (the cross section values are not used in the model, but only in create_vbf_xsec_func below)
 br_hh_4b = 0.33919
 vbf_samples = OrderedDict([
     ((1,   1, 1), VBFHHSample(1,   1, 1, val_xs=0.00054 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_1")),
@@ -443,38 +445,38 @@ vbf_samples = OrderedDict([
 
 def get_ggf_samples(keys):
     """
-    Returns a list of :py:class:`GGFHHSample` instances mapped to certain *keys* in the ordered
-    *ggf_samples* dictionary above. A key can either be a tuple of (kl, kt) values as used in dict,
-    or an index. Example:
+    Returns a list of :py:class:`GGFHHSample` instances that are mapped to certain *keys* in the
+    ordered *ggf_samples* dictionary above. A key can either be a tuple of (kl, kt) values as used
+    in the dict, or a numeric index. Example:
 
     .. code-block:: python
 
-        get_ggf_samples([2, (5, 1)])
+        get_ggf_samples([(2.45, 1), 3])
         # -> [GGFHHSample:ggHH_kl_2p45_kt_1, GGFHHSample:ggHH_kl_5_kt_1]
     """
-    keys = [
-        (key if isinstance(key, tuple) else ggf_samples.keys()[key])
+    all_keys = list(ggf_samples.keys())
+    return [
+        ggf_samples[key if isinstance(key, tuple) else all_keys[key]]
         for key in keys
     ]
-    return [ggf_samples[key] for key in keys]
 
 
 def get_vbf_samples(keys):
     """
-    Returns a list of :py:class:`VBFHHSample` instances mapped to certain *keys* in the ordered
-    *vbf_samples* dictionary above. A key can either be a tuple of (CV, C2V, kl) values as used in
-    dict, or an index. Example:
+    Returns a list of :py:class:`VBFHHSample` instances that are mapped to certain *keys* in the
+    ordered *vbf_samples* dictionary above. A key can either be a tuple of (CV, C2V, kl) values as
+    used in the dict, or a numeric index. Example:
 
     .. code-block:: python
 
         get_vbf_samples([2, (1, 2, 1)])
         # -> [VBFHHSample:qqHH_CV_1_C2V_1_kl_2, VBFHHSample:qqHH_CV_1_C2V_2_kl_1]
     """
-    keys = [
-        (key if isinstance(key, tuple) else vbf_samples.keys()[key])
+    all_keys = list(ggf_samples.keys())
+    return [
+        vbf_samples[key if isinstance(key, tuple) else all_keys[key]]
         for key in keys
     ]
-    return [vbf_samples[key] for key in keys]
 
 
 def create_model(name, skip_ggf=None, skip_vbf=None):
@@ -484,13 +486,17 @@ def create_model(name, skip_ggf=None, skip_vbf=None):
     through :py:func:`get_ggf_samples` and :py:func:`get_vbf_samples`. The order of passed keys to
     be skipped does not matter.
     """
-    # get all use sample keys
-    ggf_keys = list(ggf_samples.keys())
-    vbf_keys = list(vbf_samples.keys())
-    for key in skip_ggf or []:
-        ggf_keys.remove(key)
-    for key in skip_vbf or []:
-        vbf_keys.remove(key)
+    # get all unskipped ggf keys
+    ggf_keys = []
+    for i, key in enumerate(ggf_samples):
+        if not skip_ggf or not any(skip_key in (i, key) for skip_key in skip_ggf):
+            ggf_keys.append(key)
+
+    # get all unskipped vbf keys
+    vbf_keys = []
+    for i, key in enumerate(vbf_samples):
+        if not skip_vbf or not any(skip_key in (i, key) for skip_key in skip_vbf):
+            vbf_keys.append(key)
 
     # create the return the model
     return HHModel(
@@ -500,7 +506,7 @@ def create_model(name, skip_ggf=None, skip_vbf=None):
     )
 
 
-# standard of models
+# some named, default models
 model_all     = create_model("model_all")
 model_default = create_model("model_default", skip_ggf=[(0, 1)], skip_vbf=[(1, 0, 1)])
 model_bbgg    = create_model("model_bbgg",    skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)])
@@ -575,7 +581,7 @@ def get_ggf_xsec(kl=1.0, unc=None):
 
         # combine with flat 3% PDF uncertainty
         scale_unc_sign = 1 if xsec_unc > 0 else -1
-        xsec_unc = scale_unc_sign * ((0.03 * xsec_nom)**2. + (xsec_unc)**2.)**0.5
+        xsec_unc = scale_unc_sign * ((0.03 * xsec_nom)**2. + xsec_unc**2.)**0.5
 
         # add signed uncertainty back to nominal value and return
         return xsec_nom + xsec_unc
