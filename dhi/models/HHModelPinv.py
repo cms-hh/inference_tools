@@ -14,7 +14,7 @@ from sympy import *
 from numpy import matrix
 from numpy import linalg
 from sympy import Matrix
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 
 class VBFHHSample:
@@ -189,11 +189,13 @@ class HHModel(PhysicsModel):
         self.ggf_formula = GGFHHFormula(ggf_sample_list)
         self.vbf_formula = VBFHHFormula(vbf_sample_list)
 
+        self.scalingMap = defaultdict(list)
+
         #self.dump_inputs()
 
     def setPhysicsOptions(self, physOptions):
         opts = [opt.split("=", 1) for opt in physOptions if "=" in opt]
-        for key, value in physOptions:
+        for key, value in opts:
             if key == "doNNLOscaling":
                 self.doNNLOscaling = value.lower() in ["yes", "true", "1"]
                 print("[INFO] set doNNLOscaling of model {} to {}".format(
