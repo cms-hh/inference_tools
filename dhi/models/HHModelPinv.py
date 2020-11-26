@@ -417,20 +417,17 @@ class HHModel(PhysicsModel):
             process, bin))
 
 
-#########################################
-
 # ggf samples with keys (kl, kt), ordered by kl
-# (the cross section values are not used in the model, they are listed just for completeness)
+# cross section values are NLO with k-factor applied and only used in create_ggf_xsec_func below
 ggf_samples = OrderedDict([
-    ((0, 1),    GGFHHSample(0,    1, val_xs=0.06007, label="ggHH_kl_0_kt_1")),
-    ((1, 1),    GGFHHSample(1,    1, val_xs=0.02675, label="ggHH_kl_1_kt_1")),
-    ((2.45, 1), GGFHHSample(2.45, 1, val_xs=0.01133, label="ggHH_kl_2p45_kt_1")),
-    ((5, 1),    GGFHHSample(5,    1, val_xs=0.07903, label="ggHH_kl_5_kt_1")),
-
+    ((0, 1),    GGFHHSample(0,    1, val_xs=0.069725, label="ggHH_kl_0_kt_1")),
+    ((1, 1),    GGFHHSample(1,    1, val_xs=0.031047, label="ggHH_kl_1_kt_1")),
+    ((2.45, 1), GGFHHSample(2.45, 1, val_xs=0.013124, label="ggHH_kl_2p45_kt_1")),
+    ((5, 1),    GGFHHSample(5,    1, val_xs=0.091172, label="ggHH_kl_5_kt_1")),
 ])
 
 # vbf samples with keys (CV, C2V, kl), SM point first, then ordered by kl, then C2V, then CV
-# (the cross section values are not used in the model, but only in create_vbf_xsec_func below)
+# cross section values are LO and only used in create_vbf_xsec_func below
 br_hh_4b = 0.33919
 vbf_samples = OrderedDict([
     ((1,   1, 1), VBFHHSample(1,   1, 1, val_xs=0.00054 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_1")),
@@ -550,71 +547,123 @@ HHdefault = HHModel(
 )
 
 
-def get_ggf_xsec(kl=1.0, unc=None):
+def create_ggf_xsec_func(formula=None):
     """
-    Calculates the numeric ggF cross section value at NNLO for a certain *kl* value. When *unc* is
-    "down" ("up"), the down (up) variation of the cross section is returned instead, composed of a
-    *kl* dependent scale uncertainty and an independent PDF uncertainty of 3%.
+    Creates and returns a function that can be used to calculate numeric ggF cross section values in
+    pb given an appropriate *formula*, which defaults to *model_default.ggf_formula*. The returned
+    function has the signature ``(kl=1.0, kt=1.0, nnlo=True, unc=None)``. When *nnlo* is *True*, a
+    the return value is in next-to-next-to-leading order. In this case, *unc* can be set to eiher
+    "up" or "down" to return the up / down varied cross section instead where the uncertainty is
+    composed of a *kl* dependent scale uncertainty and an independent PDF uncertainty of 3%.
 
-    Formulas taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=60.
+    Example:
+
+    .. code-block:: python
+
+        get_ggf_xec = create_ggf_xsec_func()
+
+        print(get_ggf_xec(kl=2.))
+        # -> 0.013803...
+
+        print(get_ggf_xec(kl=2., nnlo=False))
+        # -> 0.013852...
+
+        print(get_ggf_xec(kl=2., unc="up"))
+        # -> 0.014305...
+
+    Formulas are taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=60.
     """
-    # compute the nominal cross section
-    xsec_nom = 70.3874 - 50.4111 * kl + 11.0595 * kl**2.
+    if formula is None:
+        formula = model_default.ggf_formula
 
-    if unc is None:
-        # nothing to do when no uncertainty is requested
-        return xsec_nom
-    else:
-        # compute absolute values of the scale uncertainties, preserving signs
+    # create the lambdify'ed evaluation function
+    n_samples = len(formula.sample_list)
+    symbol_names = ["kl", "kt"] + list(map("s{}".format, range(n_samples)))
+    func = lambdify(symbols(symbol_names), formula.sigma)
+
+    # nlo-to-nnlo scaling functions in case nnlo is set
+    xsec_nlo = lambda kl: 0.001 * 1.115 * (62.5339 - 44.3231 * kl + 9.6340 * kl**2.)
+    xsec_nnlo = lambda kl: 0.001 * (70.3874 - 50.4111 * kl + 11.0595 * kl**2.)
+    nlo2nnlo = lambda xsec, kl: xsec * xsec_nnlo(kl) / xsec_nlo(kl)
+
+    # uncertainty application in case unc is set
+    xsec_nnlo_scale_up = lambda kl: 0.001 * max(
+        72.0744 - 51.7362 * kl + 11.3712 * kl**2.,
+        70.9286 - 51.5708 * kl + 11.4497 * kl**2.,
+    )
+    xsec_nnlo_scale_down = lambda kl: 0.001 * min(
+        66.0621 - 46.7458 * kl + 10.1673 * kl**2.,
+        66.7581 - 47.7210 * kl + 10.4535 * kl**2.,
+    )
+
+    def apply_uncertainty_nnlo(kl, xsec_nom, unc):
+        # compute absolute values of the scale uncertainties
         if unc.lower() == "up":
-            xsec_unc = max(
-                72.0744 - 51.7362 * kl + 11.3712 * kl**2.,
-                70.9286 - 51.5708 * kl + 11.4497 * kl**2.,
-            ) - xsec_nom
+            xsec_unc = xsec_nnlo_scale_up(kl) - xsec_nom
         elif unc.lower() == "down":
-            xsec_unc = min(
-                66.0621 - 46.7458 * kl + 10.1673 * kl**2.,
-                66.7581 - 47.7210 * kl + 10.4535 * kl**2.,
-            ) - xsec_nom
+            xsec_unc = xsec_nnlo_scale_down(kl) - xsec_nom
         else:
-            raise ValueError("when set, unc must be 'up' or 'down', got '{}'".format(unc))
+            raise ValueError("unc must be 'up' or 'down', got '{}'".format(unc))
 
-        # combine with flat 3% PDF uncertainty
-        scale_unc_sign = 1 if xsec_unc > 0 else -1
-        xsec_unc = scale_unc_sign * ((0.03 * xsec_nom)**2. + xsec_unc**2.)**0.5
+        # combine with flat 3% PDF uncertainty, preserving the sign
+        unc_sign = 1 if xsec_unc > 0 else -1
+        xsec_unc = unc_sign * ((0.03 * xsec_nom)**2. + xsec_unc**2.)**0.5
 
-        # add signed uncertainty back to nominal value and return
-        return xsec_nom + xsec_unc
+        # add signed uncertainty back to nominal value
+        xsec = xsec_nom + xsec_unc
+
+        return xsec
+
+    # wrap into another function to apply defaults and nlo-to-nnlo scaling
+    def wrapper(kl=1., kt=1., nnlo=True, unc=None):
+        xsec = func(kl, kt, *(sample.val_xs for sample in formula.sample_list))[0, 0]
+
+        # nnlo scaling?
+        if nnlo:
+            xsec = nlo2nnlo(xsec, kl)
+
+        # apply uncertainties?
+        if unc:
+            if not nnlo:
+                raise NotImplementedError("NLO ggF cross section uncertainties are not implemented")
+            xsec = apply_uncertainty_nnlo(kl, xsec, unc)
+
+        return xsec
+
+    return wrapper
 
 
 def create_vbf_xsec_func(formula=None):
     """
-    Creates and returns a function that can be used to calculate numeric VBF cross section values
-    given an appropriate *formula*, which defaults to *model_default.vbf_formula*. The returned
-    function has the signature ``(c2v=1.0, cv=1.0, kl=1.0)``.
+    Creates and returns a function that can be used to calculate numeric VBF cross section values in
+    pb given an appropriate *formula*, which defaults to *model_default.vbf_formula*. The returned
+    function has the signature ``(c2v=1.0, cv=1.0, kl=1.0)``. Example:
 
     .. code-block:: python
 
         get_vbf_xsec = create_vbf_xsec_func()
 
-        print(get_vbf_xsec(2.))
-        # -> 0.0156445... (or similar)
+        print(get_vbf_xsec(c2v=2.))
+        # -> 0.013916... (or similar)
     """
     if formula is None:
         formula = model_default.vbf_formula
-    n_samples = len(formula.sample_list)
 
     # create the lambdify'ed evaluation function
+    n_samples = len(formula.sample_list)
     symbol_names = ["C2V", "CV", "kl"] + list(map("s{}".format, range(n_samples)))
     func = lambdify(symbols(symbol_names), formula.sigma)
 
     # wrap into another function to apply defaults
     def wrapper(c2v=1., cv=1., kl=1.):
-        xsec = func(c2v, cv, kl, *(formula.sample_list[i].val_xs for i in range(n_samples)))[0, 0]
+        xsec = func(c2v, cv, kl, *(sample.val_xs for sample in formula.sample_list))[0, 0]
         return xsec
 
     return wrapper
 
+
+#: Default function for getting ggF cross sections using the formula of the *model_default* model.
+get_ggf_xsec = create_ggf_xsec_func()
 
 #: Default function for getting VBF cross sections using the formula of the *model_default* model.
 get_vbf_xsec = create_vbf_xsec_func()

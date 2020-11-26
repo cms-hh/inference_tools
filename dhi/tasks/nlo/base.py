@@ -79,7 +79,7 @@ class HHModelTask(AnalysisTask):
         # get the proper xsec getter for the formula of the current model
         module, model = self.load_hh_model()
         if poi == "kl":
-            get_xsec = module.get_ggf_xsec
+            get_xsec = module.create_ggf_xsec_func(model.ggf_formula)
         else:  # C2V
             get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
 
