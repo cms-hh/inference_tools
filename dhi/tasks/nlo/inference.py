@@ -81,11 +81,13 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
             " -o {workspace}"
             " -m {self.mass}"
             " -P dhi.models.{self.hh_model}"
+            " --PO doNNLOscaling={nnlo}"
             " {self.custom_args}"
         ).format(
             self=self,
             datacard=self.input().path,
             workspace=self.output().path,
+            nnlo=not self.hh_nlo,
         )
 
 

@@ -191,12 +191,13 @@ class HHModel(PhysicsModel):
 
         #self.dump_inputs()
 
-    def setPhysicsOptions(self,physOptions):
-        for po in physOptions:
-            if po.startswith("doNNLOscaling="):
-                self.doNNLOscaling = (po.replace("doNNLOscaling=","") in [ "yes", "1", "Yes", "True", "true" ])
-            #print "[DEBUG]","[setPhysicsOptions]","Uncertainties are set to be",self.doNNLOscaling
-
+    def setPhysicsOptions(self, physOptions):
+        opts = [opt.split("=", 1) for opt in physOptions if "=" in opt]
+        for key, value in physOptions:
+            if key == "doNNLOscaling":
+                self.doNNLOscaling = value.lower() in ["yes", "true", "1"]
+                print("[INFO] set doNNLOscaling of model {} to {}".format(
+                    self.name, self.doNNLOscaling))
 
     def check_validity_ggf(self, ggf_sample_list):
         if len(ggf_sample_list) < 3:

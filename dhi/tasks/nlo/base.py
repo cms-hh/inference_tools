@@ -9,6 +9,7 @@ import sys
 import re
 import glob
 import importlib
+import functools
 from collections import defaultdict
 
 import law
@@ -41,10 +42,18 @@ class HHModelTask(AnalysisTask):
         description="the name of the HH model relative to dhi.models in the format "
         "module:model_name; default: HHModelPinv:HHdefault",
     )
+    hh_nlo = luigi.BoolParameter(
+        default=False,
+        description="disable the automatic nlo-to-nnlo scaling of the model and cross-section "
+        "calculation; default: False",
+    )
 
     def store_parts(self):
         parts = super(HHModelTask, self).store_parts()
-        parts["hh_model"] = "model_" + self.hh_model.replace(".", "_").replace(":", "_")
+        part = "model_" + self.hh_model.replace(".", "_").replace(":", "_")
+        if self.hh_nlo:
+            part += "__nlo"
+        parts["hh_model"] = part
         return parts
 
     def load_hh_model(self, hh_model=None):
@@ -61,7 +70,11 @@ class HHModelTask(AnalysisTask):
             with law.util.patch_object(sys, "stdout", null_stream):
                 mod = importlib.import_module(module_id)
 
-        return mod, getattr(mod, model_name)
+        # get the model and set the doNNLOscaling flag correctly
+        model = getattr(mod, model_name)
+        model.doNNLOscaling = not self.hh_nlo
+
+        return mod, model
 
     def create_xsec_func(self, poi, unit, br=None):
         if poi not in ["kl", "C2V"]:
@@ -79,7 +92,9 @@ class HHModelTask(AnalysisTask):
         # get the proper xsec getter for the formula of the current model
         module, model = self.load_hh_model()
         if poi == "kl":
+            # get the cross section function and make it a partial with the nnlo value set properly
             get_xsec = module.create_ggf_xsec_func(model.ggf_formula)
+            get_xsec = functools.partial(get_xsec, nnlo=not self.hh_nlo)
         else:  # C2V
             get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
 
