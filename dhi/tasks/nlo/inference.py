@@ -19,10 +19,11 @@ from dhi.tasks.nlo.base import (
 from dhi.util import linspace
 from dhi.config import poi_data
 from dhi.datacard_tools import get_workspace_parameters, bundle_datacard
-from dhi.scripts.prettify_datacard import prettify_datacard
+from dhi.scripts.remove_processes import remove_processes as remove_processes_script
 
 
 class CombineDatacards(DatacardTask, CombineCommandTask):
+
     def output(self):
         return self.local_target_dc("datacard.txt")
 
@@ -60,15 +61,25 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         output.parent.touch()
         self.run_command(self.build_command(datacards), cwd=tmp_dir.path)
 
-        # prettify the output card
-        prettify_datacard(output.path)
+        # remove ggf and vbf processes that are not covered by the physics model
+        mod, model = self.load_hh_model()
+        all_hh_processes = {sample.label for sample in mod.ggf_samples.values()}
+        all_hh_processes |= {sample.label for sample in mod.vbf_samples.values()}
+        model_hh_processes = {sample.label for sample in model.ggf_formula.sample_list}
+        model_hh_processes |= {sample.label for sample in model.vbf_formula.sample_list}
+        to_remove = all_hh_processes - model_hh_processes
+        if to_remove:
+            self.logger.info("trying to remove processes {} from the combined datacard as they are "
+                "not part of the phyics model {}".format(",".join(to_remove), self.hh_model))
+            remove_processes_script(output.path, map("{}*".format, to_remove))
 
-        # finally, copy shape files to output location
+        # copy shape files to output location
         for basename in tmp_dir.listdir(pattern="*.root", type="f"):
             tmp_dir.child(basename).copy_to(output.parent)
 
 
 class CreateWorkspace(DatacardTask, CombineCommandTask):
+
     def requires(self):
         return CombineDatacards.req(self)
 
@@ -81,11 +92,13 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
             " -o {workspace}"
             " -m {self.mass}"
             " -P dhi.models.{self.hh_model}"
+            " --PO doNNLOscaling={nnlo}"
             " {self.custom_args}"
         ).format(
             self=self,
             datacard=self.input().path,
             workspace=self.output().path,
+            nnlo=not self.hh_nlo,
         )
 
 
