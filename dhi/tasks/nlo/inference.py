@@ -111,8 +111,9 @@ class UpperLimits(POIScanTask1DWithR, CombineCommandTask, law.LocalWorkflow, HTC
     def build_command(self):
         return (
             "combine -M AsymptoticLimits {workspace}"
-            " -m {self.mass}"
             " -v 1"
+            " -m {self.mass}"
+            " -t -1"
             " --run expected"
             " --noFitAsimov"
             " --redefineSignalPOIs {self.r_poi}"
@@ -151,9 +152,9 @@ class MergeUpperLimits(POIScanTask1DWithR):
             ("limit_p2", np.float32),
             ("limit_m2", np.float32),
         ]
-        limit_scan_task = self.requires()
+        scan_task = self.requires()
         for branch, inp in self.input()["collection"].targets.items():
-            poi_value = limit_scan_task.branch_map[branch]
+            poi_value = scan_task.branch_map[branch]
             records.append((poi_value,) + self.load_limits(inp))
 
         data = np.array(records, dtype=dtype)
@@ -203,9 +204,9 @@ class LikelihoodScan1D(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTC
     def build_command(self):
         return (
             "combine -M MultiDimFit {workspace}"
+            " -v 1"
             " -m {self.mass}"
             " -t -1"
-            " -v 1"
             " --algo grid"
             " --points {self.poi_points}"
             " --setParameterRanges {self.poi}={self.poi_range[0]},{self.poi_range[1]}"
@@ -289,9 +290,9 @@ class LikelihoodScan2D(POIScanTask2D, CombineCommandTask, law.LocalWorkflow, HTC
     def build_command(self):
         return (
             "combine -M MultiDimFit {workspace}"
+            " -v 1"
             " -m {self.mass}"
             " -t -1"
-            " -v 1"
             " --algo grid"
             " --gridPoints {self.poi1_points},{self.poi2_points}"
             " --setParameterRanges {self.poi1}={self.poi1_range[0]},{self.poi1_range[1]}:"
@@ -415,8 +416,8 @@ class PullsAndImpacts(POITask1D, CombineCommandTask, law.LocalWorkflow, HTCondor
         # build the part of the command that is common between the initial fit and nuisance fits
         common_cmd = (
             "combine -M MultiDimFit {workspace}"
-            " -m {self.mass}"
             " -v 1"
+            " -m {self.mass}"
             " -t -1"
             " --expectSignal 1"
             " --robustFit 1"
@@ -523,3 +524,75 @@ class MergePullsAndImpacts(POITask1D):
             self.publish_message("read values for " + name)
 
         self.output().dump(data, formatter="json")
+
+
+class SignificanceScan(POIScanTask1DWithR, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+
+    run_command_in_tmp = True
+
+    def create_branch_map(self):
+        return linspace(self.poi_range[0], self.poi_range[1], self.poi_points)
+
+    def workflow_requires(self):
+        reqs = super(SignificanceScan, self).workflow_requires()
+        reqs["workspace"] = self.requires_from_branch()
+        return reqs
+
+    def requires(self):
+        return CreateWorkspace.req(self)
+
+    def output(self):
+        return self.local_target_dc("significance__{}__{}_{}.root".format(
+            self.r_poi, self.poi, self.branch_data))
+
+    def build_command(self):
+        return (
+            "combine -M Significance {workspace}"
+            " -m {self.mass}"
+            " -v 1"
+            " -t -1"
+            " --signalForSignificance 0"
+            " --redefineSignalPOIs {self.r_poi}"
+            " --setParameters {self.set_pois},{self.poi}={point}"
+            " --freezeParameters {frozen_pois}"
+            " {self.combine_stable_options}"
+            " {self.custom_args}"
+            " && "
+            "mv higgsCombineTest.Significance.mH{self.mass_int}.root {output}"
+        ).format(
+            self=self,
+            workspace=self.input().path,
+            output=self.output().path,
+            point=self.branch_data,
+            frozen_pois=self.get_frozen_pois([p for p in self.all_pois if p != self.r_poi])
+        )
+
+
+class MergeSignificanceScan(POIScanTask1DWithR):
+
+    def requires(self):
+        return SignificanceScan.req(self)
+
+    def output(self):
+        return self.local_target_dc("significance__{}.npz".format(self.get_poi_postfix()))
+
+    def run(self):
+        import numpy as np
+        import scipy as sp
+        import scipy.stats
+
+        records = []
+        dtype = [
+            (self.poi, np.float32),
+            ("significance", np.float32),
+            ("p_value", np.float32),
+        ]
+        scan_task = self.requires()
+        for branch, inp in self.input()["collection"].targets.items():
+            poi_value = scan_task.branch_map[branch]
+            sig = inp.load(formatter="uproot")["limit"].array("limit")[0]
+            pval = scipy.stats.norm.sf(sig)
+            records.append((poi_value, sig, pval))
+
+        data = np.array(records, dtype=dtype)
+        self.output().dump(data=data, formatter="numpy")
