@@ -430,16 +430,15 @@ ggf_samples = OrderedDict([
 ])
 
 # vbf samples with keys (CV, C2V, kl), SM point first, then ordered by kl, then C2V, then CV
-# cross section values are LO and only used in create_vbf_xsec_func below
-br_hh_4b = 0.33919
+# cross section values are LO (from 2017/2018 gridpacks) x SM k-factor for N3LO (1.0781) and only used in create_vbf_xsec_func below
 vbf_samples = OrderedDict([
-    ((1,   1, 1), VBFHHSample(1,   1, 1, val_xs=0.00054 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_1")),
-    ((1,   1, 0), VBFHHSample(1,   1, 0, val_xs=0.00145 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_0")),
-    ((1,   1, 2), VBFHHSample(1,   1, 2, val_xs=0.00044 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_2")),
-    ((1,   0, 1), VBFHHSample(1,   0, 1, val_xs=0.00880 / br_hh_4b, label="qqHH_CV_1_C2V_0_kl_1")),
-    ((1,   2, 1), VBFHHSample(1,   2, 1, val_xs=0.00472 / br_hh_4b, label="qqHH_CV_1_C2V_2_kl_1")),
-    ((0.5, 1, 1), VBFHHSample(0.5, 1, 1, val_xs=0.00353 / br_hh_4b, label="qqHH_CV_0p5_C2V_1_kl_1")),
-    ((1.5, 1, 1), VBFHHSample(1.5, 1, 1, val_xs=0.02149 / br_hh_4b, label="qqHH_CV_1p5_C2V_1_kl_1")),
+    ((1,   1, 1), VBFHHSample(1,   1, 1, val_xs=0.0017260, label="qqHH_CV_1_C2V_1_kl_1")),
+    ((1,   1, 0), VBFHHSample(1,   1, 0, val_xs=0.0045915, label="qqHH_CV_1_C2V_1_kl_0")),
+    ((1,   1, 2), VBFHHSample(1,   1, 2, val_xs=0.0014306, label="qqHH_CV_1_C2V_1_kl_2")),
+    ((1,   0, 1), VBFHHSample(1,   0, 1, val_xs=0.0272322, label="qqHH_CV_1_C2V_0_kl_1")),
+    ((1,   2, 1), VBFHHSample(1,   2, 1, val_xs=0.0143923, label="qqHH_CV_1_C2V_2_kl_1")),
+    ((0.5, 1, 1), VBFHHSample(0.5, 1, 1, val_xs=0.0108778, label="qqHH_CV_0p5_C2V_1_kl_1")),
+    ((1.5, 1, 1), VBFHHSample(1.5, 1, 1, val_xs=0.0663340, label="qqHH_CV_1p5_C2V_1_kl_1")),
 ])
 
 
@@ -535,13 +534,13 @@ GGF_sample_list = [
     GGFHHSample(5,    1, val_xs=0.091172, label="ggHH_kl_5_kt_1"),
 ]
 VBF_sample_list = [
-    VBFHHSample(1,   1, 1, val_xs=0.00054 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_1"),
-    VBFHHSample(1,   1, 0, val_xs=0.00145 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_0"),
-    VBFHHSample(1,   1, 2, val_xs=0.00044 / br_hh_4b, label="qqHH_CV_1_C2V_1_kl_2"),
-    # VBFHHSample(1,   0, 1, val_xs=0.00880 / br_hh_4b, label="qqHH_CV_1_C2V_0_kl_1"),
-    VBFHHSample(1,   2, 1, val_xs=0.00472 / br_hh_4b, label="qqHH_CV_1_C2V_2_kl_1"),
-    VBFHHSample(0.5, 1, 1, val_xs=0.00353 / br_hh_4b, label="qqHH_CV_0p5_C2V_1_kl_1"),
-    VBFHHSample(1.5, 1, 1, val_xs=0.02149 / br_hh_4b, label="qqHH_CV_1p5_C2V_1_kl_1"),
+    VBFHHSample(1,   1, 1, val_xs=0.0017260, label="qqHH_CV_1_C2V_1_kl_1"),
+    VBFHHSample(1,   1, 0, val_xs=0.0045915, label="qqHH_CV_1_C2V_1_kl_0"),
+    VBFHHSample(1,   1, 2, val_xs=0.0014306, label="qqHH_CV_1_C2V_1_kl_2"),
+    # VBFHHSample(1,   0, 1, val_xs=0.0272322, label="qqHH_CV_1_C2V_0_kl_1"),
+    VBFHHSample(1,   2, 1, val_xs=0.0143923, label="qqHH_CV_1_C2V_2_kl_1"),
+    VBFHHSample(0.5, 1, 1, val_xs=0.0108778, label="qqHH_CV_0p5_C2V_1_kl_1"),
+    VBFHHSample(1.5, 1, 1, val_xs=0.0663340, label="qqHH_CV_1p5_C2V_1_kl_1"),
 ]
 HHdefault = HHModel(
     ggf_sample_list=GGF_sample_list,
