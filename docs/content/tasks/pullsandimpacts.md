@@ -12,7 +12,7 @@ law run PlotPullsAndImpacts --version dev --datacards $DHI_EXAMPLE_CARDS
 and, as usual, you can check the task structure and current output status beforehand by appending `--print-status TASK_DEPTH` to the command. Let's choose -1 to see the structure down to the first task (`CombineDatacards`):
 
 ```shell hl_lines="1"
-law run PlotPullsAndImpacts --version dev --datacards $DHI_EXAMPLE_CARDS --print-status -4
+law run PlotPullsAndImpacts --version dev --datacards $DHI_EXAMPLE_CARDS --print-status 4
 
 print task status with max_depth -1 and target_depth 0
 

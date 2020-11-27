@@ -40,7 +40,7 @@ def plot_limit_scan(
     *y_min* and *y_max* define the axis ranges and default to the range of the given values.
     *xsec_unit* denotes whether the passed values are given as real cross sections in this unit or,
     when *None*, as a ratio over the theory prediction. The *pp_process* label is shown in the
-    x-axis title to denote the physics process the computed values are corresponding to.
+    y-axis title to denote the physics process the computed values are corresponding to.
     *hh_process* is inserted to the process name in the title of the y-axis and indicates that the
     plotted cross section data was (e.g.) scaled by a branching ratio. *campaign* should refer to
     the name of a campaign label defined in dhi.config.campaign_labels.

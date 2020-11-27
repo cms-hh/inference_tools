@@ -15,7 +15,7 @@ from dhi.tasks.nlo.base import (
 )
 from dhi.tasks.nlo.inference import (
     UpperLimits, MergeUpperLimits, MergeLikelihoodScan1D, MergeLikelihoodScan2D,
-    MergePullsAndImpacts,
+    MergePullsAndImpacts, SignificanceScan, MergeSignificanceScan,
 )
 from dhi.config import br_hh, br_hh_names, nuisance_labels
 
@@ -350,7 +350,7 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
         if self.x_log:
             parts.append("log")
 
-        name = self.create_plot_name("limitatpoi", self.get_poi_postfix(), parts)
+        name = self.create_plot_name("limitsatpoi", self.get_poi_postfix(), parts)
         return self.local_target_dc(name)
 
     @view_output_plots
@@ -670,5 +670,113 @@ class PlotBestFitAndExclusion(PlotTask, MultiDatacardTask, POIScanTask1DWithR):
             poi=self.poi,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
+        )
+
+
+class PlotSignificanceScan(PlotTask, POIScanTask1DWithR):
+
+    def requires(self):
+        return MergeSignificanceScan.req(self)
+
+    def output(self):
+        # additional postfix
+        parts = []
+
+        name = self.create_plot_name("significances", self.get_poi_postfix(), parts)
+        return self.local_target_dc(name)
+
+    @view_output_plots
+    @law.decorator.safe_output
+    def run(self):
+        import numpy as np
+
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
+
+        # load expected significances
+        expected_values = self.input().load(formatter="numpy")["data"]
+
+        # some printing
+        for v in range(-2, 4 + 1):
+            if v in expected_values[self.poi]:
+                record = expected_values[expected_values[self.poi] == v][0]
+                self.publish_message("{} = {} -> {:.4f} sigma".format(
+                    self.poi, v, record["significance"]))
+
+        # get the proper plot function and call it
+        from dhi.plots.significances_root import plot_significance_scan
+
+        plot_significance_scan(
+            path=output.path,
+            poi=self.poi,
+            expected_values=expected_values,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
+            y_min=self.get_axis_limit("y_min"),
+            y_max=self.get_axis_limit("y_max"),
+            pp_process={"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}[self.r_poi],
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
+        )
+
+
+class PlotMultipleSignificanceScans(MultiDatacardTask, PlotSignificanceScan):
+
+    @classmethod
+    def modify_param_values(cls, params):
+        params = MultiDatacardTask.modify_param_values(params)
+        params = PlotSignificanceScan.modify_param_values(params)
+        return params
+
+    def requires(self):
+        return [
+            MergeSignificanceScan.req(self, datacards=datacards)
+            for datacards in self.multi_datacards
+        ]
+
+    def output(self):
+        # additional postfix
+        parts = []
+
+        name = self.create_plot_name("multisignificances", self.get_poi_postfix(), parts)
+        return self.local_target_dc(name)
+
+    @view_output_plots
+    @law.decorator.safe_output
+    def run(self):
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
+
+        # load significances
+        expected_values = []
+        names = []
+        for i, inp in enumerate(self.input()):
+            expected_values.append(inp.load(formatter="numpy")["data"])
+            names.append("datacards {}".format(i + 1))
+
+        # set names if requested
+        if self.datacard_names:
+            names = list(self.datacard_names)
+
+        # reoder if requested
+        if self.datacard_order:
+            expected_values = [expected_values[i] for i in self.datacard_order]
+            names = [names[i] for i in self.datacard_order]
+
+        # get the proper plot function and call it
+        from dhi.plots.significances_root import plot_significance_scans
+
+        plot_significance_scans(
+            path=output.path,
+            poi=self.poi,
+            expected_values=expected_values,
+            names=names,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
+            y_min=self.get_axis_limit("y_min"),
+            y_max=self.get_axis_limit("y_max"),
+            pp_process={"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}[self.r_poi],
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
