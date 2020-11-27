@@ -35,7 +35,7 @@ def plot_significance_scan(
     the computed values are corresponding to. *campaign* should refer to the name of a campaign
     label defined in dhi.config.campaign_labels.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/significances.html#TODOOOOOOOOOOOOOO
+    Example: https://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/significances.html#plotsignificancescan
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -178,7 +178,7 @@ def plot_significance_scans(
     the computed values are corresponding to. *campaign* should refer to the name of a campaign
     label defined in dhi.config.campaign_labels.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/significances.html#TODOOOOOOOOOOOO
+    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/significances.html
     """
     import plotlib.root as r
     ROOT = import_ROOT()

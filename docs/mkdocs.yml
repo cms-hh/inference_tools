@@ -89,6 +89,7 @@ nav:
     - 1D Likelihood Scans: tasks/likelihood1d.md
     - 2D Likelihood Scans: tasks/likelihood2d.md
     - Pulls and Impacts: tasks/pullsandimpacts.md
+    - Significances: tasks/significances.md
     - Miscellaneous Tasks: tasks/misc.md
   - Datacard Manipulation: datacard_manipulation.md
   - Datacard Validation: datacardvalidation.md
