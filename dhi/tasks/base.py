@@ -112,7 +112,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
     transfer_logs = luigi.BoolParameter(
         default=True,
         significant=False,
-        description="transfer job logs to the output directory, default: True",
+        description="transfer job logs to the output directory; default: True",
     )
     only_missing = luigi.BoolParameter(
         default=True,
@@ -123,19 +123,25 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         default=2.0,
         unit="h",
         significant=False,
-        description="maximum runtime, default unit is hours, default: 2",
+        description="maximum runtime; default unit is hours; default: 2",
+    )
+    request_cpus = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="number of CPUs to request; empty value leads to the cluster default setting; "
+        "default: empty",
     )
     htcondor_flavor = luigi.ChoiceParameter(
         default="cern",
         choices=("cern",),
         significant=False,
-        description="the 'flavor' (i.e. configuration name) of the batch system, choices: cern",
+        description="the 'flavor' (i.e. configuration name) of the batch system; choices: cern",
     )
     htcondor_getenv = luigi.BoolParameter(
         default=False,
         significant=False,
         description="whether to use htcondor's getenv feature to set the job enrivonment to the "
-        "current one, instead of using bundled versions of the repository and software, "
+        "current one, instead of using bundled versions of the repository and software; "
         "default: False",
     )
 
@@ -173,6 +179,10 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 
         # max runtime
         config.custom_content.append(("+MaxRuntime", int(math.floor(self.max_runtime * 3600)) - 1))
+
+        # request cpus
+        if self.request_cpus > 0:
+            config.custom_content.append(("RequestCpus", self.request_cpus))
 
         # render_variables are rendered into all files sent with a job
         if self.htcondor_getenv:
