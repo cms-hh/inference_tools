@@ -188,6 +188,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
 
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.log
     def run(self):
         import numpy as np
 
@@ -269,6 +270,7 @@ class PlotMultipleUpperLimits(MultiDatacardTask, PlotUpperLimits):
 
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.log
     def run(self):
         # prepare the output
         output = self.output()
@@ -355,6 +357,7 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
 
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.log
     def run(self):
         # prepare the output
         output = self.output()
@@ -429,6 +432,7 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
 
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.log
     def run(self):
         import numpy as np
         import numpy.lib.recfunctions as rec
@@ -486,6 +490,7 @@ class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
 
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.log
     def run(self):
         import numpy as np
         import numpy.lib.recfunctions as rec
@@ -577,6 +582,7 @@ class PlotPullsAndImpacts(PlotTask, POITask1D):
 
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.log
     def run(self):
         # prepare the output
         output = self.output()
@@ -621,6 +627,7 @@ class PlotBestFitAndExclusion(PlotTask, MultiDatacardTask, POIScanTask1DWithR):
 
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.log
     def run(self):
         import numpy as np
         import numpy.lib.recfunctions as rec
@@ -688,6 +695,7 @@ class PlotSignificanceScan(PlotTask, POIScanTask1DWithR):
 
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.log
     def run(self):
         import numpy as np
 
@@ -744,6 +752,7 @@ class PlotMultipleSignificanceScans(MultiDatacardTask, PlotSignificanceScan):
 
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.log
     def run(self):
         # prepare the output
         output = self.output()

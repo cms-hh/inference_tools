@@ -69,8 +69,8 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         model_hh_processes |= {sample.label for sample in model.vbf_formula.sample_list}
         to_remove = all_hh_processes - model_hh_processes
         if to_remove:
-            self.logger.info("trying to remove processes {} from the combined datacard as they are "
-                "not part of the phyics model {}".format(",".join(to_remove), self.hh_model))
+            self.logger.info("trying to remove processe(s) {} from the combined datacard as they "
+                "are not part of the phyics model {}".format(",".join(to_remove), self.hh_model))
             remove_processes_script(output.path, map("{}*".format, to_remove))
 
         # copy shape files to output location
@@ -153,6 +153,7 @@ class MergeUpperLimits(POIScanTask1DWithR):
     def output(self):
         return self.local_target_dc("limits__{}.npz".format(self.get_poi_postfix()))
 
+    @law.decorator.log
     def run(self):
         import numpy as np
 
@@ -250,6 +251,7 @@ class MergeLikelihoodScan1D(POIScanTask1D):
     def output(self):
         return self.local_target_dc("likelihoods__{}.npz".format(self.get_poi_postfix()))
 
+    @law.decorator.log
     def run(self):
         import numpy as np
 
@@ -339,6 +341,7 @@ class MergeLikelihoodScan2D(POIScanTask2D):
     def output(self):
         return self.local_target_dc("likelihoods__{}.npz".format(self.get_poi_postfix()))
 
+    @law.decorator.log
     def run(self):
         import numpy as np
 
@@ -484,6 +487,7 @@ class MergePullsAndImpacts(POITask1D):
 
         return self.local_target_dc("pulls_impacts__{}.json".format(postfix))
 
+    @law.decorator.log
     def run(self):
         # get input targets, the branch map for resolving names and further parameter information
         req = self.requires()
@@ -589,6 +593,7 @@ class MergeSignificanceScan(POIScanTask1DWithR):
     def output(self):
         return self.local_target_dc("significance__{}.npz".format(self.get_poi_postfix()))
 
+    @law.decorator.log
     def run(self):
         import numpy as np
         import scipy as sp

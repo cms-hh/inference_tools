@@ -11,7 +11,10 @@ import shutil
 import itertools
 import array
 import contextlib
+import subprocess
 import logging
+
+import six
 
 
 # modules and objects from lazy imports
@@ -285,3 +288,42 @@ def patch_object(obj, attr, value):
                 setattr(obj, attr, orig)
         except:
             pass
+
+
+def readable_popen(*args, **kwargs):
+    """
+    Creates a :py:class:`Popen` object and a generator function yielding the output line-by-line as
+    it comes in. All *args* and *kwargs* are forwarded to the :py:class:`Popen` constructor.
+    Example:
+
+    .. code-block:: python
+
+        # create the popen object and line generator
+        p, lines = readable_popen(["some_executable", "--args"])
+
+        # loop through output lines as they come in
+        for line in lines:
+            print(line)
+
+        if p.returncode != 0:
+            raise Exception("complain ...")
+
+    ``communicate()`` is called automatically after the output iteration terminates which sets the
+    subprocess' *returncode* member.
+    """
+    # force pipes
+    kwargs["stdout"] = subprocess.PIPE
+    kwargs["stderr"] = subprocess.STDOUT
+
+    p = subprocess.Popen(*args, **kwargs)
+
+    def line_gen():
+        for line in iter(lambda: p.stdout.readline(), ""):
+            if six.PY3:
+                line = line.decode("utf-8")
+            yield line.rstrip()
+
+        # communicate in the end
+        p.communicate()
+
+    return p, line_gen()

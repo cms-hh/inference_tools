@@ -12,6 +12,9 @@ from collections import OrderedDict
 import luigi
 import law
 
+from dhi.util import readable_popen
+
+
 law.contrib.load("git", "htcondor", "matplotlib", "numpy", "root", "tasks", "wlcg")
 
 
@@ -335,33 +338,6 @@ class CommandTask(AnalysisTask):
         # this method should build and return the command to run
         raise NotImplementedError
 
-    def run_command(self, cmd, optional=False, **kwargs):
-        # proper command encoding
-        cmd = (law.util.quote_cmd(cmd) if isinstance(cmd, (list, tuple)) else cmd).strip()
-
-        # when no cwd was set and run_command_in_tmp is True, create a tmp dir
-        if "cwd" not in kwargs and self.run_command_in_tmp:
-            tmp_dir = law.LocalDirectoryTarget(is_tmp=True)
-            tmp_dir.touch()
-            kwargs["cwd"] = tmp_dir.path
-
-        # call it
-        with self.publish_step("running '{}' ...".format(law.util.colored(cmd, "cyan"))):
-            code, out, err = law.util.interruptable_popen(
-                cmd, shell=True, executable="/bin/bash", **kwargs
-            )
-
-        # raise an exception when the call failed and optional is not True
-        if code != 0 and not optional:
-            msg = "command failed with exit code {}: {}".format(code, cmd)
-            if out:
-                msg += "\noutput: {}".format(out)
-            if err:
-                msg += "\nerror: {}".format(err)
-            raise Exception(msg)
-
-        return code, out, err
-
     def touch_output_dirs(self):
         # keep track of created uris so we can avoid creating them twice
         handled_parent_uris = set()
@@ -379,6 +355,29 @@ class CommandTask(AnalysisTask):
                 parent.touch()
                 handled_parent_uris.add(parent.uri())
 
+    def run_command(self, cmd, optional=False, **kwargs):
+        # proper command encoding
+        cmd = (law.util.quote_cmd(cmd) if isinstance(cmd, (list, tuple)) else cmd).strip()
+
+        # when no cwd was set and run_command_in_tmp is True, create a tmp dir
+        if "cwd" not in kwargs and self.run_command_in_tmp:
+            tmp_dir = law.LocalDirectoryTarget(is_tmp=True)
+            tmp_dir.touch()
+            kwargs["cwd"] = tmp_dir.path
+
+        # call it
+        with self.publish_step("running '{}' ...".format(law.util.colored(cmd, "cyan"))):
+            p, lines = readable_popen(cmd, shell=True, executable="/bin/bash", **kwargs)
+            for line in lines:
+                print(line)
+
+        # raise an exception when the call failed and optional is not True
+        if p.returncode != 0 and not optional:
+            raise Exception("command failed with exit code {}: {}".format(p.returncode, cmd))
+
+        return p
+
+    @law.decorator.log
     @law.decorator.safe_output
     def run(self, **kwargs):
         # default run implementation
