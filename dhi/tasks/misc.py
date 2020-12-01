@@ -8,8 +8,8 @@ import os
 import law
 import luigi
 
-from dhi.tasks.nlo.base import CombineCommandTask
-from dhi.tasks.nlo.inference import CreateWorkspace, PullsAndImpacts
+from dhi.tasks.combine import CombineCommandTask
+from dhi.tasks.inference import CreateWorkspace, PullsAndImpacts
 
 
 # currently disabled since we decided to use a non-CMSSW environment which does not allow to run any

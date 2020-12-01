@@ -12,7 +12,7 @@ import law
 import luigi
 
 from dhi.tasks.base import HTCondorWorkflow
-from dhi.tasks.nlo.base import (
+from dhi.tasks.combine import (
     CombineCommandTask, DatacardTask, POITask1D, POIScanTask1D, POIScanTask1DWithR,
     POIScanTask2D,
 )

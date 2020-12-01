@@ -9,11 +9,11 @@ import luigi
 import six
 
 from dhi.tasks.base import AnalysisTask
-from dhi.tasks.nlo.base import (
+from dhi.tasks.combine import (
     MultiDatacardTask, POITask1D, POIScanTask1D, POITask1DWithR, POIScanTask1DWithR,
     POIScanTask2D,
 )
-from dhi.tasks.nlo.inference import (
+from dhi.tasks.inference import (
     UpperLimits, MergeUpperLimits, MergeLikelihoodScan1D, MergeLikelihoodScan2D,
     MergePullsAndImpacts, SignificanceScan, MergeSignificanceScan,
 )
