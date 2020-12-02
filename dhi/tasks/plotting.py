@@ -15,7 +15,7 @@ from dhi.tasks.combine import (
 )
 from dhi.tasks.inference import (
     UpperLimits, MergeUpperLimits, MergeLikelihoodScan1D, MergeLikelihoodScan2D,
-    MergePullsAndImpacts, SignificanceScan, MergeSignificanceScan,
+    MergePullsAndImpacts, SignificanceScan, MergeSignificanceScan, PostFitShapes,
 )
 from dhi.config import br_hh, br_hh_names, nuisance_labels
 
@@ -792,5 +792,49 @@ class PlotMultipleSignificanceScans(MultiDatacardTask, PlotSignificanceScan):
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             pp_process={"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}[self.r_poi],
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
+        )
+
+
+class PlotSOverB(PlotTask, POITask1D):
+
+    poi = PostFitShapes.poi
+    bin_edges = law.CSVParameter(
+        default=tuple(),
+        significant=False,
+        description="comma-separated list of bin edges to use; when empty, a automatic binning is "
+        "applied; default: empty",
+    )
+
+    def requires(self):
+        return PostFitShapes.req(self)
+
+    def output(self):
+        return self.local_target_dc("sb__{}.{}".format(self.get_poi_postfix(), self.file_type))
+
+    @view_output_plots
+    @law.decorator.safe_output
+    @law.decorator.log
+    def run(self):
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
+
+        # get the path to the fit diagnostics file
+        fit_diagnostics_path = self.input().path
+
+        # get the proper plot function and call it
+        # (only the mpl version exists right now)
+        from dhi.plots.misc_root import plot_s_over_b
+
+        plot_s_over_b(
+            path=output.path,
+            fit_diagnostics_path=fit_diagnostics_path,
+            poi=self.poi,
+            bin_edges=self.bin_edges,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
+            y_min=self.get_axis_limit("y_min"),
+            y_max=self.get_axis_limit("y_max"),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )

@@ -262,3 +262,20 @@ def evaluate_limit_scan_1d(poi_values, limit_values):
         interp=interp,
         excluded_ranges=excluded_ranges,
     )
+
+
+def plot_s_over_b(
+    path,
+    fit_diagnostics_path,
+    poi,
+    bin_edges=None,
+    x_min=None,
+    x_max=None,
+    y_min=None,
+    y_max=None,
+    campaign=None
+):
+    """
+    TODO.
+    """
+    raise NotImplementedError()

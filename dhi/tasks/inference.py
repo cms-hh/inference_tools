@@ -13,7 +13,7 @@ import luigi
 
 from dhi.tasks.base import HTCondorWorkflow
 from dhi.tasks.combine import (
-    CombineCommandTask, DatacardTask, POITask1D, POIScanTask1D, POIScanTask1DWithR,
+    CombineCommandTask, DatacardTask, POITask, POITask1D, POIScanTask1D, POIScanTask1DWithR,
     POIScanTask2D,
 )
 from dhi.util import linspace
@@ -620,3 +620,42 @@ class MergeSignificanceScan(POIScanTask1DWithR):
 
         data = np.array(records, dtype=dtype)
         self.output().dump(data=data, formatter="numpy")
+
+
+class PostFitShapes(POITask1D, CombineCommandTask):
+
+    run_command_in_tmp = True
+
+    poi = luigi.ChoiceParameter(
+        default="r",
+        choices=POITask.r_pois,
+        description="name of the poi; choices: {}; default: r".format(",".join(POITask.r_pois)),
+    )
+
+    def requires(self):
+        return CreateWorkspace.req(self)
+
+    def output(self):
+        return self.local_target_dc("fitdiagnostics__{}.root".format(self.get_poi_postfix()))
+
+    def build_command(self):
+        return (
+            "combine -M FitDiagnostics {workspace}"
+            " -m {self.mass}"
+            " -v 1"
+            " -t -1"
+            " --setParameters {self.set_pois},{self.poi}={self.poi_value}"
+            " --freezeParameters {self.frozen_pois}"
+            " --expectSignal {self.poi_value}"
+            " --saveShapes"
+            " --saveWithUncertainties"
+            " --X-rtd MINIMIZER_analytic"
+            " {self.combine_stable_options}"
+            " {self.custom_args}"
+            " && "
+            "mv fitDiagnostics.root {output}"
+        ).format(
+            self=self,
+            workspace=self.input().path,
+            output=self.output().path,
+        )
