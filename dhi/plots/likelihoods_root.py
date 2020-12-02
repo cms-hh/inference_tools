@@ -104,13 +104,13 @@ def plot_likelihood_scan_1d(
         # theory graph and line
         g_thy = create_tgraph(0, theory_value[0], 0, theory_value[2], theory_value[1], 0,
             y_max_value)
-        r.setup_graph(g_thy, props={"FillStyle": 3345, "MarkerStyle": 20, "MarkerSize": 0},
+        r.setup_graph(g_thy, props={"FillStyle": 3001, "MarkerStyle": 20, "MarkerSize": 0},
             color=_colors.root.red, color_flags="lfm")
         line_thy = ROOT.TLine(theory_value[0], 0., theory_value[0], y_max_value)
         r.setup_line(line_thy, props={"NDC": False}, color=_colors.root.red)
         draw_objs.append((g_thy, "SAME,2"))
         draw_objs.append(line_thy)
-        legend_entries.append((g_thy, "SM prediction"))
+        legend_entries.append((g_thy, "Theory prediction"))
 
     # line for best fit value
     line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_value)

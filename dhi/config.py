@@ -28,7 +28,7 @@ br_h = DotDict(
 )
 br_ww = DotDict(
     qqqq=br_w.qq ** 2.0,
-    llvv=br_w.lv ** 2.0,
+    lvlv=br_w.lv ** 2.0,
     qqlv=2.0 * br_w.qq * br_w.lv,
 )
 br_zz = DotDict(
@@ -41,7 +41,7 @@ br_hh = DotDict(
     bbvv=2.0 * br_h.bb * (br_h.ww + br_h.zz),
     bbww=2.0 * br_h.bb * br_h.ww,
     bbwwqqlv=2.0 * br_h.bb * br_h.ww * br_ww.qqlv,
-    bbwwllvv=2.0 * br_h.bb * br_h.ww * br_ww.llvv,
+    bbwwlvlv=2.0 * br_h.bb * br_h.ww * br_ww.lvlv,
     bbzz=2.0 * br_h.bb * br_h.zz,
     bbzzqqll=2.0 * br_h.bb * br_h.zz * br_zz.qqll,
     bbzzllll=2.0 * br_h.bb * br_h.zz * br_zz.llll,
@@ -85,9 +85,9 @@ campaign_labels = DotDict({
 
 # poi defaults (value, range, points, taken from physics model) and labels
 poi_data = DotDict({
-    "r": DotDict(range=(0.0, 10.0), label="r"),
-    "r_gghh": DotDict(range=(0.0, 10.0), label="r_{gghh}"),
-    "r_qqhh": DotDict(range=(0.0, 10.0), label="r_{qqhh}"),
+    "r": DotDict(range=(-20.0, 20.0), label="r"),
+    "r_gghh": DotDict(range=(-20.0, 20.0), label="r_{gghh}"),
+    "r_qqhh": DotDict(range=(-20.0, 20.0), label="r_{qqhh}"),
     "kl": DotDict(range=(-30.0, 30.0), label=r"\kappa_{\lambda}"),
     "kt": DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}"),
     "C2V": DotDict(range=(-10.0, 10.0), label=r"\kappa_{VV}"),

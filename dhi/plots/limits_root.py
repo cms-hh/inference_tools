@@ -33,8 +33,9 @@ def plot_limit_scan(
     should be a mapping to lists of values or a record array with keys "<poi_name>" and "limit", and
     optionally "limit_p1" (plus 1 sigma), "limit_m1" (minus 1 sigma), "limit_p2" and "limit_m2".
     When the variations by 1 or 2 sigma are missing, the plot is created without them. When
-    *observed_values* or *theory_values* are given, they should be single lists of values.
-    Therefore, they must have the same length as the lists given in *expected_values*.
+    *observed_values* is set, it should have a similar format with keys "<poi_name>" and "limit".
+    When *theory_values* is set, it should have a similar format with keys "<poi_name>" and "xsec",
+    and optionally "xsec_p1" and "xsec_m1".
 
     When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*,
     *y_min* and *y_max* define the axis ranges and default to the range of the given values.
@@ -50,22 +51,22 @@ def plot_limit_scan(
     import plotlib.root as r
     ROOT = import_ROOT()
 
-    # convert record array to dict mapping to arrays
-    if isinstance(expected_values, np.ndarray):
-        expected_values = {key: expected_values[key] for key in expected_values.dtype.names}
-
     # input checks
-    assert poi in expected_values
-    assert "limit" in expected_values
+    def check_values(values, keys=None):
+        # convert record array to dict mapping to arrays
+        if isinstance(values, np.ndarray):
+            values = {key: values[key] for key in values.dtype.names}
+        assert poi in values
+        if keys:
+            assert all(key in values for key in keys)
+        return values
+
+    expected_values = check_values(expected_values, ["limit"])
     poi_values = expected_values[poi]
-    n_points = len(poi_values)
-    assert all(len(d) == n_points for d in expected_values.values())
     if observed_values is not None:
-        assert len(observed_values) == n_points
-        observed_values = np.array(observed_values)
+        observed_values = check_values(observed_values, ["limit"])
     if theory_values is not None:
-        assert len(theory_values) == n_points
-        theory_values = np.array(theory_values)
+        theory_values = check_values(theory_values, ["xsec"])
 
     # set default ranges
     if x_min is None:
@@ -94,19 +95,19 @@ def plot_limit_scan(
     legend_entries = 6 * [(h_dummy, " ", "")]
 
     # helper to read values into graphs
-    def create_graph(sigma=None, values=None):
+    def create_graph(values=expected_values, key="limit", sigma=None):
         # repeat the edges by padding to prevent bouncing effects of interpolated lines
         pad = lambda arr: np.pad(np.array(arr, dtype=np.float32), 1, mode="edge")
-        arr = lambda key: pad(np.array(expected_values[key], dtype=np.float32))
-        zeros = np.zeros(n_points + 2, dtype=np.float32)
+        arr = lambda key: pad(values[key])
+        zeros = np.zeros(len(values[key]) + 2, dtype=np.float32)
         return ROOT.TGraphAsymmErrors(
-            n_points + 2,
+            len(values[key]) + 2,
             pad(poi_values),
-            pad(values) if values is not None else arr("limit"),
+            arr(key),
             zeros,
             zeros,
-            (arr("limit") - arr("limit_m{}".format(sigma))) if sigma else zeros,
-            (arr("limit_p{}".format(sigma)) - arr("limit")) if sigma else zeros,
+            (arr(key) - arr("{}_m{}".format(key, sigma))) if sigma else zeros,
+            (arr("{}_p{}".format(key, sigma)) - arr(key)) if sigma else zeros,
         )
 
     # 2 sigma band
@@ -130,10 +131,10 @@ def plot_limit_scan(
         y_min_value = min(y_min_value, min(expected_values["limit_m1"]))
 
     # central values
-    g_exp = create_graph(sigma=0)
+    g_exp = create_graph()
     r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
         "MarkerSize": 0})
-    draw_objs.append((g_exp, "SAME,LEZ"))
+    draw_objs.append((g_exp, "SAME,LZ"))
     legend_entries[3] = (g_exp, "Median expected")
     y_max_value = max(y_max_value, max(expected_values["limit"]))
     y_min_value = min(y_min_value, min(expected_values["limit"]))
@@ -145,16 +146,24 @@ def plot_limit_scan(
             "MarkerSize": 0})
         draw_objs.append((g_inj, "SAME,L"))
         legend_entries[0] = (g_inj, "Observed")
-        y_max_value = max(y_max_value, max(observed_values))
-        y_min_value = min(y_min_value, min(observed_values))
+        y_max_value = max(y_max_value, max(observed_values["limit"]))
+        y_min_value = min(y_min_value, min(observed_values["limit"]))
 
     # theory prediction
     if theory_values is not None:
-        g_thy = create_graph(values=theory_values)
-        r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-            "MarkerSize": 0, "LineColor": _colors.root.red})
-        draw_objs.append((g_thy, "SAME,L"))
-        legend_entries[0 if observed_values is None else 1] = (g_thy, "SM prediction")
+        if "xsec_p1" in theory_values and "xsec_m1" in theory_values:
+            g_thy = create_graph(values=theory_values, key="xsec", sigma=1)
+            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
+                "MarkerSize": 0, "FillStyle": 3001}, color=_colors.root.red, color_flags="lf")
+            draw_objs.append((g_thy, "SAME,C4"))
+            y_min_value = min(y_min_value, min(theory_values["xsec_m1"]))
+        else:
+            g_thy = create_graph(values=theory_values, key="xsec")
+            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
+                "MarkerSize": 0}, color=_colors.root.red, color_flags="l")
+            draw_objs.append((g_thy, "SAME,L"))
+            y_min_value = min(y_min_value, min(theory_values["xsec"]))
+        legend_entries[0 if observed_values is None else 1] = (g_thy, "Theory prediction")
 
     # set limits
     if y_min is None:
@@ -197,8 +206,8 @@ def plot_limit_scan(
 def plot_limit_scans(
     path,
     poi,
-    expected_values,
     names,
+    expected_values,
     theory_values=None,
     colors=None,
     y_log=False,
@@ -215,11 +224,10 @@ def plot_limit_scans(
     Creates a plot showing multiple upper limit scans of a *poi* and saves it at *path*.
     *expected_values* should be a list of mappings to lists of values or a record array with keys
     "<poi_name>" and "limit". Each mapping in *expected_values* will result in a different curve.
-    When *theory_values* is given, it should be a single lists of values. Therefore, it must have
-    the same length as the lists given in *expected_values*. *names* denote the names of limit
-    curves shown in the legend. When a name is found to be in dhi.config.br_hh_names, its value is
-    used as a label instead. Likewise, *colors* can be a sequence of color numbers or names to be
-    used per curve.
+    When *theory_values* is set, it should have a similar format with keys "<poi_name>" and "xsec",
+    and optionally "xsec_p1" and "xsec_m1". *names* denote the names of limit curves shown in the
+    legend. When a name is found to be in dhi.config.br_hh_names, its value is used as a label
+    instead. Likewise, *colors* can be a sequence of color numbers or names to be used per curve.
 
     When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*,
     *y_min* and *y_max* define the axis ranges and default to the range of the given values.
@@ -251,11 +259,12 @@ def plot_limit_scans(
     assert all(poi in ev for ev in expected_values)
     assert all("limit" in ev for ev in expected_values)
     poi_values = expected_values[0][poi]
-    n_points = len(poi_values)
-    assert all(len(ev["limit"]) == n_points for ev in expected_values)
     if theory_values is not None:
-        assert len(theory_values) == n_points
-        theory_values = np.array(theory_values)
+        # convert record array to dicts mapping to arrays
+        if isinstance(theory_values, np.ndarray):
+            theory_values = {key: theory_values[key] for key in theory_values.dtype.names}
+        assert poi in theory_values
+        assert "xsec" in theory_values
 
     # set default ranges
     if x_min is None:
@@ -283,11 +292,21 @@ def plot_limit_scans(
 
     # theory prediction
     if theory_values is not None:
-        g_thy = create_tgraph(n_points, poi_values, theory_values)
-        r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-            "MarkerSize": 0, "LineColor": _colors.root.red})
-        draw_objs.append((g_thy, "SAME,L"))
-        legend_entries.append((g_thy, "SM prediction"))
+        if "xsec_p1" in theory_values and "xsec_m1" in theory_values:
+            g_thy = create_tgraph(len(poi_values), poi_values, theory_values["xsec"], 0, 0,
+                theory_values["xsec"] - theory_values["xsec_m1"],
+                theory_values["xsec_p1"] - theory_values["xsec"])
+            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
+                "MarkerSize": 0, "FillStyle": 3001}, color=_colors.root.red, color_flags="lf")
+            draw_objs.append((g_thy, "SAME,C4"))
+            y_min_value = min(y_min_value, min(theory_values["xsec_m1"]))
+        else:
+            g_thy = create_tgraph(len(poi_values), poi_values, theory_values["xsec"])
+            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
+                "MarkerSize": 0}, color=_colors.root.red, color_flags="l")
+            draw_objs.append((g_thy, "SAME,L"))
+            y_min_value = min(y_min_value, min(theory_values["xsec"]))
+        legend_entries.append((g_thy, "Theory prediction"))
 
     # central values
     for i, ev in enumerate(expected_values[::-1]):
@@ -349,64 +368,87 @@ def plot_limit_scans(
 def plot_limit_points(
     path,
     data,
-    theory_value=None,
     x_log=False,
     x_min=None,
     x_max=None,
     xsec_unit=None,
     pp_process="pp",
+    hh_process="HH",
     campaign="2017",
 ):
     """
     Creates a plot showing a comparison of limits of multiple analysis (or channels) and saves it at
-    *path*. *data* should be a list of dictionaries with fields "expected" (a sequence of five
-    values, i.e., central limit, +1 sigma, -1 sigma, +2 sigma, and -2 sigma), and optionally
-    "observed" and "name" (shown on the y-axis). When the name is a key of dhi.config.br_hh_names,
-    its value is used as a label instead.
+    *path*. *data* should be a list of dictionaries with fields
+
+    - "expected", a sequence of five values, i.e., central limit, and +1 sigma, -1 sigma, +2 sigma,
+      and -2 sigma variations (absolute values, not errors!),
+    - "observed" (optional), a single value,
+    - "theory" (optional), a single value or a sequence of three values, i.e., nominal value, and
+      +1 sigma and -1 sigma variations (absolute values, not errors!),
+    - "name", shown as the y-axis label and when it is a key of dhi.config.br_hh_names,
+      its value is used as a label instead.
+
+    Example:
 
     .. code-block:: python
 
         plot_limit_points(
             path="plot.pdf",
             data=[{
-                "expected": (40., 10., 12., 18., 22.),
-                "observed": 45.
+                "expected": (40., 50., 28., 58., 18.),
+                "observed": 45.,
+                "theory": (38., 40., 36.),
+                "name": "bbXX",
             }, {
                 ...
             }],
         )
 
-    When *theory_value* is not *None*, a vertical red line is drawn at this value to denote the
-    predicted value. When *x_log* is *True*, the x-axis is scaled logarithmically. *x_min* and
-    *x_max* define the range of the x-axis and default to the maximum range of values passed in
-    data, including uncertainties. *xsec_unit* denotes whether the passed values are given as real
-    cross sections in this unit or, when *None*, as a ratio over the theory prediction. The
-    *pp_process* label is shown in the x-axis title to denote the physics process the computed
-    values are corresponding to. *campaign* should refer to the name of a campaign label defined in
-    dhi.config.campaign_labels.
+    When *x_log* is *True*, the x-axis is scaled logarithmically. *x_min* and *x_max* define the
+    range of the x-axis and default to the maximum range of values passed in data, including
+    uncertainties. *xsec_unit* denotes whether the passed values are given as real cross sections in
+    this unit or, when *None*, as a ratio over the theory prediction. The *pp_process* label is
+    shown in the x-axis title to denote the physics process the computed values are corresponding
+    to. *hh_process* is inserted to the process name in the title of the x-axis and indicates that
+    the plotted cross section data was (e.g.) scaled by a branching ratio. *campaign* should refer
+    to the name of a campaign label defined in dhi.config.campaign_labels.
 
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html#multiple-limits-at-a-certain-poi-value
     """
     import plotlib.root as r
     ROOT = import_ROOT()
 
-    # check minimal fields per data entry
-    assert(all("name" in d for d in data))
-    assert(all("expected" in d for d in data))
+    # check inputs and get extrema
     n = len(data)
-    has_obs = any("observed" in d for d in data)
+    has_obs = False
+    has_thy = False
+    x_min_value = 1e5
+    x_max_value = -1e5
+    for d in data:
+        assert("name" in d)
+        assert("expected" in d)
+        x_min_value = min(x_min_value, min(d["expected"]))
+        x_max_value = max(x_max_value, max(d["expected"]))
+        if "observed" in d:
+            assert(isinstance(d["observed"], (float, int)))
+            has_obs = True
+            x_min_value = min(x_min_value, d["observed"])
+            x_max_value = max(x_max_value, d["observed"])
+        if "theory" in d:
+            if not isinstance(d["theory"], (tuple, list)):
+                d["theory"] = 3 * (d["theory"],)
+            assert(len(d["theory"]) == 3)
+            has_thy = True
+            x_min_value = min(x_min_value, min(d["theory"]))
+            x_max_value = max(x_max_value, max(d["theory"]))
 
     # set default ranges
     if x_min is None:
         if not xsec_unit:
             x_min = 0.75 if x_log else 0.
         else:
-            x_min_value = min(sum(([e["expected"][3], e.get("observed", 1e6)] for e in data), []))
-            if theory_value:
-                x_min_value = min(x_min_value, theory_value)
             x_min = 0.75 * x_min_value
     if x_max is None:
-        x_max_value = max(sum(([e["expected"][3], e.get("observed", 0)] for e in data), []))
         x_max = x_max_value * 1.33
 
     # some constants for plotting
@@ -439,8 +481,9 @@ def plot_limit_points(
     draw_objs = []
 
     # dummy histogram to control axes
-    x_title = "Upper 95% CLs limit on #sigma({} #rightarrow HH) / {}".format(
-        to_root_latex(pp_process), to_root_latex(xsec_unit or "#sigma_{SM}"))
+    x_title = "Upper 95% CLs limit on #sigma({} #rightarrow {}) / {}".format(
+        to_root_latex(pp_process), to_root_latex(hh_process),
+        to_root_latex(xsec_unit or "#sigma_{SM}"))
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad, props={"TitleOffset": 1.2})
@@ -450,22 +493,20 @@ def plot_limit_points(
     legend_entries = 6 * [(h_dummy, " ", "")]
 
     # helper to read values into graphs
-    def create_graph(sigma=None, obs=False):
+    def create_graph(key="expected", sigma=None):
         # repeat the edges by padding to prevent bouncing effects of interpolated lines
+        _data = [d for d in data if key in d]
+        n = len(_data)
         zeros = np.zeros(n, dtype=np.float32)
         y = (np.arange(n, dtype=np.float32))[::-1]
         x_err_u, x_err_d = zeros, zeros
         y_err_u, y_err_d = zeros + 1, zeros
-        if obs:
-            limits = np.array([d.get("observed", 1e5) for d in data], dtype=np.float32)
-            y, y_err_u, y_err_d = y + 0.5, zeros + 0.5, zeros + 0.5
-        else:
-            limits = np.array([d["expected"][0] for d in data], dtype=np.float32)
-            if sigma:
-                x_err_d = np.array([d["expected"][sigma * 2] for d in data], dtype=np.float32)
-                x_err_d = limits - x_err_d
-                x_err_u = np.array([d["expected"][sigma * 2 - 1] for d in data], dtype=np.float32)
-                x_err_u = x_err_u - limits
+        limits = np.array([d[key][0] for d in _data], dtype=np.float32)
+        if sigma:
+            x_err_d = np.array([d[key][sigma * 2] for d in _data], dtype=np.float32)
+            x_err_d = limits - x_err_d
+            x_err_u = np.array([d[key][sigma * 2 - 1] for d in _data], dtype=np.float32)
+            x_err_u = x_err_u - limits
         return create_tgraph(n, limits, y, x_err_d, x_err_u, y_err_d, y_err_u)
 
     # 2 sigma band
@@ -497,12 +538,17 @@ def plot_limit_points(
         draw_objs.append((g_inj, "SAME,PEZ"))
         legend_entries[0] = (g_inj, "Observed limit")
 
-    # vertical line for theory prediction
-    if theory_value is not None:
-        line_thy = ROOT.TLine(theory_value, 0., theory_value, n)
-        r.setup_line(line_thy, props={"NDC": False}, color=_colors.root.red)
-        draw_objs.append(line_thy)
-        legend_entries[1 if has_obs else 0] = (line_thy, "SM prediction", "l")
+    # vertical line for theory prediction, represented by a graph in case of uncertainties
+    if has_thy:
+        g_thy_area = create_graph(key="theory", sigma=1)
+        g_thy_line = create_graph(key="theory")
+        r.setup_graph(g_thy_area, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
+            "MarkerSize": 0, "FillStyle": 3001}, color=_colors.root.red, color_flags="lfm")
+        r.setup_graph(g_thy_line, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
+            "MarkerSize": 0}, color=_colors.root.red, color_flags="lm")
+        draw_objs.append((g_thy_area, "SAME,2"))
+        draw_objs.append((g_thy_line, "SAME,LZ"))
+        legend_entries[1 if has_obs else 0] = (g_thy_area, "Theory prediction", "lf")
 
     # line to separate combined result
     if len(data) > 1 and data[-1]["name"].lower() == "combined":
@@ -546,8 +592,7 @@ def plot_limit_points(
         draw_objs.extend([tl, tr])
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=440, height=100,
-        x2=r.get_x(0, pad, anchor="right"), y2=r.get_y(16, pad, anchor="top"))
+    legend = r.routines.create_legend(pad=pad, width=440, height=100)
     r.setup_legend(legend, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)

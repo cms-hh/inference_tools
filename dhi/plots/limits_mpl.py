@@ -33,8 +33,9 @@ def plot_limit_scan(
     should be a mapping to lists of values or a record array with keys "<poi_name>" and "limit", and
     optionally "limit_p1" (plus 1 sigma), "limit_m1" (minus 1 sigma), "limit_p2" and "limit_m2".
     When the variations by 1 or 2 sigma are missing, the plot is created without them. When
-    *observed_values* or *theory_values* are given, they should be single lists of values.
-    Therefore, they must have the same length as the lists given in *expected_values*.
+    *observed_values* is set, it should have a similar format with keys "<poi_name>" and "limit".
+    When *theory_values* is set, it should have a similar format with keys "<poi_name>" and "xsec",
+    and optionally "xsec_p1" and "xsec_m1".
 
     When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*,
     *y_min* and *y_max* define the axis ranges and default to the range of the given values.
@@ -52,17 +53,21 @@ def plot_limit_scan(
         expected_values = {key: expected_values[key] for key in expected_values.dtype.names}
 
     # input checks
-    assert poi in expected_values
+    def check_values(values, keys=None):
+        # convert record array to dict mapping to arrays
+        if isinstance(values, np.ndarray):
+            values = {key: values[key] for key in values.dtype.names}
+        assert poi in values
+        if keys:
+            assert all(key in values for key in keys)
+        return values
+
+    expected_values = check_values(expected_values, ["limit"])
     poi_values = expected_values[poi]
-    n_points = len(poi_values)
-    assert "limit" in expected_values
-    assert all(len(d) == n_points for d in expected_values.values())
     if observed_values is not None:
-        assert len(observed_values) == n_points
-        observed_values = np.array(observed_values)
+        observed_values = check_values(observed_values, ["limit"])
     if theory_values is not None:
-        assert len(theory_values) == n_points
-        theory_values = np.array(theory_values)
+        theory_values = check_values(theory_values, ["xsec"])
 
     # set default ranges
     if x_min is None:
@@ -112,7 +117,7 @@ def plot_limit_scan(
     if observed_values is not None:
         p = ax.plot(
             poi_values,
-            observed_values,
+            observed_values["limit"],
             label=r"Observed",
             color="black",
             linestyle="-",
@@ -123,8 +128,8 @@ def plot_limit_scan(
     if theory_values is not None:
         p = ax.plot(
             poi_values,
-            theory_values,
-            label=r"SM prediction",
+            theory_values["xsec"],
+            label=r"Theory prediction",
             color="red",
             linestyle="-",
         )

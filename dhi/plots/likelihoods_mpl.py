@@ -100,7 +100,7 @@ def plot_likelihood_scan_1d(
             facecolor="none",
             linewidth=0.,
             alpha=0.5,
-            label="SM prediction",
+            label="Theory prediction",
 
         )
         ax.plot(

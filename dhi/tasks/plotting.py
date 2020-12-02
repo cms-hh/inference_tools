@@ -160,32 +160,6 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
         name = self.create_plot_name("limits", self.get_poi_postfix(), parts)
         return self.local_target_dc(name)
 
-    def convert_r_to_xsec(self, expected_values, poi=None, xsec=None, br=None):
-        import numpy as np
-
-        # set defaults
-        if poi is None:
-            poi = self.poi
-        if xsec is None and self.xsec != law.NO_STR:
-            xsec = self.xsec
-        if br is None and self.br != law.NO_STR:
-            br = self.br
-
-        # create the conversion function
-        get_xsec = self.create_xsec_func(poi, xsec, br=br)
-
-        # convert values and remember theory values
-        expected_values = np.array(expected_values)
-        theory_values = []
-        limit_keys = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
-        for point in expected_values:
-            xsec = get_xsec(point[poi])
-            theory_values.append(xsec)
-            for key in limit_keys:
-                point[key] *= xsec
-
-        return expected_values, np.array(theory_values)
-
     @view_output_plots
     @law.decorator.safe_output
     @law.decorator.log
@@ -203,13 +177,19 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
         theory_values = None
         xsec_unit = None
         hh_process = "HH"
-        if self.xsec in ["pb", "fb"] and self.poi in ["kl", "C2V"]:
-            expected_values, theory_values = self.convert_r_to_xsec(expected_values)
-            xsec_unit = self.xsec
-            if self.br in br_hh:
-                hh_process = r"HH $\rightarrow$ " + br_hh_names[self.br]
-        else:
-            theory_values = np.ones(expected_values.size, dtype=np.float32)
+        if self.poi in ["kl", "C2V"]:
+            if self.xsec in ["pb", "fb"]:
+                expected_values = self.convert_to_xsecs(expected_values, self.poi, self.xsec,
+                    self.br)
+                theory_values = self.get_theory_xsecs(expected_values[self.poi], self.poi,
+                    self.xsec, self.br)
+                xsec_unit = self.xsec
+                if self.br in br_hh:
+                    hh_process = r"HH $\rightarrow$ " + br_hh_names[self.br]
+            else:
+                # normalized values at one with errors
+                theory_values = self.get_theory_xsecs(expected_values[self.poi], self.poi,
+                    normalize=True)
 
         # some printing
         for v in range(-2, 4 + 1):
@@ -283,18 +263,24 @@ class PlotMultipleUpperLimits(MultiDatacardTask, PlotUpperLimits):
         xsec_unit = None
         hh_process = "HH"
         for i, inp in enumerate(self.input()):
-            _expected_values = inp.load(formatter="numpy")["data"]
+            exp_values = inp.load(formatter="numpy")["data"]
 
             # rescale from limit on r to limit on xsec when requested, depending on the poi
-            if self.xsec in ["pb", "fb"] and self.poi in ["kl", "C2V"]:
-                _expected_values, _theory_values = self.convert_r_to_xsec(_expected_values)
-                if i == 0:
-                    theory_values = _theory_values
+            if self.poi in ["kl", "C2V"]:
+                if self.xsec in ["pb", "fb"]:
+                    exp_values = self.convert_to_xsecs(exp_values, self.poi, self.xsec, self.br)
                     xsec_unit = self.xsec
                     if self.br in br_hh:
                         hh_process = r"HH $\rightarrow$ " + br_hh_names[self.br]
+                    if i == 0:
+                        theory_values = self.get_theory_xsecs(exp_values[self.poi], self.poi,
+                            self.xsec, self.br)
+                elif i == 0:
+                    # normalized values at one with errors
+                    theory_values = self.get_theory_xsecs(exp_values[self.poi], self.poi,
+                        normalize=True)
 
-            expected_values.append(_expected_values)
+            expected_values.append(exp_values)
             names.append("datacards {}".format(i + 1))
 
         # set names if requested
@@ -312,8 +298,8 @@ class PlotMultipleUpperLimits(MultiDatacardTask, PlotUpperLimits):
         plot_limit_scans(
             path=output.path,
             poi=self.poi,
-            expected_values=expected_values,
             names=names,
+            expected_values=expected_values,
             theory_values=theory_values,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
@@ -330,6 +316,7 @@ class PlotMultipleUpperLimits(MultiDatacardTask, PlotUpperLimits):
 class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
 
     xsec = PlotUpperLimits.xsec
+    br = PlotUpperLimits.br
     x_log = luigi.BoolParameter(
         default=False,
         description="apply log scaling to the x-axis; default: False",
@@ -349,6 +336,8 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
         parts = []
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
+            if self.br not in (law.NO_STR, ""):
+                parts.append(self.br)
         if self.x_log:
             parts.append("log")
 
@@ -359,30 +348,44 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
     @law.decorator.safe_output
     @law.decorator.log
     def run(self):
+        import numpy as np
+
         # prepare the output
         output = self.output()
         output.parent.touch()
 
-        # prepare theory value and xsec converter
-        theory_value = 1.0
-        xsec_unit = None
-        get_xsec = None
-        if self.xsec in ["fb", "pb"] and self.poi in ["kl", "C2V"]:
-            xsec_unit = self.xsec
-            get_xsec = self.create_xsec_func(self.poi, xsec_unit)
-            theory_value = get_xsec(theory_value)
-
         # load limit values
-        data = []
-        for i, inp in enumerate(self.input()):
-            # get limits and convert to xsec when requested
-            limits = MergeUpperLimits.load_limits(inp)
-            limits = tuple(l * theory_value for l in limits)
+        names = [self.poi, "limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
+        expected_values = np.array([
+            MergeUpperLimits.load_limits(inp, poi_value=self.poi_value)
+            for inp in self.input()
+        ], dtype=[(name, np.float32) for name in names])
 
-            # add data entry
+        # rescale from limit on r to limit on xsec when requested, depending on the poi
+        theory_values = [None] * expected_values.size
+        xsec_unit = None
+        hh_process = "HH"
+        if self.poi in ["kl", "C2V"]:
+            if self.xsec in ["pb", "fb"]:
+                expected_values = self.convert_to_xsecs(expected_values, self.poi, self.xsec,
+                    self.br)
+                theory_values = self.get_theory_xsecs(expected_values[self.poi], self.poi,
+                    self.xsec, self.br)
+                xsec_unit = self.xsec
+                if self.br in br_hh:
+                    hh_process = r"HH $\rightarrow$ " + br_hh_names[self.br]
+            else:
+                # normalized values at one with errors
+                theory_values = self.get_theory_xsecs(expected_values[self.poi], self.poi,
+                    normalize=True)
+
+        # fill data entries as expected by the plot function
+        data = []
+        for i, (exp_record, thy_record) in enumerate(zip(expected_values, theory_values)):
             data.append({
                 "name": "datacards {}".format(i + 1),
-                "expected": limits,
+                "expected": exp_record.tolist()[1:],
+                "theory": thy_record and thy_record.tolist()[1:],
             })
 
         # set names if requested
@@ -400,12 +403,12 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
         plot_limit_points(
             path=output.path,
             data=data,
-            theory_value=theory_value,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             x_log=self.x_log,
             xsec_unit=xsec_unit,
             pp_process={"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}[self.r_poi],
+            hh_process=hh_process,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
 
@@ -449,6 +452,8 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
         # insert a dnll2 column
         expected_values = np.array(rec.append_fields(expected_values, ["dnll2"],
             [expected_values["delta_nll"] * 2.0]))
+
+        # TODO: when the poi is r*, we could perhaps also get and plot the theory uncertainty
 
         # get the proper plot function and call it
         if self.plot_flavor == "root":

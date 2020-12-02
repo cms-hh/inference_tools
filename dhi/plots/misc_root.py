@@ -70,7 +70,7 @@ def plot_bestfit_and_exclusion(
     bottom_margin = 70  # pixels
     left_margin = 150  # pixels
     entry_height = 90  # pixels
-    head_space = 100  # pixels
+    head_space = 130  # pixels
 
     # get the canvas height
     canvas_height = n * entry_height + head_space + top_margin + bottom_margin
@@ -155,7 +155,7 @@ def plot_bestfit_and_exclusion(
         line_one = ROOT.TLine(1., 0., 1., n)
         r.setup_line(line_one, props={"NDC": False, "LineStyle": 7}, color=_colors.root.black)
         draw_objs.insert(-1, line_one)
-        legend_entries.append((line_one, "SM prediction", "l"))
+        legend_entries.append((line_one, "Theory prediction", "l"))
 
     # line to separate combined result
     if len(data) > 1 and data[-1]["name"].lower() == "combined":
@@ -185,8 +185,7 @@ def plot_bestfit_and_exclusion(
         draw_objs.extend([tl, tr])
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=500, height=70,
-        x2=r.get_x(-45, pad, anchor="right"), y2=r.get_y(16, pad, anchor="top"))
+    legend = r.routines.create_legend(pad=pad, width=500, height=70)
     r.setup_legend(legend, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)

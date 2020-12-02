@@ -175,7 +175,7 @@ class MergeUpperLimits(POIScanTask1DWithR):
         self.output().dump(data=data, formatter="numpy")
 
     @classmethod
-    def load_limits(cls, inp):
+    def load_limits(cls, inp, poi_value=None):
         import numpy as np
 
         # load raw values
@@ -185,16 +185,22 @@ class MergeUpperLimits(POIScanTask1DWithR):
         # TODO: what to do when errors occurred?
         if len(limits) == 0:
             # no values, fit failed completely
-            return (np.nan, np.nan, np.nan, np.nan, np.nan)
+            values = (np.nan, np.nan, np.nan, np.nan, np.nan)
         elif len(limits) == 1:
             # only nominal value
-            return (limits[0], np.nan, np.nan, np.nan, np.nan)
+            values = (limits[0], np.nan, np.nan, np.nan, np.nan)
         elif len(limits) == 3:
             # 1 sigma variations exist, but not 2 sigma
-            return (limits[1], limits[2], limits[0], np.nan, np.nan)
+            values = (limits[1], limits[2], limits[0], np.nan, np.nan)
         else:
             # both 1 and 2 sigma variations exist
-            return (limits[2], limits[3], limits[1], limits[4], limits[0])
+            values = (limits[2], limits[3], limits[1], limits[4], limits[0])
+
+        # prepend the poi_value when given
+        if poi_value is not None:
+            values = (poi_value,) + values
+
+        return values
 
 
 class LikelihoodScan1D(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):

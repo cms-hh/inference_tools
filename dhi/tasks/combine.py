@@ -81,13 +81,13 @@ class HHModelTask(AnalysisTask):
             raise ValueError("cross section conversion not supported for poi {}".format(poi))
         if unit not in ["fb", "pb"]:
             raise ValueError("cross section conversion not supported for unit {}".format(unit))
-        if isinstance(br, six.string_types) and br not in br_hh:
+        if br and br != law.NO_STR and br not in br_hh:
             raise ValueError("unknown decay channel name {}".format(br))
 
         # compute the scale conversion
         scale = {"pb": 1., "fb": 1000.}[unit]
-        if br:
-            scale *= br_hh[br] if isinstance(br, six.string_types) else br
+        if br in br_hh:
+            scale *= br_hh[br]
 
         # get the proper xsec getter for the formula of the current model
         module, model = self.load_hh_model()
@@ -100,6 +100,59 @@ class HHModelTask(AnalysisTask):
 
         # create and return the function including scaling
         return lambda *args, **kwargs: get_xsec(*args, **kwargs) * scale
+
+    def convert_to_xsecs(self, expected_values, poi, unit, br=None):
+        import numpy as np
+
+        # copy values
+        expected_values = np.array(expected_values)
+
+        # create the xsec getter
+        get_xsec = self.create_xsec_func(poi, unit, br=br)
+
+        # convert values
+        limit_keys = [key for key in expected_values.dtype.names if key.startswith("limit")]
+        for point in expected_values:
+            xsec = get_xsec(point[poi])
+            for key in limit_keys:
+                point[key] *= xsec
+
+        return expected_values
+
+    def get_theory_xsecs(self, poi_values, poi, unit=None, br=None, normalize=False):
+        import numpy as np
+
+        # set defaults
+        if not unit:
+            if not normalize:
+                raise ValueError("unit must be set when normalize is False")
+            unit = "fb"
+
+        # create the xsec getter
+        get_xsec = self.create_xsec_func(poi, unit, br=br)
+
+        # for certain cases, also obtain errors
+        has_unc = not self.hh_nlo and poi == "kl"
+
+        # store as records
+        records = []
+        dtype = [(poi, np.float32), ("xsec", np.float32)]
+        if has_unc:
+            dtype.extend([("xsec_p1", np.float32), ("xsec_m1", np.float32)])
+        for poi_value in poi_values:
+            record = (poi_value, get_xsec(poi_value))
+            # add uncertainties
+            if has_unc:
+                record += (
+                    get_xsec(poi_value, unc="up"),
+                    get_xsec(poi_value, unc="down"),
+                )
+            # normalize by nominal value
+            if normalize:
+                record = (record[0],) + tuple((r / record[1]) for r in record[1:])
+            records.append(record)
+
+        return np.array(records, dtype=dtype)
 
 
 class DatacardTask(HHModelTask):
@@ -348,7 +401,7 @@ class POITask1D(POITask):
 
     poi = luigi.ChoiceParameter(
         default="kl",
-        choices=POITask.k_pois,
+        choices=POITask.all_pois,
         description="name of the poi; choices: {}; default: kl".format(",".join(POITask.all_pois)),
     )
     poi_value = luigi.FloatParameter(
@@ -413,6 +466,11 @@ class POITask1DWithR(POITask1D):
     extracted for a certain r-poi while scanning an other parameter.
     """
 
+    poi = luigi.ChoiceParameter(
+        default="kl",
+        choices=POITask.k_pois,
+        description="name of the poi; choices: {}; default: kl".format(",".join(POITask.k_pois)),
+    )
     r_poi = luigi.ChoiceParameter(
         default="r",
         choices=POITask1D.r_pois,
@@ -442,13 +500,13 @@ class POITask2D(POITask):
 
     poi1 = luigi.ChoiceParameter(
         default="kl",
-        choices=POITask.k_pois,
+        choices=POITask.all_pois,
         description="name of the first poi; choices: {}; default: kl".format(
             ",".join(POITask.all_pois)),
     )
     poi2 = luigi.ChoiceParameter(
         default="kt",
-        choices=POITask.k_pois,
+        choices=POITask.all_pois,
         description="name of the second poi; choices: {}; default: kt".format(
             ",".join(POITask.all_pois)),
     )
