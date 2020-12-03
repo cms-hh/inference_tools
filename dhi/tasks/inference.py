@@ -24,6 +24,8 @@ from dhi.scripts.remove_processes import remove_processes as remove_processes_sc
 
 class CombineDatacards(DatacardTask, CombineCommandTask):
 
+    priority = 100
+
     def output(self):
         return self.local_target_dc("datacard.txt")
 
@@ -79,6 +81,8 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 
 
 class CreateWorkspace(DatacardTask, CombineCommandTask):
+
+    priority = 90
 
     def requires(self):
         return CombineDatacards.req(self)

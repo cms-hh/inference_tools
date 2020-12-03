@@ -295,7 +295,7 @@ def plot_limit_scans(
         if "xsec_p1" in theory_values and "xsec_m1" in theory_values:
             g_thy = create_tgraph(len(poi_values), poi_values, theory_values["xsec"], 0, 0,
                 theory_values["xsec"] - theory_values["xsec_m1"],
-                theory_values["xsec_p1"] - theory_values["xsec"])
+                theory_values["xsec_p1"] - theory_values["xsec"], pad=True)
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
                 "MarkerSize": 0, "FillStyle": 3001}, color=_colors.root.red, color_flags="lf")
             draw_objs.append((g_thy, "SAME,C4"))
@@ -374,6 +374,7 @@ def plot_limit_points(
     xsec_unit=None,
     pp_process="pp",
     hh_process="HH",
+    h_lines=None,
     campaign="2017",
 ):
     """
@@ -410,8 +411,9 @@ def plot_limit_points(
     this unit or, when *None*, as a ratio over the theory prediction. The *pp_process* label is
     shown in the x-axis title to denote the physics process the computed values are corresponding
     to. *hh_process* is inserted to the process name in the title of the x-axis and indicates that
-    the plotted cross section data was (e.g.) scaled by a branching ratio. *campaign* should refer
-    to the name of a campaign label defined in dhi.config.campaign_labels.
+    the plotted cross section data was (e.g.) scaled by a branching ratio. *h_lines* can be a list
+    of integers denoting positions where additional horizontal lines are drawn for visual guidance.
+    *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
 
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html#multiple-limits-at-a-certain-poi-value
     """
@@ -437,7 +439,7 @@ def plot_limit_points(
         if "theory" in d:
             if not isinstance(d["theory"], (tuple, list)):
                 d["theory"] = 3 * (d["theory"],)
-            assert(len(d["theory"]) == 3)
+            assert(len(d["theory"]) in (1, 3))
             has_thy = True
             x_min_value = min(x_min_value, min(d["theory"]))
             x_max_value = max(x_max_value, max(d["theory"]))
@@ -540,21 +542,28 @@ def plot_limit_points(
 
     # vertical line for theory prediction, represented by a graph in case of uncertainties
     if has_thy:
-        g_thy_area = create_graph(key="theory", sigma=1)
+        # uncertainty line
         g_thy_line = create_graph(key="theory")
-        r.setup_graph(g_thy_area, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-            "MarkerSize": 0, "FillStyle": 3001}, color=_colors.root.red, color_flags="lfm")
         r.setup_graph(g_thy_line, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
             "MarkerSize": 0}, color=_colors.root.red, color_flags="lm")
-        draw_objs.append((g_thy_area, "SAME,2"))
         draw_objs.append((g_thy_line, "SAME,LZ"))
-        legend_entries[1 if has_obs else 0] = (g_thy_area, "Theory prediction", "lf")
+        legend_entry = (g_thy_line, "Theory prediction")
+        # uncertainty area
+        has_thy_err = any(len(d.get("theory", [])) == 3 for d in data)
+        if has_thy_err:
+            g_thy_area = create_graph(key="theory", sigma=1)
+            r.setup_graph(g_thy_area, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
+                "MarkerSize": 0, "FillStyle": 3001}, color=_colors.root.red, color_flags="lfm")
+            draw_objs.append((g_thy_area, "SAME,2"))
+            legend_entry = (g_thy_area, "Theory prediction", "lf")
+        legend_entries[1 if has_obs else 0] = legend_entry
 
-    # line to separate combined result
-    if len(data) > 1 and data[-1]["name"].lower() == "combined":
-        line_obs = ROOT.TLine(x_min, 1., x_max, 1)
-        r.setup_line(line_obs, props={"NDC": False}, color=12)
-        draw_objs.append(line_obs)
+    # horizontal guidance lines
+    if h_lines:
+        for i in h_lines:
+            line_obs = ROOT.TLine(x_min, float(i), x_max, float(i))
+            r.setup_line(line_obs, props={"NDC": False}, color=12)
+            draw_objs.append(line_obs)
 
     # y axis labels and ticks
     y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{Expected %s}}"

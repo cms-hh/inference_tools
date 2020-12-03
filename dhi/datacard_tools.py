@@ -242,10 +242,10 @@ class ShapeLine(object):
     @classmethod
     def parse(cls, line):
         parts = line.strip().split()
-        if len(parts) < 5:
+        if len(parts) < 4:
             raise Exception("invalid shape line format: {}".format(line))
 
-        return (parts + [None])[1:6]
+        return (parts + [None, None])[1:6]
 
     def __init__(self, line, i):
         super(ShapeLine, self).__init__()

@@ -179,7 +179,7 @@ def minimize_1d(objective, bounds, start=None, niter=10, **kwargs):
     return res.lowest_optimization_result
 
 
-def create_tgraph(n, *args):
+def create_tgraph(n, *args, **kwargs):
     """
     Creates a ROOT graph with *n* points, where the type is *TGraph* for two, *TGraphErrors* for
     4 and *TGraphAsymmErrors* for six *args*. Each argument is converted to a python array with
@@ -201,7 +201,12 @@ def create_tgraph(n, *args):
             a = n * [a]
         elif len(a) == 1:
             a = n * list(a)
-        _args.append(a)
+        _args.append(list(a))
+
+    # apply edge padding when requested
+    if kwargs.get("pad"):
+        n += 2
+        _args = [(a[:1] + a + a[-1:]) for a in _args]
 
     return cls(n, *(array.array("f", a) for a in _args))
 

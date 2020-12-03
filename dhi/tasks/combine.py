@@ -56,13 +56,11 @@ class HHModelTask(AnalysisTask):
         parts["hh_model"] = part
         return parts
 
-    def load_hh_model(self, hh_model=None):
+    @classmethod
+    def _load_hh_model(cls, hh_model, hh_nlo):
         """
         Returns the module of the requested *hh_model* and the model instance itself in a 2-tuple.
         """
-        if not hh_model:
-            hh_model = self.hh_model
-
         full_hh_model = "dhi.models." + hh_model
         module_id, model_name = full_hh_model.split(":", 1)
 
@@ -72,11 +70,12 @@ class HHModelTask(AnalysisTask):
 
         # get the model and set the doNNLOscaling flag correctly
         model = getattr(mod, model_name)
-        model.doNNLOscaling = not self.hh_nlo
+        model.doNNLOscaling = not hh_nlo
 
         return mod, model
 
-    def create_xsec_func(self, poi, unit, br=None):
+    @classmethod
+    def _create_xsec_func(cls, hh_model, hh_nlo, poi, unit, br=None):
         if poi not in ["kl", "C2V"]:
             raise ValueError("cross section conversion not supported for poi {}".format(poi))
         if unit not in ["fb", "pb"]:
@@ -90,25 +89,26 @@ class HHModelTask(AnalysisTask):
             scale *= br_hh[br]
 
         # get the proper xsec getter for the formula of the current model
-        module, model = self.load_hh_model()
+        module, model = cls._load_hh_model(hh_model, hh_nlo)
         if poi == "kl":
             # get the cross section function and make it a partial with the nnlo value set properly
             get_xsec = module.create_ggf_xsec_func(model.ggf_formula)
-            get_xsec = functools.partial(get_xsec, nnlo=not self.hh_nlo)
+            get_xsec = functools.partial(get_xsec, nnlo=not hh_nlo)
         else:  # C2V
             get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
 
         # create and return the function including scaling
         return lambda *args, **kwargs: get_xsec(*args, **kwargs) * scale
 
-    def convert_to_xsecs(self, expected_values, poi, unit, br=None):
+    @classmethod
+    def _convert_to_xsecs(cls, hh_model, hh_nlo, expected_values, poi, unit, br=None):
         import numpy as np
 
         # copy values
         expected_values = np.array(expected_values)
 
         # create the xsec getter
-        get_xsec = self.create_xsec_func(poi, unit, br=br)
+        get_xsec = cls._create_xsec_func(hh_model, hh_nlo, poi, unit, br=br)
 
         # convert values
         limit_keys = [key for key in expected_values.dtype.names if key.startswith("limit")]
@@ -119,7 +119,9 @@ class HHModelTask(AnalysisTask):
 
         return expected_values
 
-    def get_theory_xsecs(self, poi_values, poi, unit=None, br=None, normalize=False):
+    @classmethod
+    def _get_theory_xsecs(cls, hh_model, hh_nlo, poi_values, poi, unit=None, br=None,
+            normalize=False):
         import numpy as np
 
         # set defaults
@@ -129,10 +131,10 @@ class HHModelTask(AnalysisTask):
             unit = "fb"
 
         # create the xsec getter
-        get_xsec = self.create_xsec_func(poi, unit, br=br)
+        get_xsec = cls._create_xsec_func(hh_model, hh_nlo, poi, unit, br=br)
 
         # for certain cases, also obtain errors
-        has_unc = not self.hh_nlo and poi == "kl"
+        has_unc = not hh_nlo and poi == "kl"
 
         # store as records
         records = []
@@ -154,6 +156,64 @@ class HHModelTask(AnalysisTask):
 
         return np.array(records, dtype=dtype)
 
+    def load_hh_model(self):
+        return self._load_hh_model(self.hh_model, self.hh_nlo)
+
+    def create_xsec_func(self, *args, **kwargs):
+        return self._create_xsec_func(self.hh_model, self.hh_nlo, *args, **kwargs)
+
+    def convert_to_xsecs(self, *args, **kwargs):
+        return self._convert_to_xsecs(self.hh_model, self.hh_nlo, *args, **kwargs)
+
+    def get_theory_xsecs(self, *args, **kwargs):
+        return self._get_theory_xsecs(self.hh_model, self.hh_nlo, *args, **kwargs)
+
+
+class MultiHHModelTask(HHModelTask):
+
+    multi_hh_models = law.CSVParameter(
+        description="multiple names of the HH models relative to dhi.models in the format "
+        "module:model_name; default: empty",
+    )
+    multi_hh_nlo = law.CSVParameter(
+        cls=luigi.BoolParameter,
+        default=(False,),
+        description="either a single or multiple comma-separated flags to disable the automatic "
+        "nlo-to-nnlo scaling per model in the same order as given in multi_hh_models; "
+        "default: False",
+    )
+
+    hh_model = None
+    hh_nlo = None
+
+    load_hh_model = None
+    create_xsec_func = None
+    convert_to_xsecs = None
+    get_theory_xsecs = None
+
+    def __init__(self, *args, **kwargs):
+        super(MultiHHModelTask, self).__init__(*args, **kwargs)
+
+        # when multi_hh_nlo is more than one value, it must match multi_hh_models' length
+        if len(self.multi_hh_nlo) not in (1, len(self.multi_hh_models)):
+            raise ValueError("length of multi_hh_nlo must be either 1 or that of multi_hh_models "
+                "({}), but got {}".format(len(self.multi_hh_nlo), len(self.multi_hh_models)))
+
+    def get_model_nlo_pairs(self):
+        # get an equally long sequence of nlo flags and return the zip
+        hh_nlo = self.multi_hh_nlo
+        if len(hh_nlo) == 1:
+            hh_nlo *= len(self.multi_hh_models)
+        return list(zip(self.multi_hh_models, hh_nlo))
+
+    def store_parts(self):
+        parts = AnalysisTask.store_parts(self)
+
+        # replace the hh_model store part with a hash
+        part = "models_" + law.util.create_hash(self.get_model_nlo_pairs())
+        parts["hh_model"] = part
+
+        return parts
 
 class DatacardTask(HHModelTask):
     """

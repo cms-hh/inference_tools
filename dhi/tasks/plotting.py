@@ -10,8 +10,8 @@ import six
 
 from dhi.tasks.base import AnalysisTask
 from dhi.tasks.combine import (
-    MultiDatacardTask, POITask1D, POIScanTask1D, POITask1DWithR, POIScanTask1DWithR,
-    POIScanTask2D,
+    MultiDatacardTask, MultiHHModelTask, POITask1D, POIScanTask1D, POITask1DWithR,
+    POIScanTask1DWithR, POIScanTask2D,
 )
 from dhi.tasks.inference import (
     UpperLimits, MergeUpperLimits, MergeLikelihoodScan1D, MergeLikelihoodScan2D,
@@ -313,6 +313,89 @@ class PlotMultipleUpperLimits(MultiDatacardTask, PlotUpperLimits):
         )
 
 
+class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
+
+    def requires(self):
+        return [
+            MergeUpperLimits.req(self, hh_model=hh_model, hh_nlo=hh_nlo)
+            for hh_model, hh_nlo in self.get_model_nlo_pairs()
+        ]
+
+    def output(self):
+        # additional postfix
+        parts = []
+        if self.xsec in ["pb", "fb"]:
+            parts.append(self.xsec)
+            if self.br not in (law.NO_STR, ""):
+                parts.append(self.br)
+        if self.y_log:
+            parts.append("log")
+
+        name = self.create_plot_name("multilimitsbymodel", self.get_poi_postfix(), parts)
+        return self.local_target_dc(name)
+
+    @view_output_plots
+    @law.decorator.safe_output
+    @law.decorator.log
+    def run(self):
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
+
+        # load limit values
+        expected_values = []
+        names = []
+        theory_values = None
+        xsec_unit = None
+        hh_process = "HH"
+        for i, ((hh_model, hh_nlo), inp) in enumerate(zip(self.get_model_nlo_pairs(), self.input())):
+            exp_values = inp.load(formatter="numpy")["data"]
+
+            # rescale from limit on r to limit on xsec when requested, depending on the poi
+            if self.poi in ["kl", "C2V"]:
+                if self.xsec in ["pb", "fb"]:
+                    exp_values = self._convert_to_xsecs(hh_model, hh_nlo, exp_values, self.poi,
+                        self.xsec, self.br)
+                    xsec_unit = self.xsec
+                    if self.br in br_hh:
+                        hh_process = r"HH $\rightarrow$ " + br_hh_names[self.br]
+                    if i == 0:
+                        theory_values = self._get_theory_xsecs(hh_model, hh_nlo,
+                            exp_values[self.poi], self.poi, self.xsec, self.br)
+                elif i == 0:
+                    # normalized values at one with errors
+                    theory_values = self._get_theory_xsecs(hh_model, hh_nlo, exp_values[self.poi],
+                        self.poi, normalize=True)
+
+            # prepare the name
+            name = hh_model.split(":", 1)[-1].replace("_", " ")
+            if name.startswith("model "):
+                name = name.split("model ", 1)[-1]
+
+            expected_values.append(exp_values)
+            names.append(name)
+
+        # get the proper plot function and call it
+        from dhi.plots.limits_root import plot_limit_scans
+
+        plot_limit_scans(
+            path=output.path,
+            poi=self.poi,
+            names=names,
+            expected_values=expected_values,
+            theory_values=theory_values,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
+            y_min=self.get_axis_limit("y_min"),
+            y_max=self.get_axis_limit("y_max"),
+            y_log=self.y_log,
+            xsec_unit=xsec_unit,
+            pp_process={"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}[self.r_poi],
+            hh_process=hh_process,
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
+        )
+
+
 class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
 
     xsec = PlotUpperLimits.xsec
@@ -320,6 +403,12 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
     x_log = luigi.BoolParameter(
         default=False,
         description="apply log scaling to the x-axis; default: False",
+    )
+    h_lines = law.CSVParameter(
+        cls=luigi.IntParameter,
+        default=tuple(),
+        significant=False,
+        description="comma-separated vertical positions of horizontal lines; default: empty",
     )
     y_min = None
     y_max = None
@@ -409,6 +498,7 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
             xsec_unit=xsec_unit,
             pp_process={"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}[self.r_poi],
             hh_process=hh_process,
+            h_lines=self.h_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
 
