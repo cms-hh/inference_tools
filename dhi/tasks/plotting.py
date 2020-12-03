@@ -649,6 +649,16 @@ class PlotPullsAndImpacts(PlotTask, POITask1D):
         description="when True, --parameter-order is neglected and parameters are ordered by "
         "absolute maximum impact; default: False",
     )
+    pull_range = luigi.FloatParameter(
+        default=2.,
+        significant=False,
+        description="the maximum value of pulls on the lower x-axis; default: 2.0",
+    )
+    impact_range = luigi.FloatParameter(
+        default=5.,
+        significant=False,
+        description="the maximum value of impacts on the upper x-axis; default: 5.0",
+    )
     x_min = None
     x_max = None
     y_min = None
@@ -697,6 +707,8 @@ class PlotPullsAndImpacts(PlotTask, POITask1D):
             skip_parameters=self.skip_parameters,
             order_parameters=self.order_parameters,
             order_by_impact=self.order_by_impact,
+            pull_range=self.pull_range,
+            impact_range=self.impact_range,
             labels=nuisance_labels,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )

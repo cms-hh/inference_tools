@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-action() {
+setup() {
     #
     # prepare local variables
     #
@@ -312,8 +312,14 @@ interactive_setup() {
     fi
 }
 
-if action "$@"; then
-    echo -e "\x1b[0;49;35mHH inference tools successfully setup\x1b[0m"
-else
-    echo -e "\x1b[0;49;31msetup failed with code $?\x1b[0m"
-fi
+action() {
+    if setup "$@"; then
+        echo -e "\x1b[0;49;35mHH inference tools successfully setup\x1b[0m"
+        return "0"
+    else
+        local code="$?"
+        echo -e "\x1b[0;49;31msetup failed with code $code\x1b[0m"
+        return "$code"
+    fi
+}
+action "$@"
