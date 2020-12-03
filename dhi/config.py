@@ -84,15 +84,15 @@ campaign_labels = DotDict({
 })
 
 # poi defaults (value, range, points, taken from physics model) and labels
-poi_data = DotDict({
-    "r": DotDict(range=(-20.0, 20.0), label="r"),
-    "r_gghh": DotDict(range=(-20.0, 20.0), label="r_{gghh}"),
-    "r_qqhh": DotDict(range=(-20.0, 20.0), label="r_{qqhh}"),
-    "kl": DotDict(range=(-30.0, 30.0), label=r"\kappa_{\lambda}"),
-    "kt": DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}"),
-    "C2V": DotDict(range=(-10.0, 10.0), label=r"\kappa_{VV}"),
-    "CV": DotDict(range=(-10.0, 10.0), label=r"\kappa_{V}"),
-})
+poi_data = DotDict(
+    r=DotDict(range=(-20.0, 20.0), label="r"),
+    r_gghh=DotDict(range=(-20.0, 20.0), label="r_{gghh}"),
+    r_qqhh=DotDict(range=(-20.0, 20.0), label="r_{qqhh}"),
+    kl=DotDict(range=(-30.0, 30.0), label=r"\kappa_{\lambda}"),
+    kt=DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}"),
+    C2V=DotDict(range=(-10.0, 10.0), label=r"\kappa_{VV}"),
+    CV=DotDict(range=(-10.0, 10.0), label=r"\kappa_{V}"),
+)
 # add "$" embedded labels
 for poi, data in poi_data.items():
     data["label_math"] = "${}$".format(data.label)
@@ -101,16 +101,16 @@ for poi, data in poi_data.items():
 nuisance_labels = {}
 
 # colors
-colors = DotDict({
-    "root": DotDict({
-        "black": 1,
-        "red": 628,
-        "green": 418,
-        "yellow": 798,
-        "red_cream": 46,
-        "blue_cream": 38,
-    })
-})
+colors = DotDict(
+    root=DotDict(
+        black=1,
+        red=628,
+        green=418,
+        yellow=798,
+        red_cream=46,
+        blue_cream=38,
+    )
+)
 
 # cumulative, inverse chi2 values in a mapping "n_dof -> n_sigma -> level"
 # for the geometrical determination of errors of nll curves

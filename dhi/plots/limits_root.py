@@ -96,18 +96,15 @@ def plot_limit_scan(
 
     # helper to read values into graphs
     def create_graph(values=expected_values, key="limit", sigma=None):
-        # repeat the edges by padding to prevent bouncing effects of interpolated lines
-        pad = lambda arr: np.pad(np.array(arr, dtype=np.float32), 1, mode="edge")
-        arr = lambda key: pad(values[key])
-        zeros = np.zeros(len(values[key]) + 2, dtype=np.float32)
-        return ROOT.TGraphAsymmErrors(
-            len(values[key]) + 2,
-            pad(poi_values),
-            arr(key),
-            zeros,
-            zeros,
-            (arr(key) - arr("{}_m{}".format(key, sigma))) if sigma else zeros,
-            (arr("{}_p{}".format(key, sigma)) - arr(key)) if sigma else zeros,
+        return create_tgraph(
+            len(values[key]),
+            poi_values,
+            values[key],
+            0,
+            0,
+            (values[key] - values["{}_m{}".format(key, sigma)]) if sigma else 0,
+            (values["{}_p{}".format(key, sigma)] - values[key]) if sigma else 0,
+            pad=True,
         )
 
     # 2 sigma band
@@ -155,7 +152,7 @@ def plot_limit_scan(
             g_thy = create_graph(values=theory_values, key="xsec", sigma=1)
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
                 "MarkerSize": 0, "FillStyle": 3001}, color=_colors.root.red, color_flags="lf")
-            draw_objs.append((g_thy, "SAME,C4"))
+            draw_objs.append((g_thy, "SAME,C3"))
             y_min_value = min(y_min_value, min(theory_values["xsec_m1"]))
         else:
             g_thy = create_graph(values=theory_values, key="xsec")
@@ -180,8 +177,8 @@ def plot_limit_scan(
     h_dummy.SetMaximum(y_max)
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=440, height=100)
-    r.setup_legend(legend, props={"NColumns": 2})
+    legend = r.routines.create_legend(pad=pad, width=440, height=100,
+        props={"NColumns": 2, "FillStyle": 1001})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
@@ -298,7 +295,7 @@ def plot_limit_scans(
                 theory_values["xsec_p1"] - theory_values["xsec"], pad=True)
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
                 "MarkerSize": 0, "FillStyle": 3001}, color=_colors.root.red, color_flags="lf")
-            draw_objs.append((g_thy, "SAME,C4"))
+            draw_objs.append((g_thy, "SAME,C3"))
             y_min_value = min(y_min_value, min(theory_values["xsec_m1"]))
         else:
             g_thy = create_tgraph(len(poi_values), poi_values, theory_values["xsec"])
@@ -339,11 +336,10 @@ def plot_limit_scans(
     h_dummy.SetMaximum(y_max)
 
     # legend
-    legend_cols = int(math.ceil(len(legend_entries) / 4.))
-    legend_rows = min(len(legend_entries), 4)
-    legend = r.routines.create_legend(pad=pad, width=legend_cols * 220, height=legend_rows * 30,
-        props={"NColumns": legend_cols})
-    r.setup_legend(legend)
+    legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
+    legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
+    legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, height=legend_rows * 30,
+        props={"NColumns": legend_cols, "FillStyle": 1001})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
