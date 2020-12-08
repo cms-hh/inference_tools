@@ -354,6 +354,11 @@ class MultiDatacardTask(DatacardTask):
         description="multiple paths to comma-separated input datacard sequences, each one "
         "separated by colon; supports globbing and brace expansion; no default",
     )
+    datacard_postfixes = law.CSVParameter(
+        default=(),
+        description="postfixes for each datacard sequence to append to the datacard output "
+        "directory; must either be empty or match the number of datacard sequences; default: ()",
+    )
     datacard_order = law.CSVParameter(
         default=(),
         cls=luigi.IntParameter,
@@ -394,7 +399,10 @@ class MultiDatacardTask(DatacardTask):
     def __init__(self, *args, **kwargs):
         super(MultiDatacardTask, self).__init__(*args, **kwargs)
 
-        # the lengths of names and order indices must match multi_datacards when given
+        # the lengths of postfixes, names and order indices must match multi_datacards when given
+        if len(self.datacard_postfixes) not in (0, len(self.multi_datacards)):
+            raise Exception("when datacard_postfixes is set, its length ({}) must match that of "
+                "multi_datacards ({})".format(len(self.datacard_postfixes), len(self.multi_datacards)))
         if len(self.datacard_names) not in (0, len(self.multi_datacards)):
             raise Exception("when datacard_names is set, its length ({}) must match that of "
                 "multi_datacards ({})".format(len(self.datacard_names), len(self.multi_datacards)))
@@ -414,6 +422,11 @@ class MultiDatacardTask(DatacardTask):
         parts["datacards"] = "multidatacards_{}{}".format(
             law.util.create_hash(self.multi_datacards), postfix)
         return parts
+
+    def get_datacards_postfix_pairs(self):
+        # get an equally long sequence of postfixes and return the zip
+        postfixes = self.datacard_postfixes or len(self.multi_datacards) * [""]
+        return list(zip(self.multi_datacards, postfixes))
 
 
 class POITask(DatacardTask):

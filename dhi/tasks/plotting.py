@@ -231,8 +231,8 @@ class PlotMultipleUpperLimits(MultiDatacardTask, PlotUpperLimits):
 
     def requires(self):
         return [
-            MergeUpperLimits.req(self, datacards=datacards)
-            for datacards in self.multi_datacards
+            MergeUpperLimits.req(self, datacards=datacards, datacard_postfix=postfix)
+            for datacards, postfix in self.get_datacards_postfix_pairs()
         ]
 
     def output(self):
@@ -416,8 +416,8 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
     def requires(self):
         return [
             UpperLimits.req(self, poi_range=(self.poi_value, self.poi_value), poi_points=1,
-                branch=0, datacards=datacards)
-            for datacards in self.multi_datacards
+                branch=0, datacards=datacards, datacard_postfix=postfix)
+            for datacards, postfix in self.get_datacards_postfix_pairs()
         ]
 
     def output(self):
@@ -722,10 +722,12 @@ class PlotBestFitAndExclusion(PlotTask, MultiDatacardTask, POIScanTask1DWithR):
     def requires(self):
         return [
             {
-                "limits": MergeUpperLimits.req(self, datacards=datacards),
-                "likelihoods": MergeLikelihoodScan1D.req(self, datacards=datacards),
+                "limits": MergeUpperLimits.req(self, datacards=datacards,
+                    datacard_postfix=postfix),
+                "likelihoods": MergeLikelihoodScan1D.req(self, datacards=datacards,
+                    datacard_postfix=postfix),
             }
-            for datacards in self.multi_datacards
+            for datacards, postfix in self.get_datacards_postfix_pairs()
         ]
 
     def output(self):
@@ -846,15 +848,12 @@ class PlotMultipleSignificanceScans(MultiDatacardTask, PlotSignificanceScan):
 
     def requires(self):
         return [
-            MergeSignificanceScan.req(self, datacards=datacards)
-            for datacards in self.multi_datacards
+            MergeSignificanceScan.req(self, datacards=datacards, datacard_postfix=postfix)
+            for datacards, postfix in self.get_datacards_postfix_pairs()
         ]
 
     def output(self):
-        # additional postfix
-        parts = []
-
-        name = self.create_plot_name("multisignificances", self.get_poi_postfix(), parts)
+        name = self.create_plot_name("multisignificances", self.get_poi_postfix())
         return self.local_target(name)
 
     @view_output_plots
