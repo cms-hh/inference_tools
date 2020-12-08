@@ -227,16 +227,15 @@ class DatacardTask(HHModelTask):
         description="paths to input datacards separated by comma; supports globbing and brace "
         "expansion; no default",
     )
+    datacard_postfix = luigi.Parameter(
+        default="",
+        description="postfix to append to the datacard output directory; default: ''",
+    )
     mass = luigi.FloatParameter(
         default=125.0,
         description="hypothetical mass of the sought resonance, default: 125.",
     )
-    dc_prefix = luigi.Parameter(
-        default="",
-        description="prefix to prepend to output file paths; default: ''",
-    )
 
-    hash_datacards_in_store = True
     hash_datacards_in_repr = True
 
     @classmethod
@@ -339,25 +338,10 @@ class DatacardTask(HHModelTask):
 
     def store_parts(self):
         parts = super(DatacardTask, self).store_parts()
-        if self.hash_datacards_in_store:
-            parts["datacards"] = "datacards_{}".format(law.util.create_hash(self.datacards))
+        postfix = "_{}".format(self.datacard_postfix) if self.datacard_postfix else ""
+        parts["datacards"] = "datacards_{}{}".format(law.util.create_hash(self.datacards), postfix)
         parts["mass"] = "m{}".format(self.mass)
         return parts
-
-    def local_target_dc(self, *path, **kwargs):
-        cls = law.LocalFileTarget if not kwargs.pop("dir", False) else law.LocalDirectoryTarget
-        store = kwargs.pop("store", self.default_store)
-        store = os.path.expandvars(os.path.expanduser(store))
-        if path:
-            # add the dc_prefix to the last path fragment
-            last_parts = path[-1].rsplit(os.sep, 1)
-            last_parts[-1] = self.dc_prefix + last_parts[-1]
-            last_path = os.sep.join(last_parts)
-
-            # add the last path fragment back
-            path = path[:-1] + (last_path,)
-
-        return cls(self.local_path(*path, store=store), **kwargs)
 
     @property
     def mass_int(self):
@@ -426,9 +410,9 @@ class MultiDatacardTask(DatacardTask):
 
     def store_parts(self):
         parts = super(MultiDatacardTask, self).store_parts()
-        if self.hash_datacards_in_store:
-            parts["datacards"] = "multidatacards_{}".format(
-                law.util.create_hash(self.multi_datacards))
+        postfix = "_{}".format(self.datacard_postfix) if self.datacard_postfix else ""
+        parts["datacards"] = "multidatacards_{}{}".format(
+            law.util.create_hash(self.multi_datacards), postfix)
         return parts
 
 

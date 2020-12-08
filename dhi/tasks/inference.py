@@ -27,7 +27,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
     priority = 100
 
     def output(self):
-        return self.local_target_dc("datacard.txt")
+        return self.local_target("datacard.txt")
 
     def build_command(self, datacards=None):
         if not datacards:
@@ -88,7 +88,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
         return CombineDatacards.req(self)
 
     def output(self):
-        return self.local_target_dc("workspace.root")
+        return self.local_target("workspace.root")
 
     def build_command(self):
         return (
@@ -122,7 +122,7 @@ class UpperLimits(POIScanTask1DWithR, CombineCommandTask, law.LocalWorkflow, HTC
         return CreateWorkspace.req(self)
 
     def output(self):
-        return self.local_target_dc("limit__{}__{}_{}.root".format(
+        return self.local_target("limit__{}__{}_{}.root".format(
             self.r_poi, self.poi, self.branch_data))
 
     def build_command(self):
@@ -155,7 +155,7 @@ class MergeUpperLimits(POIScanTask1DWithR):
         return UpperLimits.req(self)
 
     def output(self):
-        return self.local_target_dc("limits__{}.npz".format(self.get_poi_postfix()))
+        return self.local_target("limits__{}.npz".format(self.get_poi_postfix()))
 
     @law.decorator.log
     def run(self):
@@ -223,7 +223,7 @@ class LikelihoodScan1D(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTC
         return CreateWorkspace.req(self)
 
     def output(self):
-        return self.local_target_dc("likelihood__{}_{}.root".format(self.poi, self.branch_data))
+        return self.local_target("likelihood__{}_{}.root".format(self.poi, self.branch_data))
 
     def build_command(self):
         return (
@@ -258,7 +258,7 @@ class MergeLikelihoodScan1D(POIScanTask1D):
         return LikelihoodScan1D.req(self)
 
     def output(self):
-        return self.local_target_dc("likelihoods__{}.npz".format(self.get_poi_postfix()))
+        return self.local_target("likelihoods__{}.npz".format(self.get_poi_postfix()))
 
     @law.decorator.log
     def run(self):
@@ -309,7 +309,7 @@ class LikelihoodScan2D(POIScanTask2D, CombineCommandTask, law.LocalWorkflow, HTC
         if self.store_pois_sorted and self.poi1 > self.poi2:
             postfix1, postfix2 = postfix2, postfix1
 
-        return self.local_target_dc("likelihood__{}__{}.root".format(postfix1, postfix2))
+        return self.local_target("likelihood__{}__{}.root".format(postfix1, postfix2))
 
     def build_command(self):
         return (
@@ -347,7 +347,7 @@ class MergeLikelihoodScan2D(POIScanTask2D):
         return LikelihoodScan2D.req(self)
 
     def output(self):
-        return self.local_target_dc("likelihoods__{}.npz".format(self.get_poi_postfix()))
+        return self.local_target("likelihoods__{}.npz".format(self.get_poi_postfix()))
 
     @law.decorator.log
     def run(self):
@@ -434,7 +434,7 @@ class PullsAndImpacts(POITask1D, CombineCommandTask, law.LocalWorkflow, HTCondor
         # build the output file postfix
         postfix = "{}__{}".format(self.poi, self.branch_data)
 
-        return self.local_target_dc("fit__{}.root".format(postfix))
+        return self.local_target("fit__{}.root".format(postfix))
 
     def build_command(self):
         # build the part of the command that is common between the initial fit and nuisance fits
@@ -491,7 +491,7 @@ class MergePullsAndImpacts(POITask1D):
             parts.append("mcstats")
         postfix = "__".join(parts)
 
-        return self.local_target_dc("pulls_impacts__{}.json".format(postfix))
+        return self.local_target("pulls_impacts__{}.json".format(postfix))
 
     @law.decorator.log
     def run(self):
@@ -565,7 +565,7 @@ class SignificanceScan(POIScanTask1DWithR, CombineCommandTask, law.LocalWorkflow
         return CreateWorkspace.req(self)
 
     def output(self):
-        return self.local_target_dc("significance__{}__{}_{}.root".format(
+        return self.local_target("significance__{}__{}_{}.root".format(
             self.r_poi, self.poi, self.branch_data))
 
     def build_command(self):
@@ -597,7 +597,7 @@ class MergeSignificanceScan(POIScanTask1DWithR):
         return SignificanceScan.req(self)
 
     def output(self):
-        return self.local_target_dc("significance__{}.npz".format(self.get_poi_postfix()))
+        return self.local_target("significance__{}.npz".format(self.get_poi_postfix()))
 
     @law.decorator.log
     def run(self):
@@ -636,7 +636,7 @@ class PostFitShapes(POITask1D, CombineCommandTask):
         return CreateWorkspace.req(self)
 
     def output(self):
-        return self.local_target_dc("fitdiagnostics__{}.root".format(self.get_poi_postfix()))
+        return self.local_target("fitdiagnostics__{}.root".format(self.get_poi_postfix()))
 
     def build_command(self):
         return (

@@ -158,7 +158,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
             parts.append("log")
 
         name = self.create_plot_name("limits", self.get_poi_postfix(), parts)
-        return self.local_target_dc(name)
+        return self.local_target(name)
 
     @view_output_plots
     @law.decorator.safe_output
@@ -246,7 +246,7 @@ class PlotMultipleUpperLimits(MultiDatacardTask, PlotUpperLimits):
             parts.append("log")
 
         name = self.create_plot_name("multilimits", self.get_poi_postfix(), parts)
-        return self.local_target_dc(name)
+        return self.local_target(name)
 
     @view_output_plots
     @law.decorator.safe_output
@@ -332,7 +332,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
             parts.append("log")
 
         name = self.create_plot_name("multilimitsbymodel", self.get_poi_postfix(), parts)
-        return self.local_target_dc(name)
+        return self.local_target(name)
 
     @view_output_plots
     @law.decorator.safe_output
@@ -431,7 +431,7 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
             parts.append("log")
 
         name = self.create_plot_name("limitsatpoi", self.get_poi_postfix(), parts)
-        return self.local_target_dc(name)
+        return self.local_target(name)
 
     @view_output_plots
     @law.decorator.safe_output
@@ -521,7 +521,7 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
             parts.append("log")
 
         name = self.create_plot_name("nll1d", self.get_poi_postfix(), parts)
-        return self.local_target_dc(name)
+        return self.local_target(name)
 
     @view_output_plots
     @law.decorator.safe_output
@@ -581,7 +581,7 @@ class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
             parts.append("log")
 
         name = self.create_plot_name("nll2d", self.get_poi_postfix(), parts)
-        return self.local_target_dc(name)
+        return self.local_target(name)
 
     @view_output_plots
     @law.decorator.safe_output
@@ -683,7 +683,7 @@ class PlotPullsAndImpacts(PlotTask, POITask1D):
             parts.append("mcstats")
         postfix = "__".join(parts)
 
-        return self.local_target_dc("pulls_impacts__{}.{}".format(postfix, self.file_type))
+        return self.local_target("pulls_impacts__{}.{}".format(postfix, self.file_type))
 
     @view_output_plots
     @law.decorator.safe_output
@@ -730,7 +730,7 @@ class PlotBestFitAndExclusion(PlotTask, MultiDatacardTask, POIScanTask1DWithR):
 
     def output(self):
         name = self.create_plot_name("bestfitexclusion", self.get_poi_postfix())
-        return self.local_target_dc(name)
+        return self.local_target(name)
 
     @view_output_plots
     @law.decorator.safe_output
@@ -798,7 +798,7 @@ class PlotSignificanceScan(PlotTask, POIScanTask1DWithR):
         parts = []
 
         name = self.create_plot_name("significances", self.get_poi_postfix(), parts)
-        return self.local_target_dc(name)
+        return self.local_target(name)
 
     @view_output_plots
     @law.decorator.safe_output
@@ -855,7 +855,7 @@ class PlotMultipleSignificanceScans(MultiDatacardTask, PlotSignificanceScan):
         parts = []
 
         name = self.create_plot_name("multisignificances", self.get_poi_postfix(), parts)
-        return self.local_target_dc(name)
+        return self.local_target(name)
 
     @view_output_plots
     @law.decorator.safe_output
@@ -912,7 +912,7 @@ class PlotSOverB(PlotTask, POITask1D):
         return PostFitShapes.req(self)
 
     def output(self):
-        return self.local_target_dc("sb__{}.{}".format(self.get_poi_postfix(), self.file_type))
+        return self.local_target("sb__{}.{}".format(self.get_poi_postfix(), self.file_type))
 
     @view_output_plots
     @law.decorator.safe_output
