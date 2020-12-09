@@ -218,6 +218,12 @@ def plot_likelihood_scan_2d(
         nmeans = {p: vals[~np.isnan(vals)].mean() for p, vals in nvals.items()}
         data[[p[0] for p in nmeans], [p[1] for p in nmeans]] = nmeans.values()
 
+    # for log axis, change non-positive numbers to the next smallest number below a threshold
+    if z_log:
+        mask = data <= 0
+        pos_min = min(data[~mask].min(), 1e-2)
+        data[mask] = pos_min
+
     # start plotting
     r.setup_style()
     canvas, (pad,) = r.routines.create_canvas(pad_props={"RightMargin": 0.17, "Logz": z_log})
