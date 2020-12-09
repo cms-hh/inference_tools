@@ -5,6 +5,7 @@ Helpers and utilities.
 """
 
 import os
+import sys
 import re
 import fnmatch
 import shutil
@@ -293,6 +294,16 @@ def patch_object(obj, attr, value):
                 setattr(obj, attr, orig)
         except:
             pass
+
+
+@contextlib.contextmanager
+def disable_output():
+    """
+    Context manager that redirects all logs to stdout and stderr in its context.
+    """
+    with open("/dev/null", "w") as f:
+        with patch_object(sys, "stdout", f):
+            yield
 
 
 def readable_popen(*args, **kwargs):

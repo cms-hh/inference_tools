@@ -39,7 +39,12 @@ def view_output_plots(fn, opts, task, *args, **kwargs):
 
         # collect all paths to view
         view_paths = []
-        for output in law.util.flatten(task.output()):
+        outputs = law.util.flatten(task.output())
+        while outputs:
+            output = outputs.pop(0)
+            if isinstance(output, law.TargetCollection):
+                outputs.extend(output._flat_target_list)
+                continue
             if not getattr(output, "path", None):
                 continue
             if output.path.endswith((".pdf", ".png")) and output.path not in view_paths:

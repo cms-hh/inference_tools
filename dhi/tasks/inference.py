@@ -84,6 +84,8 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
 
     priority = 90
 
+    run_command_in_tmp = True
+
     def requires(self):
         return CombineDatacards.req(self)
 
@@ -93,11 +95,13 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
     def build_command(self):
         return (
             "text2workspace.py {datacard}"
-            " -o {workspace}"
+            " -o workspace.root"
             " -m {self.mass}"
             " -P dhi.models.{self.hh_model}"
             " --PO doNNLOscaling={nnlo}"
             " {self.custom_args}"
+            " && "
+            "mv workspace.root {workspace}"
         ).format(
             self=self,
             datacard=self.input().path,
