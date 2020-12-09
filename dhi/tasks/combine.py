@@ -14,6 +14,7 @@ from collections import defaultdict
 
 import law
 import luigi
+import six
 
 from dhi.tasks.base import AnalysisTask, CommandTask
 from dhi.config import poi_data, br_hh
@@ -224,19 +225,24 @@ class DatacardTask(HHModelTask):
     """
 
     datacards = law.CSVParameter(
-        description="paths to input datacards separated by comma; supports globbing and brace "
-        "expansion; no default",
-    )
-    datacard_postfix = luigi.Parameter(
-        default="",
-        description="postfix to append to the datacard output directory; default: ''",
+        description="paths to input datacards separated by comma; supported formats are "
+        "'[bin=]path', '[bin=]paths@store_directory for the last datacard in the sequence, and "
+        "'@store_directory' for easier configuration; supports globbing and brace expansion",
+        brace_expand=True,
     )
     mass = luigi.FloatParameter(
         default=125.0,
-        description="hypothetical mass of the sought resonance, default: 125.",
+        description="hypothetical mass of the resonance, default: 125.",
+    )
+    datacards_store_dir = luigi.Parameter(
+        default=law.NO_STR,
+        description="do not set manually",
     )
 
     hash_datacards_in_repr = True
+
+    exclude_params_index = {"datacards_store_dir"}
+    exclude_params_repr = {"datacards_store_dir"}
 
     @classmethod
     def modify_param_values(cls, params):
@@ -249,48 +255,73 @@ class DatacardTask(HHModelTask):
 
         datacards = params.get("datacards")
         if datacards:
-            datacards = cls.resolve_datacards(datacards)
+            datacards, store_dir = cls.resolve_datacards(datacards)
 
-            # complain when datacards are empty
-            if not datacards:
-                raise ValueError("datacards parameter did not match any existing datacard files")
+            # update the store dir when newly set
+            if params.get("datacards_store_dir", law.NO_STR) == law.NO_STR and store_dir:
+                params["datacards_store_dir"] = store_dir
 
+            # store resovled datacards
             params["datacards"] = tuple(datacards)
+
+        return params
+
+    def _repr_params(self, *args, **kwargs):
+        params = super(DatacardTask, self)._repr_params(*args, **kwargs)
+
+        if not params.get("datacards") and self.datacards_store_dir != law.NO_STR:
+            params["datacards"] = self.datacards_store_dir
 
         return params
 
     @classmethod
     def _repr_param(cls, name, value, **kwargs):
-        if cls.hash_datacards_in_repr and name == "datacards":
-            value = "hash:{}".format(law.util.create_hash(value))
+        if name == "datacards":
+            if isinstance(value, six.string_types):
+                value = "@" + value
+            elif cls.hash_datacards_in_repr:
+                value = "hash:{}".format(law.util.create_hash(value))
             kwargs["serialize"] = False
         return super(DatacardTask, cls)._repr_param(name, value, **kwargs)
 
     @classmethod
     def split_datacard_path(cls, path):
         """
-        Splits a potential bin name from a datacard path and returns the path and the bin name,
-        which is *None* when missing.
+        Splits a datacard *path* into a maximum of three components: the path itself, leading bin
+        name, and a training storage directory. Missing components are returned as *None*.
         """
-        bin_name, path = re.match(r"^(([^\/]+)=)?(.+)$", path).groups()[1:]
-        return path, bin_name
+        m = re.match(r"^(([^\/]+)=)?([^@]*)(@(.+))?$", path)
+        path, bin_name, store_dir = None, None, None
+        if m:
+            path = m.group(3) or path
+            bin_name = m.group(2) or bin_name
+            store_dir = m.group(5) or store_dir
+
+        return path, bin_name, store_dir
 
     @classmethod
     def resolve_datacards(cls, patterns):
         paths = []
         bin_names = []
-
-        # when a pattern contains a "{", join again and perform brace expansion
-        if any("{" in pattern for pattern in patterns):
-            patterns = law.util.brace_expand(",".join(patterns), split_csv=True)
+        store_dir = None
 
         # try to resolve all patterns
-        for pattern in patterns:
-            # extract a bin name when given
-            pattern, bin_name = cls.split_datacard_path(pattern)
-            pattern = os.path.expandvars(os.path.expanduser(pattern))
+        for i, pattern in enumerate(patterns):
+            is_last = i == len(patterns) - 1
+
+            # extract bin name and store dir when given
+            pattern, bin_name, _store_dir = cls.split_datacard_path(pattern)
+
+            # save the store_dir when this is the last pattern
+            if is_last and _store_dir:
+                store_dir = _store_dir
+
+            # continue when when no pattern exists
+            if not pattern:
+                continue
 
             # get matching paths
+            pattern = os.path.expandvars(os.path.expanduser(pattern))
             _paths = list(glob.glob(pattern))
 
             # when the pattern did not match anything, repeat relative to the datacard submodule
@@ -323,6 +354,10 @@ class DatacardTask(HHModelTask):
                     paths.append(path)
                     bin_names.append(bin_name)
 
+        # complain when no paths were provided and store dir is invalid
+        if not paths and not store_dir:
+            raise Exception("a store_dir is required when no datacard paths are provided")
+
         # join to pairs and sorted by path
         pairs = sorted(list(zip(paths, bin_names)), key=lambda pair: pair[0])
 
@@ -335,12 +370,14 @@ class DatacardTask(HHModelTask):
                 bin_name += str(bin_name_counter[bin_name])
             datacards.append("{}={}".format(bin_name, path) if bin_name else path)
 
-        return datacards
+        return datacards, store_dir
 
     def store_parts(self):
         parts = super(DatacardTask, self).store_parts()
-        postfix = "_{}".format(self.datacard_postfix) if self.datacard_postfix else ""
-        parts["datacards"] = "datacards_{}{}".format(law.util.create_hash(self.datacards), postfix)
+        if self.datacards_store_dir != law.NO_STR:
+            parts["datacards"] = self.datacards_store_dir
+        else:
+            parts["datacards"] = "datacards_{}".format(law.util.create_hash(self.datacards))
         parts["mass"] = "m{}".format(self.mass)
         return parts
 
@@ -352,13 +389,11 @@ class DatacardTask(HHModelTask):
 class MultiDatacardTask(DatacardTask):
 
     multi_datacards = law.MultiCSVParameter(
-        description="multiple paths to comma-separated input datacard sequences, each one "
-        "separated by colon; supports globbing and brace expansion; no default",
-    )
-    datacard_postfixes = law.CSVParameter(
-        default=(),
-        description="postfixes for each datacard sequence to append to the datacard output "
-        "directory; must either be empty or match the number of datacard sequences; default: ()",
+        description="multiple path sequnces to input datacards separated by a colon; supported "
+        "formats are '[bin=]path', '[bin=]paths@store_directory for the last datacard in the "
+        "sequence, and '@store_directory' for easier configuration; supports globbing and brace "
+        "expansion",
+        brace_expand=True,
     )
     datacard_order = law.CSVParameter(
         default=(),
@@ -372,9 +407,11 @@ class MultiDatacardTask(DatacardTask):
         significant=False,
         description="names of datacard sequences for plotting purposes; applied before reordering "
         "with datacard_order; default: empty",
+        brace_expand=True,
     )
 
     datacards = None
+    datacards_store_dir = law.NO_STR
 
     @classmethod
     def modify_param_values(cls, params):
@@ -384,12 +421,14 @@ class MultiDatacardTask(DatacardTask):
         if multi_datacards:
             _multi_datacards = []
             for i, patterns in enumerate(multi_datacards):
-                datacards = cls.resolve_datacards(patterns)
+                datacards, store_dir = cls.resolve_datacards(patterns)
 
-                # complain when datacards are empty
-                if not datacards:
-                    raise ValueError("datacards at position {} of multi_datacards parameter did "
-                        "not match any existing datacard files".format(i))
+                # add back the store dir for transparent forwarding to dependencies
+                if store_dir:
+                    if datacards:
+                        datacards[-1] += "@" + store_dir
+                    else:
+                        datacards.append("@" + store_dir)
 
                 _multi_datacards.append(tuple(datacards))
 
@@ -400,10 +439,7 @@ class MultiDatacardTask(DatacardTask):
     def __init__(self, *args, **kwargs):
         super(MultiDatacardTask, self).__init__(*args, **kwargs)
 
-        # the lengths of postfixes, names and order indices must match multi_datacards when given
-        if len(self.datacard_postfixes) not in (0, len(self.multi_datacards)):
-            raise Exception("when datacard_postfixes is set, its length ({}) must match that of "
-                "multi_datacards ({})".format(len(self.datacard_postfixes), len(self.multi_datacards)))
+        # the lengths of names and order indices must match multi_datacards when given
         if len(self.datacard_names) not in (0, len(self.multi_datacards)):
             raise Exception("when datacard_names is set, its length ({}) must match that of "
                 "multi_datacards ({})".format(len(self.datacard_names), len(self.multi_datacards)))
@@ -415,19 +451,13 @@ class MultiDatacardTask(DatacardTask):
     def _repr_param(cls, name, value, **kwargs):
         if cls.hash_datacards_in_repr and name == "multi_datacards":
             value = "hash:{}".format(law.util.create_hash(value))
+            kwargs["serialize"] = False
         return super(MultiDatacardTask, cls)._repr_param(name, value, **kwargs)
 
     def store_parts(self):
         parts = super(MultiDatacardTask, self).store_parts()
-        postfix = "_{}".format(self.datacard_postfix) if self.datacard_postfix else ""
-        parts["datacards"] = "multidatacards_{}{}".format(
-            law.util.create_hash(self.multi_datacards), postfix)
+        parts["datacards"] = "multidatacards_{}".format(law.util.create_hash(self.multi_datacards))
         return parts
-
-    def get_datacards_postfix_pairs(self):
-        # get an equally long sequence of postfixes and return the zip
-        postfixes = self.datacard_postfixes or len(self.multi_datacards) * [""]
-        return list(zip(self.multi_datacards, postfixes))
 
 
 class POITask(DatacardTask):

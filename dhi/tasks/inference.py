@@ -26,6 +26,14 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 
     priority = 100
 
+    def __init__(self, *args, **kwargs):
+        super(DatacardTask, self).__init__(*args, **kwargs)
+
+        # complain when no datacard paths are given but the store path does not exist yet
+        if not self.datacards and not self.local_target(dir=True).exists():
+            raise Exception("store directory {} does not exist which is required when no datacard "
+                "paths are provided".format(self.local_target(dir=True).path))
+
     def output(self):
         return self.local_target("datacard.txt")
 
@@ -40,6 +48,10 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 
     @law.decorator.safe_output
     def run(self):
+        # immediately complain when no datacard paths were set but just a store directory
+        if not self.datacards:
+            raise Exception("{} task requires datacard paths to be set".format(self.task_family))
+
         # before running the actual card combination command, copy shape files and handle collisions
         # first, create a tmp dir to work in
         tmp_dir = law.LocalDirectoryTarget(is_tmp=True)
@@ -606,7 +618,6 @@ class MergeSignificanceScan(POIScanTask1DWithR):
     @law.decorator.log
     def run(self):
         import numpy as np
-        import scipy as sp
         import scipy.stats
 
         records = []

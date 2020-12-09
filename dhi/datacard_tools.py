@@ -242,7 +242,8 @@ class ShapeLine(object):
     @classmethod
     def parse(cls, line):
         parts = line.strip().split()
-        if len(parts) < 4:
+
+        if len(parts) < 4 or (len(parts) == 4 and parts[-1] != "FAKE"):
             raise Exception("invalid shape line format: {}".format(line))
 
         return (parts + [None, None])[1:6]
