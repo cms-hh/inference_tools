@@ -506,9 +506,12 @@ def create_model(name, skip_ggf=None, skip_vbf=None):
 
 
 # some named, default models
-model_all     = create_model("model_all")
-model_default = create_model("model_default", skip_ggf=[(0, 1)], skip_vbf=[(1, 0, 1)])
-model_bbgg    = create_model("model_bbgg",    skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)])
+model_all      = create_model("model_all")
+model_default  = create_model("model_default",  skip_ggf=[(0, 1)], skip_vbf=[(1, 0, 1)])
+model_bbgg     = create_model("model_bbgg",     skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)])
+model_bbtautau = create_model("model_bbtautau", skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)])
+# to be decided and then set as the new default
+# model_comb     = create_model("model_comb", skip_ggf=[(...)], skip_vbf=[(...)])
 
 # ggf test models
 model_no_ggf_kl0    = create_model("model_no_ggf_kl0",    skip_ggf=[(0, 1)],    skip_vbf=[(1, 0, 1)])
