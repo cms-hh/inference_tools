@@ -127,6 +127,19 @@ def add_parameter(datacard, param_name, param_type, param_spec=None, directory=N
             logger.info("adding new parameter line '{}'".format(param_line))
             content["parameters"].append(param_line)
 
+        # increase kmax in counts
+        if content.get("counts"):
+            for i, count_line in enumerate(list(content["counts"])):
+                if count_line.startswith("kmax"):
+                    parts = count_line.split()
+                    if len(parts) >= 2 and parts[1] != "*":
+                        n_old = int(parts[1])
+                        n_new = n_old + 1
+                        logger.info("increase kmax from {} to {}".format(n_old, n_new))
+                        parts[1] = str(n_new)
+                        content["counts"][i] = " ".join(parts)
+                    break
+
 
 if __name__ == "__main__":
     import argparse
