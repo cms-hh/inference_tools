@@ -15,7 +15,7 @@ from dhi.tasks.combine import (
 )
 from dhi.tasks.inference import (
     UpperLimits, MergeUpperLimits, MergeLikelihoodScan1D, MergeLikelihoodScan2D,
-    MergePullsAndImpacts, SignificanceScan, MergeSignificanceScan, PostFitShapes,
+    MergePullsAndImpacts, MergeSignificanceScan, PostFitShapes,
 )
 from dhi.config import br_hh, br_hh_names, nuisance_labels
 
@@ -169,8 +169,6 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
     @law.decorator.safe_output
     @law.decorator.log
     def run(self):
-        import numpy as np
-
         # prepare the output
         output = self.output()
         output.parent.touch()
@@ -811,8 +809,6 @@ class PlotSignificanceScan(PlotTask, POIScanTask1DWithR):
     @law.decorator.safe_output
     @law.decorator.log
     def run(self):
-        import numpy as np
-
         # prepare the output
         output = self.output()
         output.parent.touch()

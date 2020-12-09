@@ -12,8 +12,6 @@ from collections import OrderedDict
 import luigi
 import law
 
-from dhi.util import readable_popen
-
 
 law.contrib.load("git", "htcondor", "matplotlib", "numpy", "root", "tasks", "wlcg")
 
@@ -367,7 +365,7 @@ class CommandTask(AnalysisTask):
 
         # call it
         with self.publish_step("running '{}' ...".format(law.util.colored(cmd, "cyan"))):
-            p, lines = readable_popen(cmd, shell=True, executable="/bin/bash", **kwargs)
+            p, lines = law.util.readable_popen(cmd, shell=True, executable="/bin/bash", **kwargs)
             for line in lines:
                 print(line)
 

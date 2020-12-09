@@ -36,42 +36,11 @@ setup() {
     # helper functions
     #
 
-    # helper to reset some environment variables
-    dhi_reset_env() {
-        export PATH="$DHI_ORIG_PATH"
-        export PYTHONPATH="$DHI_ORIG_PYTHONPATH"
-        export PYTHON3PATH="$DHI_ORIG_PYTHON3PATH"
-        export LD_LIBRARY_PATH="$DHI_ORIG_LD_LIBRARY_PATH"
-    }
-    [ ! -z "$BASH_VERSION" ] && export -f dhi_reset_env
-
     # pip install helper
     dhi_pip_install() {
         PYTHONUSERBASE="$DHI_SOFTWARE" pip install --user --no-cache-dir "$@"
     }
     [ ! -z "$BASH_VERSION" ] && export -f dhi_pip_install
-
-    # generic wrapper to run black in a virtual env in case a user prefers python 2
-    # which black already dropped
-    dhi_black() {
-        (
-            dhi_reset_env
-            source "$DHI_BLACK_PATH/bin/activate" "" || return "$?"
-            black "$@"
-        )
-    }
-    [ ! -z "$BASH_VERSION" ] && export -f dhi_black
-
-    # linting helper
-    dhi_lint() {
-        local fix="${1:-}"
-        if [ "$fix" = "fix" ]; then
-            dhi_black --line-length 100 "$DHI_BASE/dhi"
-        else
-            dhi_black --line-length 100 --check --diff "$DHI_BASE/dhi"
-        fi
-    }
-    [ ! -z "$BASH_VERSION" ] && export -f dhi_lint
 
 
     #
@@ -132,8 +101,8 @@ setup() {
 
     # update paths and flags
     local pyv="$( python -c "import sys; print('{0.major}.{0.minor}'.format(sys.version_info))" )"
-    export PATH="$DHI_BASE/bin:$DHI_BASE/dhi/scripts:$DHI_SOFTWARE/bin:$PATH"
-    export PYTHONPATH="$DHI_BASE:$DHI_SOFTWARE/lib/python${pyv}/site-packages:$DHI_SOFTWARE/lib64/python${pyv}/site-packages:$PYTHONPATH"
+    export PATH="$DHI_BASE/bin:$DHI_BASE/dhi/scripts:$DHI_BASE/modules/law/bin:$DHI_SOFTWARE/bin:$PATH"
+    export PYTHONPATH="$DHI_BASE:$DHI_BASE/modules/law:$DHI_BASE/modules/plotlib:$DHI_SOFTWARE/lib/python${pyv}/site-packages:$DHI_SOFTWARE/lib64/python${pyv}/site-packages:$PYTHONPATH"
     export PYTHONWARNINGS="ignore"
     export GLOBUS_THREAD_MODEL="none"
     ulimit -s unlimited
@@ -148,20 +117,7 @@ setup() {
 
         # python packages
         dhi_pip_install luigi==2.8.2 || return "$?"
-        LAW_INSTALL_EXECUTABLE="$DHI_PYTHON" dhi_pip_install --no-deps git+https://github.com/riga/law.git || return "$?"
         dhi_pip_install --no-deps git+https://github.com/riga/scinum.git || return "$?"
-        dhi_pip_install --no-deps git+https://github.com/riga/plotlib.git || return "$?"
-
-        # virtual env for black which requires python 3
-        echo -e "\nsetting up black in virtual environment at $DHI_BLACK_PATH"
-        (
-            dhi_reset_env
-            rm -rf "$DHI_BLACK_PATH"
-            virtualenv -p python3 "$DHI_BLACK_PATH" || return "$?"
-            source "$DHI_BLACK_PATH/bin/activate" "" || return "$?"
-            pip install -U pip || return "$?"
-            pip install black==20.8b1 || return "$?"
-        )
 
         date "+%s" > "$flag_file_sw"
     fi
@@ -194,6 +150,21 @@ setup() {
 
 
     #
+    # initialze some submodules
+    #
+
+    if [ -d "$DHI_BASE/.git" ]; then
+        for m in law plotlib; do
+            local mpath="$DHI_BASE/modules/$m"
+            local mfiles=( "$mpath"/* )
+            if [ "${#mfiles}" = "0" ]; then
+                git submodule update --init --recursive "$mpath"
+            fi
+        done
+    fi
+
+
+    #
     # law setup
     #
 
@@ -202,19 +173,6 @@ setup() {
 
     # source law's bash completion scipt
     which law &> /dev/null && source "$( law completion )" ""
-
-
-    #
-    # synchronize git hooks
-    #
-
-    # this is disabled for the moment to avoid difficulties related to formatting
-    # in the initial phase of the combination tools development
-    # for hook in "$( ls "$this_dir/githooks" )"; do
-    #     if [ ! -f "$this_dir/.git/hooks/$hook" ]; then
-    #         ln -s "../../githooks/$hook" "$this_dir/.git/hooks/$hook" &> /dev/null
-    #     fi
-    # done
 }
 
 interactive_setup() {

@@ -14,7 +14,6 @@ from collections import defaultdict
 
 import law
 import luigi
-import six
 
 from dhi.tasks.base import AnalysisTask, CommandTask
 from dhi.config import poi_data, br_hh
@@ -215,6 +214,7 @@ class MultiHHModelTask(HHModelTask):
 
         return parts
 
+
 class DatacardTask(HHModelTask):
     """
     A task that requires datacards in its downstream dependencies that can have quite longish names
@@ -263,6 +263,7 @@ class DatacardTask(HHModelTask):
     def _repr_param(cls, name, value, **kwargs):
         if cls.hash_datacards_in_repr and name == "datacards":
             value = "hash:{}".format(law.util.create_hash(value))
+            kwargs["serialize"] = False
         return super(DatacardTask, cls)._repr_param(name, value, **kwargs)
 
     @classmethod
@@ -294,7 +295,7 @@ class DatacardTask(HHModelTask):
 
             # when the pattern did not match anything, repeat relative to the datacard submodule
             if not _paths:
-                dc_path = os.path.expandvars("$DHI_BASE/datacards_run2")
+                dc_path = os.path.expandvars("$DHI_BASE/modules/datacards_run2")
                 _paths = list(glob.glob(os.path.join(dc_path, pattern)))
 
             # when directories are given, assume to find a file "datacard.txt"
