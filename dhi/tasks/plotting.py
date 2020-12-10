@@ -60,12 +60,6 @@ def view_output_plots(fn, opts, task, *args, **kwargs):
 
 class PlotTask(AnalysisTask):
 
-    plot_flavor = luigi.ChoiceParameter(
-        default="root",
-        choices=["root", "mpl"],
-        significant=False,
-        description="the plot flavor; choices: root,mpl; default: root",
-    )
     file_type = luigi.ChoiceParameter(
         default="pdf",
         choices=["pdf", "png"],
@@ -202,10 +196,7 @@ class PlotUpperLimits(PlotTask, POIScanTask1DWithR):
                     xsec_unit or "({})".format(self.r_poi)))
 
         # get the proper plot function and call it
-        if self.plot_flavor == "root":
-            from dhi.plots.limits_root import plot_limit_scan
-        else:
-            from dhi.plots.limits_mpl import plot_limit_scan
+        from dhi.plots.limits import plot_limit_scan
 
         plot_limit_scan(
             path=output.path,
@@ -296,7 +287,7 @@ class PlotMultipleUpperLimits(MultiDatacardTask, PlotUpperLimits):
             names = [names[i] for i in self.datacard_order]
 
         # get the proper plot function and call it
-        from dhi.plots.limits_root import plot_limit_scans
+        from dhi.plots.limits import plot_limit_scans
 
         plot_limit_scans(
             path=output.path,
@@ -379,7 +370,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
             names.append(name)
 
         # get the proper plot function and call it
-        from dhi.plots.limits_root import plot_limit_scans
+        from dhi.plots.limits import plot_limit_scans
 
         plot_limit_scans(
             path=output.path,
@@ -490,7 +481,7 @@ class PlotUpperLimitsAtPOI(PlotTask, MultiDatacardTask, POITask1DWithR):
             data = [data[i] for i in self.datacard_order]
 
         # get the proper plot function and call it
-        from dhi.plots.limits_root import plot_limit_points
+        from dhi.plots.limits import plot_limit_points
 
         plot_limit_points(
             path=output.path,
@@ -549,10 +540,7 @@ class PlotLikelihoodScan1D(PlotTask, POIScanTask1D):
         # TODO: when the poi is r*, we could perhaps also get and plot the theory uncertainty
 
         # get the proper plot function and call it
-        if self.plot_flavor == "root":
-            from dhi.plots.likelihoods_root import plot_likelihood_scan_1d
-        else:
-            from dhi.plots.likelihoods_mpl import plot_likelihood_scan_1d
+        from dhi.plots.likelihoods import plot_likelihood_scan_1d
 
         plot_likelihood_scan_1d(
             path=output.path,
@@ -608,10 +596,7 @@ class PlotLikelihoodScan2D(PlotTask, POIScanTask2D):
             [expected_values["delta_nll"] * 2.0]))
 
         # get the proper plot function and call it
-        if self.plot_flavor == "root":
-            from dhi.plots.likelihoods_root import plot_likelihood_scan_2d
-        else:
-            from dhi.plots.likelihoods_mpl import plot_likelihood_scan_2d
+        from dhi.plots.likelihoods import plot_likelihood_scan_2d
 
         plot_likelihood_scan_2d(
             path=output.path,
@@ -700,8 +685,7 @@ class PlotPullsAndImpacts(PlotTask, POITask1D):
         data = self.input().load(formatter="json")
 
         # get the proper plot function and call it
-        # (only the mpl version exists right now)
-        from dhi.plots.pulls_impacts_root import plot_pulls_impacts
+        from dhi.plots.pulls_impacts import plot_pulls_impacts
 
         plot_pulls_impacts(
             path=output.path,
@@ -779,7 +763,7 @@ class PlotBestFitAndExclusion(PlotTask, MultiDatacardTask, POIScanTask1DWithR):
             data = [data[i] for i in self.datacard_order]
 
         # get the proper plot function and call it
-        from dhi.plots.misc_root import plot_bestfit_and_exclusion
+        from dhi.plots.misc import plot_bestfit_and_exclusion
 
         plot_bestfit_and_exclusion(
             path=output.path,
@@ -819,7 +803,7 @@ class PlotSignificanceScan(PlotTask, POIScanTask1DWithR):
                     self.poi, v, record["significance"]))
 
         # get the proper plot function and call it
-        from dhi.plots.significances_root import plot_significance_scan
+        from dhi.plots.significances import plot_significance_scan
 
         plot_significance_scan(
             path=output.path,
@@ -877,7 +861,7 @@ class PlotMultipleSignificanceScans(MultiDatacardTask, PlotSignificanceScan):
             names = [names[i] for i in self.datacard_order]
 
         # get the proper plot function and call it
-        from dhi.plots.significances_root import plot_significance_scans
+        from dhi.plots.significances import plot_significance_scans
 
         plot_significance_scans(
             path=output.path,
@@ -921,8 +905,7 @@ class PlotSOverB(PlotTask, POITask1D):
         fit_diagnostics_path = self.input().path
 
         # get the proper plot function and call it
-        # (only the mpl version exists right now)
-        from dhi.plots.misc_root import plot_s_over_b
+        from dhi.plots.misc import plot_s_over_b
 
         plot_s_over_b(
             path=output.path,

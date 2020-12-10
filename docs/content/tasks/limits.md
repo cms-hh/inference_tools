@@ -75,28 +75,17 @@ law run UpperLimits --version dev --datacards $DHI_EXAMPLE_CARDS --workflow htco
 
 #### Limits vs. POI
 
-The `PlotUpperLimits` task takes the outputs from `UpperLimits` and `MergeUpperLimits` and plots them the usual way.
-There is a ROOT and a matplotlib version of the plot, which can be controlled with the `--plot-flavor` parameter.
-
-Use `root` for the ROOT version,
+The `PlotUpperLimits` task takes the outputs from `UpperLimits` and `MergeUpperLimits` and plots them the usual way:
 
 ```shell hl_lines="1"
-law run PlotUpperLimits --version dev --datacards $DHI_EXAMPLE_CARDS --r-poi r --xsec fb --br bbwwllvv --y-log --plot-flavor root
+law run PlotUpperLimits --version dev --datacards $DHI_EXAMPLE_CARDS --r-poi r --xsec fb --br bbwwllvv --y-log
 ```
 
-![Upper limits with ROOT](../images/limits__r__kl_n51_-25.0_25.0__fb_bbwwllvv_log__root.png)
+![Upper limits](../images/limits__r__kl_n51_-25.0_25.0__fb_bbwwllvv_log.png)
 
-and `mpl`for the matplotlib version,
-
-```shell hl_lines="1"
-law run PlotUpperLimits --version dev --datacards $DHI_EXAMPLE_CARDS --r-poi r --xsec fb --br bbwwllvv --y-log --plot-flavor mpl
-```
-
-![Upper limits with matplotlib](../images/limits__r__kl_n51_-25.0_25.0__fb_bbwwllvv_log__mpl.png)
 
 **Parameters**:
 
-- `--plot-flavor STRING`: Either `root` or `mpl`. Defaults to `root`.
 - `--xsec STRING`: Convert limits to cross sections in this unit rather than on the signal strength. An empty value (identical to `NO_STR`) will use the latter. Choices are `pb`, `fb` and `""` (`NO_STR`). Defaults to `NO_STR`.
 - `--br STRING`: When using `--xsec`, scale the cross section with the BR of the corresponding HH decay. The value should be the name of a final state defined in the `br_hh` mapping in [`dhi.config`](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/dhi/config.py). No default.
 - `--y-log BOOL`: Logarithmic y-axis. Defaults to `False`.
@@ -119,7 +108,7 @@ law run PlotMultipleUpperLimits --version dev \
     --datacard-names ee,emu,mumu --xsec fb --y-log
 ```
 
-![Upper limit comparison](../images/multilimits__r__kl_n51_-25.0_25.0__fb_log__root.png)
+![Upper limit comparison](../images/multilimits__r__kl_n51_-25.0_25.0__fb_log.png)
 
 **Parameters**:
 
@@ -143,10 +132,10 @@ Example:
 ```shell hl_lines="1-3"
 law run PlotUpperLimitsAtPOI --version dev \
     --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt \
-    --datacard-names ee,emu,mumu --plot-flavor root
+    --datacard-names ee,emu,mumu
 ```
 
-![Upper limits at POI](../images/limitatpoi__r__kl_1.0__root.png)
+![Upper limits at POI](../images/limitatpoi__r__kl_1.0.png)
 
 **Parameters**:
 

@@ -137,10 +137,10 @@ Same as [`PullsAndImpacts`](#pullsandimpacts).
 ## `PlotPullsAndImpacts`
 
 The `PlotPullsAndImpacts` task reads the json output of the `MergePullsAndImpacts` task and creates a plot where pulls and impacts are drawn into the same pad with two x-axes.
-The underlying plotting function is located at [`dhi.plots.pulls_impacts_root`](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/dhi/plots/pulls_impacts_root.py) and is currently only implemented as a ROOT plot.
+The underlying plotting function is located at [`dhi.plots.pulls_impacts`](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/dhi/plots/pulls_impacts.py).
 In general, it is also compatible the the output structure of the [`combineTool.py -M Impacts`](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/nonstandard/#nuisance-parameter-impacts) command.
 
-![Pulls and impacts](../images/pulls_impacts__kl__root.png)
+![Pulls and impacts](../images/pulls_impacts__kl.png)
 
 **Parameters**
 

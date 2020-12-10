@@ -70,25 +70,14 @@ law run LikelihoodScan2D --version dev --datacards $DHI_EXAMPLE_CARDS --workflow
 ### Plotting
 
 The `PlotLikelihoodScan2D` task takes the outputs from `LikelihoodScan2D` and `MergeLikelihoodScan2D` and plots the doubled, negative log-likehood curve over the two POI parameter values in question.
-There is a ROOT and a matplotlib version of the plot, which can be controlled with the `--plot-flavor` parameter.
-
-Use `root` for the ROOT version,
 
 ```shell hl_lines="1"
-law run PlotLikelihoodScan2D --version dev --datacards $DHI_EXAMPLE_CARDS --poi1-points 61 --poi2-points 41 --plot-flavor root
+law run PlotLikelihoodScan2D --version dev --datacards $DHI_EXAMPLE_CARDS --poi1-points 61 --poi2-points 41
 ```
 
-![2D likelihood scan with ROOT](../images/nll2d__kl_n61_-30.0_30.0__kt_n41_-10.0_10.0__log__root.png)
+![2D likelihood scan](../images/nll2d__kl_n61_-30.0_30.0__kt_n41_-10.0_10.0__log.png)
 
-and `mpl`for the matplotlib version,
-
-```shell hl_lines="1"
-law run PlotLikelihoodScan2D --version dev --datacards $DHI_EXAMPLE_CARDS --poi1-points 61 --poi2-points 41 --plot-flavor mpl
-```
-
-![2D likelihood scan with matplotlib](../images/nll2d__kl_n61_-30.0_30.0__kt_n41_-10.0_10.0__log__mpl.png)
 
 **Parameters**:
 
-- `--plot-flavor STRING`: Either `root` or `mpl`. Defaults to `mpl` as this is the only implementation.
 - `--y-log BOOL`: Logarithmic y-axis. Defaults to `False`.

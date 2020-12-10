@@ -136,7 +136,7 @@ Same as [`SignificanceScan`](#significancescan).
 
 The `PlotSignificanceScan` task reads the produced array of the `MergeSignificanceScan` task and creates a plot such as
 
-![Significance scan](../images/significances__r__kl_n17_-2.0_6.0__root.png)
+![Significance scan](../images/significances__r__kl_n17_-2.0_6.0.png)
 
 
 **Parameters**

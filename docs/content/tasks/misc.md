@@ -5,7 +5,7 @@ This section documents the usage of various miscellaneous tasks.
 
 The task `PlotBestFitAndExclusion` creates a plot showing the best fit values of a POI as well as its excluded region for multiple *configurations* - these can be different versions of datacards, or even channels or analyses as shown in the following plot.
 
-![Best fit values and exlusions](../images/bestfitexclusion__r_gghh__kl_n51_-25.0_25.0__root.png)
+![Best fit values and exlusions](../images/bestfitexclusion__r_gghh__kl_n51_-25.0_25.0.png)
 
 The best fit values are extracted via likelihood profiling done by the [`LikelihoodScan1D`](likelihood1d.md) task. Excluded regions are inferred from the [`UpperLimits`](limits.md) task which scans limits in steps of the same POI as measured on a `--r-poi`, i.e., `r` itself, `r_gghh`or `r_qqhh`. Thus, the depency tree looks like
 
