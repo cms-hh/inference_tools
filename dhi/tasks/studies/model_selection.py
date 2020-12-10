@@ -20,6 +20,8 @@ from dhi.util import import_ROOT, create_tgraph, to_root_latex
 
 class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask):
 
+    task_namespace = "study"
+
     signal = luigi.ChoiceParameter(
         choices=["ggf", "vbf"],
         description="the signal process to morph; choices: ggf,vbf",
