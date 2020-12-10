@@ -44,7 +44,10 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         inputs = " ".join(datacards)
         output = self.output()
 
-        return "combineCards.py {} {} > {}".format(self.custom_args, inputs, output.path)
+        if len(datacards) == 1:
+            return "cp {} {}".format(inputs, output.path)
+        else:
+            return "combineCards.py {} {} > {}".format(self.custom_args, inputs, output.path)
 
     @law.decorator.safe_output
     def run(self):
