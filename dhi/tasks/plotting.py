@@ -320,8 +320,8 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
 
     def requires(self):
         return [
-            MergeUpperLimits.req(self, hh_model=hh_model, hh_nlo=hh_nlo)
-            for hh_model, hh_nlo in self.get_model_nlo_pairs()
+            MergeUpperLimits.req(self, hh_model=hh_model)
+            for hh_model in self.hh_models
         ]
 
     def output(self):
@@ -351,24 +351,24 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         theory_values = None
         xsec_unit = None
         hh_process = "HH"
-        for i, ((hh_model, hh_nlo), inp) in enumerate(zip(self.get_model_nlo_pairs(), self.input())):
+        for i, (hh_model, inp) in enumerate(zip(self.hh_models, self.input())):
             exp_values = inp.load(formatter="numpy")["data"]
 
             # rescale from limit on r to limit on xsec when requested, depending on the poi
             if self.poi in ["kl", "C2V"]:
                 if self.xsec in ["pb", "fb"]:
-                    exp_values = self._convert_to_xsecs(hh_model, hh_nlo, exp_values, self.poi,
-                        self.xsec, self.br)
+                    exp_values = self._convert_to_xsecs(hh_model, exp_values, self.poi, self.xsec,
+                        self.br)
                     xsec_unit = self.xsec
                     if self.br in br_hh:
                         hh_process = r"HH $\rightarrow$ " + br_hh_names[self.br]
                     if i == 0:
-                        theory_values = self._get_theory_xsecs(hh_model, hh_nlo,
-                            exp_values[self.poi], self.poi, self.xsec, self.br)
+                        theory_values = self._get_theory_xsecs(hh_model, exp_values[self.poi],
+                            self.poi, self.xsec, self.br)
                 elif i == 0:
                     # normalized values at one with errors
-                    theory_values = self._get_theory_xsecs(hh_model, hh_nlo, exp_values[self.poi],
-                        self.poi, normalize=True)
+                    theory_values = self._get_theory_xsecs(hh_model, exp_values[self.poi], self.poi,
+                        normalize=True)
 
             # prepare the name
             name = hh_model.split(":", 1)[-1].replace("_", " ")

@@ -55,8 +55,8 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask):
 
     def requires(self):
         return [
-            CombineDatacards.req(self, hh_model=hh_model, hh_nlo=hh_nlo)
-            for hh_model, hh_nlo in self.get_model_nlo_pairs()
+            CombineDatacards.req(self, hh_model=hh_model)
+            for hh_model in self.hh_models
         ]
 
     def output(self):
@@ -65,19 +65,19 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask):
             parts.append("log")
 
         return law.SiblingFileCollection({
-            b: self.local_target_dc(self.create_plot_name("morpheddiscr", b, *parts))
+            b: self.local_target(self.create_plot_name("morpheddiscr", b, *parts))
             for b in self.bins
         })
 
     def prepare_morphing_data(self):
         # prepare the config, i.e. bin_name -> model_name -> [(hist, scale_fn), ...]
         data = defaultdict(OrderedDict)
-        for (model_str, nlo_flag), inp in zip(self.get_model_nlo_pairs(), self.input()):
+        for hh_model, inp in zip(self.hh_models, self.input()):
             # load the datacard and create a shape builder
             dc, sb = create_datacard_instance(inp.path, create_shape_builder=True)
 
             # get the model
-            model = self._load_hh_model(model_str, nlo_flag)[1]
+            model = self._load_hh_model(hh_model)[1]
 
             # get the model formula
             formula = getattr(model, "{}_formula".format(self.signal))
@@ -102,7 +102,7 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask):
                     h.Sumw2()
 
                     # store it alongside the scaling function
-                    c = data[bin_name].setdefault(model.name, []).append((h, scale_fn))
+                    data[bin_name].setdefault(model.name, []).append((h, scale_fn))
 
         return data
 
@@ -225,7 +225,7 @@ class PlotStatErrorScan(PlotMorphedDiscriminant):
         parts = [self.signal] + [p.replace("=", "") for p in self.pois]
 
         return law.SiblingFileCollection({
-            b: self.local_target_dc(self.create_plot_name("morpheddiscr", b, *parts))
+            b: self.local_target(self.create_plot_name("morpheddiscr", b, *parts))
             for b in self.bins
         })
 

@@ -109,8 +109,8 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
             "text2workspace.py {datacard}"
             " -o workspace.root"
             " -m {self.mass}"
-            " -P dhi.models.{self.hh_model}"
-            " --PO doNNLOscaling={nnlo}"
+            " -P {model.__module__}:{model.name}"
+            " --PO doNNLOscaling={model.doNNLOscaling}"
             " {self.custom_args}"
             " && "
             "mv workspace.root {workspace}"
@@ -118,7 +118,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
             self=self,
             datacard=self.input().path,
             workspace=self.output().path,
-            nnlo=not self.hh_nlo,
+            model=self.load_hh_model()[1],
         )
 
 
@@ -265,7 +265,6 @@ class LikelihoodScan1D(POIScanTask1D, CombineCommandTask, law.LocalWorkflow, HTC
             self=self,
             workspace=self.input().path,
             output=self.output().path,
-            point=self.branch_data,
         )
 
 
