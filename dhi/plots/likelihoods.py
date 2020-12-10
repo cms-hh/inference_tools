@@ -8,10 +8,14 @@ import math
 import array
 
 import numpy as np
+import scipy.interpolate
+import scipy.optimize
+from scinum import Number
 
 from dhi.config import poi_data, campaign_labels, chi2_levels, colors as _colors
-from dhi.util import import_ROOT, to_root_latex, get_neighbor_coordinates, create_tgraph
-from dhi.plots.likelihoods_mpl import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
+from dhi.util import (
+    import_ROOT, to_root_latex, get_neighbor_coordinates, create_tgraph, DotDict, minimize_1d,
+)
 
 
 def plot_likelihood_scan_1d(
@@ -296,3 +300,206 @@ def plot_likelihood_scan_2d(
     # save
     r.update_canvas(canvas)
     canvas.SaveAs(path)
+
+
+def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
+    """
+    Takes the results of a 1D likelihood profiling scan given by the *poi_values* and the
+    corresponding *delta_2nll* values, performs an interpolation and returns certain results of the
+    scan in a dict. When *poi_min* is *None*, it is estimated from the interpolated curve.
+
+    The returned fields are:
+
+    - ``interp``: The generated interpolation function.
+    - ``poi_min``: The poi value corresponding to the minimum delta nll value.
+    - ``poi_p1``: The poi value corresponding to the +1 sigma variation, or *None* when the
+      calculation failed.
+    - ``poi_m1``: The poi value corresponding to the -1 sigma variation, or *None* when the
+      calculation failed.
+    - ``poi_p2``: The poi value corresponding to the +2 sigma variation, or *None* when the
+      calculation failed.
+    - ``poi_m2``: The poi value corresponding to the -2 sigma variation, or *None* when the
+      calculation failed.
+    - ``num_min``: A Number instance representing the best fit value and its 1 sigma uncertainty.
+    """
+    # ensure we are dealing with arrays
+    poi_values = np.array(poi_values)
+    dnll2_values = np.array(dnll2_values)
+
+    # store ranges
+    poi_values_min = poi_values.min()
+    poi_values_max = poi_values.max()
+
+    # remove values where dnnl2 is nan
+    mask = ~np.isnan(dnll2_values)
+    poi_values = poi_values[mask]
+    dnll2_values = dnll2_values[mask]
+
+    # first, obtain an interpolation function
+    # interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="cubic")
+    interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="linear")
+
+    # get the minimum when not set
+    if poi_min is None:
+        objective = lambda x: abs(interp(x))
+        bounds = (poi_values_min + 1e-4, poi_values_max - 1e-4)
+        res = minimize_1d(objective, bounds)
+        if res.status != 0:
+            raise Exception("could not find minimum of nll2 interpolation: {}".format(res.message))
+        poi_min = res.x[0]
+
+    # helper to get the outermost intersection of the nll curve with a certain value
+    def get_intersections(v):
+        def minimize(bounds):
+            objective = lambda x: (interp(x) - v) ** 2.0
+            res = minimize_1d(objective, bounds)
+            return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
+
+        return (
+            minimize((poi_min, poi_values_max - 1e-4)),
+            minimize((poi_values_min + 1e-4, poi_min)),
+        )
+
+    # get the intersections with values corresponding to 1 and 2 sigma
+    # (taken from solving chi2_1_cdf(x) = 1 or 2 sigma gauss intervals)
+    poi_p1, poi_m1 = get_intersections(chi2_levels[1][1])
+    poi_p2, poi_m2 = get_intersections(chi2_levels[1][2])
+
+    # create a Number object wrapping the best fit value and its 1 sigma error when given
+    unc = None
+    if poi_p1 is not None and poi_m1 is not None:
+        unc = (poi_p1 - poi_min, poi_min - poi_m1)
+    num_min = Number(poi_min, unc)
+
+    return DotDict(
+        interp=interp,
+        poi_min=poi_min,
+        poi_p1=poi_p1,
+        poi_m1=poi_m1,
+        poi_p2=poi_p2,
+        poi_m2=poi_m2,
+        num_min=num_min,
+    )
+
+
+def evaluate_likelihood_scan_2d(
+    poi1_values, poi2_values, dnll2_values, poi1_min=None, poi2_min=None
+):
+    """
+    Takes the results of a 2D likelihood profiling scan given by *poi1_values*, *poi2_values* and
+    the corresponding *dnll2_values* values, performs an interpolation and returns certain results
+    of the scan in a dict. The two lists of poi values should represent an expanded grid, so that
+    *poi1_values*, *poi2_values* and *dnll2_values* should all be 1D with the same length. When
+    *poi1_min* and *poi2_min* are *None*, they are estimated from the interpolated curve.
+
+    The returned fields are:
+
+    - ``interp``: The generated interpolation function.
+    - ``poi1_min``: The poi1 value corresponding to the minimum delta nll value.
+    - ``poi2_min``: The poi2 value corresponding to the minimum delta nll value.
+    - ``poi1_p1``: The poi1 value corresponding to the +1 sigma variation, or *None* when the
+      calculation failed.
+    - ``poi1_m1``: The poi1 value corresponding to the -1 sigma variation, or *None* when the
+      calculation failed.
+    - ``poi1_p2``: The poi1 value corresponding to the +2 sigma variation, or *None* when the
+      calculation failed.
+    - ``poi1_m2``: The poi1 value corresponding to the -2 sigma variation, or *None* when the
+      calculation failed.
+    - ``poi2_p1``: The poi2 value corresponding to the +1 sigma variation, or *None* when the
+      calculation failed.
+    - ``poi2_m1``: The poi2 value corresponding to the -1 sigma variation, or *None* when the
+      calculation failed.
+    - ``poi2_p2``: The poi2 value corresponding to the +2 sigma variation, or *None* when the
+      calculation failed.
+    - ``poi2_m2``: The poi2 value corresponding to the -2 sigma variation, or *None* when the
+      calculation failed.
+    - ``num1_min``: A Number instance representing the poi1 minimum and its 1 sigma uncertainty.
+    - ``num2_min``: A Number instance representing the poi2 minimum and its 1 sigma uncertainty.
+    """
+    # ensure we are dealing with arrays
+    poi1_values = np.array(poi1_values)
+    poi2_values = np.array(poi2_values)
+    dnll2_values = np.array(dnll2_values)
+
+    # store ranges
+    poi1_values_min = poi1_values.min()
+    poi1_values_max = poi1_values.max()
+    poi2_values_min = poi2_values.min()
+    poi2_values_max = poi2_values.max()
+
+    # remove values where dnnl2 is nan
+    mask = ~np.isnan(dnll2_values)
+    poi1_values = poi1_values[mask]
+    poi2_values = poi2_values[mask]
+    dnll2_values = dnll2_values[mask]
+
+    # obtain an interpolation function
+    # interp = scipy.interpolate.interp2d(poi1_values, poi2_values, dnll2_values)
+    # interp = scipy.interpolate.SmoothBivariateSpline(poi1_values, poi2_values, dnll2_values,
+    #     kx=2, ky=2)
+    coords = np.stack([poi1_values, poi2_values], axis=1)
+    interp = scipy.interpolate.CloughTocher2DInterpolator(coords, dnll2_values)
+
+    # get the minima
+    if poi1_min is None or poi2_min is None:
+        objective = lambda x: interp(*x) ** 2.0
+        bounds1 = (poi1_values_min + 1e-4, poi1_values_max - 1e-4)
+        bounds2 = (poi2_values_min + 1e-4, poi2_values_max - 1e-4)
+        res = scipy.optimize.minimize(objective, [1.0, 1.0], tol=1e-7, bounds=[bounds1, bounds2])
+        if res.status != 0:
+            raise Exception("could not find minimum of nll2 interpolation: {}".format(res.message))
+        poi1_min = res.x[0]
+        poi2_min = res.x[1]
+
+    # helper to get the outermost intersection of the nll curve with a certain value
+    def get_intersections(v, n_poi):
+        def minimize(bounds):
+            res = minimize_1d(objective, bounds)
+            return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
+
+        if n_poi == 1:
+            poi_values_min, poi_values_max = poi1_values_min, poi1_values_max
+            poi_min = poi1_min
+            objective = lambda x: (interp(x, poi2_min) - v) ** 2.0
+        else:
+            poi_values_min, poi_values_max = poi2_values_min, poi2_values_max
+            poi_min = poi2_min
+            objective = lambda x: (interp(poi1_min, x) - v) ** 2.0
+
+        return (
+            minimize((poi_min, poi_values_max - 1e-4)),
+            minimize((poi_values_min + 1e-4, poi_min)),
+        )
+
+    # get the intersections with values corresponding to 1 and 2 sigma
+    # (taken from solving chi2_1_cdf(x) = 1 or 2 sigma gauss intervals)
+    poi1_p1, poi1_m1 = get_intersections(chi2_levels[2][1], 1)
+    poi2_p1, poi2_m1 = get_intersections(chi2_levels[2][1], 2)
+    poi1_p2, poi1_m2 = get_intersections(chi2_levels[2][2], 1)
+    poi2_p2, poi2_m2 = get_intersections(chi2_levels[2][2], 2)
+
+    # create Number objects wrapping the best fit values and their 1 sigma error when given
+    unc1 = None
+    unc2 = None
+    if poi1_p1 is not None and poi1_m1 is not None:
+        unc1 = (poi1_p1 - poi1_min, poi1_min - poi1_m1)
+    if poi2_p1 is not None and poi2_m1 is not None:
+        unc2 = (poi2_p1 - poi2_min, poi2_min - poi2_m1)
+    num1_min = Number(poi1_min, unc1)
+    num2_min = Number(poi2_min, unc2)
+
+    return DotDict(
+        interp=interp,
+        poi1_min=poi1_min,
+        poi2_min=poi2_min,
+        poi1_p1=poi1_p1,
+        poi1_m1=poi1_m1,
+        poi1_p2=poi1_p2,
+        poi1_m2=poi1_m2,
+        poi2_p1=poi2_p1,
+        poi2_m1=poi2_m1,
+        poi2_p2=poi2_p2,
+        poi2_m2=poi2_m2,
+        num1_min=num1_min,
+        num2_min=num2_min,
+    )
