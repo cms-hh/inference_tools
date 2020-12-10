@@ -114,7 +114,9 @@ colors = DotDict(
 
 # cumulative, inverse chi2 values in a mapping "n_dof -> n_sigma -> level"
 # for the geometrical determination of errors of nll curves
+# (computed with "sp.stats.chi2.ppf(g, n_dof)" with g being the gaussian intervals)
 chi2_levels = {
     1: {1: 1.000, 2: 4.000},
     2: {1: 2.296, 2: 6.180},
+    3: {1: 3.527, 2: 8.025},
 }
