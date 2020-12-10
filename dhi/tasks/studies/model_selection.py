@@ -122,6 +122,13 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask):
         for h, scale_fn in hists_and_scale_fns:
             h = h.Clone()
 
+            # check if all symbols are substituted
+            missing_symbols = set(map(str, scale_fn.free_symbols)) - set(poi_values.keys())
+            if missing_symbols:
+                raise Exception("scaling function misses substitutions for symbol(s) '{}', please "
+                    "add them via --pois".format(",".join(missing_symbols)))
+
+            # perform the scaling
             scale = scale_fn.evalf(subs=poi_values)
             h.Scale(scale)
 
