@@ -152,7 +152,7 @@ def plot_limit_scan(
             g_thy = create_graph(values=theory_values, key="xsec", sigma=1)
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
                 "MarkerSize": 0, "FillStyle": 3001}, color=_colors.root.red, color_flags="lf")
-            draw_objs.append((g_thy, "SAME,C3"))
+            draw_objs.append((g_thy, "SAME,C4"))
             y_min_value = min(y_min_value, min(theory_values["xsec_m1"]))
         else:
             g_thy = create_graph(values=theory_values, key="xsec")
@@ -295,7 +295,7 @@ def plot_limit_scans(
                 theory_values["xsec_p1"] - theory_values["xsec"], pad=True)
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
                 "MarkerSize": 0, "FillStyle": 3001}, color=_colors.root.red, color_flags="lf")
-            draw_objs.append((g_thy, "SAME,C3"))
+            draw_objs.append((g_thy, "SAME,C4"))
             y_min_value = min(y_min_value, min(theory_values["xsec_m1"]))
         else:
             g_thy = create_tgraph(len(poi_values), poi_values, theory_values["xsec"])
