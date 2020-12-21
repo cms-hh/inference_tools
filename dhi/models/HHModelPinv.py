@@ -180,8 +180,10 @@ class HHModel(PhysicsModel):
 
     def __init__(self, ggf_sample_list, vbf_sample_list, name):
         PhysicsModel.__init__(self)
-        self.doNNLOscaling = True
-        self.name = name
+        self.doNNLOscaling    = True
+        self.doklDependentUnc = True
+        self.klUncName        = "THU_HH"
+        self.name             = name
 
         self.check_validity_ggf(ggf_sample_list)
         self.check_validity_vbf(vbf_sample_list)
@@ -200,6 +202,57 @@ class HHModel(PhysicsModel):
                 self.doNNLOscaling = value.lower() in ["yes", "true", "1"]
                 print("[INFO] set doNNLOscaling of model {} to {}".format(
                     self.name, self.doNNLOscaling))
+            if key == "doklDependentUnc":
+                self.doklDependentUnc = value.lower() in ["yes", "true", "1"]
+                print("[INFO] set doklDependentUnc of model {} to {}".format(
+                    self.name, self.doklDependentUnc))
+
+    def preProcessNuisances(self, nuisances):
+        ''' this method is executed before nuisances are processed'''
+        if not self.doklDependentUnc: return
+        nuisances.append((self.klUncName, False, "param", [ "0", "1"], [] ) )
+
+    def makeInterpolation(self, nameout, nameHi, nameLo, x):
+        # as in https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/blob/102x/interface/ProcessNormalization.h
+        ## maybe we can try to reuse that should be fast
+        d = {"name":nameout, "hi":nameHi, "lo":nameLo, 'x':x}
+        
+        d['logKhi']    = "log({hi})"  .format(**d)
+        d['logKlo']    = "-log({lo})" .format(**d)
+        d['avg']       = "0.5*({logKhi} + {logKlo})".format(**d)
+        d['halfdiff']  = "0.5*({logKhi} - {logKlo})".format(**d)
+        d["twox"]      = "2*{x}".format(**d)
+        d["twox2"]     = "({twox})*({twox})".format(**d)
+        d['alpha']     = '0.125 * {twox} * ({twox2} * ({twox2} - 10.) + 15.)'.format(**d)
+        
+        d['retCent']   = "{avg}+{alpha}*{halfdiff}".format(**d)
+        d['retLow']    = d['logKlo']
+        d['retHigh']   = d['logKhi']
+        d['retFull'] = "{x} <= -0.5 ? ({retLow}) : {x} >= 0.5 ? ({retHigh}) : ({retCent})".format(**d)
+        
+        d['ret'] = 'expr::{name}("exp({retFull})",{{{hi},{lo},{x}}})'.format(**d)
+        
+        # print "[DEBUG]","[makeInterpolation]","going to build: ",d['ret']
+        self.modelBuilder.factory_(d['ret'])
+        
+        return
+
+    def makeklDepTheoUncertainties(self):
+        ''' Construct and import uncertanties on the workspace'''
+        #upper_unc[kl] = Max[72.0744-51.7362*kl+11.3712*kl2, 70.9286-51.5708*kl+11.4497*kl2] in fb.
+        #lower_unc[kl] = Min[66.0621-46.7458*kl+10.1673*kl2, 66.7581-47.721*kl+10.4535*kl2] in fb.
+        # if not self.doklDependentUnc: return
+
+        self.modelBuilder.doVar("%s[-7,7]" % self.klUncName)
+        
+        self.modelBuilder.factory_('expr::%s_kappaHi("max(72.0744-51.7362*@0+11.3712*@0*@0,70.9286-51.5708*@0+11.4497*@0*@0) / (70.3874 - 50.4111*@0 + 11.0595*@0*@0)",kl)' % self.klUncName)
+        self.modelBuilder.factory_('expr::%s_kappaLo("min(66.0621-46.7458*@0+10.1673*@0*@0,66.7581-47.721*@0+10.4535*@0*@0)  / (70.3874 - 50.4111*@0 + 11.0595*@0*@0)",kl)'  % self.klUncName)
+
+        self.makeInterpolation("%s_kappa" % self.klUncName, "%s_kappaHi" % self.klUncName, "%s_kappaLo" % self.klUncName , self.klUncName)
+        
+        ## make scaling
+        self.modelBuilder.factory_("expr::scaling_{name}(\"pow(@0,@1)\",{name}_kappa,{name})".format(name=self.klUncName)) 
+        return
 
     def check_validity_ggf(self, ggf_sample_list):
         if len(ggf_sample_list) < 3:
@@ -256,6 +309,8 @@ class HHModel(PhysicsModel):
         self.modelBuilder.out.var("kl")     .setConstant(True)
         self.modelBuilder.out.var("kt")     .setConstant(True)
 
+        if self.doklDependentUnc:
+            self.makeklDepTheoUncertainties()
         self.create_scalings()
 
     def create_scalings(self):
@@ -304,6 +359,11 @@ class HHModel(PhysicsModel):
                 symb = '@{}'.format(idx)
                 s_expr = s_expr.replace(ce, symb)
 
+            # embed the scaling due to the xs uncertainty
+            if self.doklDependentUnc:
+                s_expr = 'scaling_{name} * ({expr})'.format(name=self.klUncName, expr=s_expr)
+                couplings_in_expr.append('scaling_{name}'.format(name=self.klUncName))
+
             if(self.doNNLOscaling):
                 #print str(f_expr)
                 if('kl' not in str(f_expr)): couplings_in_expr.append('kl')
@@ -315,16 +375,16 @@ class HHModel(PhysicsModel):
 
                 arglist = ','.join(couplings_in_expr)
                 #this will scale NNLO_xsec
-                exprname = 'expr::{}(\"({}) / (1.115 * ({}) / ({}))\" , {})'.format(f_name, s_expr, f_NLO_xsec, f_NNLO_xsec, arglist)
-                #print exprname
+                exprname = 'expr::{}("({}) / (1.115 * ({}) / ({}))" , {})'.format(f_name, s_expr, f_NLO_xsec, f_NNLO_xsec, arglist)
                 self.modelBuilder.factory_(exprname) # the function that scales each VBF sample
                 #self.modelBuilder.out.function(f_name).Print("")
 
             else:
                 arglist = ','.join(couplings_in_expr)
                 exprname = 'expr::{}(\"{}\" , {})'.format(f_name, s_expr, arglist)
-                #print exprname
                 self.modelBuilder.factory_(exprname) # the function that scales each VBF sample
+
+            # print exprname
 
             f_prod_name_pmode = f_name + '_r_gghh'
             prodname_pmode = 'prod::{}(r_gghh,{})'.format(f_prod_name_pmode, f_name)
@@ -416,7 +476,7 @@ class HHModel(PhysicsModel):
             return self.f_r_vbf_names[isample]
 
         # complain when neither a ggf nor a vbf match was found
-        raise Exception("singal process {} did not match any GGF or VBF samples in bin {}".format(
+        raise Exception("signal process {} did not match any GGF or VBF samples in bin {}".format(
             process, bin))
 
 
