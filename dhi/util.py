@@ -206,7 +206,10 @@ def create_tgraph(n, *args, **kwargs):
         n += 2
         _args = [(a[:1] + a + a[-1:]) for a in _args]
 
-    return cls(n, *(array.array("f", a) for a in _args))
+    if n == 0:
+        return cls(n)
+    else:
+        return cls(n, *(array.array("f", a) for a in _args))
 
 
 def copy_no_collisions(path, directory, postfix_format="_{}"):
@@ -301,3 +304,64 @@ def disable_output():
     with open("/dev/null", "w") as f:
         with patch_object(sys, "stdout", f):
             yield
+
+
+def try_int(n):
+    """
+    Takes a number *n* and tries to convert it to an integer. When *n* has no decimals, an integer
+    is returned with the same value as *n*. Otherwise, a float is returned.
+    """
+    n_int = int(n)
+    return n_int if n == n_int else n
+
+
+def poisson_asym_errors(v):
+    """
+    Returns asymmetric poisson errors for a value *v* in a tuple (up, down) following the Garwoord
+    prescription (1936). For more info, see
+    https://twiki.cern.ch/twiki/bin/viewauth/CMS/PoissonErrorBars and
+    https://root.cern.ch/doc/master/TH1_8cxx_source.html#l08537.
+    """
+    ROOT = import_ROOT()
+
+    v_int = int(v)
+    alpha = 1. - 0.682689492
+
+    err_up = ROOT.Math.gamma_quantile_c(alpha / 2., v_int + 1, 1) - v
+    err_down = 0. if v == 0 else (v - ROOT.Math.gamma_quantile(alpha / 2, v_int, 1.))
+
+    return err_up, err_down
+
+
+class ROOTColorGetter(object):
+
+    def __init__(self, **cache):
+        super(ROOTColorGetter, self).__init__()
+
+        self.cache = cache or {}
+
+    def __getattr__(self, attr):
+        ROOT = import_ROOT()
+
+        if attr not in self.cache:
+            self.cache[attr] = self.create_color(attr)
+        elif not isinstance(self.cache[attr], int):
+            self.cache[attr] = self.create_color(self.cache[attr])
+
+        return self.cache[attr]
+
+    @classmethod
+    def create_color(cls, obj):
+        ROOT = import_ROOT()
+
+        if isinstance(obj, int):
+            return obj
+        elif isinstance(obj, str):
+            return getattr(ROOT, "k" + obj.capitalize())
+        elif isinstance(obj, tuple) and len(obj) in [2, 3, 4]:
+            c = ROOT.TColor.GetColor(*obj[:3]) if len(obj) >= 3 else obj[0]
+            if len(obj) in [2, 4]:
+                c = ROOT.TColor.GetColorTransparent(c, obj[-1])
+            return c
+        else:
+            raise AttributeError("cannot interpret '{}' as color".format(obj))

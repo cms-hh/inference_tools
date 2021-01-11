@@ -9,12 +9,16 @@ import math
 import numpy as np
 
 from dhi.config import poi_data, campaign_labels, colors as _colors, br_hh_names
-from dhi.util import import_ROOT, to_root_latex, create_tgraph
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int
+
+
+_colors = _colors.root
 
 
 def plot_limit_scan(
     path,
     poi,
+    scan_parameter,
     expected_values,
     observed_values=None,
     theory_values=None,
@@ -24,29 +28,30 @@ def plot_limit_scan(
     y_min=None,
     y_max=None,
     xsec_unit=None,
-    pp_process="pp",
-    hh_process="HH",
-    campaign="2017",
+    hh_process=None,
+    model_parameters=None,
+    campaign=None,
 ):
     """
-    Creates a plot for the upper limit scan of a *poi* and saves it at *path*. *expected_values*
-    should be a mapping to lists of values or a record array with keys "<poi_name>" and "limit", and
-    optionally "limit_p1" (plus 1 sigma), "limit_m1" (minus 1 sigma), "limit_p2" and "limit_m2".
-    When the variations by 1 or 2 sigma are missing, the plot is created without them. When
-    *observed_values* is set, it should have a similar format with keys "<poi_name>" and "limit".
-    When *theory_values* is set, it should have a similar format with keys "<poi_name>" and "xsec",
-    and optionally "xsec_p1" and "xsec_m1".
+    Creates a plot for the upper limit scan of a *poi* over a *scan_parameter* and saves it at
+    *path*. *expected_values* should be a mapping to lists of values or a record array with keys
+    "<scan_parameter>" and "limit", and optionally "limit_p1" (plus 1 sigma), "limit_m1" (minus 1
+    sigma), "limit_p2" and "limit_m2". When the variations by 1 or 2 sigma are missing, the plot is
+    created without them. When *observed_values* is set, it should have a similar format with keys
+    "<scan_parameter>" and "limit". When *theory_values* is set, it should have a similar format
+    with keys "<scan_parameter>" and "xsec", and optionally "xsec_p1" and "xsec_m1".
 
     When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*,
     *y_min* and *y_max* define the axis ranges and default to the range of the given values.
     *xsec_unit* denotes whether the passed values are given as real cross sections in this unit or,
-    when *None*, as a ratio over the theory prediction. The *pp_process* label is shown in the
-    y-axis title to denote the physics process the computed values are corresponding to.
-    *hh_process* is inserted to the process name in the title of the y-axis and indicates that the
-    plotted cross section data was (e.g.) scaled by a branching ratio. *campaign* should refer to
-    the name of a campaign label defined in dhi.config.campaign_labels.
+    when *None*, as a ratio over the theory prediction. *hh_process* can be the name of a HH
+    subprocess configured in *dhi.config.br_hh_names* and is inserted to the process name
+    in the title of the y-axis and indicates that the plotted cross section data was (e.g.) scaled
+    by a branching ratio. *model_parameters* can be a dictionary of key-value pairs of model
+    parameters. *campaign* should refer to the name of a campaign label defined in
+    *dhi.config.campaign_labels*.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html#limits-vs-poi
+    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -56,13 +61,13 @@ def plot_limit_scan(
         # convert record array to dict mapping to arrays
         if isinstance(values, np.ndarray):
             values = {key: values[key] for key in values.dtype.names}
-        assert poi in values
+        assert scan_parameter in values
         if keys:
             assert all(key in values for key in keys)
         return values
 
     expected_values = check_values(expected_values, ["limit"])
-    poi_values = expected_values[poi]
+    scan_values = expected_values[scan_parameter]
     if observed_values is not None:
         observed_values = check_values(observed_values, ["limit"])
     if theory_values is not None:
@@ -70,9 +75,9 @@ def plot_limit_scan(
 
     # set default ranges
     if x_min is None:
-        x_min = min(poi_values)
+        x_min = min(scan_values)
     if x_max is None:
-        x_max = max(poi_values)
+        x_max = max(scan_values)
 
     # start plotting
     r.setup_style()
@@ -83,10 +88,9 @@ def plot_limit_scan(
     y_min_value = 1e5
 
     # dummy histogram to control axes
-    x_title = to_root_latex(poi_data[poi].label)
-    y_title = "Upper 95% CLs limit on #sigma({} #rightarrow {}) / {}".format(
-        to_root_latex(pp_process), to_root_latex(hh_process),
-        to_root_latex(xsec_unit or "#sigma_{SM}"))
+    x_title = to_root_latex(poi_data[scan_parameter].label)
+    y_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
+        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{SM}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
@@ -98,7 +102,7 @@ def plot_limit_scan(
     def create_graph(values=expected_values, key="limit", sigma=None):
         return create_tgraph(
             len(values[key]),
-            poi_values,
+            scan_values,
             values[key],
             0,
             0,
@@ -111,9 +115,9 @@ def plot_limit_scan(
     if "limit_p2" in expected_values and "limit_m2" in expected_values:
         g_2sigma = create_graph(sigma=2)
         r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
-            "MarkerSize": 0, "FillColor": _colors.root.yellow})
+            "MarkerSize": 0, "FillColor": _colors.yellow})
         draw_objs.append((g_2sigma, "SAME,4"))
-        legend_entries[5] = (g_2sigma, r"#pm 1#sigma expected")
+        legend_entries[5] = (g_2sigma, "#pm 2#sigma expected")
         y_max_value = max(y_max_value, max(expected_values["limit_p2"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m2"]))
 
@@ -121,9 +125,9 @@ def plot_limit_scan(
     if "limit_p1" in expected_values and "limit_m1" in expected_values:
         g_1sigma = create_graph(sigma=1)
         r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
-            "MarkerSize": 0, "FillColor": _colors.root.green})
+            "MarkerSize": 0, "FillColor": _colors.green})
         draw_objs.append((g_1sigma, "SAME,4"))
-        legend_entries[4] = (g_1sigma, r"#pm 2#sigma expected")
+        legend_entries[4] = (g_1sigma, "#pm 1#sigma expected")
         y_max_value = max(y_max_value, max(expected_values["limit_p1"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m1"]))
 
@@ -151,13 +155,13 @@ def plot_limit_scan(
         if "xsec_p1" in theory_values and "xsec_m1" in theory_values:
             g_thy = create_graph(values=theory_values, key="xsec", sigma=1)
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0, "FillStyle": 3001}, color=_colors.root.red, color_flags="lf")
+                "MarkerSize": 0, "FillStyle": 3244}, color=_colors.red, color_flags="lf")
             draw_objs.append((g_thy, "SAME,C4"))
             y_min_value = min(y_min_value, min(theory_values["xsec_m1"]))
         else:
             g_thy = create_graph(values=theory_values, key="xsec")
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0}, color=_colors.root.red, color_flags="l")
+                "MarkerSize": 0}, color=_colors.red, color_flags="l")
             draw_objs.append((g_thy, "SAME,L"))
             y_min_value = min(y_min_value, min(theory_values["xsec"]))
         legend_entries[0 if observed_values is None else 1] = (g_thy, "Theory prediction")
@@ -175,6 +179,13 @@ def plot_limit_scan(
             y_max = 1.35 * (y_max_value - y_min)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
+
+    # model parameter label
+    if model_parameters:
+        for i, (p, v) in enumerate(model_parameters.items()):
+            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
+            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
+                y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=440, height=100,
@@ -203,6 +214,7 @@ def plot_limit_scan(
 def plot_limit_scans(
     path,
     poi,
+    scan_parameter,
     names,
     expected_values,
     theory_values=None,
@@ -213,29 +225,30 @@ def plot_limit_scans(
     y_min=None,
     y_max=None,
     xsec_unit=None,
-    pp_process="pp",
-    hh_process="HH",
-    campaign="2017",
+    hh_process=None,
+    model_parameters=None,
+    campaign=None,
 ):
     """
-    Creates a plot showing multiple upper limit scans of a *poi* and saves it at *path*.
-    *expected_values* should be a list of mappings to lists of values or a record array with keys
-    "<poi_name>" and "limit". Each mapping in *expected_values* will result in a different curve.
-    When *theory_values* is set, it should have a similar format with keys "<poi_name>" and "xsec",
-    and optionally "xsec_p1" and "xsec_m1". *names* denote the names of limit curves shown in the
-    legend. When a name is found to be in dhi.config.br_hh_names, its value is used as a label
-    instead. Likewise, *colors* can be a sequence of color numbers or names to be used per curve.
+    Creates a plot showing multiple upper limit scans of a *poi* over a *scan_parameter* and saves
+    it at *path*. *expected_values* should be a list of mappings to lists of values or a record
+    array with keys "<scan_parameter>" and "limit". Each mapping in *expected_values* will result in
+    a different curve. When *theory_values* is set, it should have a similar format with keys
+    "<scan_parameter>" and "xsec", and optionally "xsec_p1" and "xsec_m1". *names* denote the names
+    of limit curves shown in the legend. When a name is found to be in dhi.config.br_hh_names, its
+    value is used as a label instead. Likewise, *colors* can be a sequence of color numbers or names
+    to be used per curve.
 
     When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*,
     *y_min* and *y_max* define the axis ranges and default to the range of the given values.
     *xsec_unit* denotes whether the passed values are given as real cross sections in this unit or,
-    when *None*, as a ratio over the theory prediction. The *pp_process* label is shown in the
-    x-axis title to denote the physics process the computed values are corresponding to.
-    *hh_process* is inserted to the process name in the title of the y-axis and indicates that the
-    plotted cross section data was (e.g.) scaled by a branching ratio. *campaign* should refer to
-    the name of a campaign label defined in dhi.config.campaign_labels.
+    when *None*, as a ratio over the theory prediction. *hh_process* can be the name of a HH
+    subprocess configured in *dhi.config.br_hh_names* and is inserted to the process name in the
+    title of the y-axis and indicates that the plotted cross section data was (e.g.) scaled by a
+    branching ratio. *model_parameters* can be a dictionary of key-value pairs of model parameters.
+    *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html#multiple-limits-vs-poi
+    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -253,21 +266,21 @@ def plot_limit_scans(
     assert n_graphs >= 1
     assert len(names) == n_graphs
     assert not colors or len(colors) == n_graphs
-    assert all(poi in ev for ev in expected_values)
+    assert all(scan_parameter in ev for ev in expected_values)
     assert all("limit" in ev for ev in expected_values)
-    poi_values = expected_values[0][poi]
+    scan_values = expected_values[0][scan_parameter]
     if theory_values is not None:
         # convert record array to dicts mapping to arrays
         if isinstance(theory_values, np.ndarray):
             theory_values = {key: theory_values[key] for key in theory_values.dtype.names}
-        assert poi in theory_values
+        assert scan_parameter in theory_values
         assert "xsec" in theory_values
 
     # set default ranges
     if x_min is None:
-        x_min = min(poi_values)
+        x_min = min(scan_values)
     if x_max is None:
-        x_max = max(poi_values)
+        x_max = max(scan_values)
 
     # start plotting
     r.setup_style()
@@ -279,10 +292,9 @@ def plot_limit_scans(
     y_min_value = 1e5
 
     # dummy histogram to control axes
-    x_title = to_root_latex(poi_data[poi].label)
-    y_title = "Upper 95% CLs limit on #sigma({} #rightarrow {}) / {}".format(
-        to_root_latex(pp_process), to_root_latex(hh_process),
-        to_root_latex(xsec_unit or "#sigma_{SM}"))
+    x_title = to_root_latex(poi_data[scan_parameter].label)
+    y_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
+        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{SM}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
@@ -290,17 +302,17 @@ def plot_limit_scans(
     # theory prediction
     if theory_values is not None:
         if "xsec_p1" in theory_values and "xsec_m1" in theory_values:
-            g_thy = create_tgraph(len(poi_values), poi_values, theory_values["xsec"], 0, 0,
+            g_thy = create_tgraph(len(scan_values), scan_values, theory_values["xsec"], 0, 0,
                 theory_values["xsec"] - theory_values["xsec_m1"],
                 theory_values["xsec_p1"] - theory_values["xsec"], pad=True)
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0, "FillStyle": 3001}, color=_colors.root.red, color_flags="lf")
+                "MarkerSize": 0, "FillStyle": 3244}, color=_colors.red, color_flags="lf")
             draw_objs.append((g_thy, "SAME,C4"))
             y_min_value = min(y_min_value, min(theory_values["xsec_m1"]))
         else:
-            g_thy = create_tgraph(len(poi_values), poi_values, theory_values["xsec"])
+            g_thy = create_tgraph(len(scan_values), scan_values, theory_values["xsec"])
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0}, color=_colors.root.red, color_flags="l")
+                "MarkerSize": 0}, color=_colors.red, color_flags="l")
             draw_objs.append((g_thy, "SAME,L"))
             y_min_value = min(y_min_value, min(theory_values["xsec"]))
         legend_entries.append((g_thy, "Theory prediction"))
@@ -308,11 +320,11 @@ def plot_limit_scans(
     # central values
     for i, ev in enumerate(expected_values[::-1]):
         mask = ~np.isnan(ev["limit"])
-        g_exp = create_tgraph(mask.sum(), poi_values[mask], ev["limit"][mask])
+        g_exp = create_tgraph(mask.sum(), scan_values[mask], ev["limit"][mask])
         r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.7})
         if colors:
             color = colors[n_graphs - i - 1]
-            color = _colors.root.get(color, color)
+            color = _colors.get(color, color)
             r.set_color(g_exp, color)
             draw_objs.append((g_exp, "SAME,PL"))
         else:
@@ -334,6 +346,13 @@ def plot_limit_scans(
             y_max = 1.35 * (y_max_value - y_min)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
+
+    # model parameter label
+    if model_parameters:
+        for i, (p, v) in enumerate(model_parameters.items()):
+            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
+            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
+                y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
@@ -363,19 +382,20 @@ def plot_limit_scans(
 
 def plot_limit_points(
     path,
+    poi,
     data,
     x_log=False,
     x_min=None,
     x_max=None,
     xsec_unit=None,
-    pp_process="pp",
-    hh_process="HH",
+    hh_process=None,
+    model_parameters=None,
     h_lines=None,
-    campaign="2017",
+    campaign=None,
 ):
     """
-    Creates a plot showing a comparison of limits of multiple analysis (or channels) and saves it at
-    *path*. *data* should be a list of dictionaries with fields
+    Creates a plot showing a comparison of limits of multiple analysis (or channels) on a *poi* and
+    saves it at *path*. *data* should be a list of dictionaries with fields
 
     - "expected", a sequence of five values, i.e., central limit, and +1 sigma, -1 sigma, +2 sigma,
       and -2 sigma variations (absolute values, not errors!),
@@ -391,6 +411,7 @@ def plot_limit_points(
 
         plot_limit_points(
             path="plot.pdf",
+            poi="r",
             data=[{
                 "expected": (40., 50., 28., 58., 18.),
                 "observed": 45.,
@@ -404,14 +425,15 @@ def plot_limit_points(
     When *x_log* is *True*, the x-axis is scaled logarithmically. *x_min* and *x_max* define the
     range of the x-axis and default to the maximum range of values passed in data, including
     uncertainties. *xsec_unit* denotes whether the passed values are given as real cross sections in
-    this unit or, when *None*, as a ratio over the theory prediction. The *pp_process* label is
-    shown in the x-axis title to denote the physics process the computed values are corresponding
-    to. *hh_process* is inserted to the process name in the title of the x-axis and indicates that
-    the plotted cross section data was (e.g.) scaled by a branching ratio. *h_lines* can be a list
-    of integers denoting positions where additional horizontal lines are drawn for visual guidance.
-    *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
+    this unit or, when *None*, as a ratio over the theory prediction. *hh_process* can be the name
+    of a HH subprocess configured in *dhi.config.br_hh_names* and is inserted to the process name in
+    the title of the x-axis and indicates that the plotted cross section data was (e.g.) scaled by a
+    branching ratio. *model_parameters* can be a dictionary of key-value pairs of model parameters.
+    *h_lines* can be a list of integers denoting positions where additional horizontal lines are
+    drawn for visual guidance. *campaign* should refer to the name of a campaign label defined in
+    dhi.config.campaign_labels.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html#multiple-limits-at-a-certain-poi-value
+    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -479,9 +501,8 @@ def plot_limit_points(
     draw_objs = []
 
     # dummy histogram to control axes
-    x_title = "Upper 95% CLs limit on #sigma({} #rightarrow {}) / {}".format(
-        to_root_latex(pp_process), to_root_latex(hh_process),
-        to_root_latex(xsec_unit or "#sigma_{SM}"))
+    x_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
+        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{SM}"))
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad, props={"TitleOffset": 1.2})
@@ -510,14 +531,14 @@ def plot_limit_points(
     # 2 sigma band
     g_2sigma = create_graph(sigma=2)
     r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
-        "MarkerSize": 0, "FillColor": _colors.root.yellow})
+        "MarkerSize": 0, "FillColor": _colors.yellow})
     draw_objs.append((g_2sigma, "SAME,2"))
     legend_entries[5] = (g_2sigma, r"#pm 2#sigma expected")
 
     # 1 sigma band
     g_1sigma = create_graph(sigma=1)
     r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
-        "MarkerSize": 0, "FillColor": _colors.root.green})
+        "MarkerSize": 0, "FillColor": _colors.green})
     draw_objs.append((g_1sigma, "SAME,2"))
     legend_entries[4] = (g_1sigma, r"#pm 1#sigma expected")
 
@@ -541,7 +562,7 @@ def plot_limit_points(
         # uncertainty line
         g_thy_line = create_graph(key="theory")
         r.setup_graph(g_thy_line, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-            "MarkerSize": 0}, color=_colors.root.red, color_flags="lm")
+            "MarkerSize": 0}, color=_colors.red, color_flags="lm")
         draw_objs.append((g_thy_line, "SAME,LZ"))
         legend_entry = (g_thy_line, "Theory prediction")
         # uncertainty area
@@ -549,7 +570,7 @@ def plot_limit_points(
         if has_thy_err:
             g_thy_area = create_graph(key="theory", sigma=1)
             r.setup_graph(g_thy_area, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0, "FillStyle": 3001}, color=_colors.root.red, color_flags="lfm")
+                "MarkerSize": 0, "FillStyle": 3244}, color=_colors.red, color_flags="lfm")
             draw_objs.append((g_thy_area, "SAME,2"))
             legend_entry = (g_thy_area, "Theory prediction", "lf")
         legend_entries[1 if has_obs else 0] = legend_entry
@@ -596,6 +617,13 @@ def plot_limit_points(
         r.setup_line(tr, props={"NDC": False, "LineWidth": 1})
         draw_objs.extend([tl, tr])
 
+    # model parameter label
+    if model_parameters:
+        for i, (p, v) in enumerate(model_parameters.items()):
+            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
+            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
+                y_offset=40 + i * 24, props={"TextSize": 20}))
+
     # legend
     legend = r.routines.create_legend(pad=pad, width=440, height=100)
     r.setup_legend(legend, props={"NColumns": 2})
@@ -618,3 +646,11 @@ def plot_limit_points(
     # save
     r.update_canvas(canvas)
     canvas.SaveAs(path)
+
+
+def create_hh_process_label(poi="r", br=None):
+    return "{} #rightarrow HH{}{}".format(
+        {"r": "pp", "r_gghh": "gg", "r_qqhh": "qq"}.get(poi, "pp"),
+        {"r_qqhh": "jj"}.get(poi, ""),
+        "#scale[0.75]{{ ({})}}".format(to_root_latex(br_hh_names[br])) if br in br_hh_names else "",
+    )
