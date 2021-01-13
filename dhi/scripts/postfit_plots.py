@@ -61,8 +61,7 @@ def create_postfit_plots(
         fileOrig = shapes_input
 
     print("reading shapes from: ", shapes_input)
-    fin = [ROOT.TFile(shapes_input, "READ")]
-    ## decide if sum years or do by year
+    fin = ROOT.TFile(shapes_input, "READ")
 
     labelY = "Events"
     if divideByBinWidth : labelY = "Events / bin width"
@@ -78,8 +77,7 @@ def create_postfit_plots(
     if not binToRead == "none" :
         catcats =  [binToRead]
     else :
-        #catcats = getCats(folder, fin[0], options.fromHavester)
-        catcats = getCats(folder, fin[0], False)
+        catcats = getCats(folder, fin, False)
 
     if normalize_X_original :
 
@@ -99,14 +97,14 @@ def create_postfit_plots(
         nbinscatlist = []
         for catcat in catcats :
             readFrom = folder + "/" + catcat
-            hist = fin[0].Get(readFrom + "/" + name_total )
+            hist = fin.Get(readFrom + "/" + name_total )
             print ("reading shapes", readFrom + "/" + name_total)
             print (hist.Integral())
             nbinscat =  GetNonZeroBins(hist)
             nbinscatlist += [nbinscat]
             print (readFrom, nbinscat)
             nbinstotal += nbinscat
-            datahist = fin[0].Get(readFrom + "/data")
+            datahist = fin.Get(readFrom + "/data")
         template = ROOT.TH1F("my_hist", "", nbinstotal, 0 - 0.5 , nbinstotal - 0.5)
         template.GetYaxis().SetTitle(labelY)
         print (nbinscatlist)
@@ -130,7 +128,7 @@ def create_postfit_plots(
         for cc, catcat in enumerate(catcats) :
             readFrom = folder + "/" + catcat
             print( " histtotal ", readFrom + "/" + name_total )
-            histtotal = fin[0].Get(readFrom + "/" + name_total )
+            histtotal = fin.Get(readFrom + "/" + name_total )
             lastbin += process_data_histo(
                 template,
                 dataTGraph1,
@@ -314,14 +312,14 @@ def create_postfit_plots(
             lastbin = 0
             for cc, catcat in enumerate(catcats) :
                 readFrom = folder + "/" + catcat
-                histtotal = fin[0].Get((readFrom + "/" + name_total).replace("2018", str(era)) )
+                histtotal = fin.Get(readFrom + "/" + name_total)
                 lastbin += err_data(
                     dataTGraph2,
                     hist_total,
                     dataTGraph1,
                     hist_total,
                     readFrom,
-                    fin[0],
+                    fin,
                     divideByBinWidth,
                     lastbin
                     )
@@ -333,10 +331,6 @@ def create_postfit_plots(
         dumb = line.Draw("same")
         del dumb
         print ("done bottom pad")
-    #    #canvas.cd()
-    #    #dumb = bottomPad.Draw()
-    #    #del dumb
-
     ##################################
 
     optbin = "plain"

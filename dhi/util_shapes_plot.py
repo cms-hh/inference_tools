@@ -12,28 +12,9 @@ def GetNonZeroBins(template) :
     return nbins
 
 def process_data_histo(template, dataTGraph1, folder, fin, lastbin, histtotal, catbin, minY, maxY, divideByBinWidth) :
-    dataTGraph = fin[0].Get(folder + "/data")
+    dataTGraph = fin.Get(folder + "/data")
     print("adding", folder + "/data")
     allbins = catbin
-    if len(fin) == 3 :
-        for eraa in [1,2] :
-            if eraa == 1 : folderRead = folder.replace("2018", "2017")
-            if eraa == 2 : folderRead = folder.replace("2018", "2016")
-            dataTGraph2 = fin[eraa].Get(folderRead + "/data")
-            print("adding", folderRead + "/data", lastbin)
-            for ii in xrange(0, allbins) :
-                xp = ROOT.Double()
-                yp = ROOT.Double()
-                dataTGraph.GetPoint(ii, xp, yp)
-                xp2 = ROOT.Double()
-                yp2 = ROOT.Double()
-                dataTGraph2.GetPoint(ii, xp2, yp2)
-                dataTGraph.SetPoint(      ii ,  template.GetBinCenter(ii + 1) , (yp + yp2))
-                dataTGraph.SetPointEYlow( ii ,  math.sqrt(dataTGraph.GetErrorYlow(ii)*dataTGraph.GetErrorYlow(ii) + dataTGraph2.GetErrorYlow(ii)*dataTGraph2.GetErrorYlow(ii)))
-                dataTGraph.SetPointEYhigh(ii ,  math.sqrt(dataTGraph.GetErrorYhigh(ii)*dataTGraph.GetErrorYhigh(ii) + dataTGraph2.GetErrorYhigh(ii)*dataTGraph2.GetErrorYhigh(ii)))
-                dataTGraph.SetPointEXlow( ii ,  template.GetBinWidth(ii+1)/2.)
-                dataTGraph.SetPointEXhigh(ii ,  template.GetBinWidth(ii+1)/2.)
-            del dataTGraph2
     for ii in xrange(0, allbins) :
         bin_width = 1.
         if divideByBinWidth :
@@ -58,17 +39,9 @@ def process_data_histo(template, dataTGraph1, folder, fin, lastbin, histtotal, c
     return allbins
 
 def process_total_histo(hist, folder, fin, divideByBinWidth, name_total, lastbin, do_bottom, labelX, catbins, minY, maxY) :
-    total_hist = fin[0].Get(folder + "/" + name_total)
-    print(len(fin))
-    ## if we want to sum eras; XandaFix
-    if len(fin) == 3 :
-        for eraa in [1,2] :
-            if eraa == 1 : folderRead = folder.replace("2018", "2017")
-            if eraa == 2 : folderRead = folder.replace("2018", "2016")
-            print ("reading ", eraa, folderRead + "/" + name_total)
-            print(folderRead + "/" + name_total)
-            total_hist.Add(fin[eraa].Get(folderRead + "/" + name_total))
-    print (folder + "/" + name_total)
+    total_hist_name = folder + "/" + name_total
+    total_hist = fin.Get(total_hist_name)
+    print ("Total band taken from %s" % total_hist_name)
     allbins = catbins
     hist.SetMarkerSize(0)
     hist.SetMarkerColor(16)
@@ -143,21 +116,17 @@ def addLabel_CMS_preliminary(era, do_bottom) :
 def stack_histo(hist_rebin_local, fin, folder, name, itemDict, divideByBinWidth, addlegend, lastbin, catbin, original, firstHisto, era, legend) :
     histo_name = folder+"/"+name
     print ("try find %s" % histo_name)
-    hist = fin[0].Get(histo_name) #era
-    allbins = catbin #hist.GetNbinsX() #GetNonZeroBins(hist)
+    hist = fin.Get(histo_name)
+    allbins = catbin
     try  :
         hist.Integral()
     except :
-        print ("Doesn't exist %s in %s" % (histo_name, era))
-        if len(fin) > 1 :
-            hist = firstHisto.Clone()
-        else :
-            print ("Doesn't exist %s" % histo_name)
-            return {
-                "lastbin" : allbins,
-                "binEdge" : lastbin - 0.5 , # if lastbin > 0 else 0
-                "labelPos" : 0 if not original == "none" else float(allbins/2)
-                }
+        print ("Doesn't exist %s" % histo_name)
+        return {
+            "lastbin" : allbins,
+            "binEdge" : lastbin - 0.5 , 
+            "labelPos" : 0 if not original == "none" else float(allbins/2)
+            }
     if not firstHisto.Integral() > 0 :
         firstHisto = hist.Clone()
         for ii in xrange(1, firstHisto.GetNbinsX() + 1) :
