@@ -7,13 +7,39 @@ Generic base tasks.
 import os
 import re
 import math
+import importlib
 from collections import OrderedDict
 
 import luigi
 import law
+import six
 
 
 law.contrib.load("git", "htcondor", "matplotlib", "numpy", "root", "tasks", "wlcg")
+
+
+class LocalTarget(law.LocalTarget):
+
+    def __init__(self, *args, **kwargs):
+        self._repr_path = kwargs.pop("repr_path")
+        super(LocalTarget, self).__init__(*args, **kwargs)
+
+    def _repr_pairs(self, *args, **kwargs):
+        pairs = super(LocalTarget, self)._repr_pairs(*args, **kwargs)
+        if self._repr_path:
+            pairs = [
+                (key, self._repr_path if key == "path" else value)
+                for key, value in pairs
+            ]
+        return pairs
+
+
+class LocalFileTarget(LocalTarget, law.LocalFileTarget):
+    pass
+
+
+class LocalDirectoryTarget(LocalTarget, law.LocalDirectoryTarget):
+    pass
 
 
 class BaseTask(law.Task):
@@ -95,17 +121,23 @@ class AnalysisTask(BaseTask):
 
     def local_path(self, *path, **kwargs):
         store = kwargs.get("store") or self.default_store
-        store = os.path.expandvars(os.path.expanduser(store))
-
         parts = tuple(self.store_parts().values()) + tuple(self.store_parts_ext().values()) + path
-
-        return os.path.join(store, *(str(p) for p in parts))
+        repr_path = os.path.join(store, *(str(p) for p in parts))
+        local_path = os.path.expandvars(os.path.expanduser(repr_path))
+        return (local_path, repr_path) if kwargs.get("repr_path") else local_path
 
     def local_target(self, *path, **kwargs):
-        cls = law.LocalFileTarget if not kwargs.pop("dir", False) else law.LocalDirectoryTarget
+        cls = LocalFileTarget if not kwargs.pop("dir", False) else LocalDirectoryTarget
         store = kwargs.pop("store", None)
+        local_path, repr_path = self.local_path(*path, store=store, repr_path=True)
+        return cls(local_path, repr_path=repr_path, **kwargs)
 
-        return cls(self.local_path(*path, store=store), **kwargs)
+    def join_postfix(self, parts, sep1="__", sep2="_"):
+        return sep1.join(
+            (sep2.join(str(p) for p in part) if isinstance(part, (list, tuple)) else str(part))
+            for part in parts
+            if (isinstance(part, int) or part)
+        )
 
 
 class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
@@ -114,11 +146,6 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         default=True,
         significant=False,
         description="transfer job logs to the output directory; default: True",
-    )
-    only_missing = luigi.BoolParameter(
-        default=True,
-        significant=False,
-        description="skip tasks that are considered complete; default: True",
     )
     max_runtime = law.DurationParameter(
         default=2.0,
@@ -378,6 +405,8 @@ class CommandTask(AnalysisTask):
     @law.decorator.log
     @law.decorator.safe_output
     def run(self, **kwargs):
+        self.pre_run_command()
+
         # default run implementation
         # first, create all output directories
         self.touch_output_dirs()
@@ -387,3 +416,132 @@ class CommandTask(AnalysisTask):
 
         # run it
         self.run_command(cmd, **kwargs)
+
+        self.post_run_command()
+
+    def pre_run_command(self):
+        return
+
+    def post_run_command(self):
+        return
+
+
+class PlotTask(AnalysisTask):
+
+    file_type = luigi.ChoiceParameter(
+        default="pdf",
+        choices=["pdf", "png"],
+        description="the type of the output plot file; choices: pdf,png; default: pdf",
+    )
+    view_cmd = luigi.Parameter(
+        default=law.NO_STR,
+        significant=False,
+        description="a command to execute after the task has run to visualize plots right in the "
+        "terminal; default: empty",
+    )
+    campaign = luigi.Parameter(
+        default=law.NO_STR,
+        significant=False,
+        description="the campaign name used for plotting; no default",
+    )
+    x_min = luigi.FloatParameter(
+        default=-1000.,
+        significant=False,
+        description="the lower x-axis limit; no default",
+    )
+    x_max = luigi.FloatParameter(
+        default=-1000.,
+        significant=False,
+        description="the upper x-axis limit; no default",
+    )
+    y_min = luigi.FloatParameter(
+        default=-1000.,
+        significant=False,
+        description="the lower y-axis limit; no default",
+    )
+    y_max = luigi.FloatParameter(
+        default=-1000.,
+        significant=False,
+        description="the upper y-axis limit; no default",
+    )
+    z_min = luigi.FloatParameter(
+        default=-1000.,
+        significant=False,
+        description="the lower z-axis limit; no default",
+    )
+    z_max = luigi.FloatParameter(
+        default=-1000.,
+        significant=False,
+        description="the upper z-axis limit; no default",
+    )
+
+    def get_axis_limit(self, value):
+        if isinstance(value, six.string_types):
+            value = getattr(self, value)
+        return None if value == -1000. else value
+
+    def create_plot_name(self, *parts):
+        if len(parts) == 1:
+            parts = law.util.make_list(parts[0])
+        return "{}.{}".format(self.join_postfix(parts), self.file_type)
+
+    def get_plot_func(self, func_id):
+        if "." not in func_id:
+            raise ValueError("invalid func_id format: {}".format(func_id))
+        module_id, name = func_id.rsplit(".", 1)
+
+        try:
+            mod = importlib.import_module(module_id)
+        except ImportError as e:
+            raise ImportError("cannot import plot function {} from module {}: {}".format(
+                name, module_id, e))
+
+        func = getattr(mod, name, None)
+        if func is None:
+            raise Exception("module {} does not contain plot function {}".format(module_id, name))
+
+        return func
+
+    def call_plot_func(self, func_id, **kwargs):
+        self.get_plot_func(func_id)(**(self.update_plot_kwargs(kwargs)))
+
+    def update_plot_kwargs(self, kwargs):
+        return kwargs
+
+
+@law.decorator.factory(accept_generator=True)
+def view_output_plots(fn, opts, task, *args, **kwargs):
+    def before_call():
+        return None
+
+    def call(state):
+        return fn(task, *args, **kwargs)
+
+    def after_call(state):
+        view_cmd = getattr(task, "view_cmd", None)
+        if not view_cmd or view_cmd == law.NO_STR:
+            return
+
+        # prepare the view command
+        if "{}" not in view_cmd:
+            view_cmd += " {}"
+
+        # collect all paths to view
+        view_paths = []
+        outputs = law.util.flatten(task.output())
+        while outputs:
+            output = outputs.pop(0)
+            if isinstance(output, law.TargetCollection):
+                outputs.extend(output._flat_target_list)
+                continue
+            if not getattr(output, "path", None):
+                continue
+            if output.path.endswith((".pdf", ".png")) and output.path not in view_paths:
+                view_paths.append(output.path)
+
+        # loop through paths and view them
+        for path in view_paths:
+            task.publish_message("showing {}".format(path))
+            law.util.interruptable_popen(view_cmd.format(path), shell=True, executable="/bin/bash")
+
+    return before_call, call, after_call

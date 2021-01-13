@@ -1,9 +1,11 @@
 [submodule "datacards_run2"]
 	path = modules/datacards_run2
-    url = ../../results/datacards_run2.git
+	url = ../../results/datacards_run2.git
+
 [submodule "modules/law"]
 	path = modules/law
 	url = https://github.com/riga/law.git
+
 [submodule "modules/plotlib"]
 	path = modules/plotlib
 	url = https://github.com/riga/plotlib.git

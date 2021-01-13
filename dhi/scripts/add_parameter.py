@@ -152,7 +152,7 @@ if __name__ == "__main__":
     parser.add_argument("name", help="name of the parameter to add")
     parser.add_argument("type", help="type of the parameter to add")
     parser.add_argument("spec", nargs="*", help="specification of parameter arguments; for "
-        "columnar parameters types (e.g. lnN or shape* nuisances), comma-separated triplets in the "
+        "columnar parameter types (e.g. lnN or shape* nuisances), comma-separated triplets in the "
         "format 'bin,process,value' are expected; patterns are supported and evaluated in the "
         "given order for all existing bin process pairs; for all other types, the specification is "
         "used as is")
