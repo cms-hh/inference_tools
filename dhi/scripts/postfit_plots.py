@@ -76,16 +76,14 @@ def create_postfit_plots(
         catcats = getCats(folder, fin, False)
 
     if normalize_X_original :
-        readFrom = bin_name_original
-        print ("original readFrom ", readFrom)
         fileorriginal = ROOT.TFile(fileOrig, "READ")
-
         histRead = list(dprocs.keys())[0] # "TTH"
-        template = fileorriginal.Get( "%s/%s" % (readFrom, histRead) )
+        readFromOriginal = "%s/%s" % (bin_name_original, histRead) if not bin_name_original == "none" else histRead
+        print ("original readFrom ", readFromOriginal)
+        template = fileorriginal.Get( readFromOriginal )
         template.GetYaxis().SetTitle(labelY)
         template.SetTitle(" ")
         nbinscatlist = [template.GetNbinsX()]
-        datahist = fileorriginal.Get(readFrom + "data_obs")
     else :
         print("Drawing: ", catcats)
         nbinstotal = 0
@@ -99,7 +97,6 @@ def create_postfit_plots(
             nbinscatlist += [nbinscat]
             print (readFrom, nbinscat)
             nbinstotal += nbinscat
-            datahist = fin.Get(readFrom + "/data")
         template = ROOT.TH1F("my_hist", "", nbinstotal, 0 - 0.5 , nbinstotal - 0.5)
         template.GetYaxis().SetTitle(labelY)
         print (nbinscatlist)
