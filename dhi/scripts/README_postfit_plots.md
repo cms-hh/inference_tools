@@ -30,7 +30,7 @@ The keys of the dictionary are the names of the bins to plot distributions for (
   - the order you write there is going to be the order of the stack and of the legend entries
   - if you put a process that is not on the datacard it will skip it (not break)
   - if you do not put a process that is on the datacard, it will not add it to the stack (useful to negligible processes)
-  - How to merge processes: put them subsequently. Put the desired  "label" and "make border"==True only on the last of the list, on the others put "label"="none" and "make border"=True. Example here [link from datacards_run2 uploaded example].
+  - How to merge processes: put them subsequently. Put the desired  "label" and "make border"==True only on the last of the list, on the others put "label"="none" and "make border"=False. Example here [link from datacards_run2 uploaded example].
 - "procs_plot_options_sig" is the list of signals (processes to not be added to the stack)
   - each entry will be added as one overlaid histogram, summing up the processes listed in "processes" and scaled by "scaleBy"
 
