@@ -32,10 +32,11 @@ def create_postfit_plots(
     useLogPlot=bin["useLogPlot"]
     era=bin["era"]
     labelX=bin["labelX"]
-    nameLabel=bin["nameLabel"]
+    header_legend=bin["header_legend"]
     datacard_original=bin["datacard_original"]
     bin_name_original=bin["bin_name_original"]
     number_columns_legend=bin["number_columns_legend"]
+    procs_plot_options_sig=bin["procs_plot_options_sig"]
 
     typeFit = None
     if doPostFit :
@@ -47,31 +48,26 @@ def create_postfit_plots(
         folder_data = "shapes_prefit" # it is a TGraphAsymmErrors, not histogram
         typeFit = "prefit"
 
-    name_total = "total" # total_background ?
-
-    binToReadOriginal=bin_name_original # XandaFix
-    label_head=nameLabel
-    shapes_input=fit_diagnostics_path
-    fromHavester=False
+    name_total = "total" # total_background ? TOFIX
 
     if normalize_X_original :
         fileOrig = datacard_original
         print ("template on ", fileOrig)
     else :
-        fileOrig = shapes_input
+        fileOrig = fit_diagnostics_path
 
-    print("reading shapes from: ", shapes_input)
-    fin = ROOT.TFile(shapes_input, "READ")
+    print("reading shapes from: ", fit_diagnostics_path)
+    fin = ROOT.TFile(fit_diagnostics_path, "READ")
 
     labelY = "Events"
     if divideByBinWidth : labelY = "Events / bin width"
 
     if not doPostFit :
-        label_head = label_head+", \n"+typeFit
+        header_legend = header_legend+", \n"+typeFit
     else :
-        label_head = label_head+", #mu(t#bar{t}H)=#hat{#mu}"
+        header_legend = header_legend+", #mu(t#bar{t}H)=#hat{#mu}"
 
-    dprocs=bin["procs_plot_options"]
+    dprocs=bin["procs_plot_options_bkg"]
     print ("will draw processes", list(dprocs.keys()))
 
     if not binToRead == "none" :
@@ -80,8 +76,7 @@ def create_postfit_plots(
         catcats = getCats(folder, fin, False)
 
     if normalize_X_original :
-
-        readFrom = binToReadOriginal
+        readFrom = bin_name_original
         print ("original readFrom ", readFrom)
         fileorriginal = ROOT.TFile(fileOrig, "READ")
 
@@ -115,7 +110,7 @@ def create_postfit_plots(
     legend1.SetBorderSize(0)
     legend1.SetFillColor(10)
     legend1.SetTextSize(0.040 if do_bottom else 0.03)
-    legend1.SetHeader(label_head)
+    legend1.SetHeader(header_legend)
     header = legend1.GetListOfPrimitives().First()
     header.SetTextSize(.05 if do_bottom else 0.04)
     header.SetTextColor(1)
@@ -158,7 +153,8 @@ def create_postfit_plots(
             do_bottom,
             labelX,
             nbinscatlist[cc],
-            minY, maxY
+            minY, maxY,
+            totalBand=True
             )
     print("hist_total", hist_total.Integral())
 
@@ -191,7 +187,6 @@ def create_postfit_plots(
     canvas.SetFillColor(0)
     canvas.SetFrameFillStyle(0)
     canvas.SetFrameBorderMode(0)
-
 
     if do_bottom :
         topPad = ROOT.TPad("topPad", "topPad", 0.00, 0.34, 1.00, 0.995)
@@ -231,7 +226,7 @@ def create_postfit_plots(
     print ("list of processes considered and their integrals")
     for kk, key in  enumerate(dprocs.keys()) :
         hist_rebin = template.Clone()
-        lastbin = 0 # reminiscent of putting histograms from different bins in same plot side by side
+        lastbin = 0 # for putting histograms from different bins in same plot side by side
         addlegend = True
         for cc, catcat in enumerate(catcats) :
             if not cc == 0 :
@@ -259,16 +254,60 @@ def create_postfit_plots(
         dumb = histogramStack_mc.Add(hist_rebin)
         del dumb
 
-    ## create signal histogram
-    ################################
-
     dumb = hist_total.Draw("same")
     dumb = histogramStack_mc.Draw("hist,same")
     del dumb
     dumb = hist_total.Draw("e2,same")
     del dumb
-    ## draw signal
+
+    ## draw signal -- not working if line up categories in plot
     ################################
+    #"""
+    hist_sig = [ROOT.TH1F() for _ in range(len(procs_plot_options_sig.keys()))]
+    for kk, key in  enumerate(procs_plot_options_sig.keys()) :
+        #hist_sig = ROOT.TH1F()
+        for sig in procs_plot_options_sig[key]["processes"] :
+            hist_sig_part = template.Clone()
+            for cc, catcat in enumerate(catcats) :
+                readFrom = folder + "/" + catcat
+                lastbin = 0
+                process_total_histo(
+                    hist_sig_part,
+                    readFrom,
+                    fin,
+                    divideByBinWidth,
+                    sig,
+                    lastbin,
+                    do_bottom,
+                    labelX,
+                    nbinscatlist[cc],
+                    minY, maxY,
+                    totalBand=False
+                    )
+                if not hist_sig[kk].Integral() > 0 :
+                    hist_sig[kk] = hist_sig_part.Clone()
+                else :
+                    hist_sig[kk].Add(hist_sig_part)
+                print(sig, hist_sig_part.Integral(), hist_sig[kk].Integral())
+                hist_sig[kk].Scale(procs_plot_options_sig[key]["scaleBy"])
+
+    for kk, key in  enumerate(procs_plot_options_sig.keys()) :
+        try  :
+            hist_sig[kk].Integral()
+        except :
+            print ("A full signal list doesn't exist for %s" % key)
+            continue
+        hist_sig[kk].SetMarkerSize(0)
+        hist_sig[kk].SetLineColor(procs_plot_options_sig[key]["color"])
+        hist_sig[kk].SetFillStyle(procs_plot_options_sig[key]["fillStype"])
+        hist_sig[kk].SetFillColorAlpha(procs_plot_options_sig[key]["color"], 0.40)
+        hist_sig[kk].SetLineWidth(2)
+        dumb = hist_sig[kk].Draw("hist,same")
+        del dumb
+        legend1.AddEntry(hist_sig[kk], procs_plot_options_sig[key]["label"], "f")
+        #del hist_sig
+    #"""
+
 
     if unblind :
         dumb = dataTGraph1.Draw("e1P,same")
@@ -347,7 +386,6 @@ def create_postfit_plots(
     canvas.IsA().Destructor(canvas)
 
 if __name__ == "__main__":
-    # test
     data_dir = "/afs/cern.ch/work/a/acarvalh/public/to_HH_bbWW/combo_test_plots_2017/fitDiagnostics.root"
     options_dat = "/afs/cern.ch/work/a/acarvalh/public/to_HH_bbWW/combo_test_plots_2017/datacard_SL_DL_bbWW_nonresNLO_none_45_75_allSig_2017_noSingleH_naming_plot_options.dat"
     output_folder = "/afs/cern.ch/work/a/acarvalh/public/to_HH_bbWW/combo_test_plots_2017/plots/"

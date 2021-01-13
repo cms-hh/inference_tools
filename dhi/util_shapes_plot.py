@@ -38,17 +38,24 @@ def process_data_histo(template, dataTGraph1, folder, fin, lastbin, histtotal, c
     dataTGraph1.SetMaximum(maxY)
     return allbins
 
-def process_total_histo(hist, folder, fin, divideByBinWidth, name_total, lastbin, do_bottom, labelX, catbins, minY, maxY) :
+def process_total_histo(hist, folder, fin, divideByBinWidth, name_total, lastbin, do_bottom, labelX, catbins, minY, maxY, totalBand) :
     total_hist_name = folder + "/" + name_total
     total_hist = fin.Get(total_hist_name)
-    print ("Total band taken from %s" % total_hist_name)
     allbins = catbins
+    try  :
+        total_hist.Integral()
+    except :
+        print ("Doesn't exist %s" % total_hist_name)
+        return allbins
+
     hist.SetMarkerSize(0)
     hist.SetMarkerColor(16)
     hist.SetFillColorAlpha(12, 0.40)
     hist.SetLineWidth(0)
-    hist.SetMinimum(minY)
-    hist.SetMaximum(maxY)
+    if totalBand :
+        print ("Total band taken from %s" % total_hist_name)
+        hist.SetMinimum(minY)
+        hist.SetMaximum(maxY)
     for ii in xrange(1, allbins + 1) :
         bin_width = 1.
         if divideByBinWidth : bin_width = total_hist.GetXaxis().GetBinWidth(ii)
@@ -124,7 +131,7 @@ def stack_histo(hist_rebin_local, fin, folder, name, itemDict, divideByBinWidth,
         print ("Doesn't exist %s" % histo_name)
         return {
             "lastbin" : allbins,
-            "binEdge" : lastbin - 0.5 , 
+            "binEdge" : lastbin - 0.5 ,
             "labelPos" : 0 if not original == "none" else float(allbins/2)
             }
     if not firstHisto.Integral() > 0 :
