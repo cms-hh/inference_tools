@@ -9,19 +9,7 @@ import os
 from collections import OrderedDict
 
 from dhi.util import import_ROOT
-from dhi.util_shapes_plot import test_print, GetNonZeroBins, rebin_data, rebin_total, addLabel_CMS_preliminary, rebin_hist
-
-
-## input: fitDiagnosis + the original datacard.root
-## step 1: subcategories should be merged using proper naming convention for bins, eg
-"""
-combineCards.py \
-bbWW_SL=datacard_hh_bb1l_hh_bb1l_cat_jet_2BDT_Wjj_simple_SM_Res_allReco_bbWW_nonresNLO_none_75_multisig_2017.txt \
-bbWW_DL=datacard_hh_bb2l_hh_bb2l_OS_SM_plainVars_inclusive_bbWW_nonresNLO_none_45_noSL_2017.txt>\
-datacard_SL_DL_bbWW_nonresNLO_none_45_75_allSig_2017_noSingleH_naming.txt
-"""
-## --> do use the era in the bin name
-## step 2: user enter dictionaries with options
+from dhi.util_shapes_plot import test_print, GetNonZeroBins, process_data_histo, process_total_histo, addLabel_CMS_preliminary, stack_histo, do_hist_total_err, err_data
 
 def create_postfit_plots(
     path,
@@ -33,8 +21,6 @@ def create_postfit_plots(
     binToRead,
     unblind
     ):
-    #test_print()
-    ## dictionary with subcategories / processes /
     ROOT = import_ROOT()
     ROOT.gROOT.SetBatch(True)
     ROOT.gStyle.SetOptStat(0)
@@ -49,6 +35,7 @@ def create_postfit_plots(
     nameLabel=bin["nameLabel"]
     datacard_original=bin["datacard_original"]
     bin_name_original=bin["bin_name_original"]
+    number_columns_legend=bin["number_columns_legend"]
 
     typeFit = None
     if doPostFit :
@@ -78,8 +65,7 @@ def create_postfit_plots(
     ## decide if sum years or do by year
 
     labelY = "Events"
-    if divideByBinWidth :
-        labelY = "Events / bin width"
+    if divideByBinWidth : labelY = "Events / bin width"
 
     if not doPostFit :
         label_head = label_head+", \n"+typeFit
@@ -125,28 +111,27 @@ def create_postfit_plots(
         template.GetYaxis().SetTitle(labelY)
         print (nbinscatlist)
 
-    legend_y0 = 0.645
-    legend1 = ROOT.TLegend(0.2400, legend_y0, 0.9450, 0.910)
-    legend1.SetNColumns(3)
+    legend1 = ROOT.TLegend(0.2400, 0.645, 0.9450, 0.910)
+    legend1.SetNColumns(number_columns_legend)
     legend1.SetFillStyle(0)
     legend1.SetBorderSize(0)
     legend1.SetFillColor(10)
-    legend1.SetTextSize(0.040)
+    legend1.SetTextSize(0.040 if do_bottom else 0.03)
     legend1.SetHeader(label_head)
     header = legend1.GetListOfPrimitives().First()
-    header.SetTextSize(.05)
+    header.SetTextSize(.05 if do_bottom else 0.04)
     header.SetTextColor(1)
     header.SetTextFont(62)
 
     dataTGraph1 = ROOT.TGraphAsymmErrors()
-    """if unblind :
+    if unblind :
         dataTGraph1.Set(template.GetXaxis().GetNbins())
         lastbin = 0
         for cc, catcat in enumerate(catcats) :
             readFrom = folder + "/" + catcat
             print( " histtotal ", readFrom + "/" + name_total )
             histtotal = fin[0].Get(readFrom + "/" + name_total )
-            lastbin += rebin_data(
+            lastbin += process_data_histo(
                 template,
                 dataTGraph1,
                 readFrom,
@@ -158,14 +143,14 @@ def create_postfit_plots(
                 divideByBinWidth
                 )
         dataTGraph1.Draw()
-        legend1.AddEntry(dataTGraph1, "Data", "p")"""
+        legend1.AddEntry(dataTGraph1, "Data", "p")
 
     lastbin = 0
     hist_total = template.Clone()
     for cc, catcat in enumerate(catcats) :
         readFrom = folder + "/" + catcat
         print ("read the hist with total uncertainties", readFrom, catcat)
-        lastbin += rebin_total(
+        lastbin += process_total_histo(
             hist_total,
             readFrom,
             fin,
@@ -180,26 +165,43 @@ def create_postfit_plots(
     print("hist_total", hist_total.Integral())
 
     ## declare canvases sizes accordingly
-    canvas = ROOT.TCanvas("canvas", "canvas", 900, 900)
-    """
+    WW = 600
+    HH  = 700
+    TT = 0.08*HH
+    BB = 0.12*HH
+    RR = 0.04*WW
     if do_bottom :
-        canvas = ROOT.TCanvas("canvas", "canvas", 600, 1500)
+        LL = 0.13*WW
+        canvas = ROOT.TCanvas("canvas", "canvas", WW, HH)
+        canvas.SetBorderMode(0)
+        canvas.SetLeftMargin( LL/WW )
+        canvas.SetRightMargin( RR/WW )
+        canvas.SetTopMargin( TT/HH )
+        canvas.SetBottomMargin( BB/HH )
+        canvas.SetTickx(0)
+        canvas.SetTicky(0)
+        #canvas.SetGrid()
     else :
-        canvas = ROOT.TCanvas("canvas", "canvas", 900, 900)"""
-    canvas.SetFillColor(10)
-    canvas.SetBorderSize(2)
-    dumb = canvas.Draw()
-    del dumb
+        LL = 0.14*WW
+        canvas = ROOT.TCanvas("canvas", "canvas", WW, WW)
+        canvas.SetBorderMode(0)
+        canvas.SetLeftMargin( LL/WW )
+        canvas.SetRightMargin( RR/WW )
+        canvas.SetTopMargin( TT/HH )
+        canvas.SetBottomMargin( TT/HH )
+        canvas.SetTickx(0)
+    canvas.SetFillColor(0)
+    canvas.SetFrameFillStyle(0)
+    canvas.SetFrameBorderMode(0)
 
-    """if do_bottom :
+
+    if do_bottom :
         topPad = ROOT.TPad("topPad", "topPad", 0.00, 0.34, 1.00, 0.995)
         topPad.SetFillColor(10)
         topPad.SetTopMargin(0.075)
         topPad.SetLeftMargin(0.20)
-        topPad.SetBottomMargin(0.053)
         topPad.SetRightMargin(0.04)
-        if bin["useLogPlot"]:
-            topPad.SetLogy()
+        topPad.SetBottomMargin(0.053)
 
         bottomPad = ROOT.TPad("bottomPad", "bottomPad", 0.00, 0.05, 1.00, 0.34)
         bottomPad.SetFillColor(10)
@@ -207,52 +209,39 @@ def create_postfit_plots(
         bottomPad.SetLeftMargin(0.20)
         bottomPad.SetBottomMargin(0.35)
         bottomPad.SetRightMargin(0.04)
+
+        topPad.Draw()
+        bottomPad.Draw()
     else :
-        topPad = ROOT.TPad("topPad", "topPad", 0.00, 0.05, 1.00, 0.995)
+        topPad = ROOT.TPad("topPad", "topPad", 0.00, 0.0, 1.00, 0.995)
         topPad.SetFillColor(10)
         topPad.SetTopMargin(0.075)
         topPad.SetLeftMargin(0.20)
-        topPad.SetBottomMargin(0.1)
         topPad.SetRightMargin(0.04)
-        if bin["useLogPlot"]:
-            topPad.SetLogy()"""
+        topPad.SetBottomMargin(0.1)
+        topPad.Draw()
 
-    canvas.cd()
+    oplin = "linear"
     if useLogPlot :
-        canvas.SetLogy()
+        topPad.SetLogy()
+        oplin = "log"
 
-
-    """dumb = topPad.Draw()
-    del dumb
     topPad.cd()
-    del topPad"""
-    #dumb = hist_total.Draw("axis")
     dumb = hist_total.Draw()
-
     del dumb
     histogramStack_mc = ROOT.THStack()
     print ("list of processes considered and their integrals")
-
-    linebin = []
-    linebinW = []
-    poslinebinW_X = []
-    pos_linebinW_Y = []
-    y0 = 100. #options_plot_ranges("ttH")[typeCat]["position_cats"]
-    if era == 0 :
-        y0 = 2 * y0
-    #"""
     for kk, key in  enumerate(dprocs.keys()) :
         hist_rebin = template.Clone()
-        lastbin = 0
+        lastbin = 0 # reminiscent of putting histograms from different bins in same plot side by side
         addlegend = True
-        print("Stacking ", key)
         for cc, catcat in enumerate(catcats) :
             if not cc == 0 :
                 addlegend = False
             if kk == 0 :
                 firstHisto = ROOT.TH1F()
             readFrom = folder + "/" + catcat
-            info_hist = rebin_hist(
+            info_hist = stack_histo(
                 hist_rebin,
                 fin,
                 readFrom,
@@ -267,39 +256,13 @@ def create_postfit_plots(
                 era,
                 legend1
                 )
-            print (info_hist["lastbin"] , lastbin, nbinscatlist[cc] )
             lastbin += info_hist["lastbin"]
-            if kk == 0 :
-                print (info_hist)
-                print ("info_hist[binEdge]", info_hist["binEdge"])
-                if info_hist["binEdge"] > 0 :
-                    linebin += [ROOT.TLine(info_hist["binEdge"], 0., info_hist["binEdge"], y0*1.1)] # (legend_y0 + 0.05)*maxY
-                x0 = float(lastbin - info_hist["labelPos"] - 1)
-                sum_inX = 0.1950
-                if len(catcat) > 2 :
-                    if len(catcat) == 3 :
-                        sum_inX = 5.85
-                    else :
-                        sum_inX = 4.0
-                if len(catcat) == 0 :
-                    poslinebinW_X += [x0 - sum_inX]
-                else :
-                    poslinebinW_X += [10] #[options_plot_ranges("ttH")[typeCat]["catsX"][cc]]
-                pos_linebinW_Y += [y0]
-        if hist_rebin == 0 or not hist_rebin.Integral() > 0 or (info_hist["labelPos"] == 0 and not normalize_X_original == "none" )  :
-            continue
-        print (key,  0 if hist_rebin == 0 else hist_rebin.Integral() )
+        print("Stacking proocess %s, with yield %s " % (key, str(round(hist_rebin.Integral(),2))))
         dumb = histogramStack_mc.Add(hist_rebin)
         del dumb
-    #"""
 
     ## create signal histogram
     ################################
-
-    #for line1 in linebin :
-    #    line1.SetLineColor(1)
-    #    line1.SetLineStyle(3)
-    #    line1.Draw()
 
     dumb = hist_total.Draw("same")
     dumb = histogramStack_mc.Draw("hist,same")
@@ -308,6 +271,7 @@ def create_postfit_plots(
     del dumb
     ## draw signal
     ################################
+
     if unblind :
         dumb = dataTGraph1.Draw("e1P,same")
         del dumb
@@ -317,7 +281,7 @@ def create_postfit_plots(
     dumb = legend1.Draw("same")
     del dumb
 
-    labels = addLabel_CMS_preliminary(era)
+    labels = addLabel_CMS_preliminary(era, do_bottom)
     for ll, label in enumerate(labels) :
         if ll == 0 :
             dumb = label.Draw("same")
@@ -327,50 +291,84 @@ def create_postfit_plots(
             del dumb
 
     #################################
-    """if do_bottom :
-        canvas.cd()
-        dumb = bottomPad.Draw()
-        del dumb"""
+    if do_bottom :
+        bottomPad.cd()
+        print ("doing bottom pad")
+        hist_total_err = template.Clone()
+        lastbin = 0
+        for cc, catcat in enumerate(catcats) :
+            readFrom = folder + "/" + catcat
+            histtotal = hist_total
+            lastbin += do_hist_total_err(
+                hist_total_err,
+                labelX, histtotal  ,
+                minYerr,
+                maxYerr,
+                era
+                )
+            print (readFrom, lastbin)
+        dumb = hist_total_err.Draw("e2")
+        del dumb
+        if unblind :
+            dataTGraph2 = ROOT.TGraphAsymmErrors()
+            lastbin = 0
+            for cc, catcat in enumerate(catcats) :
+                readFrom = folder + "/" + catcat
+                histtotal = fin[0].Get((readFrom + "/" + name_total).replace("2018", str(era)) )
+                lastbin += err_data(
+                    dataTGraph2,
+                    hist_total,
+                    dataTGraph1,
+                    hist_total,
+                    readFrom,
+                    fin[0],
+                    divideByBinWidth,
+                    lastbin
+                    )
+            dumb = dataTGraph2.Draw("e1P,same")
+            del dumb
+        line = ROOT.TF1("line", "0", hist_total_err.GetXaxis().GetXmin(), hist_total_err.GetXaxis().GetXmax())
+        line.SetLineStyle(3)
+        line.SetLineColor(1)
+        dumb = line.Draw("same")
+        del dumb
+        print ("done bottom pad")
+    #    #canvas.cd()
+    #    #dumb = bottomPad.Draw()
+    #    #del dumb
 
     ##################################
-    oplin = "linear"
-    if useLogPlot :
-        oplin = "log"
-        print ("made log")
+
     optbin = "plain"
     if divideByBinWidth :
         optbin = "divideByBinWidth"
 
-    savepdf = path.replace(".pdf", "%s_%s_unblind%s" % (typeFit, oplin, unblind))
-    #options.odir+category+"_"+typeFit+"_"+optbin+"_"+options.nameOut+"_unblind"+str(options.unblind)+"_"+oplin + "_" + options.typeCat
+    savepdf = path +  "_%s_%s_unblind%s" % (typeFit, oplin, unblind)
+    if not do_bottom :
+        savepdf = savepdf + "_noBottom"
     print ("saving...", savepdf )
     dumb = canvas.SaveAs(savepdf + ".pdf")
     print ("saved", savepdf + ".pdf")
     del dumb
     canvas.IsA().Destructor(canvas)
 
-
-
 if __name__ == "__main__":
     # test
     data_dir = "/afs/cern.ch/work/a/acarvalh/public/to_HH_bbWW/combo_test_plots_2017/fitDiagnostics.root"
     options_dat = "/afs/cern.ch/work/a/acarvalh/public/to_HH_bbWW/combo_test_plots_2017/datacard_SL_DL_bbWW_nonresNLO_none_45_75_allSig_2017_noSingleH_naming_plot_options.dat"
-    output_folder = "/afs/cern.ch/work/a/acarvalh/public/to_HH_bbWW/combo_test_plots_2017"
+    output_folder = "/afs/cern.ch/work/a/acarvalh/public/to_HH_bbWW/combo_test_plots_2017/plots/"
     normalize_X_original = True
     unblind = True
     doPostFit = False
-    do_bottom = False
+    do_bottom = True
     divideByBinWidth = False
-
-    labelY = "Events"
-    if divideByBinWidth : labelY = "Events / bin width"
 
     info_bin = eval(open(options_dat, 'r').read())
 
     for key, bin in info_bin.iteritems() :
         print("Drawing %s" % key)
         create_postfit_plots(
-            path="%s/plot_%s.pdf" % (output_folder, key) ,
+            path="%s/plot_%s" % (output_folder, key) ,
             fit_diagnostics_path=data_dir,
             normalize_X_original=normalize_X_original,
             doPostFit=doPostFit,
