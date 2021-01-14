@@ -25,6 +25,16 @@ from dhi.datacard_tools import bundle_datacard
 from dhi.scripts.remove_processes import remove_processes as remove_processes_script
 
 
+def require_hh_model(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if self.hh_model_empty:
+            raise Exception("calls to {}() are invalid with empty hh_model".format(func.__name__))
+        return func(self, *args, **kwargs)
+
+    return wrapper
+
+
 class HHModelTask(AnalysisTask):
     """
     A task that essentially adds a hh_model parameter to locate the physics model file and that
@@ -204,29 +214,24 @@ class HHModelTask(AnalysisTask):
 
         return np.array(records, dtype=dtype)
 
+    @require_hh_model
     def split_hh_model(self):
-        if self.hh_model_empty:
-            raise Exception("calls to split_hh_model() are invalid when hh_model is empty")
         return self._split_hh_model(self.hh_model)
 
+    @require_hh_model
     def load_hh_model(self):
-        if self.hh_model_empty:
-            raise Exception("calls to load_hh_model() are invalid when hh_model is empty")
         return self._load_hh_model(self.hh_model)
 
+    @require_hh_model
     def create_xsec_func(self, *args, **kwargs):
-        if self.hh_model_empty:
-            raise Exception("calls to create_xsec_func() are invalid when hh_model is empty")
         return self._create_xsec_func(self.hh_model, *args, **kwargs)
 
+    @require_hh_model
     def convert_to_xsecs(self, *args, **kwargs):
-        if self.hh_model_empty:
-            raise Exception("calls to convert_to_xsecs() are invalid when hh_model is empty")
         return self._convert_to_xsecs(self.hh_model, *args, **kwargs)
 
+    @require_hh_model
     def get_theory_xsecs(self, *args, **kwargs):
-        if self.hh_model_empty:
-            raise Exception("calls to get_theory_xsecs() are invalid when hh_model is empty")
         return self._get_theory_xsecs(self.hh_model, *args, **kwargs)
 
     def store_parts(self):
