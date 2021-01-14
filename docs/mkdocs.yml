@@ -17,7 +17,7 @@ theme:
   name: material
   logo: images/logo.png
   palette:
-    scheme: preference
+    scheme: default
     primary: deep orange
     accent: light green
   features:
