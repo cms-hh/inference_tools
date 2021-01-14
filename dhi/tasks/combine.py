@@ -40,6 +40,18 @@ class HHModelTask(AnalysisTask):
         "HHModelPinv.model_default".format(",".join(valid_hh_model_options)),
     )
 
+    allow_empty_hh_model = False
+
+    def __init__(self, *args, **kwargs):
+        super(HHModelTask, self).__init__(*args, **kwargs)
+
+        if self.hh_model_empty and not self.allow_empty_hh_model:
+            raise Exception("hh_model is not allowed to be empty")
+
+    @property
+    def hh_model_empty(self):
+        return self.hh_model in ("", law.NO_STR)
+
     @classmethod
     def _split_hh_model(cls, hh_model):
         # the format used to be "module:model_name" before so adjust it to support legacy commands
@@ -193,28 +205,39 @@ class HHModelTask(AnalysisTask):
         return np.array(records, dtype=dtype)
 
     def split_hh_model(self):
+        if self.hh_model_empty:
+            raise Exception("calls to split_hh_model() are invalid when hh_model is empty")
         return self._split_hh_model(self.hh_model)
 
     def load_hh_model(self):
+        if self.hh_model_empty:
+            raise Exception("calls to load_hh_model() are invalid when hh_model is empty")
         return self._load_hh_model(self.hh_model)
 
     def create_xsec_func(self, *args, **kwargs):
+        if self.hh_model_empty:
+            raise Exception("calls to create_xsec_func() are invalid when hh_model is empty")
         return self._create_xsec_func(self.hh_model, *args, **kwargs)
 
     def convert_to_xsecs(self, *args, **kwargs):
+        if self.hh_model_empty:
+            raise Exception("calls to convert_to_xsecs() are invalid when hh_model is empty")
         return self._convert_to_xsecs(self.hh_model, *args, **kwargs)
 
     def get_theory_xsecs(self, *args, **kwargs):
+        if self.hh_model_empty:
+            raise Exception("calls to get_theory_xsecs() are invalid when hh_model is empty")
         return self._get_theory_xsecs(self.hh_model, *args, **kwargs)
 
     def store_parts(self):
         parts = super(HHModelTask, self).store_parts()
 
-        module_id, model_name, options = self.split_hh_model()
-        part = "{}__{}".format(module_id.replace(".", "_"), model_name)
-        if options:
-            part += "__" + "_".join(options)
-        parts["hh_model"] = part
+        if not self.hh_model_empty:
+            module_id, model_name, options = self.split_hh_model()
+            part = "{}__{}".format(module_id.replace(".", "_"), model_name)
+            if options:
+                part += "__" + "_".join(options)
+            parts["hh_model"] = part
 
         return parts
 
@@ -238,7 +261,8 @@ class MultiHHModelTask(HHModelTask):
         parts = AnalysisTask.store_parts(self)
 
         # replace the hh_model store part with a hash
-        parts["hh_model"] = "models_" + law.util.create_hash(self.hh_models)
+        if not self.hh_model_empty:
+            parts["hh_model"] = "models_" + law.util.create_hash(self.hh_models)
 
         return parts
 
@@ -996,12 +1020,19 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
         return self.local_target("workspace.root")
 
     def build_command(self):
+        # build physics model arguments when not empty
+        model_args = ""
+        if not self.hh_model_empty:
+            model_args = (
+                " -P {model.__module__}:{model.name}"
+                " --PO doNNLOscaling={model.doNNLOscaling}"
+            ).format(model=self.load_hh_model()[1])
+
         return (
             "text2workspace.py {datacard}"
             " -o workspace.root"
             " -m {self.mass}"
-            " -P {model.__module__}:{model.name}"
-            " --PO doNNLOscaling={model.doNNLOscaling}"
+            " {model_args}"
             " {self.custom_args}"
             " && "
             "mv workspace.root {workspace}"
@@ -1009,5 +1040,5 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
             self=self,
             datacard=self.input().path,
             workspace=self.output().path,
-            model=self.load_hh_model()[1],
+            model_args=model_args,
         )
