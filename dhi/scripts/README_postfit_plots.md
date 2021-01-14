@@ -45,9 +45,9 @@ The keys of the dictionary are the names of the bins to plot distributions for (
 
 - make the options flow in law scheme
 
-- in the shapes plot lumi header (addLabel_CMS_preliminary(era) function here) take the numbers from an central place (the same that is written for other eras)
+- in the shapes plot lumi header (addLabel_CMS_preliminary(era) function [here](https://gitlab.cern.ch/hh/tools/inference/-/blob/postfit_plots/dhi/util_shapes_plot.py#L109-112) take the numbers from an central place (the same that is written for other plots)
 
-- save the log of the plot (what the script ) along with the plot.pdf/root/png, so the person running can check it and the person implementing a new dictionary can debug mistakes/lists of processes
+- save the log of the plot (what the script prints) along with the plot.pdf/root/png, so the person running can check it and the person implementing a new dictionary can debug mistakes/lists of processes 
 
 - I still did not removed completely the functionality to plot different categories one after the other in a same canvas -- I will remove when I am sure nobody will use == after some tests
 
