@@ -14,6 +14,7 @@ import scipy.interpolate
 from dhi.config import poi_data, campaign_labels, colors, br_hh_names
 from dhi.util import import_ROOT, DotDict, to_root_latex, create_tgraph, minimize_1d, try_int
 from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
+from dhi.plots.styles import use_style
 
 
 colors = colors.root
@@ -30,13 +31,12 @@ def plot_exclusion_and_bestfit_1d(
     campaign=None,
 ):
     """
-    Creates a plot showing the best fit values as well as exluded regions of a *poi* over a
-    *scan_parameter* for multiple analysis (or channels) and saves it at *path*. *data* should be a
-    list of dictionaries with fields "expected_limits" and "expected_nll", and optionally
-    *observed_limits*, *observed_nll* and "name" (shown on the y-axis). The former four should be
-    given as either dictionaries or numpy record arrays containing fields *poi* and "limit", or
-    *poi* and "dnll2". When the name is a key of dhi.config.br_hh_names, its value is used as a
-    label instead. Example:
+    Creates a plot showing exluded regions of a *poi* over a *scan_parameter* for multiple analysis
+    (or channels) as well as best fit values and saves it at *path*. *data* should be a list of
+    dictionaries with fields "expected_limits" and "expected_nll", and optionally *observed_limits*,
+    *observed_nll* and "name" (shown on the y-axis). The former four should be given as either
+    dictionaries or numpy record arrays containing fields *poi* and "limit", or *poi* and "dnll2".
+    When the name is a key of dhi.config.br_hh_names, its value is used as a label instead. Example:
 
     .. code-block:: python
 
@@ -228,6 +228,7 @@ def plot_exclusion_and_bestfit_1d(
     canvas.SaveAs(path)
 
 
+@use_style("dhi_default")
 def plot_exclusion_and_bestfit_2d(
     path,
     poi,
@@ -237,12 +238,13 @@ def plot_exclusion_and_bestfit_2d(
     observed_limits=None,
     xsec_values=None,
     xsec_levels=None,
-    xsec_unit=None,
     xsec_label_positions=None,
+    xsec_unit=None,
     expected_likelihoods=None,
     expected_scan_minima=None,
     observed_likelihoods=None,
     observed_scan_minima=None,
+    draw_sm_point=True,
     x_min=None,
     x_max=None,
     y_min=None,
@@ -251,7 +253,41 @@ def plot_exclusion_and_bestfit_2d(
     campaign=None,
 ):
     """
-    TODO
+    Creates a 2D plot showing excluded regions of two paramters *scan_parameter1* and
+    *scan_parameter2* extracted from limits on a *poi* and saves it at *path*. The limit values must
+    be passed via *expected_values* which should be a mapping to lists of values or a record array
+    with keys "<scan_parameter1>", "<scan_parameter2>", "limit", and optionally "limit_p1",
+    "limit_m1", "limit_p2" and "limit_m2" to denote uncertainties at 1 and 2 sigma. When
+    *observed_limits* it set, it should have the same format (except for the uncertainties) to draw
+    a colored, observed exclusion area.
+
+    For visual guidance, contours can be drawn to certain cross section values which depend on the
+    two scan parameters. To do so, *xsec_values* should be a map to lists of values or a record
+    array with keys "<scan_parameter1>", "<scan_parameter2>" and "xsec". Based on these values,
+    contours are derived at levels defined by *xsec_levels*, which are automatically inferred when
+    not set explicitely. The position and units of labels for these contours are to be defined in
+    *xsec_label_positions* and *xsec_unit* as there is not mechanism in ROOT to automatically draw
+    them. Therefore, *xsec_label_positions* should be a list with the same length as *xsec_levels*.
+    Each item can be a list of 3-tuples, each one referring to the x-value, the y-value (in units of
+    *scan_parameter1* and *scan_parameter2*) and the rotation of a label for that contour level.
+    *xsec_unit* can be a string that is appended to every label.
+
+    When *expected_likelihoods* (*observed_likelihoods*) is set, it is used to extract expected
+    (observed) best fit values and their uncertainties which are drawn as well. When set, it should
+    be a mapping to lists of values or a record array with keys "<scan_parameter1>",
+    "<scan_parameter2>" and "dnll2". By default, the position of the best value is directly
+    extracted from the likelihood values. However, when *expected_scan_minima*
+    (*observed_scan_minima*) is a 2-tuple of positions per scan parameter, this best fit value is
+    used instead, e.g. to use combine's internally interpolated value. It should be noted that the
+    expected best fit value is not drawn in case the *observed_likelihoods* is defined. In any case,
+    the standard model point at (1, 1) as drawn as well unless *draw_sm_point* is *False*.
+
+    *x_min*, *x_max*, *y_min* and *y_max* define the range of the x- and y-axis, respectively, and
+    default to the scan parameter ranges found in *expected_limits*. *model_parameters* can be a
+    dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
+    campaign label defined in *dhi.config.campaign_labels*.
+
+    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/misc.html#plotbestfitandexclusion2d
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -280,6 +316,12 @@ def plot_exclusion_and_bestfit_2d(
         assert("dnll2" in expected_likelihoods)
     if expected_scan_minima:
         assert(len(expected_scan_minima) == 2)
+    if observed_likelihoods:
+        assert(scan_parameter1 in observed_likelihoods)
+        assert(scan_parameter2 in observed_likelihoods)
+        assert("dnll2" in observed_likelihoods)
+    if observed_scan_minima:
+        assert(len(observed_scan_minima) == 2)
 
     # set shown ranges
     if x_min is None:
@@ -402,18 +444,18 @@ def plot_exclusion_and_bestfit_2d(
             draw_objs.append((g, "F,SAME"))
         legend_entries.append((g, "Excluded (observed)", "AF"))
 
-    # theory point
-    g_thy = create_tgraph(1, 1, 1)
-    r.setup_graph(g_thy, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
-    draw_objs.append((g_thy, "P"))
-    legend_entries.append((g_thy, "Standard model", "P"))
-
-    # best fit point
-    if expected_likelihoods:
-        scan = evaluate_likelihood_scan_2d(expected_likelihoods[scan_parameter1],
-            expected_likelihoods[scan_parameter2], expected_likelihoods["dnll2"],
-            poi1_min=expected_scan_minima and expected_scan_minima[0],
-            poi2_min=expected_scan_minima and expected_scan_minima[1])
+    # best fit point, observed or expected
+    likelihoods, scan_minima = None, None
+    if observed_likelihoods:
+        likelihoods, scan_minima = observed_likelihoods, observed_scan_minima
+        label = "Best fit value (observed)"
+    elif expected_likelihoods:
+        likelihoods, scan_minima = expected_likelihoods, expected_scan_minima
+        label = "Best fit value (observed)"
+    if likelihoods:
+        scan = evaluate_likelihood_scan_2d(likelihoods[scan_parameter1],
+            likelihoods[scan_parameter2], likelihoods["dnll2"],
+            poi1_min=scan_minima and scan_minima[0], poi2_min=scan_minima and scan_minima[1])
         g_fit = ROOT.TGraphAsymmErrors(1)
         g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
         if scan.num1_min.uncertainties:
@@ -424,7 +466,14 @@ def plot_exclusion_and_bestfit_2d(
             g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
         r.setup_graph(g_fit, props={"FillStyle": 0}, color=colors.black)
         draw_objs.append((g_fit, "PEZ"))
-        legend_entries.insert(-1, (g_fit, "Best fit value", "LPE"))
+        legend_entries.append((g_fit, label, "LPE"))
+
+    # SM point
+    if draw_sm_point:
+        g_sm = create_tgraph(1, 1, 1)
+        r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
+        draw_objs.insert(1, (g_sm, "P"))
+        legend_entries.append((g_sm, "Standard model", "P"))
 
     # model parameter label
     if model_parameters:
@@ -438,7 +487,7 @@ def plot_exclusion_and_bestfit_2d(
     # r.setup_box(legend_box, props={"LineWidth": 0, "FillStyle": 1001,
     #     "FillColor": colors.white_trans_30})
     # draw_objs.append(legend_box)
-    legend = r.routines.create_legend(pad=pad, width=540, height=110, x2=-10, y2=-15,
+    legend = r.routines.create_legend(pad=pad, width=500, height=100, x2=-40, y2=-15,
         props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
