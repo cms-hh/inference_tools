@@ -92,6 +92,4 @@ nav:
     - Significances: tasks/significances.md
     - Miscellaneous Tasks: tasks/misc.md
   - Datacard Manipulation: datacard_manipulation.md
-  - Datacard Validation: datacardvalidation.md
-  - Pre- and Postfit Shapes: postfit.md
   - Interactive Datacard Viewer: http://cms-hh.web.cern.ch/cms-hh/tools/inference/view_datacard.html

@@ -326,7 +326,7 @@ optional arguments:
 ### Prettify datacard
 
 ```shell hl_lines="1"
->prettify_datacard.py --help
+> prettify_datacard.py --help
 
 usage: prettify_datacard.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--no-preamble] [--log-level LOG_LEVEL]
