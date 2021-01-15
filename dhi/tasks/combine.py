@@ -37,7 +37,7 @@ class HHModelTask(AnalysisTask):
     provides a few convenience functions for working with it.
     """
 
-    valid_hh_model_options = {"ggf_nlo"}
+    valid_hh_model_options = {"noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc"}
 
     hh_model = luigi.Parameter(
         default="HHModelPinv:model_default",
@@ -88,7 +88,10 @@ class HHModelTask(AnalysisTask):
 
         # get the model and set the options
         model = getattr(mod, model_name)
-        model.doNNLOscaling = "ggf_nlo" not in options
+        model.doNNLOscaling = "noNNLOscaling" not in options
+        model.doBRscaling = "noBRscaling" not in options
+        model.doHscaling = "noHscaling" not in options
+        model.doklDependentUnc = "noklDependentUnc" not in options
 
         return mod, model
 
