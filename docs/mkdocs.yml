@@ -83,13 +83,12 @@ nav:
   - Introduction: introduction.md
   - General Options: generaloptions.md
   - Tasks:
-    - Combine Datacards: tasks/combinedatacards.md
-    - Text to Workspace: tasks/t2w.md
     - Upper Limits: tasks/limits.md
-    - 1D Likelihood Scans: tasks/likelihood1d.md
-    - 2D Likelihood Scans: tasks/likelihood2d.md
+    - Likelihood Scans: tasks/likelihood.md
+    - 1D Exclusion: tasks/exclusion1d.md
     - Pulls and Impacts: tasks/pullsandimpacts.md
     - Significances: tasks/significances.md
-    - Miscellaneous Tasks: tasks/misc.md
+    - Combine Datacards: tasks/combinedatacards.md
+    - Text to Workspace: tasks/t2w.md
   - Datacard Manipulation: datacard_manipulation.md
   - Interactive Datacard Viewer: http://cms-hh.web.cern.ch/cms-hh/tools/inference/view_datacard.html
