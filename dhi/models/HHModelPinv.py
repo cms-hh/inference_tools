@@ -475,37 +475,34 @@ class HHModel(PhysicsModel):
         isample = find_hh_matches(self.ggf_formula.sample_list, "GGF")
         if isample is not None:
             self.scalingMap[process].append((isample, "GGF"))
+            scaling = self.f_r_ggf_names[isample]
+            # when the BR scaling is enabled, try to extract the decays from the process name
             if self.doBRscaling:
-                # for HH two BR scalings per process are multiplied by the production XS scaling
-                return self.HBRscal.buildXSBRScalingHH(self.f_r_ggf_names[isample],process)
-            else:
-                return self.f_r_ggf_names[isample]
+                scaling = self.HBRscal.buildXSBRScalingHH(scaling, process) or scaling
+            return scaling
 
         # vbf match?
         isample = find_hh_matches(self.vbf_formula.sample_list, "VBF")
         if isample is not None:
             self.scalingMap[process].append((isample, "VBF"))
+            scaling = self.f_r_vbf_names[isample]
+            # when the BR scaling is enabled, try to extract the decays from the process name
             if self.doBRscaling:
-                # for HH two BR scalings per process are multiplied by the production XS scaling
-                return self.HBRscal.buildXSBRScalingHH(self.f_r_vbf_names[isample], process)
-            else:
-                return self.f_r_vbf_names[isample]
+                scaling = self.HBRscal.buildXSBRScalingHH(scaling, process) or scaling
+            return scaling
 
         # complain when the process is a signal but no sample matched
         if self.DC.isSignal[process]:
-            raise Exception("signal process {} did not match any GGF or VBF samples in bin {}".format(
+            raise Exception("HH process {} did not match any GGF or VBF samples in bin {}".format(
                 process, bin))
 
         # single H match?
         if self.doHscaling:
-            f_singleH = self.HBRscal.findSingleHMatch(process)
-            if f_singleH:
-                # single H process will be scaled by kappas and, if requested, by BR.
-                # It will NOT be scaled by r
-                if self.doBRscaling:
-                    return self.HBRscal.buildXSBRScalingH(f_singleH, process)
-                else:
-                    return f_singleH
+            scaling = self.HBRscal.findSingleHMatch(process)
+            # when the BR scaling is enabled, try to extract the decay from the process name
+            if scaling and self.doBRscaling:
+                scaling = self.HBRscal.buildXSBRScalingH(scaling, process) or scaling
+            return scaling or 1.
 
         # at this point we are dealing with a background process that is also not single-H-scaled,
         # so it is safe to return 1 since any misconfiguration should have been raised already

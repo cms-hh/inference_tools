@@ -1034,6 +1034,9 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
             model_args = (
                 " -P {model.__module__}:{model.name}"
                 " --PO doNNLOscaling={model.doNNLOscaling}"
+                " --PO doBRscaling={model.doBRscaling}"
+                " --PO doHscaling={model.doHscaling}"
+                " --PO doklDependentUnc={model.doklDependentUnc}"
             ).format(model=self.load_hh_model()[1])
 
         return (

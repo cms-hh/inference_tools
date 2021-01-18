@@ -84,6 +84,9 @@ class MergeSignificanceScan(POIScanTask):
 
 class PlotSignificanceScan(POIScanTask, POIPlotTask):
 
+    z_min = None
+    z_max = None
+
     force_n_scan_parameters = 1
     force_scan_parameters_unequal_pois = True
 

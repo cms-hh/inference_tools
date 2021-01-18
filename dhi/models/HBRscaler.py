@@ -16,8 +16,8 @@ from HiggsAnalysis.CombinedLimit.PhysicsModel import SM_HIGG_DECAYS, SM_HIGG_PRO
 # WH and ZH coeff are very similar --> build VH coeff as an average btw the two
 energy = "13TeV"
 cXSmap_13 = {
-    "ggH": 0.66e-2
-    "qqH": 0.64e-2
+    "ggH": 0.66e-2,
+    "qqH": 0.64e-2,
     "WH": 1.03e-2,
     "ZH": 1.19e-2,
     "ttH": 3.51e-2,
@@ -90,7 +90,7 @@ class HBRscaler(object):
             self.modelBuilder.factory_("HiggsDecayWidth_UncertaintyScaling_%s[1.0]" % d)
 
         # fix to have all BRs add up to unity
-        self.modelBuilder.factory_("sum::c7_SMBRs(%s)" % (",".join("SM_BR_" + X for X in "hzz hww htt hmm hcc hbb hss hgluglu hgg hzg".split())))
+        self.modelBuilder.factory_("sum::c7_SMBRs(%s)" % (",".join("SM_BR_" + d for d in SM_HIGG_DECAYS)))
         # self.modelBuilder.out.function("c7_SMBRs").Print("")
 
         # define resolved loops
@@ -112,7 +112,7 @@ class HBRscaler(object):
         # no kl dependance on H->zg known yet ?
         self.modelBuilder.factory_("expr::CVktkl_Gscal_gamma('(@0+@6)*@1*@4 + @2*@3*@5', Scaling_hgg, SM_BR_hgg, Scaling_hzg, SM_BR_hzg, HiggsDecayWidth_UncertaintyScaling_hgg, HiggsDecayWidth_UncertaintyScaling_hzg, kl_scalBR_hgg)")
         # fix to have all BRs add up to unity
-        self.modelBuilder.factory_("sum::CVktkl_SMBRs(%s)" % (",".join("SM_BR_" + X for X in "hzz hww htt hmm hcc hbb hss hgluglu hgg hzg".split())))
+        self.modelBuilder.factory_("sum::CVktkl_SMBRs(%s)" % (",".join("SM_BR_" + d for d in SM_HIGG_DECAYS)))
         # self.modelBuilder.out.function("CVktkl_SMBRs").Print("")
 
         # total witdh, normalized to the SM one (just the sum over the partial widths/SM total BR)
@@ -184,10 +184,7 @@ class HBRscaler(object):
         # create scaling names
         proc_f_BR_scalings = ["CVktkl_BRscal_" + d for d in decays]
 
-        # make sure that at least one BR is parsed, and that they are all supported
-        if not proc_f_BR_scalings:
-            raise Exception("error parsing branching ratio(s) from {} for process {}".format(
-                BRstr, process))
+        # make sure that are all scalings are supported
         for proc_f_BR_scaling in proc_f_BR_scalings:
             if proc_f_BR_scaling not in self.f_BR_scalings:
                 raise Exception("braching ratio scaling {} for process {} is not supported".format(
@@ -212,9 +209,16 @@ class HBRscaler(object):
 
     def buildXSBRScalingHH(self, f_XS_scaling, process):
         BRscalings, BRstr = self.findBRScalings(process)
-        if len(BRscalings) != 2:
-            raise Exception("found {} braching ratio(s) instead of two for HH process {}".format(
-                len(BRscalings), process))
+
+        # when no scalings were found, print a warning since this might be intentional and return,
+        # when != 2 scalings were found, this is most likely an error
+        if not BRscalings:
+            print("WARNING: the HH process {} does not contain valid decay strings to extract "
+                "branching ratios to apply the scaling with model parameters".format(process))
+            return None
+        elif len(BRscalings) != 2:
+            raise Exception("the HH process {} contains {} valid decay string(s) while two were "
+                "expected".format(process, len(BRscalings)))
 
         f_XSBR_scaling = "%s_BRscal_%s" % (f_XS_scaling, BRstr)
 
@@ -225,9 +229,16 @@ class HBRscaler(object):
 
     def buildXSBRScalingH(self, f_XS_scaling, process):
         BRscalings, BRstr = self.findBRScalings(process)
-        if len(BRscalings) != 1:
-            raise Exception("found {} braching ratio(s) instead of one for H process {}".format(
-                len(BRscalings), process))
+
+        # when no scalings were found, print a warning since this might be intentional and return,
+        # when != 1 scalings were found, this is most likely an error
+        if not BRscalings:
+            print("WARNING: the H process {} does not contain valid decay strings to extract "
+                "branching ratios to apply the scaling with model parameters".format(process))
+            return None
+        elif len(BRscalings) != 1:
+            raise Exception("the H process {} contains {} valid decay string(s) while one was "
+                "expected".format(process, len(BRscalings)))
 
         f_XSBR_scaling = "%s_BRscal_%s" % (f_XS_scaling, BRstr)
 

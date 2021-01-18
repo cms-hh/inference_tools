@@ -5,7 +5,7 @@
 
 ## Cloning the repository
 
-This repository uses submodules (currently only one), so you should clone it recursively via
+This repository uses submodules, so you should clone it recursively via
 
 ```shell
 # ssh
@@ -17,13 +17,10 @@ git clone --recursive ssh://git@gitlab.cern.ch:7999/hh/tools/inference.git
 git clone --recursive https://gitlab.cern.ch/hh/tools/inference.git
 ```
 
-This will also clone the *protected* [datacards_run2](https://gitlab.cern.ch/hh/results/datacards_run2) repository with a collection of datacards used in the HH combination.
-Therefore, you might be asked for your CERN username and password.
-
 
 ## Environment and software setup
 
-1. Source the setup:
+### 1. Source the setup
 
 The `setup.sh` script will install (and compile if necessary) all relevant software packages.
 
@@ -51,7 +48,7 @@ DHI_REINSTALL_SOFTWARE=1 source setup.sh some_name
 ```
 
 
-2. Let law index your tasks and their parameters:
+### 2. Let law index your tasks and their parameters
 
 ```shell
 law index --verbose
@@ -63,12 +60,8 @@ Law uses that file only to accelerate the autocompletion of the command line int
 You should see:
 
 ```shell
-indexing tasks in 5 module(s)
-loading module 'dhi.tasks.base', done
-loading module 'dhi.tasks.nlo.base', done
-loading module 'dhi.tasks.nlo.inference', done
-loading module 'dhi.tasks.nlo.plotting', done
-loading module 'dhi.tasks.misc', done
+indexing tasks in 1 module(s)
+loading module 'dhi.tasks', done
 
 module 'law.contrib.git', 1 task(s):
     - law.git.BundleGitRepository
@@ -77,31 +70,51 @@ module 'dhi.tasks.base', 2 task(s):
     - BundleRepo
     - BundleSoftware
 
-module 'dhi.tasks.nlo.inference', 10 task(s):
+module 'dhi.tasks.limits', 6 task(s):
     - UpperLimits
-    - LikelihoodScan1D
-    - LikelihoodScan2D
-    - PullsAndImpacts
-    - CombineDatacards
-    - CreateWorkspace
-    - MergePullsAndImpacts
-    - MergeLikelihoodScan1D
-    - MergeLikelihoodScan2D
-    - MergeUpperLimits
-
-module 'dhi.tasks.nlo.plotting', 6 task(s):
     - PlotUpperLimits
     - PlotUpperLimitsAtPOI
-    - PlotLikelihoodScan1D
-    - PlotLikelihoodScan2D
-    - PlotPullsAndImpacts
+    - PlotMultipleUpperLimitsByModel
+    - MergeUpperLimits
     - PlotMultipleUpperLimits
 
-module 'dhi.tasks.misc', 2 task(s):
-    - PostFitShapes
-    - CompareNuisances
+module 'dhi.tasks.likelihoods', 3 task(s):
+    - LikelihoodScan
+    - PlotLikelihoodScan
+    - MergeLikelihoodScan
 
-written 21 task(s) to index file '/your/path/inference/.law/index'
+module 'dhi.tasks.significances', 4 task(s):
+    - SignificanceScan
+    - PlotSignificanceScan
+    - MergeSignificanceScan
+    - PlotMultipleSignificanceScans
+
+module 'dhi.tasks.pulls_impacts', 3 task(s):
+    - PullsAndImpacts
+    - PlotPullsAndImpacts
+    - MergePullsAndImpacts
+
+module 'dhi.tasks.test', 1 task(s):
+    - test.TestPlots
+
+module 'dhi.tasks.studies.model_selection', 3 task(s):
+    - study.PlotMorphingScales
+    - study.PlotMorphedDiscriminant
+    - study.PlotStatErrorScan
+
+module 'dhi.tasks.combine', 2 task(s):
+    - CombineDatacards
+    - CreateWorkspace
+
+module 'dhi.tasks.postfit_shapes', 2 task(s):
+    - PostFitShapes
+    - PlotPostfitSOverB
+
+module 'dhi.tasks.exclusion', 2 task(s):
+    - PlotExclusionAndBestFit
+    - PlotExclusionAndBestFit2D
+
+written 29 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type
@@ -124,6 +137,8 @@ Now you are done with the setup and can start running the statistical inference!
 ## Documentation
 
 The documentation is hosted at [cern.ch/cms-hh/tools/inference](https://cern.ch/cms-hh/tools/inference).
+
+### For developers
 
 It is built with [MkDocs](https://www.mkdocs.org) using the [material](https://squidfunk.github.io/mkdocs-material) theme and support for [PyMdown](https://facelessuser.github.io/pymdown-extensions) extensions.
 Developing and building the documentation locally requires docker and a valid login at the CERN GitLab container registry.
@@ -152,20 +167,7 @@ and open your webbrowser at [http://localhost:8000](http://localhost:8000).
 By default, all pages are *automatically rebuilt and reloaded* when a source file is updated.
 
 
-## For developers
-
-A consistent code style is encouraged and can be checked (and even applied) with the [black](https://github.com/psf/black) formatter.
-
-To run the linting (i.e. show locations in the code that require formatting), run
-
-```shell
-dhi_lint
-```
-
-and to automatically fix the formatting, add `fix` to the command.
-
-
-## Contributors
+## Developers
 
 - Peter Fackeldey: peter.fackeldey@cern.ch (email)
 - Marcel Rieger: marcel.rieger@cern.ch (email), marcel_r88 (skype)
