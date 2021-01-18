@@ -56,7 +56,7 @@ class DHISnippetPreprocessor(Preprocessor):
             s = s.strip()
             if "-" in s:
                 start, stop = s.split("-", 1)
-                start = start and try_int(start) or 0
+                start = start and try_int(start) or 1
                 stop = stop and try_int(stop) or int(1e7)
                 line_nums.extend(range(start, stop + 1))
             else:
@@ -124,7 +124,7 @@ class DHISnippetPreprocessor(Preprocessor):
                             with codecs.open(snippet, 'r', encoding=self.encoding) as f:
                                 file_lines = f.readlines()
                                 if line_nums:
-                                    file_lines = dict(enumerate(file_lines))
+                                    file_lines = {i + 1: l for i, l in enumerate(file_lines)}
                                     file_lines = [file_lines[n] for n in line_nums if n in file_lines]
                                 new_lines.extend(
                                     [space + l2 for l2 in self.parse_snippets([l.rstrip('\r\n') for l in file_lines], snippet)]

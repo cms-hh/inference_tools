@@ -132,6 +132,9 @@ class PlotUpperLimits(POIScanTask, POIPlotTask):
         description="apply log scaling to the y-axis; default: False",
     )
 
+    z_min = None
+    z_max = None
+
     restrict_n_pois = 1
     restrict_n_scan_parameters = 1
     force_scan_parameters_unequal_pois = True
@@ -405,6 +408,8 @@ class PlotUpperLimitsAtPOI(POIPlotTask, MultiDatacardTask):
     )
     y_min = None
     y_max = None
+    z_min = None
+    z_max = None
 
     force_n_pois = 1
 
