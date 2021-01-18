@@ -16,8 +16,8 @@ from HiggsAnalysis.CombinedLimit.PhysicsModel import SM_HIGG_DECAYS, SM_HIGG_PRO
 # WH and ZH coeff are very similar --> build VH coeff as an average btw the two
 energy = "13TeV"
 cXSmap_13 = {
-    "ggH": 0.66e-2
-    "qqH": 0.64e-2
+    "ggH": 0.66e-2,
+    "qqH": 0.64e-2,
     "WH": 1.03e-2,
     "ZH": 1.19e-2,
     "ttH": 3.51e-2,
