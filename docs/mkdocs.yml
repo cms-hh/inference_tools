@@ -57,8 +57,6 @@ markdown_extensions:
       repo: mkdocs-material
   - pymdownx.mark
   - pymdownx.smartsymbols
-  - pymdownx.snippets:
-      check_paths: true
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
@@ -68,6 +66,8 @@ markdown_extensions:
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.tilde
+  - dhi_extensions.snippets:
+      check_paths: true
 
 extra_javascript:
   - https://unpkg.com/mermaid@8.6/dist/mermaid.min.js
@@ -92,6 +92,4 @@ nav:
     - Significances: tasks/significances.md
     - Miscellaneous Tasks: tasks/misc.md
   - Datacard Manipulation: datacard_manipulation.md
-  - Datacard Validation: datacardvalidation.md
-  - Pre- and Postfit Shapes: postfit.md
   - Interactive Datacard Viewer: http://cms-hh.web.cern.ch/cms-hh/tools/inference/view_datacard.html
