@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir mkdocs-minify-plugin
 WORKDIR /documentation
 
 # add docs/dhi_extensions to the PYTHONPATH
-env PYTHONPATH "/documentation/docs:$PYTHONPATH"
+ENV PYTHONPATH "/documentation/docs:$PYTHONPATH"
 
 # default command
 CMD ["mkdocs", "build", "--strict"]

@@ -113,7 +113,6 @@ class DHISnippetPreprocessor(Preprocessor):
                 snippet = os.path.join(self.base_path, path)
                 if snippet:
                     snippet, line_nums = self.split_path(snippet)
-                    print(snippet, len(line_nums))
                     if os.path.exists(snippet):
                         if snippet in self.seen:
                             # This is in the stack and we don't want an infinite loop!
