@@ -63,9 +63,6 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
             # load likelihoods
             ll_data = inp["likelihoods"].load(formatter="numpy")
             exp_nll = ll_data["data"]
-            # insert a dnll2 column
-            exp_nll = np.array(rec.append_fields(exp_nll, ["dnll2"],
-                [exp_nll["delta_nll"] * 2.0]))
             # scan parameter mininum
             exp_scan_min = ll_data["poi_mins"][0]
             exp_scan_min = None if np.isnan(exp_scan_min) else float(exp_scan_min)
