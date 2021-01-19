@@ -1,6 +1,6 @@
 site_name: HH Inference Tools Documentation
 site_url: https://cern.ch/cms-hh/tools/inference
-site_description: Documentation of CMS DiHiggs Analysis Inference Tools
+site_description: Documentation of CMS HH Analysis Inference Tools
 site_author: Peter Fackeldey, Marcel Rieger
 
 docs_dir: content
@@ -11,7 +11,7 @@ repo_name: hh/tools/inference
 repo_url: https://gitlab.cern.ch/hh/tools/inference
 
 use_directory_urls: false
-copyright: Copyright &copy; 2020
+copyright: Copyright &copy; 2020-2021
 
 theme:
   name: material
@@ -22,6 +22,7 @@ theme:
     accent: light green
   features:
     - instant
+    - navigation.expand
 
 plugins:
   - search:
@@ -72,6 +73,9 @@ markdown_extensions:
 extra_javascript:
   - https://unpkg.com/mermaid@8.6/dist/mermaid.min.js
 
+extra_css:
+  - extra/styles.css
+
 extra:
   FOO: BAR
   social:
@@ -81,14 +85,13 @@ extra:
 nav:
   - Home: index.md
   - Introduction: introduction.md
-  - General Options: generaloptions.md
   - Tasks:
     - Upper Limits: tasks/limits.md
     - Likelihood Scans: tasks/likelihood.md
     - 1D Exclusion: tasks/exclusion1d.md
     - Pulls and Impacts: tasks/pullsandimpacts.md
     - Significances: tasks/significances.md
-    - Combine Datacards: tasks/combinedatacards.md
-    - Text to Workspace: tasks/t2w.md
+    - Common Tasks: tasks/common.md
+    - Law Cheatsheet: tasks/law.md
   - Datacard Manipulation: datacard_manipulation.md
   - Interactive Datacard Viewer: http://cms-hh.web.cern.ch/cms-hh/tools/inference/view_datacard.html
