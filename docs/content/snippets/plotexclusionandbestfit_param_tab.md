@@ -1,5 +1,4 @@
-The `PlotExclusionAndBestFit` task collects the fit results from the `MergeUpperLimits` and `MergeLikelihoodScan1D` and visualizes them in a plot.
-It provides some handy cli parameters to manipulate the visualisation.
+The `PlotExclusionAndBestFit` task collects the fit results from the `MergeUpperLimits` and `MergeLikelihoodScan` tasks and visualizes them in a plot.
 
 <div class="dhi_parameter_table">
 

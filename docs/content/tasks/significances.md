@@ -26,7 +26,7 @@ law run PlotSignificanceScan --version dev --datacards $DHI_EXAMPLE_CARDS
         The `PlotSignificanceScan` task collects the fit results from the `MergeSignificanceScan` and visualizes them in a plot.
         It provides some handy cli parameters to manipulate the visualisation:
 
-        --8<-- "content/parameters.md@-11"
+        --8<-- "content/snippets/parameters.md@-11"
 
 
     === "MergeSignificanceScan"
@@ -39,7 +39,7 @@ law run PlotSignificanceScan --version dev --datacards $DHI_EXAMPLE_CARDS
         The `SignificanceScan` runs the fits for each point in the defined range.
         It provides some handy cli parameters to manipulate POIs, ranges and other options:
 
-        --8<-- "content/parameters.md@-1,12-17"
+        --8<-- "content/snippets/parameters.md@-1,12-17"
 
 
 

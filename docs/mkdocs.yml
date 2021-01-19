@@ -86,12 +86,13 @@ nav:
   - Home: index.md
   - Introduction: introduction.md
   - Tasks:
-    - Upper Limits: tasks/limits.md
-    - Likelihood Scans: tasks/likelihood.md
-    - 1D Exclusion: tasks/exclusion1d.md
-    - Pulls and Impacts: tasks/pullsandimpacts.md
+    - Upper limits: tasks/limits.md
+    - Likelihood scans: tasks/likelihood.md
+    - Exclusion plots: tasks/exclusion.md
+    - Pulls and impacts: tasks/pullsandimpacts.md
     - Significances: tasks/significances.md
-    - Common Tasks: tasks/common.md
-    - Law Cheatsheet: tasks/law.md
-  - Datacard Manipulation: datacard_manipulation.md
-  - Interactive Datacard Viewer: http://cms-hh.web.cern.ch/cms-hh/tools/inference/view_datacard.html
+    - S-over-B plot: tasks/soverb.md
+    - Common tasks: tasks/common.md
+    - Law cheatsheet: tasks/law.md
+  - Datacard manipulation: datacard_manipulation.md
+  - Interactive datacard viewer: view_datacard.html

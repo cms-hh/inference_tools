@@ -62,7 +62,7 @@ graph LR;
 
 #### Example commands
 
-1. Limit on `r_qqhh` vs. `C2V` with 4 local cores:
+**1.** Limit on `r_qqhh` vs. `C2V` with 4 local cores:
 
 ```shell hl_lines="4-6"
 law run PlotUpperLimits \
@@ -73,7 +73,7 @@ law run PlotUpperLimits \
     --workers 4
 ```
 
-2. Executing `UpperLimit` tasks on htcondor, with one job handling two tasks sequentially:
+**2.** Executing `UpperLimit` tasks on htcondor, with one job handling two tasks sequentially:
 
 ```shell hl_lines="4-5"
 law run PlotUpperLimits \
@@ -147,7 +147,7 @@ Parameters of the upstream dependencies `MergeUpperLimits` to `CombineDatacards`
 
 #### Example commands
 
-1. Executing `UpperLimit` tasks on htcondor, with one job handling two tasks sequentially:
+**1.** Executing `UpperLimit` tasks on htcondor, with one job handling two tasks sequentially:
 
 ```shell hl_lines="4-5"
 law run PlotUpperLimits \
@@ -211,7 +211,7 @@ Parameters of the upstream dependencies `UpperLimits` to `CombineDatacards` are 
 
 #### Example commands
 
-1. Changing the order of limits in the plot without changing `--multi-datacards`:
+**1.** Changing the order of limits in the plot without changing `--multi-datacards`:
 
 ```shell hl_lines="5"
 law run PlotUpperLimitsAtPOI \
