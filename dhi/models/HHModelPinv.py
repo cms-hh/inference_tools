@@ -273,7 +273,6 @@ class HHModel(PhysicsModel):
             if not isinstance(s, VBFHHSample):
                 raise RuntimeError("%s : malformed VBF input sample list - each element must be a VBFHHSample" % self.name)
 
-
     def dump_inputs(self):
         print "[INFO]  HH model : " , self.name
         print "......  GGF configuration"
@@ -282,7 +281,6 @@ class HHModel(PhysicsModel):
         print "......  VBF configuration"
         for i,s in enumerate(self.vbf_formula.sample_list):
             print "        {0:<3} ... CV : {1:<3}, C2V : {2:<3}, kl : {3:<3}, xs : {4:<3.8f} pb, label : {5}".format(i, s.val_CV, s.val_C2V, s.val_kl, s.val_xs, s.label)
-
 
     def doParametersOfInterest(self):
         ## the model is built with:
