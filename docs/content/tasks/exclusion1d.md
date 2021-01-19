@@ -19,6 +19,8 @@ Output:
 The best fit values are extracted via likelihood profiling done by the [`LikelihoodScan1D`](likelihood1d.md) task. Excluded regions are inferred from the [`UpperLimits`](limits.md) task which scans limits in steps of the same POI as measured on a `--pois`, i.e., `r` itself, `r_gghh`or `r_qqhh`.
 
 
+#### Dependencies
+
 ```mermaid
 graph LR;
     A(PlotExclusionAndBestFit) --> B(MergeUpperLimits);
@@ -29,6 +31,9 @@ graph LR;
     E --> F;
     F --> G(CombineDatacards);
 ```
+
+
+#### Parameters
 
 === "PlotExclusionAndBestFit"
 
