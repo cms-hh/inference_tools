@@ -7,28 +7,32 @@ Base tasks dedicated to inference.
 import os
 import sys
 import re
+import math
 import glob
 import importlib
+import itertools
 import functools
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 import law
 import luigi
 import six
 
-from dhi.tasks.base import AnalysisTask, CommandTask
+from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask
 from dhi.config import poi_data, br_hh
+from dhi.util import linspace, try_int
+from dhi.datacard_tools import bundle_datacard
+from dhi.scripts.remove_processes import remove_processes as remove_processes_script
 
 
-class CombineCommandTask(CommandTask):
+def require_hh_model(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if self.hh_model_empty:
+            raise Exception("calls to {}() are invalid with empty hh_model".format(func.__name__))
+        return func(self, *args, **kwargs)
 
-    exclude_index = True
-
-    combine_stable_options = (
-        "--cminDefaultMinimizerType Minuit2"
-        " --cminDefaultMinimizerStrategy 0"
-        " --cminFallbackAlgo Minuit2,0:1.0"
-    )
+    return wrapper
 
 
 class HHModelTask(AnalysisTask):
@@ -45,6 +49,18 @@ class HHModelTask(AnalysisTask):
         "options in the format module.model_name[@opt1[@opt2...]]; valid options are {}; default: "
         "HHModelPinv.model_default".format(",".join(valid_hh_model_options)),
     )
+
+    allow_empty_hh_model = False
+
+    def __init__(self, *args, **kwargs):
+        super(HHModelTask, self).__init__(*args, **kwargs)
+
+        if self.hh_model_empty and not self.allow_empty_hh_model:
+            raise Exception("hh_model is not allowed to be empty")
+
+    @property
+    def hh_model_empty(self):
+        return self.hh_model in ("", law.NO_STR)
 
     @classmethod
     def _split_hh_model(cls, hh_model):
@@ -96,53 +112,73 @@ class HHModelTask(AnalysisTask):
         return mod, model
 
     @classmethod
-    def _create_xsec_func(cls, hh_model, poi, unit, br=None):
-        if poi not in ["kl", "C2V"]:
-            raise ValueError("cross section conversion not supported for poi {}".format(poi))
+    def _create_xsec_func(cls, hh_model, r_poi, unit, br=None, safe_signature=False):
+        if r_poi not in cls.r_pois:
+            raise ValueError("cross section conversion not supported for POI {}".format(r_poi))
         if unit not in ["fb", "pb"]:
             raise ValueError("cross section conversion not supported for unit {}".format(unit))
         if br and br != law.NO_STR and br not in br_hh:
             raise ValueError("unknown decay channel name {}".format(br))
+
+        # get the module and the hh model object
+        module, model = cls._load_hh_model(hh_model)
+
+        # get the proper xsec getter, based on poi
+        if r_poi == "r_gghh":
+            get_ggf_xsec = module.create_ggf_xsec_func(model.ggf_formula)
+            get_xsec = functools.partial(get_ggf_xsec, nnlo=model.doNNLOscaling)
+            signature_kwargs = {"kl", "kt", "unc"}
+        elif r_poi == "r_qqhh":
+            get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
+            signature_kwargs = {"C2V", "CV"}
+        else:  # r
+            get_hh_xsec = module.create_hh_xsec_func(model.ggf_formula, model.vbf_formula)
+            get_xsec = functools.partial(get_hh_xsec, nnlo=model.doNNLOscaling)
+            signature_kwargs = {"kl", "kt", "C2V", "CV", "unc"}
 
         # compute the scale conversion
         scale = {"pb": 1., "fb": 1000.}[unit]
         if br in br_hh:
             scale *= br_hh[br]
 
-        # get the proper xsec getter for the formula of the current model
-        module, model = cls._load_hh_model(hh_model)
-        if poi == "kl":
-            # get the cross section function and make it a partial with the nnlo value set properly
-            get_xsec = module.create_ggf_xsec_func(model.ggf_formula)
-            get_xsec = functools.partial(get_xsec, nnlo=model.doNNLOscaling)
-        else:  # C2V
-            get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
+        # create a wrapper to apply the scale and to protect the signature if requested
+        def wrapper(**kwargs):
+            if safe_signature:
+                # remove all kwargs that are not accepted
+                kwargs = {k: v for k, v in kwargs.items() if k in signature_kwargs}
+            return get_xsec(**kwargs) * scale
 
-        # create and return the function including scaling
-        return lambda *args, **kwargs: get_xsec(*args, **kwargs) * scale
+        return wrapper
 
     @classmethod
-    def _convert_to_xsecs(cls, hh_model, expected_values, poi, unit, br=None):
+    def _convert_to_xsecs(cls, hh_model, r_poi, data, unit, br=None, param_keys=None,
+            xsec_kwargs=None):
         import numpy as np
 
-        # copy values
-        expected_values = np.array(expected_values)
-
         # create the xsec getter
-        get_xsec = cls._create_xsec_func(hh_model, poi, unit, br=br)
+        get_xsec = cls._create_xsec_func(hh_model, r_poi, unit, br=br)
+
+        # copy values
+        data = np.array(data)
 
         # convert values
-        limit_keys = [key for key in expected_values.dtype.names if key.startswith("limit")]
-        for point in expected_values:
-            xsec = get_xsec(point[poi])
-            for key in limit_keys:
-                point[key] *= xsec
+        for point in data:
+            # gather parameter values to pass to the xsec getter
+            _xsec_kwargs = dict(xsec_kwargs or {})
+            if param_keys:
+                _xsec_kwargs.update({key: point[key] for key in param_keys})
 
-        return expected_values
+            # get the xsec and apply it to every
+            xsec = get_xsec(**_xsec_kwargs)
+            for key in point.dtype.names:
+                if key.startswith("limit"):
+                    point[key] *= xsec
+
+        return data
 
     @classmethod
-    def _get_theory_xsecs(cls, hh_model, poi_values, poi, unit=None, br=None,
-            normalize=False):
+    def _get_theory_xsecs(cls, hh_model, r_poi, param_names, param_values, unit=None, br=None,
+            normalize=False, xsec_kwargs=None):
         import numpy as np
 
         # set defaults
@@ -152,54 +188,64 @@ class HHModelTask(AnalysisTask):
             unit = "fb"
 
         # create the xsec getter
-        get_xsec = cls._create_xsec_func(hh_model, poi, unit, br=br)
+        get_xsec = cls._create_xsec_func(hh_model, r_poi, unit, br=br)
 
         # for certain cases, also obtain errors
-        has_unc = poi == "kl" and cls._load_hh_model(hh_model)[1].doNNLOscaling
+        has_unc = r_poi in ("r", "r_gghh") and cls._load_hh_model(hh_model)[1].doNNLOscaling
 
         # store as records
         records = []
-        dtype = [(poi, np.float32), ("xsec", np.float32)]
+        dtype = [(p, np.float32) for p in param_names] + [("xsec", np.float32)]
         if has_unc:
             dtype.extend([("xsec_p1", np.float32), ("xsec_m1", np.float32)])
-        for poi_value in poi_values:
-            record = (poi_value, get_xsec(poi_value))
-            # add uncertainties
+        for values in param_values:
+            # prepare the xsec kwargs
+            values = law.util.make_tuple(values)
+            _xsec_kwargs = dict(xsec_kwargs or {})
+            _xsec_kwargs.update(dict(zip(param_names, values)))
+
+            # create the record, potentially with uncertainties and normalization
+            record = values + (get_xsec(**_xsec_kwargs),)
             if has_unc:
                 record += (
-                    get_xsec(poi_value, unc="up"),
-                    get_xsec(poi_value, unc="down"),
+                    get_xsec(unc="up", **_xsec_kwargs),
+                    get_xsec(unc="down", **_xsec_kwargs),
                 )
-            # normalize by nominal value
             if normalize:
                 record = (record[0],) + tuple((r / record[1]) for r in record[1:])
             records.append(record)
 
         return np.array(records, dtype=dtype)
 
+    @require_hh_model
     def split_hh_model(self):
         return self._split_hh_model(self.hh_model)
 
+    @require_hh_model
     def load_hh_model(self):
         return self._load_hh_model(self.hh_model)
 
+    @require_hh_model
     def create_xsec_func(self, *args, **kwargs):
         return self._create_xsec_func(self.hh_model, *args, **kwargs)
 
+    @require_hh_model
     def convert_to_xsecs(self, *args, **kwargs):
         return self._convert_to_xsecs(self.hh_model, *args, **kwargs)
 
+    @require_hh_model
     def get_theory_xsecs(self, *args, **kwargs):
         return self._get_theory_xsecs(self.hh_model, *args, **kwargs)
 
     def store_parts(self):
         parts = super(HHModelTask, self).store_parts()
 
-        module_id, model_name, options = self.split_hh_model()
-        part = "{}__{}".format(module_id.replace(".", "_"), model_name)
-        if options:
-            part += "__" + "_".join(options)
-        parts["hh_model"] = part
+        if not self.hh_model_empty:
+            module_id, model_name, options = self.split_hh_model()
+            part = "{}__{}".format(module_id.replace(".", "_"), model_name)
+            if options:
+                part += "__" + "_".join(options)
+            parts["hh_model"] = part
 
         return parts
 
@@ -223,7 +269,8 @@ class MultiHHModelTask(HHModelTask):
         parts = AnalysisTask.store_parts(self)
 
         # replace the hh_model store part with a hash
-        parts["hh_model"] = "models_" + law.util.create_hash(self.hh_models)
+        if not self.hh_model_empty:
+            parts["hh_model"] = "models_" + law.util.create_hash(self.hh_models)
 
         return parts
 
@@ -395,7 +442,7 @@ class DatacardTask(HHModelTask):
 
     @property
     def mass_int(self):
-        return law.util.try_int(self.mass)
+        return try_int(self.mass)
 
 
 class MultiDatacardTask(DatacardTask):
@@ -472,259 +519,537 @@ class MultiDatacardTask(DatacardTask):
         return parts
 
 
-class POITask(DatacardTask):
+class ParameterValuesTask(AnalysisTask):
 
-    k_pois = ("kl", "kt", "CV", "C2V")
+    parameter_values = law.CSVParameter(
+        default=(),
+        description="comma-separated parameter names and values to be set; the accepted format is "
+        "'name1=value1,name2=value2,...'",
+    )
+
+    @classmethod
+    def modify_param_values(cls, params):
+        params = AnalysisTask.modify_param_values(params)
+
+        # sort parameters
+        if "parameter_values" in params:
+            params["parameter_values"] = tuple(sorted(params["parameter_values"]))
+
+        return params
+
+    def __init__(self, *args, **kwargs):
+        super(ParameterValuesTask, self).__init__(*args, **kwargs)
+
+        # store parameter values in a dict, check for duplicates
+        self.parameter_values_dict = OrderedDict()
+        for p in self.parameter_values:
+            name, value = p.split("=", 1)
+            if name in self.parameter_values_dict:
+                raise ValueError("duplicate parameter value '{}'".format(name))
+            self.parameter_values_dict[name] = float(value)
+
+    def get_output_postfix(self, join=True):
+        parts = []
+        if self.parameter_values:
+            parts = [["params"] + [
+                "{}{}".format(*tpl)
+                for tpl in self.parameter_values_dict.items()
+            ]]
+
+        return self.join_postfix(parts) if join else parts
+
+    def _joined_parameter_values(self, join=True):
+        values = OrderedDict(self.parameter_values_dict)
+
+        return ",".join("{}={}".format(*tpl) for tpl in values.items()) if join else values
+
+    @property
+    def joined_parameter_values(self):
+        return self._joined_parameter_values()
+
+
+class ParameterScanTask(AnalysisTask):
+
+    scan_parameters = law.MultiCSVParameter(
+        default=(("kl",),),
+        description="colon-separated parameters to scan, each in the format "
+        "'name[,start,stop][,points]'; defaults for start and stop values are taken from the used "
+        "physics model; the default number of points is inferred from that range so that there is "
+        "one measurement per integer step; default: (kl,)",
+    )
+
+    force_n_scan_parameters = None
+
+    @classmethod
+    def modify_param_values(cls, params):
+        params = AnalysisTask.modify_param_values(params)
+
+        # set default range and points
+        if "scan_parameters" in params:
+            _scan_parameters = []
+            for p in params["scan_parameters"]:
+                name, start, stop, points = None, None, None, None
+                if len(p) == 1:
+                    name = p[0]
+                elif len(p) == 2:
+                    name, points = p[0], int(p[1])
+                elif len(p) == 3:
+                    name, start, stop = p[0], float(p[1]), float(p[2])
+                elif len(p) == 4:
+                    name, start, stop, points = p[0], float(p[1]), float(p[2]), int(p[3])
+                else:
+                    raise ValueError("invalid scan parameter format '{}'".format(",".join(p)))
+
+                # get range defaults
+                if start is None or stop is None:
+                    if name not in poi_data:
+                        raise Exception("cannot infer default range of scan parameter {}".format(
+                            name))
+                    start, stop = poi_data[name].range
+
+                # get default points
+                if points is None:
+                    points = int(stop - start + 1)
+
+                _scan_parameters.append((name, start, stop, points))
+
+            params["scan_parameters"] = tuple(_scan_parameters)
+
+        return params
+
+    def __init__(self, *args, **kwargs):
+        super(ParameterScanTask, self).__init__(*args, **kwargs)
+
+        # check the number of scan parameters if restricted
+        n = self.force_n_scan_parameters
+        if isinstance(n, six.integer_types):
+            if self.n_scan_parameters != n:
+                raise Exception("{} requires exactly {} scan parameters but got '{}'".format(
+                    self.__class__.__name__, n, self.joined_scan_parameter_names))
+        elif isinstance(n, tuple) and len(n) == 2:
+            if not (n[0] <= self.n_scan_parameters <= n[1]):
+                raise Exception("{} requires between {} and {} scan parameters but got '{}'".format(
+                    self.__class__.__name__, n[0], n[1], self.joined_scan_parameter_names))
+
+    def get_output_postfix(self, join=True):
+        parts = [["scan"] + [
+            "{}_{}_{}_n{}".format(*tpl)
+            for tpl in self.scan_parameters
+        ]]
+
+        return self.join_postfix(parts) if join else parts
+
+    @property
+    def n_scan_parameters(self):
+        return len(self.scan_parameters)
+
+    @property
+    def scan_parameter_names(self):
+        return [p for p, _, _, _ in self.scan_parameters]
+
+    @property
+    def joined_scan_parameter_names(self):
+        return ",".join(self.scan_parameter_names)
+
+    @property
+    def joined_scan_values(self):
+        # only valid when this is a workflow branch
+        if not isinstance(self, law.BaseWorkflow) or self.is_workflow():
+            return AttributeError("{} has no attribute '{}' when not a workflow branch".format(
+                self.__class__.__name__, "joined_scan_values"))
+
+        return ",".join(
+            "{}={}".format(*tpl)
+            for tpl in zip(self.scan_parameter_names, self.branch_data)
+        )
+
+    @property
+    def joined_scan_ranges(self):
+        return ":".join(
+            "{}={},{}".format(p, start, stop)
+            for p, start, stop, _ in self.scan_parameters
+        )
+
+    @property
+    def joined_scan_points(self):
+        return ",".join(str(points) for _, _, _, points in self.scan_parameters)
+
+    def get_scan_linspace(self, step_size=None):
+        if isinstance(step_size, six.integer_types + (float,)):
+            step_size = [step_size] * self.n_scan_parameters
+
+        def get_points(i, start, stop, points):
+            # when step_size is set, use this value to define the resolution between points
+            # otherwise, use the number of points given in scan parameters (the default)
+            if not step_size:
+                return points
+            else:
+                points = (stop - start) / float(step_size[i]) + 1
+                if points % 1 != 0:
+                    raise Exception("step size {} does not equally divide range [{}, {}]".format(
+                        step_size[i], start, stop))
+                return points
+
+        return list(itertools.product(*[
+            linspace(start, stop, get_points(i, start, stop, points))
+            for i, (_, start, stop, points) in enumerate(self.scan_parameters)
+        ]))
+
+    def htcondor_output_postfix(self):
+        return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
+
+
+class POITask(DatacardTask, ParameterValuesTask):
+
     r_pois = ("r", "r_qqhh", "r_gghh")
-    all_pois = k_pois + r_pois
+    k_pois = ("kl", "kt", "CV", "C2V")
+    all_pois = r_pois + k_pois
 
-    @classmethod
-    def get_frozen_pois(cls, other_pois):
-        return ",".join(other_pois)
-
-    @classmethod
-    def get_set_pois(cls, other_pois, values=1.0):
-        if not isinstance(values, dict):
-            values = {poi: values for poi in other_pois}
-        return ",".join(["{}={}".format(p, values.get(p, 1.0)) for p in other_pois])
-
-    @property
-    def frozen_pois(self):
-        return self.get_frozen_pois(self.other_pois)
-
-    @property
-    def set_pois(self):
-        return self.get_set_pois(self.other_pois)
-
-
-class POITask1D(POITask):
-
-    poi = luigi.ChoiceParameter(
-        default="kl",
-        choices=POITask.all_pois,
-        description="name of the poi; choices: {}; default: kl".format(",".join(POITask.all_pois)),
+    pois = law.CSVParameter(
+        default=("r",),
+        unique=True,
+        sort=True,
+        choices=all_pois,
+        description="names of POIs; choices: {}; default: (r,)".format(",".join(all_pois)),
     )
-    poi_value = luigi.FloatParameter(
-        default=1.0,
-        description="initial value of the poi; default: 1.0",
+    frozen_parameters = law.CSVParameter(
+        default=(),
+        unique=True,
+        sort=True,
+        description="comma-separated names of parameters to be frozen in addition to non-POI and "
+        "scan parameters",
+    )
+    frozen_groups = law.CSVParameter(
+        default=(),
+        unique=True,
+        sort=True,
+        description="comma-separated names of groups of parameters to be frozen",
     )
 
-    def __init__(self, *args, **kwargs):
-        super(POITask1D, self).__init__(*args, **kwargs)
-
-        # store pois that are not selected
-        self.other_pois = [p for p in self.all_pois if p != self.poi]
-
-    def store_parts(self):
-        parts = super(POITask1D, self).store_parts()
-        parts["poi"] = self.poi
-        return parts
-
-    def get_poi_postfix(self):
-        return "{}_{}".format(self.poi, self.poi_value)
-
-
-class POIScanTask1D(POITask1D):
-
-    poi_range = law.CSVParameter(
-        cls=luigi.FloatParameter,
-        default=None,
-        min_len=2,
-        max_len=2,
-        description="the range of the poi given by two comma-separated values; default: range "
-        "defined in physics model for poi",
-    )
-    poi_points = luigi.IntParameter(
-        default=None,
-        description="number of points to scan; default: int(poi_range[1] - poi_range[0] + 1)",
-    )
-
-    poi_value = None
+    force_n_pois = None
+    allow_parameter_values_in_pois = False
 
     @classmethod
     def modify_param_values(cls, params):
-        params = super(POIScanTask1D, cls).modify_param_values(params)
+        params = DatacardTask.modify_param_values(params)
 
-        # set default range and points
-        if "poi" in params:
-            data = poi_data[params["poi"]]
-            if params.get("poi_range") in [None, (None,), (None, None)]:
-                params["poi_range"] = data.range
-            if not params.get("poi_points"):
-                params["poi_points"] = int(params["poi_range"][1] - params["poi_range"][0] + 1)
+        # remove r and k pois from parameter values that are one, sort the rest
+        if "parameter_values" in params:
+            parameter_values = []
+            for p in params["parameter_values"]:
+                if "=" not in p:
+                    raise ValueError("invalid parameter value format '{}'".format(p))
+                name, value = p.split("=", 1)
+                if name in cls.all_pois and float(value) == 1:
+                    continue
+                parameter_values.append(p)
+            params["parameter_values"] = tuple(sorted(parameter_values))
+
+        # remove r and k pois from frozen parameters as they are frozen by default, sort the rest
+        if "frozen_parameters" in params:
+            params["frozen_parameters"] = tuple(sorted(
+                p for p in params["frozen_parameters"] if p not in cls.all_pois
+            ))
 
         return params
 
-    def get_poi_postfix(self):
-        return "{}_n{}_{}_{}".format(self.poi, self.poi_points, *self.poi_range)
-
-
-class POITask1DWithR(POITask1D):
-    """
-    Same as POITask1D but besides the actual poi, it keeps track of a separate r-poi that is also
-    encoded in output paths. This is helpful for (e.g.) limit calculations where results are
-    extracted for a certain r-poi while scanning an other parameter.
-    """
-
-    poi = luigi.ChoiceParameter(
-        default="kl",
-        choices=POITask.k_pois,
-        description="name of the poi; choices: {}; default: kl".format(",".join(POITask.k_pois)),
-    )
-    r_poi = luigi.ChoiceParameter(
-        default="r",
-        choices=POITask1D.r_pois,
-        description="name of the r POI; choices: {}; default: r".format(
-            ",".join(POITask1D.r_pois)),
-    )
-
-    def store_parts(self):
-        parts = super(POITask1DWithR, self).store_parts()
-        parts["poi"] = "{}__{}".format(self.r_poi, self.poi)
-        return parts
-
-    def get_poi_postfix(self):
-        postfix = super(POITask1DWithR, self).get_poi_postfix()
-        return "{}__{}".format(self.r_poi, postfix)
-
-
-class POIScanTask1DWithR(POITask1DWithR, POIScanTask1D):
-    """
-    Same as POIScanTask1D but besides the actual poi, it keeps track of a separate r-poi that is
-    also encoded in output paths. This is helpful for (e.g.) limit calculations where results are
-    extracted for a certain r-poi while scanning an other parameter.
-    """
-
-
-class POITask2D(POITask):
-
-    poi1 = luigi.ChoiceParameter(
-        default="kl",
-        choices=POITask.all_pois,
-        description="name of the first poi; choices: {}; default: kl".format(
-            ",".join(POITask.all_pois)),
-    )
-    poi2 = luigi.ChoiceParameter(
-        default="kt",
-        choices=POITask.all_pois,
-        description="name of the second poi; choices: {}; default: kt".format(
-            ",".join(POITask.all_pois)),
-    )
-    poi1_value = luigi.FloatParameter(
-        default=1.0,
-        description="initial value of the first poi; default: 1.0",
-    )
-    poi2_value = luigi.FloatParameter(
-        default=1.0,
-        description="initial value of the second poi; default: 1.0",
-    )
-
-    store_pois_sorted = False
-
     def __init__(self, *args, **kwargs):
-        super(POITask2D, self).__init__(*args, **kwargs)
+        super(POITask, self).__init__(*args, **kwargs)
 
-        # poi's should differ
-        if self.poi1 == self.poi2:
-            raise ValueError("poi1 and poi2 should differ but both are '{}'".format(self.poi1))
+        # check the number of pois if restricted
+        n = self.force_n_pois
+        if isinstance(n, six.integer_types):
+            if self.n_pois != n:
+                raise Exception("{} requires exactly {} POIs but got '{}'".format(
+                    self.__class__.__name__, n, self.joined_pois))
+        elif isinstance(n, tuple) and len(n) == 2:
+            if not (n[0] <= self.n_pois <= n[1]):
+                raise Exception("{} requires between {} and {} POIs but got '{}'".format(
+                    self.__class__.__name__, n[0], n[1], self.joined_pois))
 
-        # store pois that are not selected
-        self.other_pois = [p for p in self.all_pois if p not in (self.poi1, self.poi2)]
-
-    def get_poi_info(self, attributes=("", "_value")):
-        # get info per poi
-        info = {}
-        info.update({"poi1" + attr: getattr(self, "poi1" + attr) for attr in attributes})
-        info.update({"poi2" + attr: getattr(self, "poi2" + attr) for attr in attributes})
-
-        # add same info with keys starting with "poiA_" and "poiB_" to reflect sorting by name
-        # i.e. when poi1 is "kl" and poi2 is "C2V", "poiA_" would denote poi2
-        names = sorted([self.poi1, self.poi2])
-        keys = sorted(["poi1", "poi2"], key=lambda key: names.index(getattr(self, key)))
-        info.update({"poiA" + attr: getattr(self, keys[0] + attr) for attr in attributes})
-        info.update({"poiB" + attr: getattr(self, keys[1] + attr) for attr in attributes})
-
-        return info
+        # check if parameter values are allowed in pois
+        if not self.allow_parameter_values_in_pois:
+            for p in self.parameter_values_dict:
+                if p in self.pois:
+                    raise Exception("parameter values are not allowed to be in POIs, but found "
+                        "'{}'".format(p))
 
     def store_parts(self):
-        parts = super(POITask2D, self).store_parts()
-
-        if self.store_pois_sorted:
-            tmpl = "{poiA}__{poiB}"
-        else:
-            tmpl = "{poi1}__{poi2}"
-        parts["pois"] = tmpl.format(**self.get_poi_info())
-
+        parts = super(POITask, self).store_parts()
+        parts["poi"] = "poi_{}".format("_".join(self.pois))
         return parts
 
-    def get_poi_postfix(self):
-        if self.store_pois_sorted:
-            tmpl = "{poiA}_{poiA_value}__{poiB}_{poiB_value}"
-        else:
-            tmpl = "{poi1}_{poi1_value}__{poi2}_{poi2_value}"
-        return tmpl.format(**self.get_poi_info())
+    def get_output_postfix(self, join=True, exclude_params=None, include_params=None):
+        parts = []
+
+        # add pois
+        parts.append(["poi"] + list(self.pois))
+
+        # add parameters, taking into account excluded and included ones
+        params = OrderedDict((p, 1.0) for p in (
+            self.all_pois if self.allow_parameter_values_in_pois else self.other_pois))
+        params.update(self.parameter_values_dict)
+        if exclude_params:
+            params = OrderedDict((p, v) for p, v in params.items() if p not in exclude_params)
+        if include_params:
+            params.update(include_params)
+        parts.append(["params"] + ["{}{}".format(*tpl) for tpl in params.items()])
+
+        # add frozen paramaters
+        if self.frozen_parameters:
+            parts.append(["fzp"] + list(self.frozen_parameters))
+
+        # add frozen groups
+        if self.frozen_groups:
+            parts.append(["fzg"] + list(self.frozen_groups))
+
+        return self.join_postfix(parts) if join else parts
+
+    @property
+    def n_pois(self):
+        return len(self.pois)
+
+    @property
+    def joined_pois(self):
+        return ",".join(self.pois)
+
+    @property
+    def other_pois(self):
+        return [p for p in self.all_pois if p not in self.pois]
+
+    def _joined_parameter_values(self, join=True):
+        # all unused pois with a value of one
+        values = OrderedDict((p, 1.0) for p in (
+            self.all_pois if self.allow_parameter_values_in_pois else self.other_pois))
+
+        # manually set parameters
+        values.update(self.parameter_values_dict)
+
+        return ",".join("{}={}".format(*tpl) for tpl in values.items()) if join else values
+
+    @property
+    def joined_parameter_values(self):
+        return self._joined_parameter_values()
+
+    def _joined_frozen_parameters(self, join=True):
+        # unused pois
+        params = tuple(self.other_pois)
+
+        # manually frozen parameters
+        params += tuple(self.frozen_parameters)
+
+        return ",".join(params) if join else params
+
+    @property
+    def joined_frozen_parameters(self):
+        return self._joined_frozen_parameters()
+
+    @property
+    def joined_frozen_groups(self):
+        return ",".join(self.frozen_groups) or "\"\""
 
 
-class POIScanTask2D(POITask2D):
+class POIScanTask(POITask, ParameterScanTask):
 
-    poi1_range = law.CSVParameter(
-        cls=luigi.FloatParameter,
-        default=None,
-        min_len=2,
-        max_len=2,
-        description="the range of the first poi given by two comma-separated values; default: "
-        "range defined in physics model for poi1",
-    )
-    poi2_range = law.CSVParameter(
-        cls=luigi.FloatParameter,
-        default=None,
-        min_len=2,
-        max_len=2,
-        description="the range of the second poi given by two comma-separated values; default: "
-        "range defined in physics model for poi2",
-    )
-    poi1_points = luigi.IntParameter(
-        default=None,
-        description="number of points of the first poi to scan; default: "
-        "int(poi1_range[1] - poi1_range[0] + 1)",
-    )
-    poi2_points = luigi.IntParameter(
-        default=None,
-        description="number of points of the second poi to scan; default: "
-        "int(poi2_range[1] - poi2_range[0] + 1)",
-    )
-
-    poi1_value = None
-    poi2_value = None
+    force_scan_parameters_equal_pois = False
+    force_scan_parameters_unequal_pois = False
+    allow_parameter_values_in_scan_parameters = False
 
     @classmethod
     def modify_param_values(cls, params):
-        params = super(POIScanTask2D, cls).modify_param_values(params)
-
-        # set default range and points
-        for n in ["poi1", "poi2"]:
-            if n not in params:
-                continue
-            data = poi_data[params[n]]
-            if params.get(n + "_range") in [None, (None,), (None, None)]:
-                params[n + "_range"] = data.range
-            if not params.get(n + "_points"):
-                params[n + "_points"] = int(params[n + "_range"][1] - params[n + "_range"][0] + 1)
-
+        params = POITask.modify_param_values(params)
+        params = ParameterScanTask.modify_param_values(params)
         return params
 
-    def get_poi_info(self, attributes=("", "_range", "_points")):
-        return super(POIScanTask2D, self).get_poi_info(attributes=attributes)
+    def __init__(self, *args, **kwargs):
+        super(POIScanTask, self).__init__(*args, **kwargs)
 
-    def get_poi_postfix(self):
-        if self.store_pois_sorted:
-            tmpl = (
-                "{poiA}_n{poiA_points}_{poiA_range[0]}_{poiA_range[1]}"
-                "__{poiB}_n{poiB_points}_{poiB_range[0]}_{poiB_range[1]}"
-            )
+        # check if scan parameters exactly match pois
+        if self.force_scan_parameters_equal_pois:
+            missing = set(self.pois) - set(self.scan_parameter_names)
+            if missing:
+                raise Exception("scan parameter(s) '{}' must match POI(s) '{}'".format(
+                    self.joined_scan_parameter_names, self.joined_pois))
+            unknown = set(self.scan_parameter_names) - set(self.pois)
+            if unknown:
+                raise Exception("scan parameter(s) '{}' must match POI(s) '{}'".format(
+                    self.joined_scan_parameter_names, self.joined_pois))
+
+        # check if scan parameters and pois diverge
+        if self.force_scan_parameters_unequal_pois:
+            if set(self.pois).intersection(set(self.scan_parameter_names)):
+                raise Exception("scan parameter(s) '{}' and POI(s) '{}' must not overlap".format(
+                    self.joined_scan_parameter_names, self.joined_pois))
+
+        # check if parameter values are in scan parameters
+        if not self.allow_parameter_values_in_scan_parameters:
+            for p in self.parameter_values_dict:
+                if p in self.scan_parameter_names:
+                    raise Exception("parameter values are not allowed to be in scan parameters, "
+                        "but found '{}'".format(p))
+
+    def get_output_postfix(self, join=True):
+        if isinstance(self, law.BaseWorkflow) and self.is_branch():
+            # include scan values
+            scan_values = OrderedDict(zip(self.scan_parameter_names, self.branch_data))
+            parts = POITask.get_output_postfix(self, join=False, include_params=scan_values)
         else:
-            tmpl = (
-                "{poi1}_n{poi1_points}_{poi1_range[0]}_{poi1_range[1]}"
-                "__{poi2}_n{poi2_points}_{poi2_range[0]}_{poi2_range[1]}"
-            )
-        return tmpl.format(**self.get_poi_info())
+            # exclude scan values when not explicitely allowed
+            exclude_params = None
+            if not self.allow_parameter_values_in_scan_parameters:
+                exclude_params = self.scan_parameter_names
+            parts = POITask.get_output_postfix(self, join=False, exclude_params=exclude_params)
+
+            # insert the scan configuration
+            parts = parts[:1] + ParameterScanTask.get_output_postfix(self, join=False) + parts[1:]
+
+        return self.join_postfix(parts) if join else parts
+
+    def _joined_parameter_values(self, join=True):
+        # skip scan parameters
+        values = POITask._joined_parameter_values(self, join=False)
+        for p in self.scan_parameter_names:
+            values.pop(p, None)
+
+        return ",".join("{}={}".format(*tpl) for tpl in values.items()) if join else values
+
+
+class CombineCommandTask(CommandTask):
+
+    exclude_index = True
+
+    combine_stable_options = (
+        "--cminDefaultMinimizerType Minuit2"
+        " --cminDefaultMinimizerStrategy 0"
+        " --cminFallbackAlgo Minuit2,0:1.0"
+    )
+
+
+class POIPlotTask(PlotTask, POITask):
+
+    show_parameters = law.CSVParameter(
+        default=(),
+        significant=False,
+        description="comma-separated list of parameters that are shown in the plot even if they "
+        "are 1; default: empty",
+    )
+
+    def get_shown_parameters(self):
+        parameter_values = self._joined_parameter_values(join=False)
+        for p, v in list(parameter_values.items()):
+            if v == 1 and p not in self.show_parameters:
+                parameter_values.pop(p, None)
+        return parameter_values
+
+
+class CombineDatacards(DatacardTask, CombineCommandTask):
+
+    priority = 100
+
+    def __init__(self, *args, **kwargs):
+        super(DatacardTask, self).__init__(*args, **kwargs)
+
+        # complain when no datacard paths are given but the store path does not exist yet
+        if not self.datacards and not self.local_target(dir=True).exists():
+            raise Exception("store directory {} does not exist which is required when no datacard "
+                "paths are provided".format(self.local_target(dir=True).path))
+
+    def output(self):
+        return self.local_target("datacard.txt")
+
+    def build_command(self, datacards=None):
+        if not datacards:
+            datacards = self.datacards
+
+        inputs = " ".join(datacards)
+        output = self.output()
+
+        if len(datacards) == 1:
+            return "cp {} {}".format(inputs, output.path)
+        else:
+            return "combineCards.py {} {} > {}".format(self.custom_args, inputs, output.path)
+
+    @law.decorator.safe_output
+    def run(self):
+        # immediately complain when no datacard paths were set but just a store directory
+        if not self.datacards:
+            raise Exception("{} task requires datacard paths to be set".format(self.task_family))
+
+        # before running the actual card combination command, copy shape files and handle collisions
+        # first, create a tmp dir to work in
+        tmp_dir = law.LocalDirectoryTarget(is_tmp=True)
+        tmp_dir.touch()
+
+        # remove any bin name from the datacard paths
+        datacards = [self.split_datacard_path(card)[0] for card in self.datacards]
+        bin_names = [self.split_datacard_path(card)[1] for card in self.datacards]
+
+        # run the bundling for all cards which handles collision-free copying on its own
+        datacards = [os.path.basename(bundle_datacard(card, tmp_dir.path)) for card in datacards]
+
+        # add back bin names
+        datacards = [
+            ("{}={}".format(bin_name, card) if bin_name else card)
+            for bin_name, card in zip(bin_names, datacards)
+        ]
+
+        # build and run the command
+        output = self.output()
+        output.parent.touch()
+        self.run_command(self.build_command(datacards), cwd=tmp_dir.path)
+
+        # remove ggf and vbf processes that are not covered by the physics model
+        mod, model = self.load_hh_model()
+        all_hh_processes = {sample.label for sample in mod.ggf_samples.values()}
+        all_hh_processes |= {sample.label for sample in mod.vbf_samples.values()}
+        model_hh_processes = {sample.label for sample in model.ggf_formula.sample_list}
+        model_hh_processes |= {sample.label for sample in model.vbf_formula.sample_list}
+        to_remove = all_hh_processes - model_hh_processes
+        if to_remove:
+            self.logger.info("trying to remove processe(s) {} from the combined datacard as they "
+                "are not part of the phyics model {}".format(",".join(to_remove), self.hh_model))
+            remove_processes_script(output.path, map("{}*".format, to_remove))
+
+        # copy shape files to output location
+        for basename in tmp_dir.listdir(pattern="*.root", type="f"):
+            tmp_dir.child(basename).copy_to(output.parent)
+
+
+class CreateWorkspace(DatacardTask, CombineCommandTask):
+
+    priority = 90
+
+    run_command_in_tmp = True
+
+    def requires(self):
+        return CombineDatacards.req(self)
+
+    def output(self):
+        return self.local_target("workspace.root")
+
+    def build_command(self):
+        # build physics model arguments when not empty
+        model_args = ""
+        if not self.hh_model_empty:
+            model_args = (
+                " -P {model.__module__}:{model.name}"
+                " --PO doNNLOscaling={model.doNNLOscaling}"
+                " --PO doBRscaling={model.doBRscaling}"
+                " --PO doHscaling={model.doHscaling}"
+                " --PO doklDependentUnc={model.doklDependentUnc}"
+            ).format(model=self.load_hh_model()[1])
+
+        return (
+            "text2workspace.py {datacard}"
+            " -o workspace.root"
+            " -m {self.mass}"
+            " {model_args}"
+            " {self.custom_args}"
+            " && "
+            "mv workspace.root {workspace}"
+        ).format(
+            self=self,
+            datacard=self.input().path,
+            workspace=self.output().path,
+            model_args=model_args,
+        )

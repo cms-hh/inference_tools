@@ -1,6 +1,6 @@
 There are a couple of scripts located in [dhi/scripts](https://gitlab.cern.ch/hh/tools/inference/-/tree/master/dhi/scripts) that allow you to manipulate datacards from the command line.
 
-All scripts have the ability to move, or *bundle* a datacard and all the shape files it refers to into a new directory.
+All scripts have the ability to move, or *bundle* a datacard and all the shape files it refers to into a new directory in order to apply manipulations on copies of the original files.
 When doing so, the locations of shape files are changed consistently within the datacard.
 The argument to configure this directory is identical across all scripts.
 
@@ -326,7 +326,7 @@ optional arguments:
 ### Prettify datacard
 
 ```shell hl_lines="1"
->prettify_datacard.py --help
+> prettify_datacard.py --help
 
 usage: prettify_datacard.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--no-preamble] [--log-level LOG_LEVEL]

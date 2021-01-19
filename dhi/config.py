@@ -4,7 +4,7 @@
 Constants such as cross sections and branchings, and common configs such as labels and colors.
 """
 
-from dhi.util import DotDict
+from dhi.util import DotDict, ROOTColorGetter
 
 
 # branching ratios at m_H = 125 GeV, using the decay mode naming scheme suggested by HIG and HComb
@@ -60,16 +60,16 @@ br_hh_names = DotDict(
     bbbb=r"bbbb",
     bbvv=r"bbVV",
     bbww=r"bbWW",
-    bbwwqqlv=r"bbWW$_{qql\nu}$",
-    bbwwlvlv=r"bbWW$_{2l2\nu}$",
-    bbzz=r"HH $\rightarrow bbZZ$",
-    bbzzqqll=r"bbZZ$_{qqll}$",
-    bbzzllll=r"bbZZ$_{4l}$",
-    bbtt=r"bb\tau\tau$",
-    bbgg=r"bb\gamma\gamma$",
-    ttww=r"WW\tau\tau",
-    ttzz=r"ZZ\tau\tau",
-    tttt=r"\tau\tau\tau\tau",
+    bbwwqqlv=r"bbWW, qql$\nu$",
+    bbwwlvlv=r"bbWW, 2l2$\nu$",
+    bbzz=r"bbZZ",
+    bbzzqqll=r"bbZZ, qqll",
+    bbzzllll=r"bbZZ, 4l",
+    bbtt=r"bb$\tau\tau$",
+    bbgg=r"bb$\gamma\gamma$",
+    ttww=r"WW$\tau\tau",
+    ttzz=r"ZZ$\tau\tau",
+    tttt=r"$\tau\tau\tau\tau$",
     wwww=r"WWWW",
     zzzz=r"ZZZZ",
     wwzz=r"WWZZ",
@@ -102,14 +102,22 @@ nuisance_labels = {}
 
 # colors
 colors = DotDict(
-    root=DotDict(
+    root=ROOTColorGetter(
         black=1,
+        white=10,
+        white_trans_30=(10, 0.3),
+        grey=921,
+        light_grey=920,
+        dark_grey=13,
+        dark_grey_trans=(13, 0.33),
         red=628,
         green=418,
         yellow=798,
         red_cream=46,
         blue_cream=38,
-    )
+        blue_signal=(67, 118, 201),
+        blue_signal_trans=(67, 118, 201, 0.5),
+    ),
 )
 
 # cumulative, inverse chi2 values in a mapping "n_dof -> n_sigma -> level"

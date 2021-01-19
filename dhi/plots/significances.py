@@ -8,32 +8,35 @@ import math
 
 import numpy as np
 
-from dhi.config import poi_data, campaign_labels, colors as _colors, br_hh_names
-from dhi.util import import_ROOT, to_root_latex, create_tgraph
+from dhi.config import poi_data, campaign_labels, colors as _colors
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int
+
+
+_colors = _colors.root
 
 
 def plot_significance_scan(
     path,
     poi,
+    scan_parameter,
     expected_values,
     observed_values=None,
     x_min=None,
     x_max=None,
     y_min=None,
     y_max=None,
-    pp_process="pp",
-    campaign="2017",
+    model_parameters=None,
+    campaign=None,
 ):
     """
-    Creates a plot for the significance scan of a *poi* and saves it at *path*. *expected_values*
-    should be a mapping to lists of values or a record array with keys "<poi_name>" and
-    "significance". When *observed_values* is given, it should be single lists of values with the
-    same length as the lists given in *expected_values*.
+    Creates a plot for the significance scan of a *poi* over a *scan_parameter* and saves it at
+    *path*. *expected_values* should be a mapping to lists of values or a record array with keys
+    "<poi_name>" and "significance". When *observed_values* is given, it should be single lists of
+    values with the same length as the lists given in *expected_values*.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
-    given values. The *pp_process* label is shown in the y-axis title to denote the physics process
-    the computed values are corresponding to. *campaign* should refer to the name of a campaign
-    label defined in dhi.config.campaign_labels.
+    given values. *model_parameters* can be a dictionary of key-value pairs of model parameters.
+    *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/significances.html#plotsignificancescan
     """
@@ -45,10 +48,10 @@ def plot_significance_scan(
         expected_values = {key: expected_values[key] for key in expected_values.dtype.names}
 
     # input checks
-    assert poi in expected_values
+    assert scan_parameter in expected_values
     assert "significance" in expected_values
-    poi_values = expected_values[poi]
-    n_points = len(poi_values)
+    scan_values = expected_values[scan_parameter]
+    n_points = len(scan_values)
     assert all(len(d) == n_points for d in expected_values.values())
     if observed_values is not None:
         assert len(observed_values) == n_points
@@ -56,9 +59,9 @@ def plot_significance_scan(
 
     # set default ranges
     if x_min is None:
-        x_min = min(poi_values)
+        x_min = min(scan_values)
     if x_max is None:
-        x_max = max(poi_values)
+        x_max = max(scan_values)
 
     # start plotting
     r.setup_style()
@@ -70,31 +73,14 @@ def plot_significance_scan(
     y_min_value = 1e5
 
     # dummy histogram to control axes
-    x_title = to_root_latex(poi_data[poi].label)
-    y_title = "Significance ({} #rightarrow HH) over background-only / #sigma".format(
-        to_root_latex(pp_process))
+    x_title = to_root_latex(poi_data[scan_parameter].label)
+    y_title = "Significance ({}) over background-only / #sigma".format(poi_data[poi].label)
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
-    # helper to read values into graphs
-    def create_graph(values):
-        # repeat the edges by padding to prevent bouncing effects of interpolated lines
-        pad = lambda arr: np.pad(np.array(arr, dtype=np.float32), 1, mode="edge")
-        values = pad(values)
-        zeros = np.zeros(n_points + 2, dtype=np.float32)
-        return ROOT.TGraphAsymmErrors(
-            n_points + 2,
-            pad(poi_values),
-            pad(values) if values is not None else arr("limit"),
-            zeros,
-            zeros,
-            (arr("limit") - arr("limit_m{}".format(sigma))) if sigma else zeros,
-            (arr("limit_p{}".format(sigma)) - arr("limit")) if sigma else zeros,
-        )
-
     # expected values
-    g_exp = create_tgraph(n_points, poi_values, expected_values["significance"])
+    g_exp = create_tgraph(n_points, scan_values, expected_values["significance"])
     r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
         "MarkerSize": 0.7})
     draw_objs.append((g_exp, "SAME,PL"))
@@ -104,9 +90,9 @@ def plot_significance_scan(
 
     # observed values
     if observed_values is not None:
-        g_obs = create_tgraph(n_points, poi_values, observed_values)
+        g_obs = create_tgraph(n_points, scan_values, observed_values)
         r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-            "MarkerSize": 0.7}, color=_colors.root.red)
+            "MarkerSize": 0.7}, color=_colors.red)
         draw_objs.append((g_obs, "SAME,PL"))
         legend_entries.append((g_obs, "Observed"))
         y_max_value = max(y_max_value, max(observed_values))
@@ -125,8 +111,15 @@ def plot_significance_scan(
         if not (y_min < y < y_max):
             continue
         line = ROOT.TLine(x_min, y, x_max, y)
-        r.setup_line(line, props={"LineStyle": 7, "NDC": False}, color=_colors.root.red)
+        r.setup_line(line, props={"LineStyle": 7, "NDC": False}, color=_colors.red)
         draw_objs.append(line)
+
+    # model parameter label
+    if model_parameters:
+        for i, (p, v) in enumerate(model_parameters.items()):
+            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
+            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
+                y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=160, y2=-20, n=len(legend_entries))
@@ -155,6 +148,7 @@ def plot_significance_scan(
 def plot_significance_scans(
     path,
     poi,
+    scan_parameter,
     expected_values,
     names,
     colors=None,
@@ -162,21 +156,19 @@ def plot_significance_scans(
     x_max=None,
     y_min=None,
     y_max=None,
-    pp_process="pp",
-    campaign="2017",
+    model_parameters=None,
+    campaign=None,
 ):
     """
-    Creates a plot showing multiple significance scans of a *poi* and saves it at *path*.
-    *expected_values* should be a list of mappings to lists of values or a record array with keys
-    "<poi_name>" and "significance". Each mapping in *expected_values* will result in a different
-    curve. *names* denote the names of significance curves shown in the legend. When a name is found
-    to be in dhi.config.br_hh_names, its value is used as a label instead. Likewise, *colors* can be
-    a sequence of color numbers or names to be used per curve.
+    Creates a plot showing multiple significance scans of a *poi* over a *scan_parameter* and saves
+    it at *path*. *expected_values* should be a list of mappings to lists of values or a record
+    array with keys "<poi_name>" and "significance". Each mapping in *expected_values* will result
+    in a different curve. *names* denote the names of significance curves shown in the legend.
+    Likewise, *colors* can be a sequence of color numbers or names to be used per curve.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
-    given values. The *pp_process* label is shown in the y-axis title to denote the physics process
-    the computed values are corresponding to. *campaign* should refer to the name of a campaign
-    label defined in dhi.config.campaign_labels.
+    given values. *model_parameters* can be a dictionary of key-value pairs of model parameters.
+    *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
     Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/significances.html
     """
@@ -196,17 +188,17 @@ def plot_significance_scans(
     assert n_graphs >= 1
     assert len(names) == n_graphs
     assert not colors or len(colors) == n_graphs
-    assert all(poi in ev for ev in expected_values)
+    assert all(scan_parameter in ev for ev in expected_values)
     assert all("significance" in ev for ev in expected_values)
-    poi_values = expected_values[0][poi]
-    n_points = len(poi_values)
+    scan_values = expected_values[0][scan_parameter]
+    n_points = len(scan_values)
     assert all(len(ev["significance"]) == n_points for ev in expected_values)
 
     # set default ranges
     if x_min is None:
-        x_min = min(poi_values)
+        x_min = min(scan_values)
     if x_max is None:
-        x_max = max(poi_values)
+        x_max = max(scan_values)
 
     # start plotting
     r.setup_style()
@@ -218,16 +210,15 @@ def plot_significance_scans(
     y_min_value = 1e5
 
     # dummy histogram to control axes
-    x_title = to_root_latex(poi_data[poi].label)
-    y_title = "Significance ({} #rightarrow HH) over background-only / #sigma".format(
-        to_root_latex(pp_process))
+    x_title = to_root_latex(poi_data[scan_parameter].label)
+    y_title = "Significance ({}) over background-only / #sigma".format(poi_data[poi].label)
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
     # expected values
     for i, ev in enumerate(expected_values[::-1]):
-        g_exp = create_tgraph(n_points, poi_values, ev["significance"])
+        g_exp = create_tgraph(n_points, scan_values, ev["significance"])
         r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
             "MarkerSize": 0.7})
         if colors:
@@ -248,6 +239,13 @@ def plot_significance_scans(
         y_max = 1.35 * (y_max_value - y_min)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
+
+    # model parameter label
+    if model_parameters:
+        for i, (p, v) in enumerate(model_parameters.items()):
+            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
+            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
+                y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
     legend_cols = int(math.ceil(len(legend_entries) / 4.))

@@ -1,6 +1,7 @@
 [submodule "modules/law"]
 	path = modules/law
 	url = https://github.com/riga/law.git
+
 [submodule "modules/plotlib"]
 	path = modules/plotlib
 	url = https://github.com/riga/plotlib.git

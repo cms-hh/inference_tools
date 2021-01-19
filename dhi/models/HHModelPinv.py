@@ -273,7 +273,6 @@ class HHModel(PhysicsModel):
             if not isinstance(s, VBFHHSample):
                 raise RuntimeError("%s : malformed VBF input sample list - each element must be a VBFHHSample" % self.name)
 
-
     def dump_inputs(self):
         print "[INFO]  HH model : " , self.name
         print "......  GGF configuration"
@@ -282,7 +281,6 @@ class HHModel(PhysicsModel):
         print "......  VBF configuration"
         for i,s in enumerate(self.vbf_formula.sample_list):
             print "        {0:<3} ... CV : {1:<3}, C2V : {2:<3}, kl : {3:<3}, xs : {4:<3.8f} pb, label : {5}".format(i, s.val_CV, s.val_C2V, s.val_kl, s.val_xs, s.label)
-
 
     def doParametersOfInterest(self):
         ## the model is built with:
@@ -475,37 +473,34 @@ class HHModel(PhysicsModel):
         isample = find_hh_matches(self.ggf_formula.sample_list, "GGF")
         if isample is not None:
             self.scalingMap[process].append((isample, "GGF"))
+            scaling = self.f_r_ggf_names[isample]
+            # when the BR scaling is enabled, try to extract the decays from the process name
             if self.doBRscaling:
-                # for HH two BR scalings per process are multiplied by the production XS scaling
-                return self.HBRscal.buildXSBRScalingHH(self.f_r_ggf_names[isample],process)
-            else:
-                return self.f_r_ggf_names[isample]
+                scaling = self.HBRscal.buildXSBRScalingHH(scaling, process) or scaling
+            return scaling
 
         # vbf match?
         isample = find_hh_matches(self.vbf_formula.sample_list, "VBF")
         if isample is not None:
             self.scalingMap[process].append((isample, "VBF"))
+            scaling = self.f_r_vbf_names[isample]
+            # when the BR scaling is enabled, try to extract the decays from the process name
             if self.doBRscaling:
-                # for HH two BR scalings per process are multiplied by the production XS scaling
-                return self.HBRscal.buildXSBRScalingHH(self.f_r_vbf_names[isample], process)
-            else:
-                return self.f_r_vbf_names[isample]
+                scaling = self.HBRscal.buildXSBRScalingHH(scaling, process) or scaling
+            return scaling
 
         # complain when the process is a signal but no sample matched
         if self.DC.isSignal[process]:
-            raise Exception("signal process {} did not match any GGF or VBF samples in bin {}".format(
+            raise Exception("HH process {} did not match any GGF or VBF samples in bin {}".format(
                 process, bin))
 
         # single H match?
         if self.doHscaling:
-            f_singleH = self.HBRscal.findSingleHMatch(process)
-            if f_singleH:
-                # single H process will be scaled by kappas and, if requested, by BR.
-                # It will NOT be scaled by r
-                if self.doBRscaling:
-                    return self.HBRscal.buildXSBRScalingH(f_singleH, process)
-                else:
-                    return f_singleH
+            scaling = self.HBRscal.findSingleHMatch(process)
+            # when the BR scaling is enabled, try to extract the decay from the process name
+            if scaling and self.doBRscaling:
+                scaling = self.HBRscal.buildXSBRScalingH(scaling, process) or scaling
+            return scaling or 1.
 
         # at this point we are dealing with a background process that is also not single-H-scaled,
         # so it is safe to return 1 since any misconfiguration should have been raised already
@@ -735,7 +730,7 @@ def create_vbf_xsec_func(formula=None):
     """
     Creates and returns a function that can be used to calculate numeric VBF cross section values in
     pb given an appropriate *formula*, which defaults to *model_default.vbf_formula*. The returned
-    function has the signature ``(c2v=1.0, cv=1.0, kl=1.0)``.
+    function has the signature ``(C2V=1.0, CV=1.0, kl=1.0)``.
 
     Example:
 
@@ -743,7 +738,7 @@ def create_vbf_xsec_func(formula=None):
 
         get_vbf_xsec = create_vbf_xsec_func()
 
-        print(get_vbf_xsec(c2v=2.))
+        print(get_vbf_xsec(C2V=2.))
         # -> 0.013916... (or similar)
     """
     if formula is None:
@@ -755,15 +750,59 @@ def create_vbf_xsec_func(formula=None):
     func = lambdify(symbols(symbol_names), formula.sigma)
 
     # wrap into another function to apply defaults
-    def wrapper(c2v=1., cv=1., kl=1.):
-        xsec = func(c2v, cv, kl, *(sample.val_xs for sample in formula.sample_list))[0, 0]
+    def wrapper(C2V=1., CV=1., kl=1.):
+        xsec = func(C2V, CV, kl, *(sample.val_xs for sample in formula.sample_list))[0, 0]
         return xsec
 
     return wrapper
 
 
-#: Default function for getting ggF cross sections using the formula of the *model_default* model.
-get_ggf_xsec = create_ggf_xsec_func()
+def create_hh_xsec_func(ggf_formula=None, vbf_formula=None):
+    """
+    Creates and returns a function that can be used to calculate numeric HH cross section values in
+    pb given appropriate *ggf_formula* and *vbf_formula* objects, which default to
+    *model_default.ggf_formula* and *model_default.vbf_formula*, respectively. The returned
+    function has the signature ``(kl=1.0, kt=1.0, C2V=1.0, CV=1.0, nnlo=True, unc=None)``.
 
-#: Default function for getting VBF cross sections using the formula of the *model_default* model.
-get_vbf_xsec = create_vbf_xsec_func()
+    The *nnlo* and *unc* settings only affect the ggF component of the cross section. When *nnlo* is
+    *False*, the constant k-factor of the ggf calculation is still applied. Otherwise, the returned
+    value is in full next-to-next-to-leading order for ggf. In this case, *unc* can be set to eiher
+    "up" or "down" to return the up / down varied cross section instead where the uncertainty is
+    composed of a *kl* dependent scale uncertainty and an independent PDF uncertainty of 3%.
+
+    Example:
+
+    .. code-block:: python
+
+        get_hh_xec = create_hh_xsec_func()
+
+        print(get_ggf_xec(kl=2.))
+        # -> 0.013803...
+
+        print(get_ggf_xec(kl=2., nnlo=False))
+        # -> 0.013852...
+
+        print(get_ggf_xec(kl=2., unc="up"))
+        # -> 0.014305...
+    """
+    # get the particular wrappers of the components
+    get_ggf_xec = create_ggf_xsec_func(ggf_formula)
+    get_vbf_xec = create_vbf_xsec_func(vbf_formula)
+
+    # create a combined wrapper with the merged signature
+    def wrapper(kl=1., kt=1., C2V=1., CV=1., nnlo=True, unc=None):
+        ggf_xsec = get_ggf_xec(kl=kl, kt=kt, nnlo=nnlo, unc=unc)
+        vbf_xsec = get_vbf_xsec(C2V=C2V, CV=CV, kl=kl)
+        return ggf_xsec + vbf_xsec
+
+    return wrapper
+
+
+#: Default ggF cross section getter using the formula of the *model_default* model.
+get_ggf_xsec = create_ggf_xsec_func(model_default.ggf_formula)
+
+#: Default VBF cross section getter using the formula of the *model_default* model.
+get_vbf_xsec = create_vbf_xsec_func(model_default.vbf_formula)
+
+#: Default combined cross section getter using the formulas of the *model_default* model.
+get_hh_xsec = create_hh_xsec_func(model_default.ggf_formula, model_default.vbf_formula)

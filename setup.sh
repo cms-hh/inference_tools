@@ -19,7 +19,6 @@ setup() {
     export DHI_BASE="$this_dir"
     interactive_setup "$setup_name" || return "$?"
     export DHI_STORE_REPO="$DHI_BASE/data/store"
-    export DHI_BLACK_PATH="$DHI_SOFTWARE/black"
     export DHI_EXAMPLE_CARDS="$( echo /afs/cern.ch/user/m/mfackeld/public/datacards/dnn_score_max/*/*.txt | sed 's/ /,/g' )"
     export DHI_ORIG_PATH="$PATH"
     export DHI_ORIG_PYTHONPATH="$PYTHONPATH"
