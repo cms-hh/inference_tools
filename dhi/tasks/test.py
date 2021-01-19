@@ -17,7 +17,7 @@ from dhi.tasks.limits import (
 from dhi.tasks.likelihoods import PlotLikelihoodScan
 from dhi.tasks.significances import PlotSignificanceScan, PlotMultipleSignificanceScans
 from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
-from dhi.tasks.exclusion import PlotExclusionAndBestFit
+from dhi.tasks.exclusion import PlotExclusionAndBestFit, PlotExclusionAndBestFit2D
 from dhi.tasks.postfit_shapes import PlotPostfitSOverB
 from dhi.tasks.studies.model_selection import (
     PlotMorphingScales, PlotMorphedDiscriminant, PlotStatErrorScan,
@@ -38,10 +38,14 @@ class TestPlots(AnalysisTask):
     no_multiple_significance_scans = luigi.BoolParameter(default=False)
     no_pulls_and_impacts = luigi.BoolParameter(default=False)
     no_exclusion_and_bestfit = luigi.BoolParameter(default=False)
+    no_exclusion_and_bestfit_2d = luigi.BoolParameter(default=False)
     no_postfit_s_over_b = luigi.BoolParameter(default=False)
     no_morphing_scales = luigi.BoolParameter(default=False)
     no_morphed_discriminant = luigi.BoolParameter(default=False)
     no_stat_error_scan = luigi.BoolParameter(default=False)
+
+    file_type = PlotTask.file_type
+    campaign = PlotTask.campaign
     view_cmd = PlotTask.view_cmd
 
     exclude_params_req = {"view_cmd"}
@@ -121,7 +125,14 @@ class TestPlots(AnalysisTask):
             reqs["exclusion_and_bestfit"] = PlotExclusionAndBestFit.req(self,
                 multi_datacards=tuple((card,) for card in test_cards) + (test_cards,),
                 pois=("r",),
-                scan_parameters=(("kl", -30., 30., 16),),
+                scan_parameters=(("kl", -30., 30., 61),),
+            )
+
+        if not self.no_exclusion_and_bestfit_2d:
+            reqs["exclusion_and_bestfit_2d"] = PlotExclusionAndBestFit2D.req(self,
+                datacards=test_cards,
+                pois=("r",),
+                scan_parameters=(("kl", -30., 30., 61), ("kt", -6., 9., 31)),
             )
 
         if not self.no_postfit_s_over_b:
