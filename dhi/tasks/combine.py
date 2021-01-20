@@ -942,6 +942,15 @@ class POIPlotTask(PlotTask, POITask):
         return parameter_values
 
 
+class InputDatacards(DatacardTask, law.ExternalTask):
+    version = None
+    hh_model = None
+    mass = None
+
+    def output(self):
+        return law.TargetCollection([law.LocalFileTarget(self.split_datacard_path(card)[0]) for card in self.datacards])
+
+
 class CombineDatacards(DatacardTask, CombineCommandTask):
 
     priority = 100
@@ -953,6 +962,9 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         if not self.datacards and not self.local_target(dir=True).exists():
             raise Exception("store directory {} does not exist which is required when no datacard "
                 "paths are provided".format(self.local_target(dir=True).path))
+
+    def requires(self):
+        return InputDatacards.req(self)
 
     def output(self):
         return self.local_target("datacard.txt")
@@ -981,6 +993,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         tmp_dir.touch()
 
         # remove any bin name from the datacard paths
+        # should this come from external task? If so, what about bin_names?
         datacards = [self.split_datacard_path(card)[0] for card in self.datacards]
         bin_names = [self.split_datacard_path(card)[1] for card in self.datacards]
 
