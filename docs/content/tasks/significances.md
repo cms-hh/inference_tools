@@ -25,7 +25,7 @@ Output:
 
 ```mermaid
 graph LR;
-    A(PlotSignificanceScan) --> B((MergeSignificanceScan));
+    A(PlotSignificanceScan) --> B(MergeSignificanceScan);
     B --> C(SignificanceScan);
     C --> D(CreateWorkspace);
     D --> E(CombineDatacards);
