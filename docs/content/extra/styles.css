@@ -1,3 +1,37 @@
 .dhi_parameter_table table thead th:first-child {
     min-width: 8rem !important;
 }
+
+.dhi_image_box {
+    float: left;
+    width: 220px;
+    margin: 8px 5px;
+    border-width: 1px;
+    border-color: #aaa;
+    border-style: solid;
+    border-radius: 6px;
+}
+
+.dhi_image_box:hover {
+    border-color: #660;
+}
+
+.dhi_image_box > div:nth-child(1) {
+    display: table-cell;
+    height: 185px;
+    padding: 5px;
+    vertical-align: middle;
+    border-width: 0px 0px 1px 0px;
+    border-color: #aaa;
+    border-style: solid;
+    border-radius: 6px 6px 0px 0px;
+}
+
+.dhi_image_box > div:nth-child(2) {
+    height: 55px;
+    padding: 5px;
+    text-align: center;
+    font-size: 0.7rem;
+    background-color: #f3f3f3;
+    border-radius: 0px 0px 6px 6px;
+}

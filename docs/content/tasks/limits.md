@@ -62,7 +62,7 @@ graph LR;
 
 #### Example commands
 
-1. Limit on `r_qqhh` vs. `C2V` with 4 local cores:
+**1.** Limit on `r_qqhh` vs. `C2V` with 4 local cores:
 
 ```shell hl_lines="4-6"
 law run PlotUpperLimits \
@@ -73,14 +73,14 @@ law run PlotUpperLimits \
     --workers 4
 ```
 
-2. Executing `UpperLimit` tasks on htcondor, with one job handling two tasks sequentially:
+**2.** Executing `UpperLimit` tasks on htcondor, with one job handling two tasks sequentially:
 
 ```shell hl_lines="4-5"
 law run PlotUpperLimits \
     --version dev \
     --datacards $DHI_EXAMPLE_CARDS \
     --UpperLimits-workflow htcondor \
-    --tasks-per-job 2
+    --UpperLimits-tasks-per-job 2
 ```
 
 
@@ -138,23 +138,38 @@ graph LR;
 
 #### Parameters
 
-Parameters of the upstream dependencies `MergeUpperLimits` to `CombineDatacards` are explained [above](#parameters).
-
 === "PlotMultipleUpperLimits"
 
     --8<-- "content/snippets/plotmultipleupperlimits_param_tab.md"
 
+=== "MergeUpperLimits"
+
+    --8<-- "content/snippets/mergeupperlimits_param_tab.md"
+
+=== "UpperLimits"
+
+    --8<-- "content/snippets/upperlimits_param_tab.md"
+
+=== "CreateWorkspace"
+
+    --8<-- "content/snippets/createworkspace_param_tab.md"
+
+=== "CombineDatacards"
+
+    --8<-- "content/snippets/combinedatacards_param_tab.md"
+
 
 #### Example commands
 
-1. Executing `UpperLimit` tasks on htcondor, with one job handling two tasks sequentially:
+**1.** Executing `UpperLimit` tasks on htcondor, with one job handling two tasks sequentially:
 
 ```shell hl_lines="4-5"
 law run PlotUpperLimits \
+    --version dev \
     --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt \
     --datacard-names ee,emu,mumu \
     --UpperLimits-workflow htcondor \
-    --tasks-per-job 2
+    --UpperLimits-tasks-per-job 2
 ```
 
 
@@ -202,16 +217,26 @@ graph LR;
 
 #### Parameters
 
-Parameters of the upstream dependencies `UpperLimits` to `CombineDatacards` are explained [above](#parameters).
-
 === "PlotUpperLimitsAtPOI"
 
     --8<-- "content/snippets/plotupperlimitsatpoi_param_tab.md"
 
+=== "UpperLimits"
+
+    --8<-- "content/snippets/upperlimits_param_tab.md"
+
+=== "CreateWorkspace"
+
+    --8<-- "content/snippets/createworkspace_param_tab.md"
+
+=== "CombineDatacards"
+
+    --8<-- "content/snippets/combinedatacards_param_tab.md"
+
 
 #### Example commands
 
-1. Changing the order of limits in the plot without changing `--multi-datacards`:
+**1.** Changing the order of limits in the plot without changing `--multi-datacards`:
 
 ```shell hl_lines="5"
 law run PlotUpperLimitsAtPOI \

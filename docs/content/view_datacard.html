@@ -225,7 +225,7 @@
           }
           if (key in this) yield `duplicate value for ${key}` + (parts && parts[0] !== key ? ` (${parts[0]})` : "");
           if (this._length !== undefined) {
-            if (this._length != values.length) yield `inconsisten length, expected ${this._length}`;
+            if (this._length != values.length) yield `inconsistent length, expected ${this._length} but got ${values.length}`;
           } else this._length = values.length;
           if (unique && values.length != new Set(values).size) yield `unexpected duplicate values`;
           this[key] = values;
@@ -245,12 +245,9 @@
         constructor(data) {
           Object.assign(this, {
             warns: [],
-            head_comments: [],
-            foot_comments: [],
+            unparsed: {},
             counts: {},
             shapes: {},
-            raw_bin: new Collector(),
-            raw_proc: new Collector(),
             raw_syst: new Collector(),
             autoMCStats: new Collector(3),
             rateParam: {},
@@ -260,36 +257,27 @@
             syst_names: [],
           });
           // parsing
-          const _parser = [
-            this._parse_header,
-            this._parse_shape,
-            this._parse_bin,
-            this._parse_proc,
-            this._parse_main,
-          ];
           for (const [lno, fline] of data.split(/\r?\n/).entries()) {
             const line = fline.trim();
-            if (!line || line.startsWith("#")) continue;
-            if (line.match(/^-+$/)) {
-              _parser.shift();
-              continue;
-            }
-            if (_parser.length) {
-              try {
-                const w = Array.from(
-                  _parser[0].call(this, line.split(/\s+/), lsrem(line), lno)
-                ).join("; ");
-                if (w) this.warns.push(`${w} in line ${lno + 1}: "${line}"`);
-              } catch (e) {
-                e.message += ` in line ${lno + 1}: "${line}"`;
-                throw e;
-              }
-            } else {
-              this.foot_comments.push(line);
+            if (!line || line.startsWith("#") || line.match(/^-+$/)) continue;
+            try {
+              const w = Array.from(
+                this[
+                  this.raw_bin && this.raw_proc ? "_parse_main" : "_parse_header"
+                ](line.split(/\s+/), lsrem(line), lno)
+              ).join("; ");
+              if (w) this.warns.push(`${w} in line ${lno + 1}: "${line}"`);
+            } catch (e) {
+              e.message += ` in line ${lno + 1}: "${line}"`;
+              throw e;
             }
           }
+
+          if (!this.raw_bin) throw new Error("bin + observation header missing");
+          if (!this.raw_proc) throw new Error("bin + process + rate header missing");
+
           // process them
-          this.bpir = Array(this.raw_proc._length_max).fill(0).map(
+          this.bpir = Array(this.raw_proc._length_max || 0).fill(0).map(
             (_, i) => [
                 this.raw_proc.bin[i],
                 this.raw_proc.process_name[i],
@@ -311,56 +299,63 @@
 
           this.st = this.syst_names.map(n => [n, this.syst_type[n]]);
         }
-        *_parse_header(parts, rem, lno) {
-          const [key, val] = parts;
-          if (key.match(/[ijk]max/)) {
-            if (isNaN(val) && val != "*") yield `count value is NaN and not "*"`;
-            if (parts.length > 2) yield `unexpected count extra data`;
-            this.counts[key] = isNaN(val) ? val : +val;
-          } else {
-            if (lno) yield "unexpected header comment";
-            this.head_comments.push(rem());
-          }
-        }
-        *_parse_shape([label, proc, bin], rem) {
-          if (label != "shapes") yield "unexpected shape label";
-          else {
-            const s = this.shapes[bin] ||= {};
-            if (proc in s) yield "redifined shape";
-            s[proc] = rem(3);
-          }
-        }
-        *_parse_bin(parts) {
-          switch (parts[0]) {
+        *_parse_header(parts, lrm, lno) {
+          switch(parts[0]) {
+            case "imax":
+            case "jmax":
+            case "kmax":
+              {
+                const [key, val] = parts;
+                if (isNaN(val) && val != "*") yield `count value is NaN and not "*"`;
+                if (parts.length > 2) yield `unexpected count extra data`;
+                if (key in this.counts) yield `unexpected repetition`;
+                this.counts[key] = isNaN(val) ? val : +val;
+              } break;
+            case "shapes":
+              {
+                const [, proc, bin] = parts;
+                const s = this.shapes[bin] ||= {};
+                if (proc in s) yield `redifined shape: ${proc} for bin ${bin}`;
+                s[proc] = lrm(3);
+              } break;
             case "bin":
-              yield* this.raw_bin._add({parts, unique: true});
+              {
+                if (this._coll) yield `unexpected early termination of bin block (started in line ${this._coll._lno})`;
+                if (this.raw_bin && this.raw_proc) yield `unexpected additional bin line`;
+                const c = new Collector;
+                c._lno = lno;
+                yield *c._add({ parts, unique: this.raw_bin === undefined });
+                this._coll = c;
+              }
               break;
             case "observation":
-              yield* this.raw_bin._add({parts, number: true});
-              break;
-            default:
-              yield `unexpected bin section label ${parts[0]}`;
-              return;
-          }
-          // TODO: parse bins?
-        }
-        *_parse_proc(parts) {
-          switch(parts[0]) {
-            case "bin":
-              yield *this.raw_proc._add({parts});
+              yield *this._parse_coll("observation", { parts, number: true }, "raw_bin");
               break;
             case "process":
-              if (parts.slice(1).every(isFinite))
-                yield *this.raw_proc._add({parts, key: "process_id", number: true});
-              else
-                yield *this.raw_proc._add({parts, key: "process_name"});
+              yield *this._parse_coll(
+                "process",
+                parts.slice(1).every(isFinite)
+                  ? {parts, key: "process_id", number: true}
+                  : {parts, key: "process_name"}
+              );
               break;
             case "rate":
-              yield *this.raw_proc._add({parts, number: true});
+              yield *this._parse_coll("process", {parts, number: true}, "raw_proc");
               break;
             default:
-              yield `unexpected process section label ${parts[0]}`;
-              return;
+              this.unparsed[lno] = lrm(0);
+          }
+        }
+        *_parse_coll(name, args, saveTo) {
+          const key = args.parts[0];
+          if (!this._coll) yield `unexpected ${key} (for ${name} block)`;
+          else {
+            if (saveTo && saveTo in this) yield `unexpected additional ${name} block`;
+            yield *this._coll._add(args);
+            if (saveTo) {
+              this[saveTo] = this._coll;
+              delete this._coll;
+            }
           }
         }
         *_parse_main([key, type, ...values], rem) {
