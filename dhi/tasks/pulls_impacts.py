@@ -225,6 +225,8 @@ class PlotPullsAndImpacts(PlotTask, POITask):
     x_max = None
     y_min = None
     y_max = None
+    z_min = None
+    z_max = None
 
     force_n_pois = 1
 

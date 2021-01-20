@@ -1,14 +1,24 @@
-### Pulls and Impacts
+The `PlotPullsAndImpacts` task performs fits and shows both nuisance pulls and their impact on the POI by fixing parameters to their post fit value and extracting the resulting change of the POI.
+Nuisance parameters to evaluate are extracted dynamically from the workspace.
 
-The default command to run the entire task chain is
+- [Quick example](#quick-example)
+- [Dependencies](#dependencies)
+- [Parameters](#parameters)
+- [Example commands](#example-commands)
+
+
+#### Quick example
 
 ```shell
-law run PlotPullsAndImpacts --version dev --datacards $DHI_EXAMPLE_CARDS
+law run PlotPullsAndImpacts \
+    --version dev \
+    --datacards $DHI_EXAMPLE_CARDS \
+    --pois r
 ```
 
 Output:
 
-![Pulls and impacts](../images/pulls_impacts__kl.png)
+![Pulls and impacts](../images/pulls_impacts__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0.png)
 
 
 #### Dependencies
@@ -43,12 +53,13 @@ graph LR;
 
 #### Example commands
 
-1. PlotPullsAndImpacts with `mc-stats` on HTCondor:
+**1.** Execute `PullsAndImpacts` including all MC stats nuisances on htcondor.
 
-```shell hl_lines="4-5"
+```shell hl_lines="5-6"
 law run PlotPullsAndImpacts \
     --version dev \
     --datacards $DHI_EXAMPLE_CARDS \
+    --pois r \
     --mc-stats \
     --PullsAndImpacts-workflow htcondor
 ```

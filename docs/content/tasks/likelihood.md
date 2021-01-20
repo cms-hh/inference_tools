@@ -58,7 +58,6 @@ Output:
 
 #### Parameters
 
-
 === "PlotLikelihoodScan"
 
     --8<-- "content/snippets/plotlikelihoodscan_param_tab.md"
@@ -98,7 +97,8 @@ law run PlotLikelihoodScan \
 **2.** Executing `LikelihoodScan` tasks on htcondor, with one job handling three tasks sequentially.
 
 ```shell hl_lines="5-6"
-law run PlotLikelihoodScan --version dev \
+law run PlotLikelihoodScan \
+    --version dev \
     --datacards $DHI_EXAMPLE_CARDS \
     --pois kl,kt \
     --scan-parameters kl,-30,30:kt,-10,10 \

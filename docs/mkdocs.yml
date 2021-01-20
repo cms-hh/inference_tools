@@ -91,8 +91,7 @@ nav:
     - Exclusion plots: tasks/exclusion.md
     - Pulls and impacts: tasks/pullsandimpacts.md
     - Significances: tasks/significances.md
-    - S-over-B plot: tasks/soverb.md
-    - Common tasks: tasks/common.md
-    - Law cheatsheet: tasks/law.md
+    - Postfit plots: tasks/postfit.md
+    - Best practices: tasks/practices.md
   - Datacard manipulation: datacard_manipulation.md
   - Interactive datacard viewer: view_datacard.html
