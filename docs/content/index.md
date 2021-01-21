@@ -15,7 +15,7 @@ More detailed information on the different scans & fits be found in the followin
     </div>
   </a>
 
-  <a href="tasks/limits.htmll#multiple-limits-on-poi-vs-scan-parameter">
+  <a href="tasks/limits.html#multiple-limits-on-poi-vs-scan-parameter">
     <div class="dhi_image_box">
       <div>
         <img src="images/multilimits__r__kl_n51_-25.0_25.0__fb_log.png" />
@@ -26,7 +26,7 @@ More detailed information on the different scans & fits be found in the followin
     </div>
   </a>
 
-  <a href="tasks/limits.htmll#multiple-limits-at-a-certain-point-of-parameters">
+  <a href="tasks/limits.html#multiple-limits-at-a-certain-point-of-parameters">
     <div class="dhi_image_box">
       <div>
         <img src="images/limitatpoint__r__kl_1.0.png" />
