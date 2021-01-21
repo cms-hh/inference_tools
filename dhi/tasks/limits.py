@@ -392,7 +392,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         )
 
 
-class PlotUpperLimitsAtPOI(POIPlotTask, MultiDatacardTask):
+class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
 
     xsec = PlotUpperLimits.xsec
     br = PlotUpperLimits.br
@@ -414,7 +414,7 @@ class PlotUpperLimitsAtPOI(POIPlotTask, MultiDatacardTask):
     force_n_pois = 1
 
     def __init__(self, *args, **kwargs):
-        super(PlotUpperLimitsAtPOI, self).__init__(*args, **kwargs)
+        super(PlotUpperLimitsAtPoint, self).__init__(*args, **kwargs)
 
         self.poi = self.pois[0]
 
@@ -446,7 +446,7 @@ class PlotUpperLimitsAtPOI(POIPlotTask, MultiDatacardTask):
         if self.x_log:
             parts.append("log")
 
-        name = self.create_plot_name(["limitsatpoi", self.get_output_postfix(), parts])
+        name = self.create_plot_name(["limitsatpoint", self.get_output_postfix(), parts])
         return self.local_target(name)
 
     @view_output_plots

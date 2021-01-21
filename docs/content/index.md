@@ -26,13 +26,13 @@ More detailed information on the different scans & fits be found in the followin
     </div>
   </a>
 
-  <a href="tasks/limits.htmll#multiple-limits-at-a-certain-poi-value">
+  <a href="tasks/limits.htmll#multiple-limits-at-a-certain-point-of-parameters">
     <div class="dhi_image_box">
       <div>
-        <img src="images/limitatpoi__r__kl_1.0.png" />
+        <img src="images/limitatpoint__r__kl_1.0.png" />
       </div>
       <div>
-        Multiple limits are certain parameters.
+        Multiple limits are a certain parameter point.
       </div>
     </div>
   </a>

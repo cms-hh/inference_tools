@@ -173,9 +173,9 @@ law run PlotUpperLimits \
 ```
 
 
-### Multiple limits at a certain POI value
+### Multiple limits at a certain point of parameters
 
-The second task, `PlotUpperLimitsAtPOI`, creates a plot comparing upper limits at a certain POI value.
+The second task, `PlotUpperLimitsAtPoint`, creates a plot comparing upper limits at a certain point of model parameters.
 Just as for the `PlotMultipleUpperLimits` task above, it includes a parameter `--multi-datacards` that accepts multiple CSV sequences of datacard paths, separated with a colon to denote multiple measurements.
 
 - [Quick example](#quick-example_2)
@@ -187,7 +187,7 @@ Just as for the `PlotMultipleUpperLimits` task above, it includes a parameter `-
 #### Quick example
 
 ```shell
-law run PlotUpperLimitsAtPOI \
+law run PlotUpperLimitsAtPoint \
     --version dev \
     --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt \
     --datacard-names ee,emu,mumu
@@ -198,16 +198,16 @@ See the task parameters below for fore info.
 
 Output:
 
-![Upper limits at POI](../images/limitatpoi__r__kl_1.0.png)
+![Upper limits at POI](../images/limitatpoint__r__kl_1.0.png)
 
 
 #### Dependencies
 
 ```mermaid
 graph LR;
-    A(PlotUpperLimitsAtPOI) --> B1(UpperLimits);
-    A(PlotUpperLimitsAtPOI) --> B2(UpperLimits);
-    A(PlotUpperLimitsAtPOI) --> ...;
+    A(PlotUpperLimitsAtPoint) --> B1(UpperLimits);
+    A(PlotUpperLimitsAtPoint) --> B2(UpperLimits);
+    A(PlotUpperLimitsAtPoint) --> ...;
     B1 --> C1(CreateWorkspace);
     B2 --> C2(CreateWorkspace);
     C1 --> D1(CombineDatacards);
@@ -217,9 +217,9 @@ graph LR;
 
 #### Parameters
 
-=== "PlotUpperLimitsAtPOI"
+=== "PlotUpperLimitsAtPoint"
 
-    --8<-- "content/snippets/plotupperlimitsatpoi_param_tab.md"
+    --8<-- "content/snippets/plotupperlimitsatpoint_param_tab.md"
 
 === "UpperLimits"
 
@@ -239,7 +239,7 @@ graph LR;
 **1.** Changing the order of limits in the plot without changing `--multi-datacards`:
 
 ```shell hl_lines="5"
-law run PlotUpperLimitsAtPOI \
+law run PlotUpperLimitsAtPoint \
     --version dev \
     --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt \
     --datacard-names ee,emu,mumu \

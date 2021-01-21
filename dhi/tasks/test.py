@@ -12,7 +12,7 @@ import luigi
 
 from dhi.tasks.base import AnalysisTask, PlotTask, view_output_plots
 from dhi.tasks.limits import (
-    PlotUpperLimits, PlotMultipleUpperLimits, PlotMultipleUpperLimitsByModel, PlotUpperLimitsAtPOI,
+    PlotUpperLimits, PlotMultipleUpperLimits, PlotMultipleUpperLimitsByModel, PlotUpperLimitsAtPoint,
 )
 from dhi.tasks.likelihoods import PlotLikelihoodScan
 from dhi.tasks.significances import PlotSignificanceScan, PlotMultipleSignificanceScans
@@ -31,7 +31,7 @@ class TestPlots(AnalysisTask):
     no_upper_limits = luigi.BoolParameter(default=False)
     no_multiple_upper_limits = luigi.BoolParameter(default=False)
     no_multiple_upper_limits_by_model = luigi.BoolParameter(default=False)
-    no_upper_limits_at_poi = luigi.BoolParameter(default=False)
+    no_upper_limits_at_point = luigi.BoolParameter(default=False)
     no_likelihood_scan = luigi.BoolParameter(default=False)
     no_likelihood_scan_2d = luigi.BoolParameter(default=False)
     no_significance_scan = luigi.BoolParameter(default=False)
@@ -79,8 +79,8 @@ class TestPlots(AnalysisTask):
                 scan_parameters=(("kl", -5., 5.),),
             )
 
-        if not self.no_upper_limits_at_poi:
-            reqs["upper_limits_at_poi"] = PlotUpperLimitsAtPOI.req(self,
+        if not self.no_upper_limits_at_point:
+            reqs["upper_limits_at_point"] = PlotUpperLimitsAtPoint.req(self,
                 multi_datacards=tuple((card,) for card in test_cards) + (test_cards,),
                 pois=("r",),
                 parameter_values=("kl=1", "kt=1"),

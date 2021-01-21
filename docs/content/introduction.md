@@ -70,7 +70,7 @@ module 'dhi.tasks.base', 2 task(s):
 module 'dhi.tasks.limits', 6 task(s):
     - UpperLimits
     - PlotUpperLimits
-    - PlotUpperLimitsAtPOI
+    - PlotUpperLimitsAtPoint
     - PlotMultipleUpperLimitsByModel
     - MergeUpperLimits
     - PlotMultipleUpperLimits
