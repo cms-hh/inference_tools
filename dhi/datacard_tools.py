@@ -21,8 +21,20 @@ from dhi.util import import_ROOT, real_path, multi_match, copy_no_collisions
 
 #: Parameter directives excluding groups, autoMCStats and nuisace edit lines.
 parameter_directives = [
-    "lnN", "lnU", "gmN", "trG", "unif", "dFD", "dFD2", "constr", "shape*", "discrete", "param",
-    "rateParam", "flatParam", "extArgs",
+    "lnN",
+    "lnU",
+    "gmN",
+    "trG",
+    "unif",
+    "dFD",
+    "dFD2",
+    "constr",
+    "shape*",
+    "discrete",
+    "param",
+    "rateParam",
+    "flatParam",
+    "extArgs",
 ]
 
 #: Parameter directives that are configured per bin and process column.
@@ -30,7 +42,6 @@ columnar_parameter_directives = ["lnN", "lnU", "gmN", "shape*"]
 
 
 class DatacardRenamer(object):
-
     @classmethod
     def parse_rules(cls, rules):
         """
@@ -60,8 +71,9 @@ class DatacardRenamer(object):
         self._rules_orig = rules
         self.rules = None
         self.skip_shapes = skip_shapes
-        self.logger = logger or logging.getLogger("{}_{}".format(
-            self.__class__.__name__, hex(id(self))))
+        self.logger = logger or logging.getLogger(
+            "{}_{}".format(self.__class__.__name__, hex(id(self)))
+        )
 
         # datacard object if required
         self._dc = None
@@ -96,13 +108,15 @@ class DatacardRenamer(object):
 
             # old names must be unique
             if old_names.count(old_name) > 1:
-                raise ValueError("old process name {} not unique in translationion rules".format(
-                    old_name))
+                raise ValueError(
+                    "old process name {} not unique in translationion rules".format(old_name)
+                )
 
             # new name must not be in old names
             if new_name in old_names:
-                raise ValueError("new process name {} must not be in old process names".format(
-                    new_name))
+                raise ValueError(
+                    "new process name {} must not be in old process names".format(new_name)
+                )
 
         # store in the dictionary
         self.rules = OrderedDict(map(tuple, rules))
@@ -143,8 +157,10 @@ class DatacardRenamer(object):
                     if syst_effect:
                         key = (bin_name, process_name)
                         if syst_name in shape_syst_names[key]:
-                            self.logger.warning("shape systematic {} appears more than once for "
-                                "bin {} and process {}".format(syst_name, *key))
+                            self.logger.warning(
+                                "shape systematic {} appears more than once for "
+                                "bin {} and process {}".format(syst_name, *key)
+                            )
                         else:
                             shape_syst_names[key].append(syst_name)
 
@@ -157,8 +173,9 @@ class DatacardRenamer(object):
             suffix = "_" + os.path.basename(abs_path)
             self._tmpfile_cache[abs_path] = tempfile.mkstemp(suffix=suffix)[1]
 
-            self.logger.debug("creating tmp file {} from {}".format(
-                self._tmpfile_cache[abs_path], abs_path))
+            self.logger.debug(
+                "creating tmp file {} from {}".format(self._tmpfile_cache[abs_path], abs_path)
+            )
             shutil.copy2(abs_path, self._tmpfile_cache[abs_path])
 
         return self._tmpfile_cache[abs_path]
@@ -200,8 +217,11 @@ class DatacardRenamer(object):
                 yield content
             error = False
         except BaseException as e:
-            self.logger.error("an exception of type {} occurred while renaming the datacard".format(
-                e.__class__.__name__))
+            self.logger.error(
+                "an exception of type {} occurred while renaming the datacard".format(
+                    e.__class__.__name__
+                )
+            )
             raise
         finally:
             # write all output tobjs
@@ -213,8 +233,9 @@ class DatacardRenamer(object):
                 for f in self._tobj_output_cache:
                     f.cd()
                     for tobj in self._tobj_output_cache[f].values():
-                        self.logger.debug("writing object {} to file {}".format(
-                            tobj.GetName(), f.GetPath()))
+                        self.logger.debug(
+                            "writing object {} to file {}".format(tobj.GetName(), f.GetPath())
+                        )
                         tobj.Write()
                 ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = {};".format(ignore_level_orig))
 
@@ -238,7 +259,6 @@ class DatacardRenamer(object):
 
 
 class ShapeLine(object):
-
     @classmethod
     def parse(cls, line):
         parts = line.strip().split()
@@ -317,8 +337,16 @@ def read_datacard_blocks(datacard):
     """
     # create the returned mapping
     fields = [
-        "preamble", "counts", "shapes", "observations", "rates", "parameters", "groups",
-        "auto_mc_stats", "nuisance_edits", "unknown",
+        "preamble",
+        "counts",
+        "shapes",
+        "observations",
+        "rates",
+        "parameters",
+        "groups",
+        "auto_mc_stats",
+        "nuisance_edits",
+        "unknown",
     ]
     blocks = OrderedDict((field, []) for field in fields)
 
@@ -348,7 +376,7 @@ def read_datacard_blocks(datacard):
         next_line = lines[obs_offset + 1]
         if next_line.startswith("observation "):
             blocks["observations"].extend([line, next_line])
-            del lines[obs_offset:obs_offset + 2]
+            del lines[obs_offset : obs_offset + 2]
             break
 
     # trace interdependent lines describing process rates
@@ -356,11 +384,14 @@ def read_datacard_blocks(datacard):
         line = lines[rate_offset]
         if not line.startswith("bin "):
             continue
-        next_lines = lines[rate_offset + 1:rate_offset + 4]
-        if next_lines[0].startswith("process ") and next_lines[1].startswith("process ") \
-                and next_lines[2].startswith("rate "):
+        next_lines = lines[rate_offset + 1 : rate_offset + 4]
+        if (
+            next_lines[0].startswith("process ")
+            and next_lines[1].startswith("process ")
+            and next_lines[2].startswith("rate ")
+        ):
             blocks["rates"].extend([line] + next_lines)
-            del lines[rate_offset:rate_offset + 4]
+            del lines[rate_offset : rate_offset + 4]
             break
 
     # go through lines one by one and assign to blocks based on directive names
@@ -486,8 +517,7 @@ def write_datacard_pretty(f, blocks, skip_fields=False):
     def align(lines, n_cols=None):
         # split into columns
         rows = [
-            (line.strip().split() if isinstance(line, six.string_types) else line)
-            for line in lines
+            (line.strip().split() if isinstance(line, six.string_types) else line) for line in lines
         ]
         # add or remove columns
         if not n_cols:
@@ -499,14 +529,10 @@ def write_datacard_pretty(f, blocks, skip_fields=False):
             elif diff < 0:
                 del row[n_cols:]
         # get the maximum width per column
-        widths = [
-            max([len(row[i]) for row in rows] + [0])
-            for i in range(n_cols)
-        ]
+        widths = [max([len(row[i]) for row in rows] + [0]) for i in range(n_cols)]
         # combine to lines again and return
         return [
-            spacing.join(value.ljust(width) for value, width in zip(row, widths))
-            for row in rows
+            spacing.join(value.ljust(width) for value, width in zip(row, widths)) for row in rows
         ]
 
     # print the premble as is when existing
@@ -555,8 +581,8 @@ def write_datacard_pretty(f, blocks, skip_fields=False):
 
     # align lines and split into rate and parameters again
     aligned_lines = align(rate_lines + columnar_parameter_lines)
-    rate_lines = aligned_lines[:len(rate_lines)]
-    columnar_parameter_lines = aligned_lines[len(rate_lines):]
+    rate_lines = aligned_lines[: len(rate_lines)]
+    columnar_parameter_lines = aligned_lines[len(rate_lines) :]
 
     # write rates
     if rate_lines:
@@ -681,6 +707,7 @@ def bundle_datacard(datacard, directory, skip_shapes=False):
 
     # copy shape files and update the datacard shape lines
     copied_files = {}
+
     def update_and_copy(shape_file, *_):
         abs_shape_file = os.path.join(os.path.dirname(src_datacard), shape_file)
         if abs_shape_file not in copied_files:
@@ -702,8 +729,9 @@ def update_shape_name(towner, old_name, new_name):
     rename is a RooFit PDF, its normalization formula is renamed also as required by combine.
     """
     if not towner:
-        raise Exception("owner object is null pointer, cannot rename shape {} to {}".format(
-            old_name, new_name))
+        raise Exception(
+            "owner object is null pointer, cannot rename shape {} to {}".format(old_name, new_name)
+        )
 
     elif towner.InheritsFrom("TDirectoryFile"):
         # strategy: get the object, make a copy with the new name, delete all cycles of the old
@@ -711,9 +739,11 @@ def update_shape_name(towner, old_name, new_name):
 
         # also consider intermediate tdirectories
         if old_name.count("/") != new_name.count("/"):
-            raise Exception("when renamening shapes in TDirectoryFile's, the old, '{}', and new "
+            raise Exception(
+                "when renamening shapes in TDirectoryFile's, the old, '{}', and new "
                 "name, '{}',  must have to same amount of '/' characters for the object to remain "
-                "at the same depth".format(old_name, new_name))
+                "at the same depth".format(old_name, new_name)
+            )
 
         if "/" in old_name:
             # get the next, intermediate directory and check if the renaming affects it
@@ -776,8 +806,9 @@ def update_shape_name(towner, old_name, new_name):
             norm.SetTitle(norm.GetTitle().replace(old_norm_name, new_norm_name))
 
     else:
-        raise NotImplementedError("cannot extract shape from {} object for updating".format(
-            towner.ClassName()))
+        raise NotImplementedError(
+            "cannot extract shape from {} object for updating".format(towner.ClassName())
+        )
 
 
 def expand_variables(s, process=None, channel=None, systematic=None, mass=None):

@@ -19,7 +19,6 @@ law.contrib.load("git", "htcondor", "matplotlib", "numpy", "root", "tasks", "wlc
 
 
 class LocalTarget(law.LocalTarget):
-
     def __init__(self, *args, **kwargs):
         self._repr_path = kwargs.pop("repr_path")
         super(LocalTarget, self).__init__(*args, **kwargs)
@@ -27,10 +26,7 @@ class LocalTarget(law.LocalTarget):
     def _repr_pairs(self, *args, **kwargs):
         pairs = super(LocalTarget, self)._repr_pairs(*args, **kwargs)
         if self._repr_path:
-            pairs = [
-                (key, self._repr_path if key == "path" else value)
-                for key, value in pairs
-            ]
+            pairs = [(key, self._repr_path if key == "path" else value) for key, value in pairs]
         return pairs
 
 
@@ -446,32 +442,32 @@ class PlotTask(AnalysisTask):
         description="the campaign name used for plotting; no default",
     )
     x_min = luigi.FloatParameter(
-        default=-1000.,
+        default=-1000.0,
         significant=False,
         description="the lower x-axis limit; no default",
     )
     x_max = luigi.FloatParameter(
-        default=-1000.,
+        default=-1000.0,
         significant=False,
         description="the upper x-axis limit; no default",
     )
     y_min = luigi.FloatParameter(
-        default=-1000.,
+        default=-1000.0,
         significant=False,
         description="the lower y-axis limit; no default",
     )
     y_max = luigi.FloatParameter(
-        default=-1000.,
+        default=-1000.0,
         significant=False,
         description="the upper y-axis limit; no default",
     )
     z_min = luigi.FloatParameter(
-        default=-1000.,
+        default=-1000.0,
         significant=False,
         description="the lower z-axis limit; no default",
     )
     z_max = luigi.FloatParameter(
-        default=-1000.,
+        default=-1000.0,
         significant=False,
         description="the upper z-axis limit; no default",
     )
@@ -479,7 +475,7 @@ class PlotTask(AnalysisTask):
     def get_axis_limit(self, value):
         if isinstance(value, six.string_types):
             value = getattr(self, value)
-        return None if value == -1000. else value
+        return None if value == -1000.0 else value
 
     def create_plot_name(self, *parts):
         if len(parts) == 1:
@@ -494,8 +490,9 @@ class PlotTask(AnalysisTask):
         try:
             mod = importlib.import_module(module_id)
         except ImportError as e:
-            raise ImportError("cannot import plot function {} from module {}: {}".format(
-                name, module_id, e))
+            raise ImportError(
+                "cannot import plot function {} from module {}: {}".format(name, module_id, e)
+            )
 
         func = getattr(mod, name, None)
         if func is None:

@@ -8,7 +8,11 @@ import law
 
 from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import (
-    MultiDatacardTask, CombineCommandTask, POIScanTask, POIPlotTask, CreateWorkspace,
+    MultiDatacardTask,
+    CombineCommandTask,
+    POIScanTask,
+    POIPlotTask,
+    CreateWorkspace,
 )
 
 
@@ -54,7 +58,6 @@ class SignificanceScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCon
 
 
 class MergeSignificanceScan(POIScanTask):
-
     def requires(self):
         return SignificanceScan.req(self)
 
@@ -113,11 +116,13 @@ class PlotSignificanceScan(POIScanTask, POIPlotTask):
         for v in range(-2, 4 + 1):
             if v in exp_values[scan_parameter]:
                 record = exp_values[exp_values[scan_parameter] == v][0]
-                self.publish_message("{} = {} -> {:.4f} sigma".format(
-                    scan_parameter, v, record["significance"]))
+                self.publish_message(
+                    "{} = {} -> {:.4f} sigma".format(scan_parameter, v, record["significance"])
+                )
 
         # call the plot function
-        self.call_plot_func("dhi.plots.significances.plot_significance_scan",
+        self.call_plot_func(
+            "dhi.plots.significances.plot_significance_scan",
             path=output.path,
             poi=self.pois[0],
             scan_parameter=scan_parameter,
@@ -132,7 +137,6 @@ class PlotSignificanceScan(POIScanTask, POIPlotTask):
 
 
 class PlotMultipleSignificanceScans(MultiDatacardTask, PlotSignificanceScan):
-
     @classmethod
     def modify_param_values(cls, params):
         params = MultiDatacardTask.modify_param_values(params)
@@ -174,7 +178,8 @@ class PlotMultipleSignificanceScans(MultiDatacardTask, PlotSignificanceScan):
             names = [names[i] for i in self.datacard_order]
 
         # call the plot function
-        self.call_plot_func("dhi.plots.significances.plot_significance_scans",
+        self.call_plot_func(
+            "dhi.plots.significances.plot_significance_scans",
             path=output.path,
             poi=self.pois[0],
             scan_parameter=self.scan_parameter_names[0],

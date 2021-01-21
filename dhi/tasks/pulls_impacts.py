@@ -104,10 +104,7 @@ class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
         else:
             # nuisance fits
             branch_opts = (
-                " --algo impact"
-                " -P {}"
-                " --floatOtherPOIs 1"
-                " --saveInactivePOI 1"
+                " --algo impact" " -P {}" " --floatOtherPOIs 1" " --saveInactivePOI 1"
             ).format(self.branch_data)
 
         return common_cmd.format(branch_opts=branch_opts)
@@ -146,8 +143,10 @@ class MergePullsAndImpacts(POITask):
             # check that each arrays has length 3
             for p, v in values.items():
                 if v.size != 3:
-                    raise ValueError("fit result for parameter '{}' at {} must contain 3 entries, "
-                        "but found {}".format(p, inp.path, v.size))
+                    raise ValueError(
+                        "fit result for parameter '{}' at {} must contain 3 entries, "
+                        "but found {}".format(p, inp.path, v.size)
+                    )
             # return the values dict when multiple params were given, otherwise a single array
             return values if isinstance(param, (list, tuple)) else values[param]
 
@@ -176,10 +175,12 @@ class MergePullsAndImpacts(POITask):
             d["prefit"] = params[name]["prefit"]
             d["fit"] = vals[name][[1, 0, 2]].tolist()
             d[poi] = vals[poi][[1, 0, 2]].tolist()
-            d["impacts"] = {poi: [
-                d[poi][1] - d[poi][0],
-                d[poi][2] - d[poi][1],
-            ]}
+            d["impacts"] = {
+                poi: [
+                    d[poi][1] - d[poi][0],
+                    d[poi][2] - d[poi][1],
+                ]
+            }
             d["impact_" + poi] = max(map(abs, d["impacts"][poi]))
 
             data["params"].append(d)
@@ -212,12 +213,12 @@ class PlotPullsAndImpacts(PlotTask, POITask):
         "absolute maximum impact; default: False",
     )
     pull_range = luigi.FloatParameter(
-        default=2.,
+        default=2.0,
         significant=False,
         description="the maximum value of pulls on the lower x-axis; default: 2.0",
     )
     impact_range = luigi.FloatParameter(
-        default=5.,
+        default=5.0,
         significant=False,
         description="the maximum value of impacts on the upper x-axis; default: 5.0",
     )
@@ -235,8 +236,9 @@ class PlotPullsAndImpacts(PlotTask, POITask):
 
         # complain when parameters_per_page is set for non pdf file types
         if self.parameters_per_page > 0 and self.file_type != "pdf":
-            self.logger.warning("parameters_per_page is not supported for file_type {}".format(
-                self.file_type))
+            self.logger.warning(
+                "parameters_per_page is not supported for file_type {}".format(self.file_type)
+            )
             self.parameters_per_page = -1
 
     def requires(self):
@@ -263,7 +265,8 @@ class PlotPullsAndImpacts(PlotTask, POITask):
         data = self.input().load(formatter="json")
 
         # call the plot function
-        self.call_plot_func("dhi.plots.pulls_impacts.plot_pulls_impacts",
+        self.call_plot_func(
+            "dhi.plots.pulls_impacts.plot_pulls_impacts",
             path=output.path,
             data=data,
             parameters_per_page=self.parameters_per_page,

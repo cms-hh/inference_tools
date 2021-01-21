@@ -9,7 +9,11 @@ import luigi
 
 from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import (
-    MultiDatacardTask, MultiHHModelTask, CombineCommandTask, POIScanTask, POIPlotTask,
+    MultiDatacardTask,
+    MultiHHModelTask,
+    CombineCommandTask,
+    POIScanTask,
+    POIPlotTask,
     CreateWorkspace,
 )
 from dhi.config import br_hh
@@ -181,27 +185,49 @@ class PlotUpperLimits(POIScanTask, POIPlotTask):
         xsec_unit = None
         if self.poi in self.r_pois:
             if self.xsec in ["pb", "fb"]:
-                exp_values = self.convert_to_xsecs(self.poi, exp_values, self.xsec, self.br,
-                    param_keys=[self.scan_parameter], xsec_kwargs=self.parameter_values_dict)
-                thy_values = self.get_theory_xsecs(self.poi, [self.scan_parameter],
-                    exp_values[self.scan_parameter], self.xsec, self.br,
-                    xsec_kwargs=self.parameter_values_dict)
+                exp_values = self.convert_to_xsecs(
+                    self.poi,
+                    exp_values,
+                    self.xsec,
+                    self.br,
+                    param_keys=[self.scan_parameter],
+                    xsec_kwargs=self.parameter_values_dict,
+                )
+                thy_values = self.get_theory_xsecs(
+                    self.poi,
+                    [self.scan_parameter],
+                    exp_values[self.scan_parameter],
+                    self.xsec,
+                    self.br,
+                    xsec_kwargs=self.parameter_values_dict,
+                )
                 xsec_unit = self.xsec
             else:
                 # normalized values
-                thy_values = self.get_theory_xsecs(self.poi, [self.scan_parameter],
-                    exp_values[self.scan_parameter], normalize=True,
-                    xsec_kwargs=self.parameter_values_dict)
+                thy_values = self.get_theory_xsecs(
+                    self.poi,
+                    [self.scan_parameter],
+                    exp_values[self.scan_parameter],
+                    normalize=True,
+                    xsec_kwargs=self.parameter_values_dict,
+                )
 
         # some printing
         for v in range(-2, 4 + 1):
             if v in exp_values[self.scan_parameter]:
                 record = exp_values[exp_values[self.scan_parameter] == v][0]
-                self.publish_message("{} = {} -> {} {}".format(self.scan_parameter, v,
-                    record["limit"], xsec_unit or "({})".format(self.poi)))
+                self.publish_message(
+                    "{} = {} -> {} {}".format(
+                        self.scan_parameter,
+                        v,
+                        record["limit"],
+                        xsec_unit or "({})".format(self.poi),
+                    )
+                )
 
         # call the plot function
-        self.call_plot_func("dhi.plots.limits.plot_limit_scan",
+        self.call_plot_func(
+            "dhi.plots.limits.plot_limit_scan",
             path=output.path,
             poi=self.poi,
             scan_parameter=self.scan_parameter,
@@ -220,7 +246,6 @@ class PlotUpperLimits(POIScanTask, POIPlotTask):
 
 
 class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
-
     @classmethod
     def modify_param_values(cls, params):
         params = PlotUpperLimits.modify_param_values(params)
@@ -229,8 +254,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
 
     def requires(self):
         return [
-            MergeUpperLimits.req(self, datacards=datacards)
-            for datacards in self.multi_datacards
+            MergeUpperLimits.req(self, datacards=datacards) for datacards in self.multi_datacards
         ]
 
     def output(self):
@@ -265,18 +289,33 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
             # rescale from limit on r to limit on xsec when requested, depending on the poi
             if self.poi in self.r_pois:
                 if self.xsec in ["pb", "fb"]:
-                    _exp_values = self.convert_to_xsecs(self.poi, _exp_values, self.xsec, self.br,
-                        param_keys=[self.scan_parameter], xsec_kwargs=self.parameter_values_dict)
+                    _exp_values = self.convert_to_xsecs(
+                        self.poi,
+                        _exp_values,
+                        self.xsec,
+                        self.br,
+                        param_keys=[self.scan_parameter],
+                        xsec_kwargs=self.parameter_values_dict,
+                    )
                     xsec_unit = self.xsec
                     if i == 0:
-                        thy_values = self.get_theory_xsecs(self.poi, [self.scan_parameter],
-                            _exp_values[self.scan_parameter], self.xsec, self.br,
-                            xsec_kwargs=self.parameter_values_dict)
+                        thy_values = self.get_theory_xsecs(
+                            self.poi,
+                            [self.scan_parameter],
+                            _exp_values[self.scan_parameter],
+                            self.xsec,
+                            self.br,
+                            xsec_kwargs=self.parameter_values_dict,
+                        )
                 elif i == 0:
                     # normalized values
-                    thy_values = self.get_theory_xsecs(self.poi, [self.scan_parameter],
-                        _exp_values[self.scan_parameter], normalize=True,
-                        xsec_kwargs=self.parameter_values_dict)
+                    thy_values = self.get_theory_xsecs(
+                        self.poi,
+                        [self.scan_parameter],
+                        _exp_values[self.scan_parameter],
+                        normalize=True,
+                        xsec_kwargs=self.parameter_values_dict,
+                    )
 
             exp_values.append(_exp_values)
             names.append("datacards {}".format(i + 1))
@@ -291,7 +330,8 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
             names = [names[i] for i in self.datacard_order]
 
         # call the plot function
-        self.call_plot_func("dhi.plots.limits.plot_limit_scans",
+        self.call_plot_func(
+            "dhi.plots.limits.plot_limit_scans",
             path=output.path,
             poi=self.poi,
             scan_parameter=self.scan_parameter,
@@ -311,12 +351,8 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
 
 
 class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
-
     def requires(self):
-        return [
-            MergeUpperLimits.req(self, hh_model=hh_model)
-            for hh_model in self.hh_models
-        ]
+        return [MergeUpperLimits.req(self, hh_model=hh_model) for hh_model in self.hh_models]
 
     def output(self):
         # additional postfix
@@ -350,19 +386,36 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
             # rescale from limit on r to limit on xsec when requested, depending on the poi
             if self.poi in self.r_pois:
                 if self.xsec in ["pb", "fb"]:
-                    _exp_values = self._convert_to_xsecs(hh_model, self.poi, _exp_values, self.xsec,
-                        self.br, param_keys=[self.scan_parameter],
-                        xsec_kwargs=self.parameter_values_dict)
+                    _exp_values = self._convert_to_xsecs(
+                        hh_model,
+                        self.poi,
+                        _exp_values,
+                        self.xsec,
+                        self.br,
+                        param_keys=[self.scan_parameter],
+                        xsec_kwargs=self.parameter_values_dict,
+                    )
                     xsec_unit = self.xsec
                     if i == 0:
-                        thy_values = self._get_theory_xsecs(hh_model, self.poi,
-                            [self.scan_parameter], _exp_values[self.scan_parameter], self.xsec,
-                            self.br, xsec_kwargs=self.parameter_values_dict)
+                        thy_values = self._get_theory_xsecs(
+                            hh_model,
+                            self.poi,
+                            [self.scan_parameter],
+                            _exp_values[self.scan_parameter],
+                            self.xsec,
+                            self.br,
+                            xsec_kwargs=self.parameter_values_dict,
+                        )
                 elif i == 0:
                     # normalized values at one with errors
-                    thy_values = self._get_theory_xsecs(hh_model, self.poi,
-                        [self.scan_parameter], _exp_values[self.scan_parameter], normalize=True,
-                        xsec_kwargs=self.parameter_values_dict)
+                    thy_values = self._get_theory_xsecs(
+                        hh_model,
+                        self.poi,
+                        [self.scan_parameter],
+                        _exp_values[self.scan_parameter],
+                        normalize=True,
+                        xsec_kwargs=self.parameter_values_dict,
+                    )
 
             # prepare the name
             name = hh_model.rsplit(".", 1)[-1].replace("_", " ")
@@ -373,7 +426,8 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
             names.append(name)
 
         # call the plot function
-        self.call_plot_func("dhi.plots.limits.plot_limit_scans",
+        self.call_plot_func(
+            "dhi.plots.limits.plot_limit_scans",
             path=output.path,
             poi=self.poi,
             scan_parameter=self.scan_parameter,
@@ -424,15 +478,21 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         self.pseudo_scan_parameter = (pois_with_values + ["kl"])[0]
 
     def requires(self):
-        scan_parameter_value = self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.)
+        scan_parameter_value = self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.0)
         scan_parameter = (self.pseudo_scan_parameter, scan_parameter_value, scan_parameter_value, 1)
         parameter_values = tuple(
-            pv for pv in self.parameter_values
+            pv
+            for pv in self.parameter_values
             if not pv.startswith(self.pseudo_scan_parameter + "=")
         )
         return [
-            UpperLimits.req(self, scan_parameters=(scan_parameter,),
-                parameter_values=parameter_values, branch=0, datacards=datacards)
+            UpperLimits.req(
+                self,
+                scan_parameters=(scan_parameter,),
+                parameter_values=parameter_values,
+                branch=0,
+                datacards=datacards,
+            )
             for datacards in self.multi_datacards
         ]
 
@@ -461,36 +521,48 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
 
         # load limit values
         names = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
-        exp_values = np.array([
-            UpperLimits.load_limits(inp)
-            for inp in self.input()
-        ], dtype=[(name, np.float32) for name in names])
+        exp_values = np.array(
+            [UpperLimits.load_limits(inp) for inp in self.input()],
+            dtype=[(name, np.float32) for name in names],
+        )
 
         # rescale from limit on r to limit on xsec when requested, depending on the poi
         thy_value = None
         xsec_unit = None
         if self.poi in self.r_pois:
             if self.xsec in ["pb", "fb"]:
-                exp_values = self.convert_to_xsecs(self.poi, exp_values, self.xsec, self.br,
-                    xsec_kwargs=self.parameter_values_dict)
-                thy_value = self.get_theory_xsecs(self.poi, [self.pseudo_scan_parameter],
-                    [self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.)], self.xsec,
-                    self.br, xsec_kwargs=self.parameter_values_dict)
+                exp_values = self.convert_to_xsecs(
+                    self.poi, exp_values, self.xsec, self.br, xsec_kwargs=self.parameter_values_dict
+                )
+                thy_value = self.get_theory_xsecs(
+                    self.poi,
+                    [self.pseudo_scan_parameter],
+                    [self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.0)],
+                    self.xsec,
+                    self.br,
+                    xsec_kwargs=self.parameter_values_dict,
+                )
                 xsec_unit = self.xsec
             else:
                 # normalized values at one with errors
-                thy_value = self.get_theory_xsecs(self.poi, [self.pseudo_scan_parameter],
-                    [self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.)],
-                    normalize=True, xsec_kwargs=self.parameter_values_dict)
+                thy_value = self.get_theory_xsecs(
+                    self.poi,
+                    [self.pseudo_scan_parameter],
+                    [self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.0)],
+                    normalize=True,
+                    xsec_kwargs=self.parameter_values_dict,
+                )
 
         # fill data entries as expected by the plot function
         data = []
         for i, exp_record in enumerate(exp_values):
-            data.append({
-                "name": "datacards {}".format(i + 1),
-                "expected": exp_record.tolist(),
-                "theory": thy_value and thy_value[0].tolist()[1],
-            })
+            data.append(
+                {
+                    "name": "datacards {}".format(i + 1),
+                    "expected": exp_record.tolist(),
+                    "theory": thy_value and thy_value[0].tolist()[1],
+                }
+            )
 
         # set names if requested
         if self.datacard_names:
@@ -502,7 +574,8 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
             data = [data[i] for i in self.datacard_order]
 
         # call the plot function
-        self.call_plot_func("dhi.plots.limits.plot_limit_points",
+        self.call_plot_func(
+            "dhi.plots.limits.plot_limit_points",
             path=output.path,
             poi=self.poi,
             data=data,

@@ -101,7 +101,7 @@ class MergeLikelihoodScan(POIScanTask):
 
             # store the value of that point
             dnll = f["deltaNLL"].array()[1]
-            data.append(scan_values + (dnll, dnll * 2.))
+            data.append(scan_values + (dnll, dnll * 2.0))
 
         data = np.array(data, dtype=dtype)
         self.output().dump(data=data, poi_mins=np.array(poi_mins), formatter="numpy")
@@ -131,8 +131,9 @@ class PlotLikelihoodScan(POIScanTask, POIPlotTask):
         if (self.n_pois == 1 and self.y_log) or (self.n_pois == 2 and self.z_log):
             parts.append("log")
 
-        name = self.create_plot_name(["nll{}d".format(self.n_pois), self.get_output_postfix(),
-            parts])
+        name = self.create_plot_name(
+            ["nll{}d".format(self.n_pois), self.get_output_postfix(), parts]
+        )
         return self.local_target(name)
 
     @view_output_plots
@@ -171,7 +172,8 @@ class PlotLikelihoodScan(POIScanTask, POIPlotTask):
                 # normalize
                 theory_value = tuple(v / theory_value[0] for v in theory_value)
 
-            self.call_plot_func("dhi.plots.likelihoods.plot_likelihood_scan_1d",
+            self.call_plot_func(
+                "dhi.plots.likelihoods.plot_likelihood_scan_1d",
                 path=output.path,
                 poi=self.pois[0],
                 expected_values=exp_values,
@@ -185,7 +187,8 @@ class PlotLikelihoodScan(POIScanTask, POIPlotTask):
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )
         else:  # 2
-            self.call_plot_func("dhi.plots.likelihoods.plot_likelihood_scan_2d",
+            self.call_plot_func(
+                "dhi.plots.likelihoods.plot_likelihood_scan_2d",
                 path=output.path,
                 poi1=self.pois[0],
                 poi2=self.pois[1],

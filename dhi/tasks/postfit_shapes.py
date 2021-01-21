@@ -66,17 +66,17 @@ class PlotPostfitSOverB(POIPlotTask):
         "automatic binning is applied with that number of bins; default: (8,)",
     )
     signal_scale = luigi.FloatParameter(
-        default=100.,
+        default=100.0,
         significant=False,
         description="scale the postfit signal by this value; default: 100.",
     )
     ratio_min = luigi.FloatParameter(
-        default=-1000.,
+        default=-1000.0,
         significant=False,
         description="the lower y-axis limit of the ratio plot; no default",
     )
     ratio_max = luigi.FloatParameter(
-        default=-1000.,
+        default=-1000.0,
         significant=False,
         description="the upper y-axis limit of the ratio plot; no default",
     )
@@ -106,7 +106,8 @@ class PlotPostfitSOverB(POIPlotTask):
         fit_diagnostics_path = self.input().path
 
         # call the plot function
-        self.call_plot_func("dhi.plots.postfit_shapes.plot_s_over_b",
+        self.call_plot_func(
+            "dhi.plots.postfit_shapes.plot_s_over_b",
             path=output.path,
             poi=self.pois[0],
             fit_diagnostics_path=fit_diagnostics_path,

@@ -32,8 +32,12 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
         return [
             {
                 "limits": MergeUpperLimits.req(self, datacards=datacards),
-                "likelihoods": MergeLikelihoodScan.req(self, pois=tuple(self.scan_parameter_names),
-                    datacards=datacards, _prefer_cli=["scan_parameters"]),
+                "likelihoods": MergeLikelihoodScan.req(
+                    self,
+                    pois=tuple(self.scan_parameter_names),
+                    datacards=datacards,
+                    _prefer_cli=["scan_parameters"],
+                ),
             }
             for datacards in self.multi_datacards
         ]
@@ -68,12 +72,14 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
             exp_scan_min = None if np.isnan(exp_scan_min) else float(exp_scan_min)
 
             # store data
-            data.append({
-                "name": "datacards {}".format(i + 1),
-                "expected_limits": exp_limits,
-                "expected_nll": exp_nll,
-                "expected_scan_min": exp_scan_min,
-            })
+            data.append(
+                {
+                    "name": "datacards {}".format(i + 1),
+                    "expected_limits": exp_limits,
+                    "expected_nll": exp_nll,
+                    "expected_scan_min": exp_scan_min,
+                }
+            )
 
         # set names if requested
         if self.datacard_names:
@@ -85,7 +91,8 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
             data = [data[i] for i in self.datacard_order]
 
         # call the plot function
-        self.call_plot_func("dhi.plots.exclusion.plot_exclusion_and_bestfit_1d",
+        self.call_plot_func(
+            "dhi.plots.exclusion.plot_exclusion_and_bestfit_1d",
             path=output.path,
             data=data,
             poi=self.pois[0],
@@ -133,15 +140,17 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         super(PlotExclusionAndBestFit2D, self).__init__(*args, **kwargs)
 
         if self.pois[0] not in self.r_pois and self.xsec_contours:
-            self.logger.warning("cross section contours not supported for POI {}".format(
-                self.pois[0]))
+            self.logger.warning(
+                "cross section contours not supported for POI {}".format(self.pois[0])
+            )
             self.xsec_contours = tuple()
 
     def requires(self):
         return {
             "limits": MergeUpperLimits.req(self),
-            "likelihoods": MergeLikelihoodScan.req(self, pois=tuple(self.scan_parameter_names),
-                _prefer_cli=["scan_parameters"]),
+            "likelihoods": MergeLikelihoodScan.req(
+                self, pois=tuple(self.scan_parameter_names), _prefer_cli=["scan_parameters"]
+            ),
         }
 
     def output(self):
@@ -167,9 +176,14 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         xsec_levels = None
         xsec_label_positions = None
         if self.pois[0] in self.r_pois and self.xsec_contours:
-            xsec_values = self.get_theory_xsecs(self.pois[0], self.scan_parameter_names,
-                self.get_scan_linspace(0.1), self.xsec, self.br,
-                xsec_kwargs=self.parameter_values_dict)
+            xsec_values = self.get_theory_xsecs(
+                self.pois[0],
+                self.scan_parameter_names,
+                self.get_scan_linspace(0.1),
+                self.xsec,
+                self.br,
+                xsec_kwargs=self.parameter_values_dict,
+            )
 
             # configure contours
             if len(self.xsec_contours) == 1 and isinstance(self.xsec_contours[0], six.string_types):
@@ -180,8 +194,9 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
                     # interpret as path
                     path = os.path.expandvars(os.path.expanduser(self.xsec_contours[0]))
                     if not os.path.exists(path):
-                        raise Exception("invalid cross section contour value '{}'".format(
-                            self.xsec_contours[0]))
+                        raise Exception(
+                            "invalid cross section contour value '{}'".format(self.xsec_contours[0])
+                        )
 
                     xsec_levels = []
                     xsec_label_positions = []
@@ -196,10 +211,9 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
 
                             # get label positions, remaining length must be 0, 3, 6, ...
                             if len(parts) % 3 != 0:
-                                raise Exception("invalid xsec contour definition '{}'".format(
-                                    line))
+                                raise Exception("invalid xsec contour definition '{}'".format(line))
                             positions = [
-                                tuple(float(p) for p in parts[3 * i:3 * (i + 1)])
+                                tuple(float(p) for p in parts[3 * i : 3 * (i + 1)])
                                 for i in range(len(parts) / 3)
                             ]
                             xsec_label_positions.append(positions)
@@ -214,7 +228,8 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         exp_scan_mins = [(None if np.isnan(v) else float(v)) for v in exp_scan_mins]
 
         # call the plot function
-        self.call_plot_func("dhi.plots.exclusion.plot_exclusion_and_bestfit_2d",
+        self.call_plot_func(
+            "dhi.plots.exclusion.plot_exclusion_and_bestfit_2d",
             path=output.path,
             poi=self.pois[0],
             scan_parameter1=self.scan_parameter_names[0],

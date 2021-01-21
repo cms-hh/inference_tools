@@ -248,6 +248,7 @@ def create_console_logger(name, level="INFO", formatter=None):
     """
     if formatter is None:
         import law
+
         formatter = law.logger.LogFormatter()
 
     logger = logging.getLogger(name)
@@ -259,6 +260,7 @@ def create_console_logger(name, level="INFO", formatter=None):
 
     # patch setLevel to accept more level types
     set_level_orig = logger.setLevel
+
     def set_level(level):
         if not isinstance(level, int):
             try:
@@ -325,16 +327,15 @@ def poisson_asym_errors(v):
     ROOT = import_ROOT()
 
     v_int = int(v)
-    alpha = 1. - 0.682689492
+    alpha = 1.0 - 0.682689492
 
-    err_up = ROOT.Math.gamma_quantile_c(alpha / 2., v_int + 1, 1) - v
-    err_down = 0. if v == 0 else (v - ROOT.Math.gamma_quantile(alpha / 2, v_int, 1.))
+    err_up = ROOT.Math.gamma_quantile_c(alpha / 2.0, v_int + 1, 1) - v
+    err_down = 0.0 if v == 0 else (v - ROOT.Math.gamma_quantile(alpha / 2, v_int, 1.0))
 
     return err_up, err_down
 
 
 class ROOTColorGetter(object):
-
     def __init__(self, **cache):
         super(ROOTColorGetter, self).__init__()
 

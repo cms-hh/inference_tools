@@ -12,7 +12,11 @@ import law
 
 from dhi.tasks.base import PlotTask, view_output_plots
 from dhi.tasks.combine import (
-    HHModelTask, MultiHHModelTask, DatacardTask, ParameterValuesTask, ParameterScanTask,
+    HHModelTask,
+    MultiHHModelTask,
+    DatacardTask,
+    ParameterValuesTask,
+    ParameterScanTask,
     CombineDatacards,
 )
 from dhi.datacard_tools import create_datacard_instance
@@ -55,6 +59,7 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
     @law.decorator.log
     def run(self):
         import plotlib.root as r
+
         ROOT = import_ROOT()
 
         # get the model and the formula corresponding to the signal class
@@ -75,8 +80,10 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
                 # check if all symbols are substituted
                 missing_symbols = set(map(str, scale_fn.free_symbols)) - set(subs.keys())
                 if missing_symbols:
-                    raise Exception("scaling function misses substitutions for symbol(s) '{}', "
-                        "please add them via --parameter-values".format(",".join(missing_symbols)))
+                    raise Exception(
+                        "scaling function misses substitutions for symbol(s) '{}', "
+                        "please add them via --parameter-values".format(",".join(missing_symbols))
+                    )
 
                 # get the scaling value
                 scale = scale_fn.evalf(subs=subs)
@@ -99,12 +106,15 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         legend_entries = []
 
         # dummy histogram to control axes
-        x_title = "{} ({})".format(to_root_latex(poi_data[self.scan_parameter_names[0]].label),
-            self.joined_parameter_values)
+        x_title = "{} ({})".format(
+            to_root_latex(poi_data[self.scan_parameter_names[0]].label),
+            self.joined_parameter_values,
+        )
         y_title = "Morphing scales"
         h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
-        r.setup_hist(h_dummy, pad=pad, props={"Minimum": y_min_value, "Maximum": y_max,
-            "LineWidth": 0})
+        r.setup_hist(
+            h_dummy, pad=pad, props={"Minimum": y_min_value, "Maximum": y_max, "LineWidth": 0}
+        )
         draw_objs.append((h_dummy, "HIST"))
 
         # write graphs
@@ -114,10 +124,14 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
             legend_entries.append((graph, label))
 
         # legend
-        legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
+        legend_cols = min(int(math.ceil(len(legend_entries) / 4.0)), 3)
         legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
-        legend = r.routines.create_legend(pad=pad, width=legend_cols * 280, height=legend_rows * 30,
-            props={"NColumns": legend_cols, "FillStyle": 1001})
+        legend = r.routines.create_legend(
+            pad=pad,
+            width=legend_cols * 280,
+            height=legend_rows * 30,
+            props={"NColumns": legend_cols, "FillStyle": 1001},
+        )
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
 
@@ -162,10 +176,7 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
     y_max = None
 
     def requires(self):
-        return [
-            CombineDatacards.req(self, hh_model=hh_model)
-            for hh_model in self.hh_models
-        ]
+        return [CombineDatacards.req(self, hh_model=hh_model) for hh_model in self.hh_models]
 
     def output(self):
         parts = []
@@ -173,9 +184,11 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
             parts.append("log")
 
         return {
-            b: self.local_target(self.create_plot_name(
-                ["morpheddiscr", self.signal, b, self.get_output_postfix()] + parts
-            ))
+            b: self.local_target(
+                self.create_plot_name(
+                    ["morpheddiscr", self.signal, b, self.get_output_postfix()] + parts
+                )
+            )
             for b in self.bins
         }
 
@@ -200,8 +213,9 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
                         signal_names.append(signal_name)
                         break
                 else:
-                    raise Exception("no signal found for sample {} in model {}".format(
-                        sample.label, model.name))
+                    raise Exception(
+                        "no signal found for sample {} in model {}".format(sample.label, model.name)
+                    )
 
             # store shapes
             for bin_name in self.bins:
@@ -233,8 +247,10 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
             # check if all symbols are substituted
             missing_symbols = set(map(str, scale_fn.free_symbols)) - set(parameter_values.keys())
             if missing_symbols:
-                raise Exception("scaling function misses substitutions for symbol(s) '{}', please "
-                    "add them via --pois".format(",".join(missing_symbols)))
+                raise Exception(
+                    "scaling function misses substitutions for symbol(s) '{}', please "
+                    "add them via --pois".format(",".join(missing_symbols))
+                )
 
             # perform the scaling
             scale = scale_fn.evalf(subs=parameter_values)
@@ -270,6 +286,7 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
 
     def create_plot(self, output, bin_name, shapes):
         import plotlib.root as r
+
         ROOT = import_ROOT()
 
         # prepare histograms and ranges
@@ -280,7 +297,7 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
         y_min = 1e-3 if self.y_log else 0
         y_max_value = max(h.GetMaximum() for h in hists)
         if self.y_log:
-            y_max = y_min * 10**(1.35 * math.log10(y_max_value / y_min))
+            y_max = y_min * 10 ** (1.35 * math.log10(y_max_value / y_min))
         else:
             y_max = 1.35 * y_max_value
 
@@ -305,10 +322,14 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
             legend_entries.append((hist, label))
 
         # legend
-        legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
+        legend_cols = min(int(math.ceil(len(legend_entries) / 4.0)), 3)
         legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
-        legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, height=legend_rows * 30,
-            props={"NColumns": legend_cols, "FillStyle": 1001})
+        legend = r.routines.create_legend(
+            pad=pad,
+            width=legend_cols * 210,
+            height=legend_rows * 30,
+            props={"NColumns": legend_cols, "FillStyle": 1001},
+        )
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
 
@@ -341,9 +362,9 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
 
     def output(self):
         return {
-            b: self.local_target(self.create_plot_name(
-                ["staterror", self.signal, b, self.get_output_postfix()]
-            ))
+            b: self.local_target(
+                self.create_plot_name(["staterror", self.signal, b, self.get_output_postfix()])
+            )
             for b in self.bins
         }
 
@@ -352,6 +373,7 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
     @law.decorator.log
     def run(self):
         import numpy as np
+
         ROOT = import_ROOT()
 
         # prepare the output
@@ -377,7 +399,7 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
                     h = self.create_morphed_shape(hists_and_scale_fns, **{scan_parameter: x})
                     err = ROOT.Double()
                     itg = h.IntegralAndError(1, h.GetNbinsX(), err)
-                    itg_errors.append((err / itg) if itg else 0.)
+                    itg_errors.append((err / itg) if itg else 0.0)
                 # create and store a graph
                 graphs[model_name] = create_tgraph(n_points, x_values, itg_errors)
 
@@ -386,6 +408,7 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
 
     def create_plot(self, output, bin_name, graphs):
         import plotlib.root as r
+
         ROOT = import_ROOT()
 
         scan_parameter = self.scan_parameter_names[0]
@@ -405,8 +428,9 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
         legend_entries = []
 
         # dummy histogram to control axes
-        x_title = "{} ({})".format(to_root_latex(poi_data[scan_parameter].label),
-            self.joined_parameter_values)
+        x_title = "{} ({})".format(
+            to_root_latex(poi_data[scan_parameter].label), self.joined_parameter_values
+        )
         y_title = "Relative statistical error of {} discriminant".format(self.signal)
         h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
         r.setup_hist(h_dummy, pad=pad, props={"Minimum": 0, "Maximum": y_max, "LineWidth": 0})
@@ -419,10 +443,14 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
             legend_entries.append((graph, label))
 
         # legend
-        legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
+        legend_cols = min(int(math.ceil(len(legend_entries) / 4.0)), 3)
         legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
-        legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, height=legend_rows * 30,
-            props={"NColumns": legend_cols, "FillStyle": 1001})
+        legend = r.routines.create_legend(
+            pad=pad,
+            width=legend_cols * 210,
+            height=legend_rows * 30,
+            props={"NColumns": legend_cols, "FillStyle": 1001},
+        )
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
 

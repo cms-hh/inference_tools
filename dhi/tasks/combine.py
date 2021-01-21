@@ -99,8 +99,11 @@ class HHModelTask(AnalysisTask):
         # check if options are valid
         for opt in options:
             if opt not in cls.valid_hh_model_options:
-                raise Exception("invalid HH model option '{}', valid options are {}".format(
-                    opt, ",".join(cls.valid_hh_model_options)))
+                raise Exception(
+                    "invalid HH model option '{}', valid options are {}".format(
+                        opt, ",".join(cls.valid_hh_model_options)
+                    )
+                )
 
         # get the model and set the options
         model = getattr(mod, model_name)
@@ -137,7 +140,7 @@ class HHModelTask(AnalysisTask):
             signature_kwargs = {"kl", "kt", "C2V", "CV", "unc"}
 
         # compute the scale conversion
-        scale = {"pb": 1., "fb": 1000.}[unit]
+        scale = {"pb": 1.0, "fb": 1000.0}[unit]
         if br in br_hh:
             scale *= br_hh[br]
 
@@ -151,8 +154,9 @@ class HHModelTask(AnalysisTask):
         return wrapper
 
     @classmethod
-    def _convert_to_xsecs(cls, hh_model, r_poi, data, unit, br=None, param_keys=None,
-            xsec_kwargs=None):
+    def _convert_to_xsecs(
+        cls, hh_model, r_poi, data, unit, br=None, param_keys=None, xsec_kwargs=None
+    ):
         import numpy as np
 
         # create the xsec getter
@@ -177,8 +181,17 @@ class HHModelTask(AnalysisTask):
         return data
 
     @classmethod
-    def _get_theory_xsecs(cls, hh_model, r_poi, param_names, param_values, unit=None, br=None,
-            normalize=False, xsec_kwargs=None):
+    def _get_theory_xsecs(
+        cls,
+        hh_model,
+        r_poi,
+        param_names,
+        param_values,
+        unit=None,
+        br=None,
+        normalize=False,
+        xsec_kwargs=None,
+    ):
         import numpy as np
 
         # set defaults
@@ -500,11 +513,15 @@ class MultiDatacardTask(DatacardTask):
 
         # the lengths of names and order indices must match multi_datacards when given
         if len(self.datacard_names) not in (0, len(self.multi_datacards)):
-            raise Exception("when datacard_names is set, its length ({}) must match that of "
-                "multi_datacards ({})".format(len(self.datacard_names), len(self.multi_datacards)))
+            raise Exception(
+                "when datacard_names is set, its length ({}) must match that of "
+                "multi_datacards ({})".format(len(self.datacard_names), len(self.multi_datacards))
+            )
         if len(self.datacard_order) not in (0, len(self.multi_datacards)):
-            raise Exception("when datacard_order is set, its length ({}) must match that of "
-                "multi_datacards ({})".format(len(self.datacard_order), len(self.multi_datacards)))
+            raise Exception(
+                "when datacard_order is set, its length ({}) must match that of "
+                "multi_datacards ({})".format(len(self.datacard_order), len(self.multi_datacards))
+            )
 
     @classmethod
     def _repr_param(cls, name, value, **kwargs):
@@ -551,10 +568,9 @@ class ParameterValuesTask(AnalysisTask):
     def get_output_postfix(self, join=True):
         parts = []
         if self.parameter_values:
-            parts = [["params"] + [
-                "{}{}".format(*tpl)
-                for tpl in self.parameter_values_dict.items()
-            ]]
+            parts = [
+                ["params"] + ["{}{}".format(*tpl) for tpl in self.parameter_values_dict.items()]
+            ]
 
         return self.join_postfix(parts) if join else parts
 
@@ -603,8 +619,9 @@ class ParameterScanTask(AnalysisTask):
                 # get range defaults
                 if start is None or stop is None:
                     if name not in poi_data:
-                        raise Exception("cannot infer default range of scan parameter {}".format(
-                            name))
+                        raise Exception(
+                            "cannot infer default range of scan parameter {}".format(name)
+                        )
                     start, stop = poi_data[name].range
 
                 # get default points
@@ -624,18 +641,21 @@ class ParameterScanTask(AnalysisTask):
         n = self.force_n_scan_parameters
         if isinstance(n, six.integer_types):
             if self.n_scan_parameters != n:
-                raise Exception("{} requires exactly {} scan parameters but got '{}'".format(
-                    self.__class__.__name__, n, self.joined_scan_parameter_names))
+                raise Exception(
+                    "{} requires exactly {} scan parameters but got '{}'".format(
+                        self.__class__.__name__, n, self.joined_scan_parameter_names
+                    )
+                )
         elif isinstance(n, tuple) and len(n) == 2:
             if not (n[0] <= self.n_scan_parameters <= n[1]):
-                raise Exception("{} requires between {} and {} scan parameters but got '{}'".format(
-                    self.__class__.__name__, n[0], n[1], self.joined_scan_parameter_names))
+                raise Exception(
+                    "{} requires between {} and {} scan parameters but got '{}'".format(
+                        self.__class__.__name__, n[0], n[1], self.joined_scan_parameter_names
+                    )
+                )
 
     def get_output_postfix(self, join=True):
-        parts = [["scan"] + [
-            "{}_{}_{}_n{}".format(*tpl)
-            for tpl in self.scan_parameters
-        ]]
+        parts = [["scan"] + ["{}_{}_{}_n{}".format(*tpl) for tpl in self.scan_parameters]]
 
         return self.join_postfix(parts) if join else parts
 
@@ -655,19 +675,20 @@ class ParameterScanTask(AnalysisTask):
     def joined_scan_values(self):
         # only valid when this is a workflow branch
         if not isinstance(self, law.BaseWorkflow) or self.is_workflow():
-            return AttributeError("{} has no attribute '{}' when not a workflow branch".format(
-                self.__class__.__name__, "joined_scan_values"))
+            return AttributeError(
+                "{} has no attribute '{}' when not a workflow branch".format(
+                    self.__class__.__name__, "joined_scan_values"
+                )
+            )
 
         return ",".join(
-            "{}={}".format(*tpl)
-            for tpl in zip(self.scan_parameter_names, self.branch_data)
+            "{}={}".format(*tpl) for tpl in zip(self.scan_parameter_names, self.branch_data)
         )
 
     @property
     def joined_scan_ranges(self):
         return ":".join(
-            "{}={},{}".format(p, start, stop)
-            for p, start, stop, _ in self.scan_parameters
+            "{}={},{}".format(p, start, stop) for p, start, stop, _ in self.scan_parameters
         )
 
     @property
@@ -686,14 +707,21 @@ class ParameterScanTask(AnalysisTask):
             else:
                 points = (stop - start) / float(step_size[i]) + 1
                 if points % 1 != 0:
-                    raise Exception("step size {} does not equally divide range [{}, {}]".format(
-                        step_size[i], start, stop))
+                    raise Exception(
+                        "step size {} does not equally divide range [{}, {}]".format(
+                            step_size[i], start, stop
+                        )
+                    )
                 return points
 
-        return list(itertools.product(*[
-            linspace(start, stop, get_points(i, start, stop, points))
-            for i, (_, start, stop, points) in enumerate(self.scan_parameters)
-        ]))
+        return list(
+            itertools.product(
+                *[
+                    linspace(start, stop, get_points(i, start, stop, points))
+                    for i, (_, start, stop, points) in enumerate(self.scan_parameters)
+                ]
+            )
+        )
 
     def htcondor_output_postfix(self):
         return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
@@ -747,9 +775,9 @@ class POITask(DatacardTask, ParameterValuesTask):
 
         # remove r and k pois from frozen parameters as they are frozen by default, sort the rest
         if "frozen_parameters" in params:
-            params["frozen_parameters"] = tuple(sorted(
-                p for p in params["frozen_parameters"] if p not in cls.all_pois
-            ))
+            params["frozen_parameters"] = tuple(
+                sorted(p for p in params["frozen_parameters"] if p not in cls.all_pois)
+            )
 
         return params
 
@@ -760,19 +788,27 @@ class POITask(DatacardTask, ParameterValuesTask):
         n = self.force_n_pois
         if isinstance(n, six.integer_types):
             if self.n_pois != n:
-                raise Exception("{} requires exactly {} POIs but got '{}'".format(
-                    self.__class__.__name__, n, self.joined_pois))
+                raise Exception(
+                    "{} requires exactly {} POIs but got '{}'".format(
+                        self.__class__.__name__, n, self.joined_pois
+                    )
+                )
         elif isinstance(n, tuple) and len(n) == 2:
             if not (n[0] <= self.n_pois <= n[1]):
-                raise Exception("{} requires between {} and {} POIs but got '{}'".format(
-                    self.__class__.__name__, n[0], n[1], self.joined_pois))
+                raise Exception(
+                    "{} requires between {} and {} POIs but got '{}'".format(
+                        self.__class__.__name__, n[0], n[1], self.joined_pois
+                    )
+                )
 
         # check if parameter values are allowed in pois
         if not self.allow_parameter_values_in_pois:
             for p in self.parameter_values_dict:
                 if p in self.pois:
-                    raise Exception("parameter values are not allowed to be in POIs, but found "
-                        "'{}'".format(p))
+                    raise Exception(
+                        "parameter values are not allowed to be in POIs, but found "
+                        "'{}'".format(p)
+                    )
 
     def store_parts(self):
         parts = super(POITask, self).store_parts()
@@ -786,8 +822,10 @@ class POITask(DatacardTask, ParameterValuesTask):
         parts.append(["poi"] + list(self.pois))
 
         # add parameters, taking into account excluded and included ones
-        params = OrderedDict((p, 1.0) for p in (
-            self.all_pois if self.allow_parameter_values_in_pois else self.other_pois))
+        params = OrderedDict(
+            (p, 1.0)
+            for p in (self.all_pois if self.allow_parameter_values_in_pois else self.other_pois)
+        )
         params.update(self.parameter_values_dict)
         if exclude_params:
             params = OrderedDict((p, v) for p, v in params.items() if p not in exclude_params)
@@ -819,8 +857,10 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     def _joined_parameter_values(self, join=True):
         # all unused pois with a value of one
-        values = OrderedDict((p, 1.0) for p in (
-            self.all_pois if self.allow_parameter_values_in_pois else self.other_pois))
+        values = OrderedDict(
+            (p, 1.0)
+            for p in (self.all_pois if self.allow_parameter_values_in_pois else self.other_pois)
+        )
 
         # manually set parameters
         values.update(self.parameter_values_dict)
@@ -846,7 +886,7 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     @property
     def joined_frozen_groups(self):
-        return ",".join(self.frozen_groups) or "\"\""
+        return ",".join(self.frozen_groups) or '""'
 
 
 class POIScanTask(POITask, ParameterScanTask):
@@ -868,25 +908,36 @@ class POIScanTask(POITask, ParameterScanTask):
         if self.force_scan_parameters_equal_pois:
             missing = set(self.pois) - set(self.scan_parameter_names)
             if missing:
-                raise Exception("scan parameter(s) '{}' must match POI(s) '{}'".format(
-                    self.joined_scan_parameter_names, self.joined_pois))
+                raise Exception(
+                    "scan parameter(s) '{}' must match POI(s) '{}'".format(
+                        self.joined_scan_parameter_names, self.joined_pois
+                    )
+                )
             unknown = set(self.scan_parameter_names) - set(self.pois)
             if unknown:
-                raise Exception("scan parameter(s) '{}' must match POI(s) '{}'".format(
-                    self.joined_scan_parameter_names, self.joined_pois))
+                raise Exception(
+                    "scan parameter(s) '{}' must match POI(s) '{}'".format(
+                        self.joined_scan_parameter_names, self.joined_pois
+                    )
+                )
 
         # check if scan parameters and pois diverge
         if self.force_scan_parameters_unequal_pois:
             if set(self.pois).intersection(set(self.scan_parameter_names)):
-                raise Exception("scan parameter(s) '{}' and POI(s) '{}' must not overlap".format(
-                    self.joined_scan_parameter_names, self.joined_pois))
+                raise Exception(
+                    "scan parameter(s) '{}' and POI(s) '{}' must not overlap".format(
+                        self.joined_scan_parameter_names, self.joined_pois
+                    )
+                )
 
         # check if parameter values are in scan parameters
         if not self.allow_parameter_values_in_scan_parameters:
             for p in self.parameter_values_dict:
                 if p in self.scan_parameter_names:
-                    raise Exception("parameter values are not allowed to be in scan parameters, "
-                        "but found '{}'".format(p))
+                    raise Exception(
+                        "parameter values are not allowed to be in scan parameters, "
+                        "but found '{}'".format(p)
+                    )
 
     def get_output_postfix(self, join=True):
         if isinstance(self, law.BaseWorkflow) and self.is_branch():
@@ -948,7 +999,9 @@ class InputDatacards(DatacardTask, law.ExternalTask):
     mass = None
 
     def output(self):
-        return law.TargetCollection([law.LocalFileTarget(self.split_datacard_path(card)[0]) for card in self.datacards])
+        return law.TargetCollection(
+            [law.LocalFileTarget(self.split_datacard_path(card)[0]) for card in self.datacards]
+        )
 
 
 class CombineDatacards(DatacardTask, CombineCommandTask):
@@ -960,8 +1013,10 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 
         # complain when no datacard paths are given but the store path does not exist yet
         if not self.datacards and not self.local_target(dir=True).exists():
-            raise Exception("store directory {} does not exist which is required when no datacard "
-                "paths are provided".format(self.local_target(dir=True).path))
+            raise Exception(
+                "store directory {} does not exist which is required when no datacard "
+                "paths are provided".format(self.local_target(dir=True).path)
+            )
 
     def requires(self):
         return InputDatacards.req(self)
@@ -1019,8 +1074,10 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         model_hh_processes |= {sample.label for sample in model.vbf_formula.sample_list}
         to_remove = all_hh_processes - model_hh_processes
         if to_remove:
-            self.logger.info("trying to remove processe(s) {} from the combined datacard as they "
-                "are not part of the phyics model {}".format(",".join(to_remove), self.hh_model))
+            self.logger.info(
+                "trying to remove processe(s) {} from the combined datacard as they "
+                "are not part of the phyics model {}".format(",".join(to_remove), self.hh_model)
+            )
             remove_processes_script(output.path, map("{}*".format, to_remove))
 
         # copy shape files to output location
