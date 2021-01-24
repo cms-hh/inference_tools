@@ -132,6 +132,11 @@ def rename_parameter(datacard, rules, directory=None, skip_shapes=False, mass="1
 
             # go through shape lines and do the renaming
             for shape_line in shape_lines:
+                # work on a temporary copy of the shape file
+                src_path = os.path.join(os.path.dirname(renamer.datacard), shape_line.file)
+                tmp_path = renamer.make_tmpfile(src_path)
+                tfile = renamer.open_tfile(tmp_path, "UPDATE")
+
                 # loop through processes and bins to be handled and see if the current line applies
                 for bin_name, process_name in list(unhandled_shapes):
                     if shape_line.bin not in (bin_name, "*"):
@@ -145,11 +150,6 @@ def rename_parameter(datacard, rules, directory=None, skip_shapes=False, mass="1
                     syst_names = filter(renamer.has_rule, syst_names)
                     if not syst_names:
                         continue
-
-                    # work on a temporary copy of the shape file
-                    src_path = os.path.join(os.path.dirname(renamer.datacard), shape_line.file)
-                    tmp_path = renamer.make_tmpfile(src_path)
-                    tfile = renamer.open_tfile(tmp_path, "UPDATE")
 
                     # loop through all systematic shapes
                     for syst_name in syst_names:

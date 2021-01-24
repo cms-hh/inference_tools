@@ -112,6 +112,13 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                 # copy the shape line to do track updates
                 new_shape_line = shape_line.copy()
 
+                # work on a temporary copy of the shape file
+                tfile = None
+                if not skip_shapes:
+                    src_path = os.path.join(os.path.dirname(renamer.datacard), shape_line.file)
+                    tmp_path = renamer.make_tmpfile(src_path)
+                    tfile = renamer.open_tfile(tmp_path, "UPDATE")
+
                 # loop through processes and bins to be handled and see if the current line applies
                 for bin_name, process_name in list(unhandled_shapes):
                     if shape_line.bin not in (bin_name, "*"):
@@ -120,13 +127,6 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                         continue
                     unhandled_shapes.remove((bin_name, process_name))
                     process_is_wildcard = shape_line.process != process_name
-
-                    # work on a temporary copy of the shape file
-                    tfile = None
-                    if not skip_shapes:
-                        src_path = os.path.join(os.path.dirname(renamer.datacard), shape_line.file)
-                        tmp_path = renamer.make_tmpfile(src_path)
-                        tfile = renamer.open_tfile(tmp_path, "UPDATE")
 
                     # get the expanded old and new shape names, the updated shape pattern
                     # and the owning object
