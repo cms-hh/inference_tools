@@ -106,8 +106,7 @@ In this example, the two `card_ee_*.txt` and the two `card_mumu_*.txt` cards wil
 ```shell
 law run PlotMultipleUpperLimits \
     --version dev \
-    --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt \
-    --datacard-names ee,emu,mumu \
+    --multi-datacards $DHI_EXAMPLE_CARDS:$DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF \
     --xsec fb \
     --y-log
 ```
@@ -117,7 +116,7 @@ See the task parameters below for fore info.
 
 Output:
 
-![Upper limit comparison](../images/multilimits__r__kl_n51_-25.0_25.0__fb_log.png)
+![Upper limit comparison](../images/multilimits__poi_r__scan_kl_-25.0_25.0_n51__params_r_qqhh1.0_r_gghh1.0_kt1.0_CV1.0_C2V1.0__fb_log.png)
 
 
 #### Dependencies
@@ -125,8 +124,8 @@ Output:
 ```mermaid
 graph LR;
     A(PlotMultipleUpperLimits) --> B1(MergeUpperLimits);
-    A(PlotMultipleUpperLimits) --> B2(MergeUpperLimits);
-    A(PlotMultipleUpperLimits) --> ...;
+    A --> B2(MergeUpperLimits);
+    A --> ...;
     B1 --> C1(UpperLimits);
     B2 --> C2(UpperLimits);
     C1 --> D1(CreateWorkspace);
@@ -189,16 +188,15 @@ Just as for the `PlotMultipleUpperLimits` task above, it includes a parameter `-
 ```shell
 law run PlotUpperLimitsAtPoint \
     --version dev \
-    --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt \
-    --datacard-names ee,emu,mumu
+    --multi-datacards $DHI_EXAMPLE_CARDS:$DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF
 ```
 
-Note that the above command uses `r` as the default POI and `kl,-25,25` as the default scan parameter and range.
+Note that the above command uses `r` as the default POI.
 See the task parameters below for fore info.
 
 Output:
 
-![Upper limits at POI](../images/limitatpoint__r__kl_1.0.png)
+![Upper limits at POI](../images/limitsatpoint__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0.png)
 
 
 #### Dependencies
@@ -206,8 +204,8 @@ Output:
 ```mermaid
 graph LR;
     A(PlotUpperLimitsAtPoint) --> B1(UpperLimits);
-    A(PlotUpperLimitsAtPoint) --> B2(UpperLimits);
-    A(PlotUpperLimitsAtPoint) --> ...;
+    A --> B2(UpperLimits);
+    A --> ...;
     B1 --> C1(CreateWorkspace);
     B2 --> C2(CreateWorkspace);
     C1 --> D1(CombineDatacards);
@@ -236,12 +234,12 @@ graph LR;
 
 #### Example commands
 
-**1.** Changing the order of limits in the plot without changing `--multi-datacards`:
+**1.** Changing the order of limits in the plot without changing `--multi-datacards` and updating labels:
 
-```shell hl_lines="5"
+```shell hl_lines="4-5"
 law run PlotUpperLimitsAtPoint \
     --version dev \
-    --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt \
-    --datacard-names ee,emu,mumu \
+    --multi-datacards $DHI_EXAMPLE_CARDS:$DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF \
+    --datacard-names All,ggF,VBF \
     --datacard-order 1,0,2
 ```

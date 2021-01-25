@@ -61,7 +61,7 @@ def plot_pulls_impacts(
     containing a dictionary that maps nuisances names to labels shown in the plot. *campaign* should
     refer to the name of a campaign label defined in dhi.config.campaign_labels.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/plotting.html#pulls-and-impacts
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/pullsandimpacts.html
     """
     import plotlib.root as r
     ROOT = import_ROOT()

@@ -18,7 +18,7 @@ law run PlotSignificanceScan \
 
 Output:
 
-![Significance scan](../images/significances__r__kl_n17_-2.0_6.0.png)
+![Significance scan](../images/significances__poi_r__scan_kl_-2.0_6.0_n9__params_r_qqhh1.0_r_gghh1.0_kt1.0_CV1.0_C2V1.0.png)
 
 
 #### Dependencies
@@ -95,14 +95,13 @@ It takes several CSV sequences of datacard paths, separated by a colon, e.g. `--
 ```shell
 law run PlotMultipleSignificanceScans \
     --version dev \
-    --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt \
-    --datacard-names ee,emu,mumu \
+    --multi-datacards $DHI_EXAMPLE_CARDS:$DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF \
     --scan-parameter kl,-2,6
 ```
 
 Output:
 
-![Upper limit comparison](../images/multisignificances__r__kl_n9_-2.0_6.0.png)
+![Upper limit comparison](../images/multisignificances__poi_r__scan_kl_-2.0_6.0_n9__params_r_qqhh1.0_r_gghh1.0_kt1.0_CV1.0_C2V1.0.png)
 
 
 #### Dependencies
@@ -146,12 +145,12 @@ graph LR;
 
 #### Example commands
 
-**1.** Executing `SignificanceScan` tasks on htcondor, with one job handling two tasks sequentially:
+**1.** Executing `SignificanceScan` tasks on htcondor, with one job handling two tasks sequentially, and updating the labels:
 
-```shell hl_lines="4-5"
+```shell hl_lines="3-5"
 law run PlotMultipleSignificanceScans \
-    --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt \
-    --datacard-names ee,emu,mumu \
+    --multi-datacards $DHI_EXAMPLE_CARDS:$DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF \
+    --datacard-names All,ggF,VBF \
     --SignificanceScan-workflow htcondor \
     --SignificanceScan-tasks-per-job 2
 ```

@@ -53,7 +53,7 @@ def plot_limit_scan(
     parameters. *campaign* should refer to the name of a campaign label defined in
     *dhi.config.campaign_labels*.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#limit-on-poi-vs-scan-parameter
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -248,7 +248,7 @@ def plot_limit_scans(
     branching ratio. *model_parameters* can be a dictionary of key-value pairs of model parameters.
     *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-on-poi-vs-scan-parameter
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -428,7 +428,7 @@ def plot_limit_points(
     drawn for visual guidance. *campaign* should refer to the name of a campaign label defined in
     dhi.config.campaign_labels.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/limits.html
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-at-a-certain-point-of-parameters
     """
     import plotlib.root as r
     ROOT = import_ROOT()

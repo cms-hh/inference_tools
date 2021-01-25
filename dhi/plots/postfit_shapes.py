@@ -41,6 +41,8 @@ def plot_s_over_b(
     visualization purposes. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
     *dhi.config.campaign_labels*.
+
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/postfit.html
     """
     import plotlib.root as r
     ROOT = import_ROOT()

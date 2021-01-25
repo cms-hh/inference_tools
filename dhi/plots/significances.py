@@ -40,7 +40,7 @@ def plot_significance_scan(
     given values. *model_parameters* can be a dictionary of key-value pairs of model parameters.
     *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
-    Example: https://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/significances.html#plotsignificancescan
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/significances.html#significance-vs-scan-parameter
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -171,7 +171,7 @@ def plot_significance_scans(
     given values. *model_parameters* can be a dictionary of key-value pairs of model parameters.
     *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/significances.html
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/significances.html#multiple-significance-scans-vs-scan-parameter
     """
     import plotlib.root as r
     ROOT = import_ROOT()

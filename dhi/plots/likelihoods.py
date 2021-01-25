@@ -203,7 +203,7 @@ def plot_likelihood_scans_1d(
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
     refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
-    Example: TODO
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d_1
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -535,7 +535,7 @@ def plot_likelihood_scans_2d(
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
     refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
-    Example: TODO
+    Example: Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d_1
     """
     import plotlib.root as r
     ROOT = import_ROOT()

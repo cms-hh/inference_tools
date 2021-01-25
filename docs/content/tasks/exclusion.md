@@ -17,8 +17,7 @@ These can be different versions of datacards, or even channels or analyses as sh
 ```shell
 law run PlotExclusionAndBestFit \
     --version dev \
-    --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/*/datacard.txt \
-    --datacard-names ee,emu,mumu,Combined \
+    --multi-datacards $DHI_EXAMPLE_CARDS:$DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF \
     --pois r_gghh \
     --campaign FAKE
 ```
@@ -27,7 +26,7 @@ Note that `kl,-25,25` is the default scan parameter.
 
 Output:
 
-![Best fit values and exlusions](../images/bestfitexclusion__r_gghh__kl_n51_-25.0_25.0.png)
+![Best fit values and exlusions](../images/exclusionbestfit__poi_r_gghh__scan_kl_-30.0_30.0_n61__params_r1.0_r_qqhh1.0_kt1.0_CV1.0_C2V1.0.png)
 
 
 #### Dependencies
@@ -77,35 +76,33 @@ graph LR;
 
 #### Example commands
 
-**1.** Executing `PlotExclusionAndBestFit` of `C2V` from `-5..5` with 4 local cores.
+**1.** Executing `PlotExclusionAndBestFit` of `C2V` from `-5..5` with 4 local cores and changing the labels.
 
 ```shell hl_lines="6-9"
 law run PlotExclusionAndBestFit \
     --version dev \
-    --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/*/datacard.txt \
-    --datacard-names ee,emu,mumu,Combined \
+    --multi-datacards $DHI_EXAMPLE_CARDS:$DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF \
     --pois r \
     --scan-parameters C2V,-5,5 \
+    --datacard-names All,ggF,VBF \
     --LikelihoodScan-workflow local \
     --UpperLimits-workflow local \
-    --workers 4 \
-    --campaign FAKE
+    --workers 4
 ```
 
 
-**2.** Executing `PlotExclusionAndBestFit` tasks on htcondor, managed by 4 local workers.
+**2.** Executing `PlotExclusionAndBestFit` tasks on htcondor, managed by 4 local workers, and changing the labels.
 
-```shell hl_lines="7-9"
+```shell hl_lines="6-9"
 law run PlotExclusionAndBestFit \
     --version dev \
-    --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/*/datacard.txt \
-    --datacard-names ee,emu,mumu,Combined \
+    --multi-datacards $DHI_EXAMPLE_CARDS:$DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF \
     --pois r \
     --scan-parameters C2V,-5,5 \
+    --datacard-names All,ggF,VBF \
     --LikelihoodScan-workflow htcondor \
     --UpperLimits-workflow htcondor \
-    --workers 4 \
-    --campaign FAKE
+    --workers 4
 ```
 
 

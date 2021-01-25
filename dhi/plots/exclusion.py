@@ -59,7 +59,7 @@ def plot_exclusion_and_bestfit_1d(
     parameters. *campaign* should refer to the name of a campaign label defined in
     *dhi.config.campaign_labels*.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/misc.html#plotbestfitandexclusion
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/exclusion.html#comparison-of-exclusion-performance
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -288,7 +288,7 @@ def plot_exclusion_and_bestfit_2d(
     dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
     campaign label defined in *dhi.config.campaign_labels*.
 
-    Example: http://cms-hh.web.cern.ch/cms-hh/tools/inference/tasks/misc.html#plotbestfitandexclusion2d
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/exclusion.html#2d-parameter-exclusion
     """
     import plotlib.root as r
     ROOT = import_ROOT()

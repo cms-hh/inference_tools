@@ -1,4 +1,4 @@
-The `PlotUpperLimits` task collects the fit results from the `MergeUpperLimits` and visualizes them in a plot.
+The `PlotUpperLimits` task collects the fit results from the `MergeUpperLimits` task and visualizes them in a plot.
 It provides some handy CLI parameters to manipulate the visualisation.
 
 <div class="dhi_parameter_table">

@@ -18,7 +18,7 @@ More detailed information on the different scans & fits be found in the followin
   <a href="tasks/limits.html#multiple-limits-on-poi-vs-scan-parameter">
     <div class="dhi_image_box">
       <div>
-        <img src="images/multilimits__r__kl_n51_-25.0_25.0__fb_log.png" />
+        <img src="images/multilimits__poi_r__scan_kl_-25.0_25.0_n51__params_r_qqhh1.0_r_gghh1.0_kt1.0_CV1.0_C2V1.0__fb_log.png" />
       </div>
       <div>
         Multiple upper limits vs. scan parameter
@@ -29,7 +29,7 @@ More detailed information on the different scans & fits be found in the followin
   <a href="tasks/limits.html#multiple-limits-at-a-certain-point-of-parameters">
     <div class="dhi_image_box">
       <div>
-        <img src="images/limitatpoint__r__kl_1.0.png" />
+        <img src="images/limitsatpoint__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0.png" />
       </div>
       <div>
         Multiple limits are a certain parameter point.
@@ -59,10 +59,32 @@ More detailed information on the different scans & fits be found in the followin
     </div>
   </a>
 
+  <a href="tasks/likelihood.html#1d_1">
+    <div class="dhi_image_box">
+      <div>
+        <img src="images/multinll1d__poi_kl__scan_kl_-10.0_10.0_n21__params_r1.0_r_qqhh1.0_r_gghh1.0_kt1.0_CV1.0_C2V1.0.png" />
+      </div>
+      <div>
+        Multiple 1D likelihood profiles
+      </div>
+    </div>
+  </a>
+
+  <a href="tasks/likelihood.html#2d_1">
+    <div class="dhi_image_box">
+      <div>
+        <img src="images/multinll2d__poi_kl_kt__scan_kl_-10.0_10.0_n21_kt_-5.0_5.0_n11__params_r1.0_r_qqhh1.0_r_gghh1.0_CV1.0_C2V1.0.png" />
+      </div>
+      <div>
+        Multiple 2D likelihood contours
+      </div>
+    </div>
+  </a>
+
   <a href="tasks/significances.html#significance-vs-scan-parameter">
     <div class="dhi_image_box">
       <div>
-        <img src="images/significances__r__kl_n17_-2.0_6.0.png" />
+        <img src="images/significances__poi_r__scan_kl_-2.0_6.0_n9__params_r_qqhh1.0_r_gghh1.0_kt1.0_CV1.0_C2V1.0.png" />
       </div>
       <div>
         Significances vs. scan parameter
@@ -73,7 +95,7 @@ More detailed information on the different scans & fits be found in the followin
   <a href="tasks/significances.html#multiple-significance-scans-vs-scan-parameter">
     <div class="dhi_image_box">
       <div>
-        <img src="images/multisignificances__r__kl_n9_-2.0_6.0.png" />
+        <img src="images/multisignificances__poi_r__scan_kl_-2.0_6.0_n9__params_r_qqhh1.0_r_gghh1.0_kt1.0_CV1.0_C2V1.0.png" />
       </div>
       <div>
         Multiple significances vs. scan parameter
@@ -106,7 +128,7 @@ More detailed information on the different scans & fits be found in the followin
   <a href="tasks/exclusion.html#comparison-of-exclusion-performance">
     <div class="dhi_image_box">
       <div>
-        <img src="images/bestfitexclusion__r_gghh__kl_n51_-25.0_25.0.png" />
+        <img src="images/exclusionbestfit__poi_r_gghh__scan_kl_-30.0_30.0_n61__params_r1.0_r_qqhh1.0_kt1.0_CV1.0_C2V1.0.png" />
       </div>
       <div>
         1D parameter exclusion comparison
