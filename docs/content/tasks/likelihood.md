@@ -20,7 +20,7 @@ law run PlotLikelihoodScan \
     --scan-parameters kl,-25,25
 ```
 
-Note that `kl` is used in both `--pois` and `--scan-parameters`.
+Note that `kl` is used in both `--pois` and `--scan-parameters` and must be identical.
 
 Output:
 
@@ -37,7 +37,7 @@ law run PlotLikelihoodScan
     --scan-parameters kl,-30,30:kt,-10,10
 ```
 
-Note that `kl` and `kt` are used in both `--pois` and `--scan-parameters`.
+Note that `kl` and `kt` are used in both `--pois` and `--scan-parameters` and must be identical.
 When two POIs are given, the plot task automatically triggers the creation of the 2D plot.
 
 Output:

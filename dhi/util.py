@@ -178,10 +178,11 @@ def minimize_1d(objective, bounds, start=None, niter=10, **kwargs):
 
 
 def create_tgraph(n, *args, **kwargs):
-    """
+    """ create_tgraph(n, *args, pad=None)
     Creates a ROOT graph with *n* points, where the type is *TGraph* for two, *TGraphErrors* for
     4 and *TGraphAsymmErrors* for six *args*. Each argument is converted to a python array with
-    typecode "f".
+    typecode "f". When *pad* is *True*, the graph is padded by one additional point on each side
+    with the same edge value.
     """
     ROOT = import_ROOT()
 
@@ -350,6 +351,9 @@ class ROOTColorGetter(object):
             self.cache[attr] = self.create_color(self.cache[attr])
 
         return self.cache[attr]
+
+    def __getitem__(self, key):
+        return getattr(self, key)
 
     @classmethod
     def create_color(cls, obj):
