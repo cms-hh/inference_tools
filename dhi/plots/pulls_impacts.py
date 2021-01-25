@@ -13,11 +13,13 @@ import six
 
 from dhi.config import poi_data, campaign_labels, colors
 from dhi.util import import_ROOT, multi_match, to_root_latex, linspace
+from dhi.plots.styles import use_style
 
 
 colors = colors.root
 
 
+@use_style("dhi_default")
 def plot_pulls_impacts(
     path,
     data,
@@ -240,7 +242,7 @@ def plot_pulls_impacts(
         draw_objs.append((g_pull, "PEZ"))
 
         # legend
-        legend = r.routines.create_legend(pad=pad, width=170, height=3 * 35)
+        legend = r.routines.create_legend(pad=pad, width=170, n=3)
         r.setup_legend(legend)
         legend.AddEntry(g_pull, "Pull")
         legend.AddEntry(g_impact_hi, "Impact +1#sigma")

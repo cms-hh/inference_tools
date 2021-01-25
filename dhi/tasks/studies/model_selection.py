@@ -20,7 +20,7 @@ from dhi.tasks.combine import (
     CombineDatacards,
 )
 from dhi.datacard_tools import create_datacard_instance
-from dhi.config import poi_data
+from dhi.config import poi_data, color_sequence
 from dhi.util import import_ROOT, create_tgraph, to_root_latex
 
 
@@ -118,9 +118,10 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         draw_objs.append((h_dummy, "HIST"))
 
         # write graphs
-        for graph, label in zip(graphs, labels):
-            r.setup_graph(graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5})
-            draw_objs.append((graph, "SAME,PL,PLC,PMC"))
+        for graph, label, col in zip(graphs, labels, color_sequence[:len(graphs)]):
+            r.setup_graph(graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5},
+                color=col)
+            draw_objs.append((graph, "SAME,PL"))
             legend_entries.append((graph, label))
 
         # legend
@@ -129,7 +130,7 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         legend = r.routines.create_legend(
             pad=pad,
             width=legend_cols * 280,
-            height=legend_rows * 30,
+            n=legend_rows,
             props={"NColumns": legend_cols, "FillStyle": 1001},
         )
         r.fill_legend(legend, legend_entries)
@@ -316,9 +317,9 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
         draw_objs.append((h_dummy, "HIST"))
 
         # write histograms
-        for hist, label in zip(hists, labels):
-            r.setup_hist(hist, props={"LineWidth": 1})
-            draw_objs.append((hist, "SAME,HIST,E,PLC,PMC"))
+        for hist, label, col in zip(hists, labels, color_sequence[:len(hists)]):
+            r.setup_hist(hist, props={"LineWidth": 1}, color=col, color_flags="lm")
+            draw_objs.append((hist, "SAME,HIST,E"))
             legend_entries.append((hist, label))
 
         # legend
@@ -327,7 +328,7 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
         legend = r.routines.create_legend(
             pad=pad,
             width=legend_cols * 210,
-            height=legend_rows * 30,
+            n=legend_rows,
             props={"NColumns": legend_cols, "FillStyle": 1001},
         )
         r.fill_legend(legend, legend_entries)
@@ -437,9 +438,10 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
         draw_objs.append((h_dummy, "HIST"))
 
         # write graphs
-        for graph, label in zip(graphs, labels):
-            r.setup_graph(graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5})
-            draw_objs.append((graph, "SAME,PL,PLC,PMC"))
+        for graph, label, col in zip(graphs, labels, color_sequence[:len(graphs)]):
+            r.setup_graph(graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5},
+                color=col)
+            draw_objs.append((graph, "SAME,PL"))
             legend_entries.append((graph, label))
 
         # legend
@@ -448,7 +450,7 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
         legend = r.routines.create_legend(
             pad=pad,
             width=legend_cols * 210,
-            height=legend_rows * 30,
+            n=legend_rows,
             props={"NColumns": legend_cols, "FillStyle": 1001},
         )
         r.fill_legend(legend, legend_entries)

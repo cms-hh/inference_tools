@@ -20,6 +20,7 @@ from dhi.plots.styles import use_style
 colors = colors.root
 
 
+@use_style("dhi_default")
 def plot_exclusion_and_bestfit_1d(
     path,
     data,
@@ -205,7 +206,7 @@ def plot_exclusion_and_bestfit_1d(
                 y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=500, height=70)
+    legend = r.routines.create_legend(pad=pad, width=480, n=2)
     r.setup_legend(legend, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
@@ -487,8 +488,7 @@ def plot_exclusion_and_bestfit_2d(
     # r.setup_box(legend_box, props={"LineWidth": 0, "FillStyle": 1001,
     #     "FillColor": colors.white_trans_30})
     # draw_objs.append(legend_box)
-    legend = r.routines.create_legend(pad=pad, width=500, height=100, x2=-40, y2=-15,
-        props={"NColumns": 2})
+    legend = r.routines.create_legend(pad=pad, width=480, n=3, x2=-44, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
@@ -667,6 +667,7 @@ def _get_contour(hist, level):
     # extract contour graphs after drawing into a temporary pad (see LIST option docs)
     c = ROOT.TCanvas("tmp", "tmp")
     pad = c.cd()
+    pad.SetLogz(True)
     h.Draw("CONT,Z,LIST")
     pad.Update()
     graphs = ROOT.gROOT.GetListOfSpecials().FindObject("contours")

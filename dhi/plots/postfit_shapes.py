@@ -12,11 +12,13 @@ import uproot
 
 from dhi.config import poi_data, campaign_labels, colors
 from dhi.util import import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors
+from dhi.plots.styles import use_style
 
 
 colors = colors.root
 
 
+@use_style("dhi_default")
 def plot_s_over_b(
     path,
     poi,
@@ -193,8 +195,7 @@ def plot_s_over_b(
                 y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
-    legend = r.routines.create_legend(pad=pad1, width=230, x2=-50, height=len(legend_entries) * 35,
-        props={"FillStyle": 1001})
+    legend = r.routines.create_legend(pad=pad1, width=250, n=len(legend_entries))
     r.fill_legend(legend, legend_entries)
     draw_objs1.append(legend)
 

@@ -8,13 +8,15 @@ import math
 
 import numpy as np
 
-from dhi.config import poi_data, campaign_labels, colors as _colors
+from dhi.config import poi_data, campaign_labels, colors, color_sequence
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int
+from dhi.plots.styles import use_style
 
 
-_colors = _colors.root
+colors = colors.root
 
 
+@use_style("dhi_default")
 def plot_significance_scan(
     path,
     poi,
@@ -48,13 +50,13 @@ def plot_significance_scan(
         expected_values = {key: expected_values[key] for key in expected_values.dtype.names}
 
     # input checks
-    assert scan_parameter in expected_values
-    assert "significance" in expected_values
+    assert(scan_parameter in expected_values)
+    assert("significance" in expected_values)
     scan_values = expected_values[scan_parameter]
     n_points = len(scan_values)
-    assert all(len(d) == n_points for d in expected_values.values())
+    assert(all(len(d) == n_points for d in expected_values.values()))
     if observed_values is not None:
-        assert len(observed_values) == n_points
+        assert(len(observed_values) == n_points)
         observed_values = np.array(observed_values)
 
     # set default ranges
@@ -92,7 +94,7 @@ def plot_significance_scan(
     if observed_values is not None:
         g_obs = create_tgraph(n_points, scan_values, observed_values)
         r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-            "MarkerSize": 0.7}, color=_colors.red)
+            "MarkerSize": 0.7}, color=colors.red)
         draw_objs.append((g_obs, "SAME,PL"))
         legend_entries.append((g_obs, "Observed"))
         y_max_value = max(y_max_value, max(observed_values))
@@ -111,7 +113,7 @@ def plot_significance_scan(
         if not (y_min < y < y_max):
             continue
         line = ROOT.TLine(x_min, y, x_max, y)
-        r.setup_line(line, props={"LineStyle": 7, "NDC": False}, color=_colors.red)
+        r.setup_line(line, props={"LineStyle": 7, "NDC": False}, color=colors.red)
         draw_objs.append(line)
 
     # model parameter label
@@ -145,13 +147,13 @@ def plot_significance_scan(
     canvas.SaveAs(path)
 
 
+@use_style("dhi_default")
 def plot_significance_scans(
     path,
     poi,
     scan_parameter,
     expected_values,
     names,
-    colors=None,
     x_min=None,
     x_max=None,
     y_min=None,
@@ -164,7 +166,6 @@ def plot_significance_scans(
     it at *path*. *expected_values* should be a list of mappings to lists of values or a record
     array with keys "<poi_name>" and "significance". Each mapping in *expected_values* will result
     in a different curve. *names* denote the names of significance curves shown in the legend.
-    Likewise, *colors* can be a sequence of color numbers or names to be used per curve.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
     given values. *model_parameters* can be a dictionary of key-value pairs of model parameters.
@@ -185,14 +186,13 @@ def plot_significance_scans(
 
     # input checks
     n_graphs = len(expected_values)
-    assert n_graphs >= 1
-    assert len(names) == n_graphs
-    assert not colors or len(colors) == n_graphs
-    assert all(scan_parameter in ev for ev in expected_values)
-    assert all("significance" in ev for ev in expected_values)
+    assert(n_graphs >= 1)
+    assert(len(names) == n_graphs)
+    assert(all(scan_parameter in ev for ev in expected_values))
+    assert(all("significance" in ev for ev in expected_values))
     scan_values = expected_values[0][scan_parameter]
     n_points = len(scan_values)
-    assert all(len(ev["significance"]) == n_points for ev in expected_values)
+    assert(all(len(ev["significance"]) == n_points for ev in expected_values))
 
     # set default ranges
     if x_min is None:
@@ -217,17 +217,11 @@ def plot_significance_scans(
     draw_objs.append((h_dummy, "HIST"))
 
     # expected values
-    for i, ev in enumerate(expected_values[::-1]):
+    for i, (ev, col) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1])):
         g_exp = create_tgraph(n_points, scan_values, ev["significance"])
         r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-            "MarkerSize": 0.7})
-        if colors:
-            color = colors[n_graphs - i - 1]
-            color = _colors.root.get(color, color)
-            r.set_color(g_exp, color)
-            draw_objs.append((g_exp, "SAME,PL"))
-        else:
-            draw_objs.append((g_exp, "SAME,PL,PLC,PMC"))
+            "MarkerSize": 0.7}, color=col)
+        draw_objs.append((g_exp, "SAME,PL"))
         legend_entries.append((g_exp, names[n_graphs - i - 1]))
         y_max_value = max(y_max_value, max(ev["significance"]))
         y_min_value = min(y_min_value, min(ev["significance"]))
@@ -250,8 +244,8 @@ def plot_significance_scans(
     # legend
     legend_cols = int(math.ceil(len(legend_entries) / 4.))
     legend_rows = min(len(legend_entries), 4)
-    legend = r.routines.create_legend(pad=pad, y2=-20, width=legend_cols * 160,
-        height=legend_rows * 30, props={"NColumns": legend_cols})
+    legend = r.routines.create_legend(pad=pad, y2=-20, width=legend_cols * 160, n=legend_rows,
+        props={"NColumns": legend_cols})
     r.setup_legend(legend)
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)

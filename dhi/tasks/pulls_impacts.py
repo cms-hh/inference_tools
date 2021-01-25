@@ -19,7 +19,7 @@ class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
 
     mc_stats = luigi.BoolParameter(
         default=False,
-        description="when True, calculate pulls and impacts for MC stats nuisances as well, "
+        description="when True, calculate pulls and impacts for MC stats nuisances as well; "
         "default: False",
     )
 
@@ -27,7 +27,11 @@ class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
 
     force_n_pois = 1
     run_command_in_tmp = True
-    reset_branch_map_before_run = True
+
+    def __init__(self, *args, **kwargs):
+        super(PullsAndImpacts, self).__init__(*args, **kwargs)
+
+        self._cache_branches = False
 
     def create_branch_map(self):
         # the first branch (index 0) is the nominal fit
@@ -50,13 +54,14 @@ class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
 
         return branches
 
-    @law.cached_workflow_property(setter=False)
+    @law.cached_workflow_property(setter=False, empty_value=law.no_value)
     def workspace_parameters(self):
         ws_input = CreateWorkspace.req(self).output()
         if not ws_input.exists():
-            # not existing yet, return no_value to mark this value is still to be resolved
+            # not existing yet, return no_value to express that this value is still to be resolved
             return law.no_value
         else:
+            self._cache_branches = True
             return get_workspace_parameters(ws_input.path)
 
     def workflow_requires(self):

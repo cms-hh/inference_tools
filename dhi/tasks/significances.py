@@ -41,9 +41,9 @@ class SignificanceScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCon
             " -m {self.mass}"
             " -v 1"
             " -t -1"
-            " --signalForSignificance 0"
+            " --signalForSignificance 1"
             " --redefineSignalPOIs {self.joined_pois}"
-            " --setParameters {self.joined_parameter_values}"
+            " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {self.combine_stable_options}"
@@ -136,11 +136,11 @@ class PlotSignificanceScan(POIScanTask, POIPlotTask):
         )
 
 
-class PlotMultipleSignificanceScans(MultiDatacardTask, PlotSignificanceScan):
+class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
     @classmethod
     def modify_param_values(cls, params):
-        params = MultiDatacardTask.modify_param_values(params)
         params = PlotSignificanceScan.modify_param_values(params)
+        params = MultiDatacardTask.modify_param_values(params)
         return params
 
     def requires(self):

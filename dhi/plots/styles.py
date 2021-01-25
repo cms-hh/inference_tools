@@ -19,7 +19,10 @@ def _setup_styles():
 
     # dhi_default
     s = _styles["dhi_default"] = r.styles.copy("default", "dhi_default")
+    s.legend_y2 = -15
+    s.legend_dy = 32
     s.legend.TextSize = 20
+    s.legend.FillStyle = 1001
 
 
 def use_style(style_name):

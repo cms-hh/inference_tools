@@ -8,13 +8,15 @@ import math
 
 import numpy as np
 
-from dhi.config import poi_data, campaign_labels, colors as _colors, br_hh_names
+from dhi.config import poi_data, campaign_labels, colors, color_sequence, br_hh_names
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int
+from dhi.plots.styles import use_style
 
 
-_colors = _colors.root
+colors = colors.root
 
 
+@use_style("dhi_default")
 def plot_limit_scan(
     path,
     poi,
@@ -61,9 +63,9 @@ def plot_limit_scan(
         # convert record array to dict mapping to arrays
         if isinstance(values, np.ndarray):
             values = {key: values[key] for key in values.dtype.names}
-        assert scan_parameter in values
+        assert(scan_parameter in values)
         if keys:
-            assert all(key in values for key in keys)
+            assert(all(key in values for key in keys))
         return values
 
     expected_values = check_values(expected_values, ["limit"])
@@ -115,7 +117,7 @@ def plot_limit_scan(
     if "limit_p2" in expected_values and "limit_m2" in expected_values:
         g_2sigma = create_graph(sigma=2)
         r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
-            "MarkerSize": 0, "FillColor": _colors.yellow})
+            "MarkerSize": 0, "FillColor": colors.yellow})
         draw_objs.append((g_2sigma, "SAME,4"))
         legend_entries[5] = (g_2sigma, "#pm 2#sigma expected")
         y_max_value = max(y_max_value, max(expected_values["limit_p2"]))
@@ -125,7 +127,7 @@ def plot_limit_scan(
     if "limit_p1" in expected_values and "limit_m1" in expected_values:
         g_1sigma = create_graph(sigma=1)
         r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
-            "MarkerSize": 0, "FillColor": _colors.green})
+            "MarkerSize": 0, "FillColor": colors.green})
         draw_objs.append((g_1sigma, "SAME,4"))
         legend_entries[4] = (g_1sigma, "#pm 1#sigma expected")
         y_max_value = max(y_max_value, max(expected_values["limit_p1"]))
@@ -155,13 +157,13 @@ def plot_limit_scan(
         if "xsec_p1" in theory_values and "xsec_m1" in theory_values:
             g_thy = create_graph(values=theory_values, key="xsec", sigma=1)
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0, "FillStyle": 3244}, color=_colors.red, color_flags="lf")
+                "MarkerSize": 0, "FillStyle": 3244}, color=colors.red, color_flags="lf")
             draw_objs.append((g_thy, "SAME,C4"))
             y_min_value = min(y_min_value, min(theory_values["xsec_m1"]))
         else:
             g_thy = create_graph(values=theory_values, key="xsec")
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0}, color=_colors.red, color_flags="l")
+                "MarkerSize": 0}, color=colors.red, color_flags="l")
             draw_objs.append((g_thy, "SAME,L"))
             y_min_value = min(y_min_value, min(theory_values["xsec"]))
         legend_entries[0 if observed_values is None else 1] = (g_thy, "Theory prediction")
@@ -188,8 +190,7 @@ def plot_limit_scan(
                 y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=440, height=100,
-        props={"NColumns": 2, "FillStyle": 1001})
+    legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
@@ -211,6 +212,7 @@ def plot_limit_scan(
     canvas.SaveAs(path)
 
 
+@use_style("dhi_default")
 def plot_limit_scans(
     path,
     poi,
@@ -218,7 +220,6 @@ def plot_limit_scans(
     names,
     expected_values,
     theory_values=None,
-    colors=None,
     y_log=False,
     x_min=None,
     x_max=None,
@@ -236,8 +237,7 @@ def plot_limit_scans(
     a different curve. When *theory_values* is set, it should have a similar format with keys
     "<scan_parameter>" and "xsec", and optionally "xsec_p1" and "xsec_m1". *names* denote the names
     of limit curves shown in the legend. When a name is found to be in dhi.config.br_hh_names, its
-    value is used as a label instead. Likewise, *colors* can be a sequence of color numbers or names
-    to be used per curve.
+    value is used as a label instead.
 
     When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*,
     *y_min* and *y_max* define the axis ranges and default to the range of the given values.
@@ -263,18 +263,17 @@ def plot_limit_scans(
 
     # input checks
     n_graphs = len(expected_values)
-    assert n_graphs >= 1
-    assert len(names) == n_graphs
-    assert not colors or len(colors) == n_graphs
-    assert all(scan_parameter in ev for ev in expected_values)
-    assert all("limit" in ev for ev in expected_values)
+    assert(n_graphs >= 1)
+    assert(len(names) == n_graphs)
+    assert(all(scan_parameter in ev for ev in expected_values))
+    assert(all("limit" in ev for ev in expected_values))
     scan_values = expected_values[0][scan_parameter]
     if theory_values is not None:
         # convert record array to dicts mapping to arrays
         if isinstance(theory_values, np.ndarray):
             theory_values = {key: theory_values[key] for key in theory_values.dtype.names}
-        assert scan_parameter in theory_values
-        assert "xsec" in theory_values
+        assert(scan_parameter in theory_values)
+        assert("xsec" in theory_values)
 
     # set default ranges
     if x_min is None:
@@ -306,29 +305,24 @@ def plot_limit_scans(
                 theory_values["xsec"] - theory_values["xsec_m1"],
                 theory_values["xsec_p1"] - theory_values["xsec"], pad=True)
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0, "FillStyle": 3244}, color=_colors.red, color_flags="lf")
+                "MarkerSize": 0, "FillStyle": 3244}, color=colors.red, color_flags="lf")
             draw_objs.append((g_thy, "SAME,C4"))
             y_min_value = min(y_min_value, min(theory_values["xsec_m1"]))
         else:
             g_thy = create_tgraph(len(scan_values), scan_values, theory_values["xsec"])
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0}, color=_colors.red, color_flags="l")
+                "MarkerSize": 0}, color=colors.red, color_flags="l")
             draw_objs.append((g_thy, "SAME,L"))
             y_min_value = min(y_min_value, min(theory_values["xsec"]))
         legend_entries.append((g_thy, "Theory prediction"))
 
     # central values
-    for i, ev in enumerate(expected_values[::-1]):
+    for i, (ev, col) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1])):
         mask = ~np.isnan(ev["limit"])
         g_exp = create_tgraph(mask.sum(), scan_values[mask], ev["limit"][mask])
-        r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.7})
-        if colors:
-            color = colors[n_graphs - i - 1]
-            color = _colors.get(color, color)
-            r.set_color(g_exp, color)
-            draw_objs.append((g_exp, "SAME,PL"))
-        else:
-            draw_objs.append((g_exp, "SAME,PL,PLC,PMC"))
+        r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.7},
+            color=col)
+        draw_objs.append((g_exp, "SAME,PL"))
         legend_entries.insert(0, (g_exp, names[n_graphs - i - 1]))
         y_max_value = max(y_max_value, max(ev["limit"]))
         y_min_value = min(y_min_value, min(ev["limit"]))
@@ -357,8 +351,8 @@ def plot_limit_scans(
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
     legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
-    legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, height=legend_rows * 30,
-        props={"NColumns": legend_cols, "FillStyle": 1001})
+    legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
+        props={"NColumns": legend_cols})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
@@ -380,6 +374,7 @@ def plot_limit_scans(
     canvas.SaveAs(path)
 
 
+@use_style("dhi_default")
 def plot_limit_points(
     path,
     poi,
@@ -531,14 +526,14 @@ def plot_limit_points(
     # 2 sigma band
     g_2sigma = create_graph(sigma=2)
     r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
-        "MarkerSize": 0, "FillColor": _colors.yellow})
+        "MarkerSize": 0, "FillColor": colors.yellow})
     draw_objs.append((g_2sigma, "SAME,2"))
     legend_entries[5] = (g_2sigma, r"#pm 2#sigma expected")
 
     # 1 sigma band
     g_1sigma = create_graph(sigma=1)
     r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
-        "MarkerSize": 0, "FillColor": _colors.green})
+        "MarkerSize": 0, "FillColor": colors.green})
     draw_objs.append((g_1sigma, "SAME,2"))
     legend_entries[4] = (g_1sigma, r"#pm 1#sigma expected")
 
@@ -562,7 +557,7 @@ def plot_limit_points(
         # uncertainty line
         g_thy_line = create_graph(key="theory")
         r.setup_graph(g_thy_line, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-            "MarkerSize": 0}, color=_colors.red, color_flags="lm")
+            "MarkerSize": 0}, color=colors.red, color_flags="lm")
         draw_objs.append((g_thy_line, "SAME,LZ"))
         legend_entry = (g_thy_line, "Theory prediction")
         # uncertainty area
@@ -570,7 +565,7 @@ def plot_limit_points(
         if has_thy_err:
             g_thy_area = create_graph(key="theory", sigma=1)
             r.setup_graph(g_thy_area, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0, "FillStyle": 3244}, color=_colors.red, color_flags="lfm")
+                "MarkerSize": 0, "FillStyle": 3244}, color=colors.red, color_flags="lfm")
             draw_objs.append((g_thy_area, "SAME,2"))
             legend_entry = (g_thy_area, "Theory prediction", "lf")
         legend_entries[1 if has_obs else 0] = legend_entry
@@ -625,8 +620,7 @@ def plot_limit_points(
                 y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=440, height=100)
-    r.setup_legend(legend, props={"NColumns": 2})
+    legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
