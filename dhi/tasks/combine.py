@@ -271,12 +271,42 @@ class MultiHHModelTask(HHModelTask):
         brace_expand=True,
     )
 
+    hh_model_order = law.CSVParameter(
+        default=(),
+        cls=luigi.IntParameter,
+        significant=False,
+        description="indices of models in hh_models for reordering; not used when empty; "
+        "default: empty",
+    )
+    hh_model_names = law.CSVParameter(
+        default=(),
+        significant=False,
+        description="names of hh models for plotting purposes; applied before reordering with "
+        "hh_model_order; default: empty",
+        brace_expand=True,
+    )
+
     hh_model = None
     split_hh_model = None
     load_hh_model = None
     create_xsec_func = None
     convert_to_xsecs = None
     get_theory_xsecs = None
+
+    def __init__(self, *args, **kwargs):
+        super(MultiHHModelTask, self).__init__(*args, **kwargs)
+
+        # the lengths of names and order indices must match hh_models when given
+        if len(self.hh_model_names) not in (0, len(self.hh_models)):
+            raise Exception(
+                "when hh_model_names is set, its length ({}) must match that of "
+                "hh_models ({})".format(len(self.hh_model_names), len(self.hh_models))
+            )
+        if len(self.hh_model_order) not in (0, len(self.hh_models)):
+            raise Exception(
+                "when hh_model_order is set, its length ({}) must match that of "
+                "hh_models ({})".format(len(self.hh_model_order), len(self.hh_models))
+            )
 
     def store_parts(self):
         parts = AnalysisTask.store_parts(self)
@@ -909,14 +939,14 @@ class POIScanTask(POITask, ParameterScanTask):
             missing = set(self.pois) - set(self.scan_parameter_names)
             if missing:
                 raise Exception(
-                    "scan parameter(s) '{}' must match POI(s) '{}'".format(
+                    "scan parameter(s) '{}' must match POI(s) '{}' or vice versa".format(
                         self.joined_scan_parameter_names, self.joined_pois
                     )
                 )
             unknown = set(self.scan_parameter_names) - set(self.pois)
             if unknown:
                 raise Exception(
-                    "scan parameter(s) '{}' must match POI(s) '{}'".format(
+                    "scan parameter(s) '{}' must match POI(s) '{}' or vice versa".format(
                         self.joined_scan_parameter_names, self.joined_pois
                     )
                 )

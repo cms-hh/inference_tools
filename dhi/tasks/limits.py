@@ -425,6 +425,14 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
             exp_values.append(_exp_values)
             names.append(name)
 
+        # set names if requested
+        if self.hh_model_names:
+            names = list(self.hh_model_names)
+
+        # reoder if requested
+        if self.hh_model_order:
+            exp_values = [exp_values[i] for i in self.hh_model_order]
+
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scans",
