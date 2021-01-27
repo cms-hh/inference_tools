@@ -71,13 +71,12 @@ setup() {
     fi
     export DHI_SOFTWARE_FLAG_FILES="$flag_file_combine"
 
-    (
-        cd "$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
-        source env_standalone.sh "" || return "$?"
-        # the setup script appends to PATH, but we need to prepend since some htcondor nodes seem to
-        # have an other "combine" executable that gets picked instead
-        export PATH="$PWD/exe:$PWD/scripts:$PATH"
-    )
+    cd "$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
+    source env_standalone.sh "" || return "$?"
+    # the setup script appends to PATH, but we need to prepend since some htcondor nodes seem to
+    # have an other "combine" executable that gets picked instead
+    export PATH="$PWD/exe:$PWD/scripts:$PATH"
+    cd "$orig"
 
 
     #
