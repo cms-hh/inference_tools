@@ -641,8 +641,8 @@ def plot_likelihood_scans_2d(
         draw_objs.append((h1, "SAME,CONT3"))
         draw_objs.append((h2, "SAME,CONT3"))
         legend_entries.append((g_fit, "{} (best fit)".format(d["name"]), "P"))
-        legend_entries.append((h1, "#pm1 #sigma"))
-        legend_entries.append((h2, "#pm2 #sigma"))
+        legend_entries.append((h1, "#pm1#sigma"))
+        legend_entries.append((h2, "#pm2#sigma"))
 
     # model parameter label
     if model_parameters:
