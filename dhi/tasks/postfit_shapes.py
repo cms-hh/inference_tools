@@ -7,11 +7,11 @@ Tasks for creating post fit plots.
 import law
 import luigi
 
-from dhi.tasks.base import view_output_plots
+from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
 
 
-class PostFitShapes(POITask, CombineCommandTask):
+class PostFitShapes(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     pois = law.CSVParameter(
         default=("r",),
@@ -24,6 +24,14 @@ class PostFitShapes(POITask, CombineCommandTask):
     force_n_pois = 1
 
     run_command_in_tmp = True
+
+    def create_branch_map(self):
+        return [""]  # single branch with empty data
+
+    def workflow_requires(self):
+        reqs = super(PostFitShapes, self).workflow_requires()
+        reqs["workspace"] = self.requires_from_branch()
+        return reqs
 
     def requires(self):
         return CreateWorkspace.req(self)
@@ -103,7 +111,7 @@ class PlotPostfitSOverB(POIPlotTask):
         output.parent.touch()
 
         # get the path to the fit diagnostics file
-        fit_diagnostics_path = self.input().path
+        fit_diagnostics_path = self.input()["collection"][0].path
 
         # call the plot function
         self.call_plot_func(
