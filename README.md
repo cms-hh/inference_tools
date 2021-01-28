@@ -17,11 +17,6 @@ git clone --recursive ssh://git@gitlab.cern.ch:7999/hh/tools/inference.git
 git clone --recursive https://gitlab.cern.ch/hh/tools/inference.git
 ```
 
-Directly after cloning, run once:
-```shell
-git submodule update --init
-```
-
 
 ## Environment and software setup
 
