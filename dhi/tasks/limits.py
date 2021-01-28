@@ -498,7 +498,6 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
                 self,
                 scan_parameters=(scan_parameter,),
                 parameter_values=parameter_values,
-                branch=0,
                 datacards=datacards,
             )
             for datacards in self.multi_datacards
@@ -530,7 +529,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         # load limit values
         names = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
         exp_values = np.array(
-            [UpperLimits.load_limits(inp) for inp in self.input()],
+            [UpperLimits.load_limits(coll["collection"][0]) for coll in self.input()],
             dtype=[(name, np.float32) for name in names],
         )
 
