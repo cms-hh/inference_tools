@@ -40,7 +40,7 @@ class SignificanceScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCon
             "combine -M Significance {workspace}"
             " -m {self.mass}"
             " -v 1"
-            " -t -1"
+            " -t {self.toys}"
             " --signalForSignificance 1"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"

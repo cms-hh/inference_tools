@@ -43,7 +43,7 @@ class UpperLimits(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
             "combine -M AsymptoticLimits {workspace}"
             " -v 1"
             " -m {self.mass}"
-            " -t -1"
+            " -t {self.toys}"
             " --run expected"
             " --noFitAsimov"
             " --redefineSignalPOIs {self.joined_pois}"

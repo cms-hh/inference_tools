@@ -82,7 +82,7 @@ class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
             "combine -M MultiDimFit {workspace}"
             " -v 1"
             " -m {self.mass}"
-            " -t -1"
+            " -t {self.toys}"
             " --robustFit 1"
             " --redefineSignalPOIs {self.pois[0]}"
             " --setParameterRanges {self.pois[0]}={start},{stop}"

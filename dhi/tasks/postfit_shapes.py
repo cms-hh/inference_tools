@@ -44,7 +44,7 @@ class PostFitShapes(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWork
             "combine -M FitDiagnostics {workspace}"
             " -m {self.mass}"
             " -v 1"
-            " -t -1"
+            " -t {self.toys}"
             " --expectSignal 1"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameters {self.joined_parameter_values}"
