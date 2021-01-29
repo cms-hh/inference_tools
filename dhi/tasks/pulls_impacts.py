@@ -153,7 +153,7 @@ class MergePullsAndImpacts(POITask):
         if self.mc_stats:
             parts.append("mcstats")
         if self.skip_parameters:
-            parts.append(law.util.create_hash(sorted(self.skip_parameters)))
+            parts.append("skip_" + law.util.create_hash(sorted(self.skip_parameters)))
 
         name = self.join_postfix(["pulls_impacts", self.get_output_postfix(), parts]) + ".json"
         return self.local_target(name)
@@ -278,7 +278,7 @@ class PlotPullsAndImpacts(PlotTask, POITask):
         if self.mc_stats:
             parts.append("mcstats")
         if self.skip_parameters:
-            parts.append(law.util.create_hash(sorted(self.skip_parameters)))
+            parts.append("skip_" + law.util.create_hash(sorted(self.skip_parameters)))
 
         name = self.create_plot_name(["pulls_impacts", self.get_output_postfix(), parts])
         return self.local_target(name)
