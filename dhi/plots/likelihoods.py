@@ -294,13 +294,13 @@ def plot_likelihood_scans_1d(
         g_nll = create_tgraph(len(d["expected_values"][poi]), d["expected_values"][poi],
             d["expected_values"]["dnll2"])
         r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75},
-            color=col)
+            color=colors[col])
         draw_objs.append((g_nll, "SAME,CP"))
         legend_entries.append((g_nll, d["name"]))
 
         # line for best fit value
         line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_value)
-        r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=col)
+        r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors[col])
         draw_objs.append(line_fit)
 
     # model parameter label

@@ -220,7 +220,7 @@ def plot_significance_scans(
     for i, (ev, col) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1])):
         g_exp = create_tgraph(n_points, scan_values, ev["significance"])
         r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-            "MarkerSize": 0.7}, color=col)
+            "MarkerSize": 0.7}, color=colors[col])
         draw_objs.append((g_exp, "SAME,PL"))
         legend_entries.append((g_exp, names[n_graphs - i - 1]))
         y_max_value = max(y_max_value, max(ev["significance"]))
