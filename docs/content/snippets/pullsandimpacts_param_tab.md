@@ -3,6 +3,6 @@ It provides some handy cli parameters to manipulate POIs, ranges and other optio
 
 <div class="dhi_parameter_table">
 
---8<-- "content/snippets/parameters.md@-2,14,17,18,47,19,20,32,33,34,35,36,13"
+--8<-- "content/snippets/parameters.md@-2,20,19,16,14,17,18,28,33,36"
 
 </div>

@@ -38,7 +38,7 @@ graph LR;
     B --> D([UpperLimits]);
     D --> F(CreateWorkspace);
     F --> G(CombineDatacards);
-    C --> E(LikelihoodScan);
+    C --> E([LikelihoodScan]);
     E --> F;
 ```
 
@@ -142,7 +142,7 @@ graph LR;
     B --> D([UpperLimits]);
     D --> F(CreateWorkspace);
     F --> G(CombineDatacards);
-    C --> E(LikelihoodScan);
+    C --> E([LikelihoodScan]);
     E --> F;
 ```
 

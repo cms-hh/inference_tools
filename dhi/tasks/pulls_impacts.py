@@ -17,6 +17,11 @@ from dhi.datacard_tools import get_workspace_parameters
 
 class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
+    skip_parameters = law.CSVParameter(
+        default=(),
+        description="comma-separated parameter names to be skipped; supports patterns; "
+        "default: empty",
+    )
     mc_stats = luigi.BoolParameter(
         default=False,
         description="when True, calculate pulls and impacts for MC stats nuisances as well; "
@@ -42,6 +47,7 @@ class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
         if params:
             # remove poi
             params = [p for p in params if p != self.pois[0]]
+
             # remove mc stats parameters if requested, otherwise move them to the end
             is_mc_stats = lambda p: law.util.multi_match(p, self.mc_stats_patterns, mode=any)
             if self.mc_stats:
@@ -49,6 +55,11 @@ class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
                 params = sorted(params, key=sort_fn)
             else:
                 params = [p for p in params if not is_mc_stats(p)]
+
+            # skip
+            if self.skip_parameters:
+                params = [p for p in params if not law.util.multi_match(p, self.skip_parameters)]
+
             # add to branches
             branches.extend(params)
 
@@ -114,10 +125,22 @@ class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
 
         return common_cmd.format(branch_opts=branch_opts)
 
+    def htcondor_output_postfix(self):
+        postfix = super(HTCondorWorkflow, self).htcondor_output_postfix()
+
+        parts = []
+        if self.mc_stats:
+            postfix += "_mcstats"
+        if self.skip_parameters:
+            postfix += "_skip" + law.util.create_hash(sorted(self.skip_parameters))
+
+        return postfix
+
 
 class MergePullsAndImpacts(POITask):
 
     mc_stats = PullsAndImpacts.mc_stats
+    skip_parameters = PullsAndImpacts.skip_parameters
 
     force_n_pois = 1
 
@@ -129,6 +152,8 @@ class MergePullsAndImpacts(POITask):
         parts = []
         if self.mc_stats:
             parts.append("mcstats")
+        if self.skip_parameters:
+            parts.append(law.util.create_hash(sorted(self.skip_parameters)))
 
         name = self.join_postfix(["pulls_impacts", self.get_output_postfix(), parts]) + ".json"
         return self.local_target(name)
@@ -150,7 +175,9 @@ class MergePullsAndImpacts(POITask):
                 if v.size != 3:
                     raise ValueError(
                         "fit result for parameter '{}' at {} must contain 3 entries, "
-                        "but found {}".format(p, inp.path, v.size)
+                        "but found {}, this might be likely due to a failed fit, so you might want "
+                        "to add '--X-rtd MINIMIZER_analytic' to combine via --custom-args".format(
+                            p, inp.path, v.size)
                     )
             # return the values dict when multiple params were given, otherwise a single array
             return values if isinstance(param, (list, tuple)) else values[param]
@@ -197,15 +224,11 @@ class MergePullsAndImpacts(POITask):
 class PlotPullsAndImpacts(PlotTask, POITask):
 
     mc_stats = MergePullsAndImpacts.mc_stats
+    skip_parameters = MergePullsAndImpacts.skip_parameters
     parameters_per_page = luigi.IntParameter(
         default=-1,
         description="number of parameters per page; creates a single page when < 1; only applied "
         "for file type 'pdf'; default: -1",
-    )
-    skip_parameters = law.CSVParameter(
-        default=(),
-        description="list of parameters or files containing parameters line-by-line that should be "
-        "skipped; supports patterns; default: empty",
     )
     order_parameters = law.CSVParameter(
         default=(),
@@ -254,6 +277,8 @@ class PlotPullsAndImpacts(PlotTask, POITask):
         parts = []
         if self.mc_stats:
             parts.append("mcstats")
+        if self.skip_parameters:
+            parts.append(law.util.create_hash(sorted(self.skip_parameters)))
 
         name = self.create_plot_name(["pulls_impacts", self.get_output_postfix(), parts])
         return self.local_target(name)

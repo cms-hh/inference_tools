@@ -1,4 +1,4 @@
-The `MergeLikelihoodScan` task collects the fit results from each of the `LikelihoodScan` and merges them.
+The `MergeLikelihoodScan` task collects the fit results from each of the `LikelihoodScan` results and merges them.
 
 <div class="dhi_parameter_table">
 

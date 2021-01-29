@@ -40,6 +40,10 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
     --8<-- "content/snippets/plotpullsandimpacts_param_tab.md"
 
+=== "MergePullsAndImpacts"
+
+    --8<-- "content/snippets/mergepullsandimpacts_param_tab.md"
+
 === "PullsAndImpacts"
 
     --8<-- "content/snippets/pullsandimpacts_param_tab.md"
