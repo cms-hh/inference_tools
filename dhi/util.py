@@ -342,7 +342,7 @@ class ROOTColorGetter(object):
 
         self.cache = cache or {}
 
-    def __getattr__(self, attr):
+    def _get_color(self, attr):
         ROOT = import_ROOT()
 
         if attr not in self.cache:
@@ -352,8 +352,14 @@ class ROOTColorGetter(object):
 
         return self.cache[attr]
 
+    def __call__(self, *args, **kwargs):
+        return self._get_color(*args, **kwargs)
+
+    def __getattr__(self, attr):
+        return self._get_color(attr)
+
     def __getitem__(self, key):
-        return getattr(self, key)
+        return self._get_color(key)
 
     @classmethod
     def create_color(cls, obj):
