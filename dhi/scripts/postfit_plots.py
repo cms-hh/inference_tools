@@ -9,7 +9,54 @@ import os
 from collections import OrderedDict
 
 from dhi.util import import_ROOT
-from dhi.util_shapes_plot import test_print, GetNonZeroBins, process_data_histo, process_total_histo, addLabel_CMS_preliminary, stack_histo, do_hist_total_err, err_data
+from dhi.util_shapes_plot import test_print, GetNonZeroBins, process_data_histo, process_total_histo, addLabel_CMS_preliminary, stack_histo, do_hist_total_err, err_data, ordered_dict_prepend
+
+
+def get_parser():
+    """
+    Creates a new argument parser.
+    """
+    #from optparse import OptionParser
+    #parser = OptionParser()
+    from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+    parser = ArgumentParser(
+        description=__doc__, formatter_class=ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "--plot_options_dict",
+        #type="string",
+        metavar="FILE",
+        dest="plot_options_dict",
+        help="Dictionary with list of bins to plot and options",
+        )
+    parser.add_argument(
+        "--output_folder",
+        #type="string",
+        metavar="FILE",
+        dest="output_folder",
+        help="Where the plots will be saved"
+        )
+    parser.add_argument(
+        "--unblind",
+        action="store_true",
+        dest="unblind",
+        help="Draw data",
+        default=False
+        )
+    parser.add_argument(
+        "--doPostFit",
+        action="store_true",
+        dest="doPostFit",
+        help="Take shapes from postfit, if not added will take prefit shapes.",
+        default=False
+        )
+    parser.add_argument(
+        "--not_do_bottom",
+        action="store_true",
+        dest="not_do_bottom",
+        help="Do not do bottom pad.",
+        default=False)
+    return parser
 
 def create_postfit_plots(
     path,
@@ -41,11 +88,11 @@ def create_postfit_plots(
     typeFit = None
     if doPostFit :
         folder = "shapes_fit_s"
-        folder_data = "shapes_fit_s" # it is a TGraphAsymmErrors, not histogram
+        folder_data = "shapes_fit_s"
         typeFit = "postfit"
     else :
         folder = "shapes_prefit"
-        folder_data = "shapes_prefit" # it is a TGraphAsymmErrors, not histogram
+        folder_data = "shapes_prefit"
         typeFit = "prefit"
 
     name_total = "total" # total_background ? TOFIX
@@ -58,6 +105,7 @@ def create_postfit_plots(
 
     print("reading shapes from: ", fit_diagnostics_path)
     fin = ROOT.TFile(fit_diagnostics_path, "READ")
+    print("read shapes from: ")
 
     labelY = "Events"
     if divideByBinWidth : labelY = "Events / bin width"
@@ -68,12 +116,32 @@ def create_postfit_plots(
         header_legend = header_legend+", #mu(t#bar{t}H)=#hat{#mu}"
 
     dprocs=bin["procs_plot_options_bkg"]
+    # add stack of single H as second
+    singleH = [
+        "ggH_hbb", "ggH_hgg", "ggH_hmm", "ggH_htt", "ggH_hww", "ggH_hzz",
+        "qqH_hbb", "qqH_hgg", "qqH_hmm", "qqH_htt", "qqH_hww", "qqH_hzz",
+        "ttH_hbb", "ttH_hgg", "ttH_hmm", "ttH_htt", "ttH_hww", "ttH_hzz",
+        "WH_hbb", "WH_hgg", "WH_hmm", "WH_htt", "WH_hww", "WH_hzz",
+        "ZH_hbb", "ZH_hgg", "ZH_hmm", "ZH_htt", "ZH_hww", "ZH_hzz",
+        "TH_hbb", "TH_hgg", "TH_hmm", "TH_htt", "TH_hww", "TH_hzz",
+        "tHq_hbb", "tHq_hgg", "tHq_hmm", "tHq_htt", "tHq_hww", "tHq_hzz",
+        "tHW_hbb", "tHW_hgg", "tHW_hmm", "tHW_htt", "tHW_hww", "tHW_hzz",
+        "VH_hww", "VH_hgg", "VH_hmm", "VH_htt", "VH_hww", "VH_hzz",
+        "TH", "VH", "TTH"
+        ]
+    ## make a list without the major
+    for sh in singleH :
+        print (sh)
+        label_singleH = "none"
+        if sh == bin["single_H_major"]:
+            continue
+        ordered_dict_prepend(dprocs, sh, {"color" : 226, "fillStype"   : 1001, "label" : "none"          , "make border" : False})
+    ordered_dict_prepend(dprocs, bin["single_H_major"], {"color" : 226, "fillStype"   : 1001, "label" : "single H"          , "make border" : False})
+
+
     print ("will draw processes", list(dprocs.keys()))
 
-    if not binToRead == "none" :
-        catcats =  [binToRead]
-    else :
-        catcats = getCats(folder, fin, False)
+    catcats =     bin["align_cats"]
 
     if normalize_X_original :
         fileorriginal = ROOT.TFile(fileOrig, "READ")
@@ -221,6 +289,11 @@ def create_postfit_plots(
     del dumb
     histogramStack_mc = ROOT.THStack()
     print ("list of processes considered and their integrals")
+    linebin = []
+    linebinW = []
+    poslinebinW_X = []
+    pos_linebinW_Y = []
+    y0 = bin["cats_labels_height"]
     for kk, key in  enumerate(dprocs.keys()) :
         hist_rebin = template.Clone()
         lastbin = 0 # for putting histograms from different bins in same plot side by side
@@ -247,6 +320,26 @@ def create_postfit_plots(
                 legend1
                 )
             lastbin += info_hist["lastbin"]
+            if kk == 0 :
+                print (info_hist)
+                print ("info_hist[binEdge]", info_hist["binEdge"])
+                if info_hist["binEdge"] > 0 :
+                    linebin += [ROOT.TLine(info_hist["binEdge"], 0., info_hist["binEdge"], y0*1.1)] # (legend_y0 + 0.05)*maxY
+                x0 = float(lastbin - info_hist["labelPos"] - 1)
+                sum_inX = 0.1950
+                if len(catcat) > 2 :
+                    if len(catcat) == 3 :
+                        sum_inX = 5.85
+                    else :
+                        sum_inX = 4.0
+                if len(catcat) == 0 :
+                    poslinebinW_X += [x0 - sum_inX]
+                else :
+                    poslinebinW_X += [bin["align_cats_labelsX"][cc]]
+                pos_linebinW_Y += [y0]
+        if hist_rebin == 0 or not hist_rebin.Integral() > 0 or (info_hist["labelPos"] == 0 and not normalize_X_original  )  :
+            continue
+        print (key,  0 if hist_rebin == 0 else hist_rebin.Integral() )
         print("Stacking proocess %s, with yield %s " % (key, str(round(hist_rebin.Integral(),2))))
         dumb = histogramStack_mc.Add(hist_rebin)
         del dumb
@@ -257,18 +350,36 @@ def create_postfit_plots(
     dumb = hist_total.Draw("e2,same")
     del dumb
 
-    ## draw signal -- not working if line up categories in plot
-    ################################
-    #"""
+    for line1 in linebin :
+        line1.SetLineColor(1)
+        line1.SetLineStyle(3)
+        line1.Draw()
+
+    for cc, cat in enumerate(bin["align_cats_labels"]) :
+        print ("Draw label cat", cat, cc)
+        sumBottom = 0
+        for ccf, cf in enumerate(cat) :
+            linebinW = ROOT.TLatex()
+            linebinW.DrawLatex(poslinebinW_X[cc], pos_linebinW_Y[cc] + sumBottom, cf)
+            linebinW.SetTextFont(50)
+            linebinW.SetTextAlign(12)
+            linebinW.SetTextSize(0.05)
+            linebinW.SetTextColor(1)
+            if era == 0 :
+                sumBottom += -4.4
+            else :
+                sumBottom += -2.4
+
+    ## draw signal
     hist_sig = [ROOT.TH1F() for _ in range(len(procs_plot_options_sig.keys()))]
     for kk, key in  enumerate(procs_plot_options_sig.keys()) :
         #hist_sig = ROOT.TH1F()
-        for sig in procs_plot_options_sig[key]["processes"] :
-            hist_sig_part = template.Clone()
-            for cc, catcat in enumerate(catcats) :
+        hist_sig_part = template.Clone()
+        lastbin = 0
+        for cc, catcat in enumerate(catcats) :
+            for sig in procs_plot_options_sig[key]["processes"] :
                 readFrom = folder + "/" + catcat
-                lastbin = 0
-                process_total_histo(
+                lastbin += process_total_histo(
                     hist_sig_part,
                     readFrom,
                     fin,
@@ -302,9 +413,6 @@ def create_postfit_plots(
         dumb = hist_sig[kk].Draw("hist,same")
         del dumb
         legend1.AddEntry(hist_sig[kk], procs_plot_options_sig[key]["label"], "f")
-        #del hist_sig
-    #"""
-
 
     if unblind :
         dumb = dataTGraph1.Draw("e1P,same")
@@ -380,21 +488,66 @@ def create_postfit_plots(
     dumb = canvas.SaveAs(savepdf + ".pdf")
     print ("saved", savepdf + ".pdf")
     del dumb
+    dumb = canvas.SaveAs(savepdf + ".png")
+    print ("saved", savepdf + ".png")
+    del dumb
     canvas.IsA().Destructor(canvas)
 
 if __name__ == "__main__":
-    data_dir = "/afs/cern.ch/work/a/acarvalh/public/to_HH_bbWW/combo_test_plots_2017/fitDiagnostics.root"
-    options_dat = "/afs/cern.ch/work/a/acarvalh/public/to_HH_bbWW/combo_test_plots_2017/datacard_SL_DL_bbWW_nonresNLO_none_45_75_allSig_2017_noSingleH_naming_plot_options.dat"
-    output_folder = "/afs/cern.ch/work/a/acarvalh/public/to_HH_bbWW/combo_test_plots_2017/plots/"
-    normalize_X_original = True
-    unblind = True
-    doPostFit = False
-    do_bottom = True
-    divideByBinWidth = False
 
+    from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+    parser = ArgumentParser(
+        description=__doc__, formatter_class=ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "--plot_options_dict",
+        dest="plot_options_dict",
+        help="Dictionary with list of bins to plot and options",
+        )
+    parser.add_argument(
+        "--output_folder",
+        dest="output_folder",
+        help="Where the plots will be saved"
+        )
+    parser.add_argument(
+        "--unblind",
+        action="store_true",
+        dest="unblind",
+        help="Draw data",
+        default=False
+        )
+    parser.add_argument(
+        "--doPostFit",
+        action="store_true",
+        dest="doPostFit",
+        help="Take shapes from postfit, if not added will take prefit shapes.",
+        default=False
+        )
+    parser.add_argument(
+        "--not_do_bottom",
+        action="store_true",
+        dest="not_do_bottom",
+        help="Do not do bottom pad.",
+        default=False)
+    args = parser.parse_args()
+
+    unblind =  args.unblind
+    doPostFit = args.doPostFit
+    do_bottom = not args.not_do_bottom
+    divideByBinWidth = False
+    output_folder = args.output_folder
+
+    options_dat = args.plot_options_dict
+    print("Reading plot options from %s" % options_dat)
     info_bin = eval(open(options_dat, 'r').read())
 
     for key, bin in info_bin.iteritems() :
+
+        normalize_X_original = True
+        if bin["bin_name_original"] == "none" :
+            normalize_X_original = False
+
+        data_dir = bin["fitdiagnosis"]
         print("Drawing %s" % key)
         create_postfit_plots(
             path="%s/plot_%s" % (output_folder, key) ,

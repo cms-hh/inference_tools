@@ -42,7 +42,7 @@ class PostFitShapes(POITask, CombineCommandTask):
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
-            " --saveShapes"
+            " --saveShapes  --skipBOnlyFit"
             " --saveWithUncertainties"
             " {self.combine_stable_options}"
             " {self.custom_args}"
