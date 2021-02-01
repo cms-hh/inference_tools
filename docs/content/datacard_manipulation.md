@@ -143,6 +143,82 @@ optional arguments:
 ```
 
 
+### Merge
+
+```shell hl_lines="1 24-27"
+> merge_parameters.py --help
+
+usage: merge_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
+                           [--flip-parameters FLIP_PARAMETERS]
+                           [--auto-rate-flip] [--auto-rate-max]
+                           [--auto-rate-envelope] [--auto-shape-average]
+                           [--auto-shape-envelope] [--digits DIGITS]
+                           [--mass MASS] [--log-level LOG_LEVEL]
+                           DATACARD MERGED_NAME names [names ...]
+
+Script to merge multiple (nuisance) parameters of the same type into a new, single one.
+Currently, only parameters with columnar type "lnN", "lnU" and "shape" are supported.
+Example usage:
+
+# merge two parameters
+> merge_parameters.py datacard.txt CMS_eff_m_combined CMS_eff_m_iso CMS_eff_m_id -d output_directory
+
+# merge parameters via fnmatch wildcards (note the quotes)
+> merge_parameters.py datacard.txt CMS_eff_m_combined "CMS_eff_m_*" -d output_directory
+
+Note 1: The use of an output directory is recommended to keep input files unchanged.
+
+Note 2: This script is not intended to be used to merge incompatible systematic uncertainties. Its
+        only purpose is to reduce the number of parameters by merging the effect of (probably small)
+        uncertainties that are related at analysis level, e.g. multiple types of lepton
+        efficiency corrections. Please refer the doc string of "merge_parameters()" for more info.
+
+positional arguments:
+  DATACARD              the datacard to read and possibly update (see
+                        --directory)
+  MERGED_NAME           name of the newly merged parameter
+  names                 names of parameters or files containing names of
+                        parameters line by line to merge; supports patterns
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --no-shapes, -n       do not copy shape files to the output directory when
+                        --directory is set
+  --flip-parameters FLIP_PARAMETERS
+                        comma-separated list of parameters whose effect should
+                        be flipped, i.e., flips effects of up and down
+                        variations; supports patterns
+  --auto-rate-flip      only for lnN and lnU; when set, up and down variations
+                        of a parameter are swapped when they change the rate
+                        in the relative opposite directions; otherwise, an
+                        error is raised
+  --auto-rate-max       only for lnN and lnU; when set, the maximum effect of
+                        a parameter is used when both up and down variation
+                        change the rate in the same direction; otherwise, an
+                        error is raised
+  --auto-rate-envelope  only for lnN and lnU; when set, the effect on the new
+                        parameter is constructed as the envelope of effects of
+                        parameters to merge
+  --auto-shape-average  only for shape; when set and shapes to merge contain
+                        both positive negative effects in the same bin,
+                        propagate errors separately and then use their
+                        average; otherwise, an error is raised
+  --auto-shape-envelope
+                        only for shape; when set, the merged shape variations
+                        of the new parameter are constructed as the envelopes
+                        of shapes of parameters to merge
+  --digits DIGITS       the amount of digits for rounding merged parameters;
+                        defaults to 3
+  --mass MASS, -m MASS  mass hypothesis; default: 125
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+```
+
+
 ## Adjusting processes
 
 ### Remove
