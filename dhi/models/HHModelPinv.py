@@ -208,7 +208,7 @@ class HHModel(PhysicsModel):
             if key in known_flags:
                 flag = value.lower() in ["yes", "true", "1"]
                 setattr(self, key, flag)
-                print("[INFO] set {} of model {} to {}".format(key, self.name, self.doNNLOscaling))
+                print("[INFO] set {} of model {} to {}".format(key, self.name, flag))
 
     def preProcessNuisances(self, nuisances):
         ''' this method is executed before nuisances are processed'''
