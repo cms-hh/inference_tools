@@ -19,59 +19,60 @@ The list of user inputs to the plotter-only is:
 This is an example of dictionary booking one plot:
 
 ```
-"plotXX" : {
-    "fitdiagnosis"       : "/where/is/the/fitdiagnosis.root",
-    "bin_name_original"  : "none",
-    "datacard_original"  : "none",
-    "minY"               : 0.1,
-    "maxY"               : 100000000000.,
-    "minYerr"            : -0.28,
-    "maxYerr"            : 0.28,
-    "useLogPlot"         : True,
-    "era"                : 2016 ,
-    "labelX"             : "bla bla",
-    "header_legend"          : "bla bla can be latex",
-    "number_columns_legend" : 3,
-    "align_cats" : ["ch1","ch2",],
-    "align_cats_labels" : [["ch1 bla", "ch1 more details"], ["ch2 bla", "ch2 more details"]],
-    "align_cats_labelsX" : [3, 13],
-    "cats_labels_height" : 1000000.,
-    "single_H_major" : "ttH_hww",
-    "procs_plot_options_bkg" : OrderedDict(
-        [
-        ("Other_bbWW",       {"color" : 205, "fillStype"   : 1001, "label" : "others"           , "make border" : True}),
-        ("VV",          {"color" : 823, "fillStype"   : 1001, "label" : "ZZ + WZ"          , "make border" : True}),
-        ("ST",         {"color" : 822, "fillStype" : 1001, "label" : "single top"         , "make border" : True}),
-        ("Fakes",  {"color" :  12, "fillStype" : 3345, "label" : "Fakes"  , "make border" : True}),
-        ("DY",          {"color" : 221, "fillStype" : 1001, "label" : "DY"         , "make border" : True}),
-        ("WJets",           {"color" : 5, "fillStype" : 1001, "label" : 'W + jets'   , "make border" : True}),
-        ("TT",          {"color" : 17, "fillStype"  : 1001, "label" : 't#bar{t} + jets'   , "make border" : True})
-        ]
-    ),
-    "procs_plot_options_sig" : OrderedDict(
-        [
-        ( "GGF_SM",
-          {
-          "processes" : ["ggHH_kl_1_kt_1_hbbhww", "ggHH_kl_1_kt_1_hbbhtt"],
-          "color" : 5, "fillStype"  : 3351, "label" : 'GGF HH SM', "scaleBy" : 1.
-          }
-        ),
-        ( "GGF_kl5",
-          {
-          "processes" : ["ggHH_kl_5_kt_1_hbbhww", "ggHH_kl_5_kt_1_hbbhtt"],
-          "color" : 221, "fillStype"  : 3351, "label" : 'GGF HH #kappa#lambda = 5', "scaleBy" : 1.
-          }
-        ),
-        ( "VBF_SM",
-          {
-          "processes" : ["qqHH_CV_1_C2V_1_kl_1_hbbhtt", "qqHH_CV_1_C2V_1_kl_1_hbbhww"],
-          "color" : 8, "fillStype"  : 3351, "label" : 'VBF HH SM', "scaleBy" : 1.
-          }
-        )
-        ]
-    ),
-},
-
+{
+  "plotXX" : {
+      "fitdiagnosis"       : "/where/is/the/fitdiagnosis.root",
+      "bin_name_original"  : "none",
+      "datacard_original"  : "none",
+      "minY"               : 0.1,
+      "maxY"               : 100000000000.,
+      "minYerr"            : -0.28,
+      "maxYerr"            : 0.28,
+      "useLogPlot"         : True,
+      "era"                : 2016 ,
+      "labelX"             : "bla bla",
+      "header_legend"          : "bla bla can be latex",
+      "number_columns_legend" : 3,
+      "align_cats" : ["ch1","ch2",],
+      "align_cats_labels" : [["ch1 bla", "ch1 more details"], ["ch2 bla", "ch2 more details"]],
+      "align_cats_labelsX" : [3, 13],
+      "cats_labels_height" : 1000000.,
+      "single_H_major" : "ttH_hww",
+      "procs_plot_options_bkg" : OrderedDict(
+          [
+          ("Other_bbWW",       {"color" : 205, "fillStype"   : 1001, "label" : "others"           , "make border" : True}),
+          ("VV",          {"color" : 823, "fillStype"   : 1001, "label" : "ZZ + WZ"          , "make border" : True}),
+          ("ST",         {"color" : 822, "fillStype" : 1001, "label" : "single top"         , "make border" : True}),
+          ("Fakes",  {"color" :  12, "fillStype" : 3345, "label" : "Fakes"  , "make border" : True}),
+          ("DY",          {"color" : 221, "fillStype" : 1001, "label" : "DY"         , "make border" : True}),
+          ("WJets",           {"color" : 5, "fillStype" : 1001, "label" : 'W + jets'   , "make border" : True}),
+          ("TT",          {"color" : 17, "fillStype"  : 1001, "label" : 't#bar{t} + jets'   , "make border" : True})
+          ]
+      ),
+      "procs_plot_options_sig" : OrderedDict(
+          [
+          ( "GGF_SM",
+            {
+            "processes" : ["ggHH_kl_1_kt_1_hbbhww", "ggHH_kl_1_kt_1_hbbhtt"],
+            "color" : 5, "fillStype"  : 3351, "label" : 'GGF HH SM', "scaleBy" : 1.
+            }
+          ),
+          ( "GGF_kl5",
+            {
+            "processes" : ["ggHH_kl_5_kt_1_hbbhww", "ggHH_kl_5_kt_1_hbbhtt"],
+            "color" : 221, "fillStype"  : 3351, "label" : 'GGF HH #kappa#lambda = 5', "scaleBy" : 1.
+            }
+          ),
+          ( "VBF_SM",
+            {
+            "processes" : ["qqHH_CV_1_C2V_1_kl_1_hbbhtt", "qqHH_CV_1_C2V_1_kl_1_hbbhww"],
+            "color" : 8, "fillStype"  : 3351, "label" : 'VBF HH SM', "scaleBy" : 1.
+            }
+          )
+          ]
+      ),
+  },
+}
 ```
 
 The keys of the dictionary are the names of the bins to plot distributions for (declared on the combineCards command). The entries are bellow:
@@ -93,7 +94,7 @@ The keys of the dictionary are the names of the bins to plot distributions for (
 - "procs_plot_options_sig" is the list of signals (processes to not be added to the stack)
   - each entry will be added as one overlaid histogram, summing up the processes listed in "processes" and scaled by "scaleBy"
 -  "align_cats" is a list of bins/channels that we want drawn one after another in the same plot
--   "align_cats_labels" are the labels for "align_cats" 
+-   "align_cats_labels" are the labels for "align_cats"
 -  "align_cats_labelsX" : the X positions for the labels "align_cats_labels"
 -   "cats_labels_height" : the Y positions for the labels "align_cats_labels"
 -  "single_H_major" is the name of one single H process that is really in the card, all the possible others will be searched and stack this one.
