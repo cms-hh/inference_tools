@@ -12,6 +12,7 @@ import shutil
 import itertools
 import array
 import contextlib
+import tempfile
 import logging
 
 
@@ -334,6 +335,128 @@ def poisson_asym_errors(v):
     err_down = 0.0 if v == 0 else (v - ROOT.Math.gamma_quantile(alpha / 2, v_int, 1.0))
 
     return err_up, err_down
+
+
+class TFileCache(object):
+
+    def __init__(self, logger=None):
+        super(TFileCache, self).__init__()
+
+        self.logger = logger or logging.getLogger(
+            "{}_{}".format(self.__class__.__name__, hex(id(self)))
+        )
+
+        # cache of files opened for reading
+        # abs_path -> {tfile: TFile}
+        self._r_cache = {}
+
+        # cache of files opened for writing
+        # abs_path -> {tmp_path: str, tfile: TFile, objects: [(tobj, towner, name), ...]}
+        self._w_cache = {}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, err_type, err_value, traceback):
+        self.finalize(skip_write=err_type is not None)
+
+    def _clear(self):
+        self._r_cache.clear()
+        self._w_cache.clear()
+
+    def open_tfile(self, path, mode):
+        ROOT = import_ROOT()
+
+        abs_path = real_path(path)
+
+        if mode == "READ":
+            if abs_path not in self._r_cache:
+                # just open the file and cache it
+                tfile = ROOT.TFile(abs_path, mode)
+                self._r_cache[abs_path] = {"tfile": tfile}
+
+                self.logger.debug("opened tfile {} with mode {}".format(abs_path, mode))
+
+            return self._r_cache[abs_path]["tfile"]
+
+        else:
+            if abs_path not in self._w_cache:
+                # determine a temporary location
+                suffix = "_" + os.path.basename(abs_path)
+                tmp_path = tempfile.mkstemp(suffix=suffix)[1]
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+
+                # copy the file when existing
+                if os.path.exists(abs_path):
+                    shutil.copy2(abs_path, tmp_path)
+
+                # open the file and cache it
+                tfile = ROOT.TFile(tmp_path, mode)
+                self._w_cache[abs_path] = {"tmp_path": tmp_path, "tfile": tfile, "objects": []}
+
+                self.logger.debug("opened tfile {} with mode {} in temporary location {}".format(
+                    abs_path, mode, tmp_path))
+
+            return self._w_cache[abs_path]["tfile"]
+
+    def write_tobj(self, path, tobj, towner=None, name=None):
+        ROOT = import_ROOT()
+
+        if isinstance(path, ROOT.TFile):
+            # lookup the cache entry by the tfile reference
+            for data in self._w_cache.values():
+                if data["tfile"] == path:
+                    data["objects"].append((tobj, towner, name))
+                    break
+            else:
+                raise Exception("cannot write object {} unknown TFile {}".format(tobj, path))
+
+        else:
+            abs_path = real_path(path)
+            if abs_path not in self._w_cache:
+                raise Exception("cannot write object {} into unopened file {}".format(tobj, path))
+
+            self._w_cache[abs_path]["objects"].append((tobj, towner, name))
+
+    def finalize(self, skip_write=False):
+        if self._r_cache:
+            # close files opened for reading
+            for abs_path, data in self._r_cache.items():
+                if data["tfile"] and data["tfile"].IsOpen():
+                    data["tfile"].Close()
+            self.logger.debug("closed {} cached file(s) opened for reading".format(
+                len(self._r_cache)))
+
+        if self._w_cache:
+            # close files opened for reading, write objects and move to actual location
+            ROOT = import_ROOT()
+            ignore_level_orig = ROOT.gROOT.ProcessLine("gErrorIgnoreLevel;")
+            ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = kFatal;")
+
+            for abs_path, data in self._w_cache.items():
+                if data["tfile"] and data["tfile"].IsOpen():
+                    if not skip_write:
+                        data["tfile"].cd()
+                        for tobj, towner, name in data["objects"]:
+                            if towner:
+                                towner.cd()
+                            args = (name,) if name else ()
+                            tobj.Write(*args)
+
+                    data["tfile"].Close()
+
+                    if not skip_write:
+                        shutil.move(data["tmp_path"], abs_path)
+                        self.logger.debug("moving back temporary file {} to {}".format(
+                            data["tmp_path"], abs_path))
+
+            self.logger.debug("closed {} cached file(s) opened for writing".format(
+                len(self._w_cache)))
+            ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = {};".format(ignore_level_orig))
+
+        # clear
+        self._clear()
 
 
 class ROOTColorGetter(object):

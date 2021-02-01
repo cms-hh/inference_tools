@@ -16,7 +16,7 @@ from collections import OrderedDict, defaultdict
 import law
 import six
 
-from dhi.util import import_ROOT, real_path, multi_match, copy_no_collisions
+from dhi.util import import_ROOT, real_path, multi_match, copy_no_collisions, TFileCache
 
 
 #: Parameter directives excluding groups, autoMCStats and nuisace edit lines.
@@ -79,8 +79,7 @@ class DatacardRenamer(object):
         self._dc = None
 
         # setup file and object caches
-        self._tmpfile_cache = {}
-        self._tfile_cache = {}
+        self._tfile_cache = TFileCache(logger=self.logger)
         self._tobj_input_cache = defaultdict(dict)
         self._tobj_output_cache = defaultdict(dict)
 
@@ -92,10 +91,9 @@ class DatacardRenamer(object):
             self._bundle_files(directory)
 
     def _clear_caches(self):
-        self._tmpfile_cache.clear()
-        self._tfile_cache.clear()
         self._tobj_input_cache.clear()
         self._tobj_output_cache.clear()
+        self._tfile_cache._clear()
 
     def _validate_rules(self):
         rules = self.parse_rules(self._rules_orig)
@@ -166,37 +164,15 @@ class DatacardRenamer(object):
 
         return shape_syst_names
 
-    def make_tmpfile(self, abs_path):
-        abs_path = real_path(abs_path)
+    def open_tfile(self, path, mode):
+        return self._tfile_cache.open_tfile(path, mode)
 
-        if abs_path not in self._tmpfile_cache:
-            suffix = "_" + os.path.basename(abs_path)
-            self._tmpfile_cache[abs_path] = tempfile.mkstemp(suffix=suffix)[1]
-
-            self.logger.debug(
-                "creating tmp file {} from {}".format(self._tmpfile_cache[abs_path], abs_path)
-            )
-            shutil.copy2(abs_path, self._tmpfile_cache[abs_path])
-
-        return self._tmpfile_cache[abs_path]
-
-    def open_tfile(self, abs_path, *args):
+    def get_tobj(self, path, obj_name, mode):
+        print "GET TOBJ", path, obj_name, mode
         ROOT = import_ROOT()
+        tfile = path if isinstance(path, ROOT.TFile) else self.open_tfile(path, mode)
 
-        abs_path = real_path(abs_path)
-
-        if abs_path not in self._tfile_cache:
-            self.logger.debug("opening file {}".format(abs_path))
-            self._tfile_cache[abs_path] = ROOT.TFile(abs_path, *args)
-
-        return self._tfile_cache[abs_path]
-
-    def get_tobj(self, abs_path, obj_name, write=False, *args):
-        ROOT = import_ROOT()
-
-        cache = self._tobj_output_cache if write else self._tobj_input_cache
-        tfile = abs_path if isinstance(abs_path, ROOT.TFile) else self.open_tfile(abs_path, *args)
-
+        cache = self._tobj_input_cache if mode == "READ" else self._tobj_output_cache
         if obj_name not in cache[tfile]:
             self.logger.debug("loading object {} from file {}".format(obj_name, tfile.GetPath()))
             cache[tfile][obj_name] = tfile.Get(obj_name)
@@ -211,11 +187,17 @@ class DatacardRenamer(object):
         self._clear_caches()
 
         # yield the context and handle errors
-        error = True
         try:
-            with manipulate_datacard(self.datacard) as content:
-                yield content
-            error = False
+            with self._tfile_cache:
+                with manipulate_datacard(self.datacard) as content:
+                    yield content
+
+                # add all output objects to the tfile cache for writing
+                n_tobjs = sum(len(v) for v in self._tobj_output_cache.values())
+                for f in self._tobj_output_cache:
+                    for tobj in self._tobj_output_cache[f].values():
+                        self._tfile_cache.write_tobj(f, tobj)
+
         except BaseException as e:
             self.logger.error(
                 "an exception of type {} occurred while renaming the datacard".format(
@@ -223,38 +205,8 @@ class DatacardRenamer(object):
                 )
             )
             raise
+
         finally:
-            # write all output tobjs
-            n_tobjs = sum(len(v) for v in self._tobj_output_cache.values())
-            if not error and n_tobjs:
-                self.logger.info("writing {} output object(s)".format(n_tobjs))
-                ignore_level_orig = ROOT.gROOT.ProcessLine("gErrorIgnoreLevel;")
-                ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = kFatal;")
-                for f in self._tobj_output_cache:
-                    f.cd()
-                    for tobj in self._tobj_output_cache[f].values():
-                        self.logger.debug(
-                            "writing object {} to file {}".format(tobj.GetName(), f.GetPath())
-                        )
-                        tobj.Write()
-                ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = {};".format(ignore_level_orig))
-
-            # close all open files
-            if self._tfile_cache:
-                self.logger.info("closing {} file(s)".format(len(self._tfile_cache)))
-                for f in self._tfile_cache.values():
-                    if f and f.IsOpen():
-                        self.logger.debug("closing file {}".format(f.GetPath()))
-                        f.Close()
-
-            # move tmp files back to initial locations
-            if not error and self._tmpfile_cache:
-                self.logger.info("moving {} temporary file(s)".format(len(self._tmpfile_cache)))
-                for path, tmp_path in self._tmpfile_cache.items():
-                    self.logger.debug("moving back tmp file {} to {}".format(tmp_path, path))
-                    shutil.move(tmp_path, path)
-
-            # clear caches again
             self._clear_caches()
 
 
@@ -299,12 +251,13 @@ class ShapeLine(object):
         return copy.copy(self)
 
 
-def create_datacard_instance(datacard, create_shape_builder=False):
+def create_datacard_instance(datacard, create_shape_builder=False, **kwargs):
     """
     Parses a *datacard* using ``HiggsAnalysis.CombinedLimit.DatacardParser.parseCard`` and returns a
     ``HiggsAnalysis.CombinedLimit.Datacard.Datacard`` instance. When *create_shape_builder* is
     *True*, a ``HiggsAnalysis.CombinedLimit.ShapeTools.ShapeBuilder`` is built as well and returned
-    as the second item in a 2-tuple.
+    as the second item in a 2-tuple. All *kwargs* are forwarded as options to both the datacard and
+    the shape builder initialization.
     """
     from HiggsAnalysis.CombinedLimit.DatacardParser import parseCard, addDatacardParserOptions
     from HiggsAnalysis.CombinedLimit.ShapeTools import ShapeBuilder
@@ -313,6 +266,11 @@ def create_datacard_instance(datacard, create_shape_builder=False):
     parser = OptionParser()
     addDatacardParserOptions(parser)
     options = parser.parse_args([])[0]
+
+    # forward kwargs as options with useful defaults
+    kwargs.setdefault("mass", 125.)
+    for key, value in kwargs.items():
+        setattr(options, key, value)
 
     # patch some options
     options.fileName = datacard
@@ -725,8 +683,9 @@ def bundle_datacard(datacard, directory, skip_shapes=False):
 def update_shape_name(towner, old_name, new_name):
     """
     Renames a shape object (a ROOT histogram or RooFit PDF) contained in an owner object
-    *towner* (a ROOT file or ROOFit workspace) from *old_name* to *new_name*. When the object to
-    rename is a RooFit PDF, its normalization formula is renamed also as required by combine.
+    *towner* (a ROOT file, directory, or ROOFit workspace) from *old_name* to *new_name*. When the
+    object to rename is a RooFit PDF, its normalization formula is renamed also as required by
+    combine.
     """
     if not towner:
         raise Exception(
@@ -740,9 +699,9 @@ def update_shape_name(towner, old_name, new_name):
         # also consider intermediate tdirectories
         if old_name.count("/") != new_name.count("/"):
             raise Exception(
-                "when renamening shapes in TDirectoryFile's, the old, '{}', and new "
-                "name, '{}',  must have to same amount of '/' characters for the object to remain "
-                "at the same depth".format(old_name, new_name)
+                "when renamening shapes in a TDirectoryFile, the old name ({}) and new name ({}) "
+                "must have to same amount of '/' characters for the object to remain at the same "
+                "depth".format(old_name, new_name)
             )
 
         if "/" in old_name:
@@ -755,6 +714,10 @@ def update_shape_name(towner, old_name, new_name):
                 towner = towner.Get(old_owner_name)
             else:
                 # the directory name is changed, use recursion
+                # TODO: when there is already an owner with the new name, an exception will be
+                # raised by the lines below in the recursion, but one could actually try to
+                # effectively merge the two objects (usually directories), given that names of their
+                # contained objects do not collide
                 towner = update_shape_name(towner, old_owner_name, new_owner_name)
 
             # do the actual renaming of the rest
