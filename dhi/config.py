@@ -115,16 +115,20 @@ colors = DotDict(
         red=628,
         blue=214,
         green=418,
+        light_green=413,
         yellow=798,
         pink=222,
         cyan=7,
+        orange=807,
         red_cream=46,
         blue_cream=38,
         blue_signal=(67, 118, 201),
         blue_signal_trans=(67, 118, 201, 0.5),
     ),
 )
-color_sequence = ["black", "blue", "red", "green", "grey", "pink", "cyan"] + list(range(152, 200))
+color_sequence = ["black", "blue", "red", "green", "grey", "pink", "cyan", "orange", "light_green"]
+# add black a few times, needs to be updated in case we need more than 9 colors
+color_sequence += 10 * ["black"]
 
 # cumulative, inverse chi2 values in a mapping "n_dof -> n_sigma -> level"
 # for the geometrical determination of errors of nll curves

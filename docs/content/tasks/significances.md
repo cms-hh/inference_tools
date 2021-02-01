@@ -26,10 +26,12 @@ Output:
 ```mermaid
 graph LR;
     A(PlotSignificanceScan) --> B(MergeSignificanceScan);
-    B --> C(SignificanceScan);
+    B --> C([SignificanceScan]);
     C --> D(CreateWorkspace);
     D --> E(CombineDatacards);
 ```
+
+Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
 
 
 #### Parameters
@@ -111,13 +113,15 @@ graph LR;
     A(PlotMultipleSignificanceScans) --> B1(MergeSignificanceScan);
     A(PlotMultipleSignificanceScans) --> B2(MergeSignificanceScan);
     A(PlotMultipleSignificanceScans) --> ...;
-    B1 --> C1(SignificanceScan);
-    B2 --> C2(SignificanceScan);
+    B1 --> C1([SignificanceScan]);
+    B2 --> C2([SignificanceScan]);
     C1 --> D1(CreateWorkspace);
     C2 --> D2(CreateWorkspace);
     D1 --> E1(CombineDatacards);
     D2 --> E2(CombineDatacards);
 ```
+
+Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
 
 
 #### Parameters

@@ -47,7 +47,7 @@ class LikelihoodScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondo
             "combine -M MultiDimFit {workspace}"
             " -v 1"
             " -m {self.mass}"
-            " -t -1"
+            " -t {self.toys}"
             " --algo grid"
             " --expectSignal 1"
             " --redefineSignalPOIs {self.joined_pois}"

@@ -997,13 +997,19 @@ class POIScanTask(POITask, ParameterScanTask):
 
 class CombineCommandTask(CommandTask):
 
-    exclude_index = True
+    toys = luigi.IntParameter(
+        default=-1,
+        significant=False,
+        description="the number of toys to sample; -1 will use the asymptotic method; default: -1",
+    )
 
     combine_stable_options = (
         "--cminDefaultMinimizerType Minuit2"
         " --cminDefaultMinimizerStrategy 0"
         " --cminFallbackAlgo Minuit2,0:1.0"
     )
+
+    exclude_index = True
 
 
 class POIPlotTask(PlotTask, POITask):

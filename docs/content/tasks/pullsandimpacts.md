@@ -26,10 +26,12 @@ Output:
 ```mermaid
 graph LR;
     A(PlotPullsAndImpacts) --> B(MergePullsAndImpacts);
-    B --> C(PullsAndImpacts);
+    B --> C([PullsAndImpacts]);
     C --> D(CreateWorkspace);
     D --> E(CombineDatacards);
 ```
+
+Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
 
 
 #### Parameters
@@ -37,6 +39,10 @@ graph LR;
 === "PlotPullsAndImpacts"
 
     --8<-- "content/snippets/plotpullsandimpacts_param_tab.md"
+
+=== "MergePullsAndImpacts"
+
+    --8<-- "content/snippets/mergepullsandimpacts_param_tab.md"
 
 === "PullsAndImpacts"
 

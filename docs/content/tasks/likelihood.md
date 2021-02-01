@@ -52,10 +52,12 @@ Output:
 ```mermaid
     graph LR;
     A(PlotLikelihoodScan) --> B(MergeLikelihoodScan);
-    B --> C(LikelihoodScan);
+    B --> C([LikelihoodScan]);
     C --> D(CreateWorkspace);
     D --> E(CombineDatacards);
 ```
+
+Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
 
 
 #### Parameters
@@ -168,13 +170,15 @@ Output:
     A(PlotMultipleLikelihoodScans) --> B1(MergeLikelihoodScan);
     A --> B2(MergeLikelihoodScan);
     A --> ...;
-    B1 --> C1(LikelihoodScan);
-    B2 --> C2(LikelihoodScan);
+    B1 --> C1([LikelihoodScan]);
+    B2 --> C2([LikelihoodScan]);
     C1 --> D1(CreateWorkspace);
     C2 --> D2(CreateWorkspace);
     D1 --> E1(CombineDatacards);
     D2 --> E2(CombineDatacards);
 ```
+
+Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
 
 
 #### Parameters
@@ -287,13 +291,15 @@ Output:
     A(PlotMultipleLikelihoodScansByModel) --> B1(MergeLikelihoodScan);
     A --> B2(MergeLikelihoodScan);
     A --> ...;
-    B1 --> C1(LikelihoodScan);
-    B2 --> C2(LikelihoodScan);
+    B1 --> C1([LikelihoodScan]);
+    B2 --> C2([LikelihoodScan]);
     C1 --> D1(CreateWorkspace);
     C2 --> D2(CreateWorkspace);
     D1 --> E(CombineDatacards);
     D2 --> E;
 ```
+
+Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
 
 
 #### Parameters

@@ -321,7 +321,7 @@ def plot_limit_scans(
         mask = ~np.isnan(ev["limit"])
         g_exp = create_tgraph(mask.sum(), scan_values[mask], ev["limit"][mask])
         r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.7},
-            color=col)
+            color=colors[col])
         draw_objs.append((g_exp, "SAME,PL"))
         legend_entries.insert(0, (g_exp, names[n_graphs - i - 1]))
         y_max_value = max(y_max_value, max(ev["limit"]))

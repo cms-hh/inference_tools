@@ -31,10 +31,12 @@ Output:
 ```mermaid
 graph LR;
     A(PlotUpperLimits) --> B(MergeUpperLimits);
-    B --> C(UpperLimits);
+    B --> C([UpperLimits]);
     C --> D(CreateWorkspace);
     D --> E(CombineDatacards);
 ```
+
+Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
 
 
 #### Parameters
@@ -126,13 +128,15 @@ graph LR;
     A(PlotMultipleUpperLimits) --> B1(MergeUpperLimits);
     A --> B2(MergeUpperLimits);
     A --> ...;
-    B1 --> C1(UpperLimits);
-    B2 --> C2(UpperLimits);
+    B1 --> C1([UpperLimits]);
+    B2 --> C2([UpperLimits]);
     C1 --> D1(CreateWorkspace);
     C2 --> D2(CreateWorkspace);
     D1 --> E1(CombineDatacards);
     D2 --> E2(CombineDatacards);
 ```
+
+Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
 
 
 #### Parameters
@@ -203,14 +207,16 @@ Output:
 
 ```mermaid
 graph LR;
-    A(PlotUpperLimitsAtPoint) --> B1(UpperLimits);
-    A --> B2(UpperLimits);
+    A(PlotUpperLimitsAtPoint) --> B1([UpperLimits]);
+    A --> B2([UpperLimits]);
     A --> ...;
     B1 --> C1(CreateWorkspace);
     B2 --> C2(CreateWorkspace);
     C1 --> D1(CombineDatacards);
     C2 --> D2(CombineDatacards);
 ```
+
+Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
 
 
 #### Parameters

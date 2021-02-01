@@ -160,8 +160,10 @@ setup() {
     if [ -d "$DHI_BASE/.git" ]; then
         for m in law plotlib; do
             local mpath="$DHI_BASE/modules/$m"
+            # update and potentially initialize the submodule when the directory is either empty
+            # or there are no changes
             local mfiles=( "$mpath"/* )
-            if [ "${#mfiles}" = "0" ]; then
+            if [ "${#mfiles}" = "0" ] || [ "$( cd "$mpath"; git status --porcelain=v1 2>/dev/null | wc -l )" = "0" ]; then
                 git submodule update --init --recursive "$mpath"
             fi
         done

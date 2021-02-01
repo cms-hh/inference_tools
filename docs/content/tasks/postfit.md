@@ -25,10 +25,12 @@ Output:
 
 ```mermaid
     graph LR;
-    A(PlotPostfitSOverB) --> B(PostFitShapes);
+    A(PlotPostfitSOverB) --> B([PostFitShapes]);
     B --> C(CreateWorkspace);
     C --> D(CombineDatacards);
 ```
+
+Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
 
 
 #### Parameters

@@ -35,12 +35,14 @@ Output:
 graph LR;
     A(PlotExclusionAndBestFit) --> B(MergeUpperLimits);
     A(PlotExclusionAndBestFit) --> C(MergeLikelihoodScan);
-    B --> D(UpperLimits);
+    B --> D([UpperLimits]);
     D --> F(CreateWorkspace);
     F --> G(CombineDatacards);
-    C --> E(LikelihoodScan);
+    C --> E([LikelihoodScan]);
     E --> F;
 ```
+
+Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
 
 
 #### Parameters
@@ -137,12 +139,14 @@ Output:
 graph LR;
     A(PlotExclusionAndBestFit2D) --> B(MergeUpperLimits);
     A(PlotExclusionAndBestFit2D) --> C(MergeLikelihoodScan);
-    B --> D(UpperLimits);
+    B --> D([UpperLimits]);
     D --> F(CreateWorkspace);
     F --> G(CombineDatacards);
-    C --> E(LikelihoodScan);
+    C --> E([LikelihoodScan]);
     E --> F;
 ```
+
+Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
 
 
 #### Parameters
