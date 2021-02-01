@@ -21,6 +21,7 @@ import os
 
 from dhi.datacard_tools import (
     parameter_directives, columnar_parameter_directives, bundle_datacard, manipulate_datacard,
+    update_datacard_count,
 )
 from dhi.util import real_path, multi_match, create_console_logger
 
@@ -128,17 +129,7 @@ def add_parameter(datacard, param_name, param_type, param_spec=None, directory=N
             content["parameters"].append(param_line)
 
         # increase kmax in counts
-        if content.get("counts"):
-            for i, count_line in enumerate(list(content["counts"])):
-                if count_line.startswith("kmax"):
-                    parts = count_line.split()
-                    if len(parts) >= 2 and parts[1] != "*":
-                        n_old = int(parts[1])
-                        n_new = n_old + 1
-                        logger.info("increase kmax from {} to {}".format(n_old, n_new))
-                        parts[1] = str(n_new)
-                        content["counts"][i] = " ".join(parts)
-                    break
+        update_datacard_count(content, "kmax", 1, diff=True, logger=logger)
 
 
 if __name__ == "__main__":
@@ -148,14 +139,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument("input", help="the datacard to read and possibly update (see --directory)")
-    parser.add_argument("name", help="name of the parameter to add")
-    parser.add_argument("type", help="type of the parameter to add")
-    parser.add_argument("spec", nargs="*", help="specification of parameter arguments; for "
-        "columnar parameter types (e.g. lnN or shape* nuisances), comma-separated triplets in the "
-        "format 'bin,process,value' are expected; patterns are supported and evaluated in the "
-        "given order for all existing bin process pairs; for all other types, the specification is "
-        "used as is")
+    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
+        "update (see --directory)")
+    parser.add_argument("name", metavar="NAME", help="name of the parameter to add")
+    parser.add_argument("type", metavar="TYPE", help="type of the parameter to add")
+    parser.add_argument("spec", nargs="*", metavar="SPEC", help="specification of parameter "
+        "arguments; for columnar parameter types (e.g. lnN or shape* nuisances), comma-separated "
+        "triplets in the format 'bin,process,value' are expected; patterns are supported and "
+        "evaluated in the given order for all existing bin process pairs; for all other types, the "
+        "specification is used as is")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
@@ -164,7 +156,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # configure the logger
-    logger.setLevel(args.log_level)
+    logger.setLevel(args.log_level.upper())
 
     # add the parameter
     add_parameter(args.input, args.name, args.type, param_spec=args.spec,

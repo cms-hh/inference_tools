@@ -20,7 +20,7 @@ Note: The use of an output directory is recommended to keep input files unchange
 import os
 import re
 
-from dhi.datacard_tools import bundle_datacard, manipulate_datacard
+from dhi.datacard_tools import bundle_datacard, manipulate_datacard, update_datacard_count
 from dhi.util import real_path, multi_match, create_console_logger
 
 
@@ -130,18 +130,9 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
             content["auto_mc_stats"].extend(new_lines)
 
         # decrease kmax in counts
-        if content.get("counts") and removed_nuisance_names:
-            # decrement kmax when specified
-            for i, count_line in enumerate(list(content["counts"])):
-                if count_line.startswith("kmax"):
-                    parts = count_line.split()
-                    if len(parts) >= 2 and parts[1] != "*":
-                        n_old = int(parts[1])
-                        n_new = n_old - len(removed_nuisance_names)
-                        logger.info("decrease kmax from {} to {}".format(n_old, n_new))
-                        parts[1] = str(n_new)
-                        content["counts"][i] = " ".join(parts)
-                    break
+        if removed_nuisance_names:
+            update_datacard_count(content, "kmax", -len(removed_nuisance_names), diff=True,
+                logger=logger)
 
 
 if __name__ == "__main__":
@@ -151,9 +142,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument("input", help="the datacard to read and possibly update (see --directory)")
-    parser.add_argument("names", nargs="+", help="names of parameters or files containing "
-        "parameter names to remove line by line; supports patterns")
+    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
+        "update (see --directory)")
+    parser.add_argument("names", nargs="+", metavar="NAME", help="names of parameters or files "
+        "containing parameter names to remove line by line; supports patterns")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
@@ -162,7 +154,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # configure the logger
-    logger.setLevel(args.log_level)
+    logger.setLevel(args.log_level.upper())
 
     # run the removing
     remove_parameters(args.input, args.names, directory=args.directory, skip_shapes=args.no_shapes)

@@ -789,6 +789,32 @@ def expand_variables(s, process=None, channel=None, systematic=None, mass=None):
     return s
 
 
+def update_datacard_count(content, key, value, diff=False, logger=None):
+    """
+    Update the count *key* (e.g. imax, jmax, or kmax) of a datacard given by *content*, as returned
+    by :py:func:`manipulate_datacard`, to a *value*. When *diff* is *True* and the current value is
+    not a wildcard, *value* is added to that value. When a *logger* is defined, an info-level log
+    is produced.
+    """
+    if content.get("counts"):
+        for i, count_line in enumerate(list(content["counts"])):
+            parts = count_line.split()
+            if len(parts) >= 2 and parts[0] == key:
+                new_value = None
+                if not diff:
+                    new_value = value
+                    logger.info("set {} to {}".format(key, new_value))
+                elif parts[1] != "*":
+                    new_value = value
+                    old_value = int(parts[1])
+                    new_value = old_value + value
+                    logger.info("set {} from {} to {}".format(key, old_value, new_value))
+                if new_value is not None:
+                    parts[1] = str(new_value)
+                    content["counts"][i] = " ".join(parts)
+                break
+
+
 def expand_file_lines(paths, skip_comments=True):
     """
     Returns a concatenated list of lines in files given by *paths*. When *skip_comments* is *True*,

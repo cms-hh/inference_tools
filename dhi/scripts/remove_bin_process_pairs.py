@@ -25,7 +25,7 @@ import re
 
 from dhi.datacard_tools import (
     columnar_parameter_directives, ShapeLine, bundle_datacard, manipulate_datacard,
-    expand_file_lines,
+    expand_file_lines, update_datacard_count,
 )
 from dhi.util import real_path, multi_match, create_console_logger
 
@@ -111,32 +111,14 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
             content["rates"][3] = "rate " + " ".join(new_rates)
 
         # decrease imax in counts
-        if content.get("counts") and fully_removed_bin_names:
-            # decrement imax when specified
-            for i, count_line in enumerate(list(content["counts"])):
-                if count_line.startswith("imax"):
-                    parts = count_line.split()
-                    if len(parts) >= 2 and parts[1] != "*":
-                        n_old = int(parts[1])
-                        n_new = n_old - len(fully_removed_bin_names)
-                        logger.info("decrease imax from {} to {}".format(n_old, n_new))
-                        parts[1] = str(n_new)
-                        content["counts"][i] = " ".join(parts)
-                    break
+        if fully_removed_bin_names:
+            update_datacard_count(content, "imax", -len(fully_removed_bin_names), diff=True,
+                logger=logger)
 
         # decrease jmax in counts
-        if content.get("counts") and fully_removed_process_names:
-            # decrement jmax when specified
-            for i, count_line in enumerate(list(content["counts"])):
-                if count_line.startswith("jmax"):
-                    parts = count_line.split()
-                    if len(parts) >= 2 and parts[1] != "*":
-                        n_old = int(parts[1])
-                        n_new = n_old - len(fully_removed_process_names)
-                        logger.info("decrease jmax from {} to {}".format(n_old, n_new))
-                        parts[1] = str(n_new)
-                        content["counts"][i] = " ".join(parts)
-                    break
+        if fully_removed_process_names:
+            update_datacard_count(content, "jmax", -len(fully_removed_process_names), diff=True,
+                logger=logger)
 
         # remove fully removed bins from observations
         if content.get("observations") and fully_removed_bin_names:
@@ -214,7 +196,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument("input", help="the datacard to read and possibly update (see --directory)")
+    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
+        "update (see --directory)")
     parser.add_argument("names", nargs="+", metavar="BIN_NAME,PROCESS_NAME", help="names of bin "
         "process pairs to remove in the format 'bin_name,process_name' or files containing these "
         "pairs line by line; supports patterns")
@@ -226,7 +209,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # configure the logger
-    logger.setLevel(args.log_level)
+    logger.setLevel(args.log_level.upper())
 
     # run the removing
     remove_bin_process_pairs(args.input, args.names, directory=args.directory,

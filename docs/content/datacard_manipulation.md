@@ -20,7 +20,7 @@ Please note that, when no output directory is given, ==the content of datacards 
 
 usage: remove_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--log-level LOG_LEVEL]
-                            input names [names ...]
+                            DATACARD NAME [NAME ...]
 
 Script to remove one or multiple (nuisance) parameters from a datacard.
 Example usage:
@@ -37,9 +37,9 @@ Example usage:
 Note: The use of an output directory is recommended to keep input files unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
-  names                 names of parameters or files containing parameter
+  NAME                  names of parameters or files containing parameter
                         names to remove line by line; supports patterns
 
 optional arguments:
@@ -62,7 +62,7 @@ optional arguments:
 
 usage: rename_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--mass MASS] [--log-level LOG_LEVEL]
-                            input OLD_NAME=NEW_NAME [OLD_NAME=NEW_NAME ...]
+                            DATACARD OLD_NAME=NEW_NAME [OLD_NAME=NEW_NAME ...]
 
 Script to rename one or multiple (nuisance) parameters in a datacard.
 Example usage:
@@ -76,7 +76,7 @@ Example usage:
 Note: The use of an output directory is recommended to keep input files unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
   OLD_NAME=NEW_NAME     translation rules for one or multiple parameter names
                         in the format 'old_name=new_name', or files containing
@@ -102,7 +102,7 @@ optional arguments:
 
 usage: add_parameter.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                         [--log-level LOG_LEVEL]
-                        input name type [spec [spec ...]]
+                        DATACARD NAME TYPE [SPEC [SPEC ...]]
 
 Script to add arbitrary parameters to the datacard.
 Example usage:
@@ -113,23 +113,22 @@ Example usage:
 # add a lnN nuisance for a specific process across all bins
 > add_parameter.py datacard.txt new_nuisance lnN "*,ttZ,1.05" -d output_directory
 
-# add a lnN nuisance for a all processes in two specific bins
+# add a lnN nuisance for all processes in two specific bins
 > add_parameter.py datacard.txt new_nuisance lnN "bin1,*,1.05" "bin2,*,1.07" -d output_directory
 
 Note: The use of an output directory is recommended to keep input files unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
-  name                  name of the parameter to add
-  type                  type of the parameter to add
-  spec                  specification of parameter arguments; for columnar
-                        parameters types (e.g. lnN or shape* nuisances),
-                        comma-separated triplets in the format
-                        'bin,process,value' are expected; patterns are
-                        supported and evaluated in the given order for all
-                        existing bin process pairs; for all other types, the
-                        specification is used as is
+  NAME                  name of the parameter to add
+  TYPE                  type of the parameter to add
+  SPEC                  specification of parameter arguments; for columnar
+                        parameter types (e.g. lnN or shape* nuisances), comma-
+                        separated triplets in the format 'bin,process,value'
+                        are expected; patterns are supported and evaluated in
+                        the given order for all existing bin process pairs;
+                        for all other types, the specification is used as is
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -153,7 +152,7 @@ optional arguments:
 
 usage: remove_processes.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                            [--log-level LOG_LEVEL]
-                           input names [names ...]
+                           DATACARD NAME [NAME ...]
 
 Script to remove one or multiple processes from a datacard.
 Example usage:
@@ -170,9 +169,9 @@ Example usage:
 Note: The use of an output directory is recommended to keep input files unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
-  names                 names of processes or files containing process names
+  NAME                  names of processes or files containing process names
                         to remove line by line; supports patterns
 
 optional arguments:
@@ -195,7 +194,7 @@ optional arguments:
 
 usage: rename_processes.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                            [--mass MASS] [--log-level LOG_LEVEL]
-                           input OLD_NAME=NEW_NAME [OLD_NAME=NEW_NAME ...]
+                           DATACARD OLD_NAME=NEW_NAME [OLD_NAME=NEW_NAME ...]
 
 Script to rename one or multiple processes in a datacard.
 Example usage:
@@ -209,7 +208,7 @@ Example usage:
 Note: The use of an output directory is recommended to keep input files unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
   OLD_NAME=NEW_NAME     translation rules for one or multiple process names in
                         the format 'old_name=new_name', or files containing
@@ -232,11 +231,11 @@ optional arguments:
 ### Remove
 
 ```shell hl_lines="1"
-remove_bin_process_pairs.py --help
+> remove_bin_process_pairs.py --help
 
 usage: remove_bin_process_pairs.py [-h] [--directory [DIRECTORY]]
                                    [--no-shapes] [--log-level LOG_LEVEL]
-                                   input BIN_NAME,PROCESS_NAME
+                                   DATACARD BIN_NAME,PROCESS_NAME
                                    [BIN_NAME,PROCESS_NAME ...]
 
 Script to remove one or multiple bin process pairs from a datacard.
@@ -257,7 +256,7 @@ Example usage:
 Note: The use of an output directory is recommended to keep input files unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
   BIN_NAME,PROCESS_NAME
                         names of bin process pairs to remove in the format
@@ -286,7 +285,7 @@ optional arguments:
 
 usage: remove_bins.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                       [--log-level LOG_LEVEL]
-                      input names [names ...]
+                      DATACARD NAME [NAME ...]
 
 Script to remove one or multiple bins from a datacard.
 Example usage:
@@ -303,9 +302,9 @@ Example usage:
 Note: The use of an output directory is recommended to keep input files unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
-  names                 names of bins or files containing bin names to remove
+  NAME                  names of bins or files containing bin names to remove
                         line by line; supports patterns
 
 optional arguments:
@@ -330,7 +329,7 @@ optional arguments:
 
 usage: prettify_datacard.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--no-preamble] [--log-level LOG_LEVEL]
-                            input
+                            DATACARD
 
 Script to prettify a datacard.
 Example usage:
@@ -340,7 +339,7 @@ Example usage:
 Note: The use of an output directory is recommended to keep input files unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
 
 optional arguments:
