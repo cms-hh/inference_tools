@@ -21,7 +21,9 @@ Note: The use of an output directory is recommended to keep input files
 import os
 import re
 
-from dhi.datacard_tools import bundle_datacard, manipulate_datacard, update_datacard_count
+from dhi.datacard_tools import (
+    bundle_datacard, manipulate_datacard, update_datacard_count, expand_file_lines,
+)
 from dhi.util import real_path, multi_match, create_console_logger
 
 
@@ -43,21 +45,7 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
     datacard = real_path(datacard)
 
     # expand patterns from files
-    _patterns = []
-    for pattern_or_path in patterns:
-        # first try to interpret it as a file
-        path = real_path(pattern_or_path)
-        if not os.path.isfile(path):
-            # not a file, use as is
-            _patterns.append(pattern_or_path)
-        else:
-            # read the file line by line, accounting for empty lines and comments
-            with open(path, "r") as f:
-                for line in f.readlines():
-                    pattern = line.strip()
-                    if pattern and not pattern.startswith(("#", "//")):
-                        _patterns.append(pattern)
-    patterns = _patterns
+    patterns = expand_file_lines(patterns)
 
     # when a directory is given, copy the datacard (and all its shape files when not skipping them)
     # into that directory and continue working on copies

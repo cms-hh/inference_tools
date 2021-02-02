@@ -166,7 +166,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 **1.** Executing `UpperLimit` tasks on htcondor, with one job handling two tasks sequentially:
 
-```shell hl_lines="4-5"
+```shell hl_lines="5-6"
 law run PlotUpperLimits \
     --version dev \
     --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt \

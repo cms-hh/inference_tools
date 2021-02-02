@@ -23,11 +23,10 @@ Note 2: This script is not intended to be used to merge incompatible systemati
 """
 
 import os
-import re
 
 from dhi.datacard_tools import (
     columnar_parameter_directives, bundle_datacard, manipulate_datacard, update_datacard_count,
-    expand_variables, ShapeLine,
+    expand_variables, expand_file_lines, ShapeLine,
 )
 from dhi.util import import_ROOT, real_path, multi_match, create_console_logger, TFileCache
 
@@ -37,7 +36,7 @@ logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=False,
         flip_parameters=None, auto_rate_flip=False, auto_rate_max=False, auto_rate_envelope=False,
-        auto_shape_average=False, auto_shape_envelope=False, digits=3, mass="125"):
+        auto_shape_average=False, auto_shape_envelope=False, digits=4, mass="125"):
     """
     Reads a *datacard* and merges parameters given by a list of *patterns* into a new, single
     parameter *new_name*. A pattern can be a parameter name, a pattern that is matched via fnmatch,
@@ -92,21 +91,7 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
     datacard = real_path(datacard)
 
     # expand patterns from files
-    _patterns = []
-    for pattern_or_path in patterns:
-        # first try to interpret it as a file
-        path = real_path(pattern_or_path)
-        if not os.path.isfile(path):
-            # not a file, use as is
-            _patterns.append(pattern_or_path)
-        else:
-            # read the file line by line, accounting for empty lines and comments
-            with open(path, "r") as f:
-                for line in f.readlines():
-                    pattern = line.strip()
-                    if pattern and not pattern.startswith(("#", "//")):
-                        _patterns.append(pattern)
-    patterns = _patterns
+    patterns = expand_file_lines(patterns)
 
     # when a directory is given, copy the datacard (and all its shape files when not skipping them)
     # into that directory and continue working on copies
@@ -146,7 +131,8 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                         new_type = param_type
                     elif param_type != new_type:
                         raise Exception("matched parameter {} has type {} which is different than "
-                            "the already determined type {}".format(param_name, param_type))
+                            "the already determined type {}".format(param_name, param_type,
+                            new_type))
 
                     logger.info("found parameter {} to be merged".format(param_name))
                     removed_param_lines.append(param_line)
@@ -380,13 +366,14 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                     # helpers to convert a value in lnN/U format to a signed uncertainty and back
                     ln2unc = lambda v: ((v - 1.) if v >= 1 else (1. - v**-1.))
                     unc2ln = lambda v: (1. + v) if v >= 0 else (1 - v)**-1.
+                    rnd = lambda v: "{{:.{}f}}".format(digits).format(v)
 
                     # consider the merged effect to be symmetric when all effets have only one entry
                     sym = all(len(f) == 1 for f in eff)
                     if sym:
                         # get single uncertainty values
                         uncs = [ln2unc(f[0]) for f in eff]
-                        merged_effect = round(unc2ln(sum(v**2. for v in uncs)**0.5), digits)
+                        merged_effect = rnd(unc2ln(sum(v**2. for v in uncs)**0.5))
                     else:
                         # get both sets of uncertainties
                         uncs_d = [(ln2unc(f[0]) if len(f) == 2 else -ln2unc(f[0])) for f in eff]
@@ -428,22 +415,22 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                                 if not auto_rate_flip:
                                     raise Exception("the signs of down ({}) and up ({}) variations "
                                         "of parameter {} in bin {} and process {} are mixed and "
-                                        "automatic flipping is not allowed".format(
-                                        d, u, name, bin_name, process_name))
+                                        "automatic flipping is not allowed".format(d, u, name,
+                                        bin_name, process_name))
 
                                 comb_d.append(u)
                                 comb_u.append(d)
                                 logger.warning("automatically flipped down ({}) and up ({}) "
-                                    "variations of parameter {} in bin {} and process {}".format(
-                                    d, u, name, bin_name, process_name))
+                                    "variations of parameter {} in bin {} and process {}".format(d,
+                                    u, name, bin_name, process_name))
 
                             else:
                                 # both effects are either negative or positive
                                 if not auto_rate_max:
                                     raise Exception("the down ({}) and up ({}) variations of "
                                         "parameter {} in bin {} and process {} are one-sided and "
-                                        "automatic maximum selection is not allowed".format(
-                                        d, u, name, bin_name, process_name))
+                                        "automatic maximum selection is not allowed".format(d, u,
+                                        name, bin_name, process_name))
 
                                 max_value = d if max(abs(d), abs(u)) == abs(d) else u
                                 if max_value > 0:
@@ -459,10 +446,7 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                         # create the merged effect
                         unc_d = -sum(d**2. for d in comb_d)**0.5
                         unc_u = sum(u**2. for u in comb_u)**0.5
-                        merged_effect = "{}/{}".format(
-                            round(unc2ln(unc_d), digits),
-                            round(unc2ln(unc_u), digits),
-                        )
+                        merged_effect = "{}/{}".format(rnd(unc2ln(unc_d)), rnd(unc2ln(unc_u)))
                 else:
                     # this should never happen
                     assert(False)
@@ -517,8 +501,8 @@ if __name__ == "__main__":
     parser.add_argument("--auto-shape-envelope", action="store_true", help="only for shape; when "
         "set, the merged shape variations of the new parameter are constructed as the envelopes of "
         "shapes of parameters to merge")
-    parser.add_argument("--digits", type=int, default=3, help="the amount of digits for rounding "
-        "merged parameters; defaults to 3")
+    parser.add_argument("--digits", type=int, default=4, help="the amount of digits for rounding "
+        "merged parameters; defaults to 4")
     parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
     args = parser.parse_args()
