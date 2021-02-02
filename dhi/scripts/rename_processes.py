@@ -11,7 +11,8 @@ Example usage:
 # rename via rules in files
 > rename_processes.py datacard.txt my_rules.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 """
 
 import os

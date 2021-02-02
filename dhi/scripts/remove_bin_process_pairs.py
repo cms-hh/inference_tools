@@ -17,7 +17,8 @@ Example usage:
 # remove bin process pairs listed in a file
 > remove_bin_process_pairs.py datacard.txt pairs.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 """
 
 import os

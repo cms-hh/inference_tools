@@ -34,7 +34,8 @@ Example usage:
 # remove parameters listed in a file
 > remove_parameters.py datacard.txt parameters.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
   DATACARD              the datacard to read and possibly update (see
@@ -73,7 +74,8 @@ Example usage:
 # rename via rules in files
 > rename_parameters.py datacard.txt my_rules.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
   DATACARD              the datacard to read and possibly update (see
@@ -116,7 +118,8 @@ Example usage:
 # add a lnN nuisance for all processes in two specific bins
 > add_parameter.py datacard.txt new_nuisance lnN "bin1,*,1.05" "bin2,*,1.07" -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
   DATACARD              the datacard to read and possibly update (see
@@ -145,7 +148,7 @@ optional arguments:
 
 ### Merge
 
-```shell hl_lines="1 24-27"
+```shell hl_lines="1 23-26"
 > merge_parameters.py --help
 
 usage: merge_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
@@ -156,22 +159,24 @@ usage: merge_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                            [--mass MASS] [--log-level LOG_LEVEL]
                            DATACARD MERGED_NAME names [names ...]
 
-Script to merge multiple (nuisance) parameters of the same type into a new, single one.
-Currently, only parameters with columnar type "lnN", "lnU" and "shape" are supported.
-Example usage:
+Script to merge multiple (nuisance) parameters of the same type into a new,
+single one. Currently, only parameters with columnar type "lnN", "lnU" and
+"shape" are supported. Example usage:
 
 # merge two parameters
-> merge_parameters.py datacard.txt CMS_eff_m_combined CMS_eff_m_iso CMS_eff_m_id -d output_directory
+> merge_parameters.py datacard.txt CMS_eff_m CMS_eff_m_iso CMS_eff_m_id -d output_directory
 
 # merge parameters via fnmatch wildcards (note the quotes)
-> merge_parameters.py datacard.txt CMS_eff_m_combined "CMS_eff_m_*" -d output_directory
+> merge_parameters.py datacard.txt CMS_eff_m "CMS_eff_m_*" -d output_directory
 
-Note 1: The use of an output directory is recommended to keep input files unchanged.
+Note 1: The use of an output directory is recommended to keep input files
+        unchanged.
 
-Note 2: This script is not intended to be used to merge incompatible systematic uncertainties. Its
-        only purpose is to reduce the number of parameters by merging the effect of (probably small)
-        uncertainties that are related at analysis level, e.g. multiple types of lepton
-        efficiency corrections. Please refer the doc string of "merge_parameters()" for more info.
+Note 2: This script is not intended to be used to merge incompatible systemati
+        uncertainties. Its only purpose is to reduce the number of parameters by
+        merging the effect of (probably small) uncertainties that are related at
+        analysis level, e.g. multiple types of lepton efficiency corrections.
+        Please refer the doc string of "merge_parameters()" for more info.
 
 positional arguments:
   DATACARD              the datacard to read and possibly update (see
@@ -242,7 +247,8 @@ Example usage:
 # remove processes listed in a file
 > remove_processes.py datacard.txt processes.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
   DATACARD              the datacard to read and possibly update (see
@@ -281,7 +287,8 @@ Example usage:
 # rename via rules in files
 > rename_processes.py datacard.txt my_rules.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
   DATACARD              the datacard to read and possibly update (see
@@ -329,7 +336,8 @@ Example usage:
 # remove bin process pairs listed in a file
 > remove_bin_process_pairs.py datacard.txt pairs.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
   DATACARD              the datacard to read and possibly update (see
@@ -375,7 +383,8 @@ Example usage:
 # remove bins listed in a file
 > remove_bins.py datacard.txt bins.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
   DATACARD              the datacard to read and possibly update (see
@@ -412,7 +421,8 @@ Example usage:
 
 > prettify_datacard.py datacard.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
   DATACARD              the datacard to read and possibly update (see

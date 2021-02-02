@@ -14,7 +14,8 @@ Example usage:
 # add a lnN nuisance for all processes in two specific bins
 > add_parameter.py datacard.txt new_nuisance lnN "bin1,*,1.05" "bin2,*,1.07" -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 """
 
 import os

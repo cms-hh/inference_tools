@@ -14,7 +14,8 @@ Example usage:
 # remove processes listed in a file
 > remove_processes.py datacard.txt processes.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 """
 
 import os

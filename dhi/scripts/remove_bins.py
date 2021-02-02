@@ -14,7 +14,8 @@ Example usage:
 # remove bins listed in a file
 > remove_bins.py datacard.txt bins.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 """
 
 import os

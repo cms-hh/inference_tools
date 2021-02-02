@@ -2,22 +2,24 @@
 # coding: utf-8
 
 """
-Script to merge multiple (nuisance) parameters of the same type into a new, single one.
-Currently, only parameters with columnar type "lnN", "lnU" and "shape" are supported.
-Example usage:
+Script to merge multiple (nuisance) parameters of the same type into a new,
+single one. Currently, only parameters with columnar type "lnN", "lnU" and
+"shape" are supported. Example usage:
 
 # merge two parameters
-> merge_parameters.py datacard.txt CMS_eff_m_combined CMS_eff_m_iso CMS_eff_m_id -d output_directory
+> merge_parameters.py datacard.txt CMS_eff_m CMS_eff_m_iso CMS_eff_m_id -d output_directory
 
 # merge parameters via fnmatch wildcards (note the quotes)
-> merge_parameters.py datacard.txt CMS_eff_m_combined "CMS_eff_m_*" -d output_directory
+> merge_parameters.py datacard.txt CMS_eff_m "CMS_eff_m_*" -d output_directory
 
-Note 1: The use of an output directory is recommended to keep input files unchanged.
+Note 1: The use of an output directory is recommended to keep input files
+        unchanged.
 
-Note 2: This script is not intended to be used to merge incompatible systematic uncertainties. Its
-        only purpose is to reduce the number of parameters by merging the effect of (probably small)
-        uncertainties that are related at analysis level, e.g. multiple types of lepton
-        efficiency corrections. Please refer the doc string of "merge_parameters()" for more info.
+Note 2: This script is not intended to be used to merge incompatible systemati
+        uncertainties. Its only purpose is to reduce the number of parameters by
+        merging the effect of (probably small) uncertainties that are related at
+        analysis level, e.g. multiple types of lepton efficiency corrections.
+        Please refer the doc string of "merge_parameters()" for more info.
 """
 
 import os
@@ -319,6 +321,8 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
 
                         else:
                             # merge in quadrature, separately for positive and negative components
+                            # TODO: maybe go with something like 2.4 in
+                            # https://www.slac.stanford.edu/econf/C030908/papers/WEMT002.pdf
                             diffs_d_n = [d for d in diffs_d if d < 0]
                             diffs_d_p = [d for d in diffs_d if d > 0]
                             diffs_u_n = [u for u in diffs_u if u < 0]
