@@ -7,7 +7,6 @@ Base tasks dedicated to inference.
 import os
 import sys
 import re
-import math
 import glob
 import importlib
 import itertools
@@ -20,7 +19,7 @@ import six
 
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask
 from dhi.config import poi_data, br_hh
-from dhi.util import linspace, try_int
+from dhi.util import linspace, try_int, ulimit
 from dhi.datacard_tools import bundle_datacard
 from dhi.scripts.remove_processes import remove_processes as remove_processes_script
 
@@ -1134,6 +1133,9 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
         return self.local_target("workspace.root")
 
     def build_command(self):
+        # make sure ulimit is set to hard:
+        ulimit(AS="hard")
+
         # build physics model arguments when not empty
         model_args = ""
         if not self.hh_model_empty:
