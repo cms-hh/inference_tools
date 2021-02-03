@@ -7,7 +7,6 @@ Base tasks dedicated to inference.
 import os
 import sys
 import re
-import math
 import glob
 import importlib
 import itertools
