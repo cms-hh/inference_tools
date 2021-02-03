@@ -11,7 +11,8 @@ Example usage:
 # rename via rules in files
 > rename_processes.py datacard.txt my_rules.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 """
 
 import os
@@ -56,7 +57,7 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
         if ":" in old_pattern:
             towner_name, _old_pattern = old_pattern.split(":", 1)
             if not skip_shapes:
-                towner = renamer.get_tobj(tfile, towner_name, write=True)
+                towner = renamer.get_tobj(tfile, towner_name, "UPDATE")
                 if not towner:
                     raise Exception("could not find object {} in {} with pattern {}".format(
                         towner_name, tfile, old_pattern))
@@ -116,8 +117,7 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                 tfile = None
                 if not skip_shapes:
                     src_path = os.path.join(os.path.dirname(renamer.datacard), shape_line.file)
-                    tmp_path = renamer.make_tmpfile(src_path)
-                    tfile = renamer.open_tfile(tmp_path, "UPDATE")
+                    tfile = renamer.open_tfile(src_path, "UPDATE")
 
                 # loop through processes and bins to be handled and see if the current line applies
                 for bin_name, process_name in list(unhandled_shapes):
@@ -172,7 +172,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument("input", help="the datacard to read and possibly update (see --directory)")
+    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
+        "update (see --directory)")
     parser.add_argument("rules", nargs="+", metavar="OLD_NAME=NEW_NAME", help="translation rules "
         "for one or multiple process names in the format 'old_name=new_name', or files containing "
         "these rules in the same format line by line")
@@ -185,7 +186,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # configure the logger
-    logger.setLevel(args.log_level)
+    logger.setLevel(args.log_level.upper())
 
     # run the renaming
     rename_processes(args.input, args.rules, directory=args.directory, skip_shapes=args.no_shapes,

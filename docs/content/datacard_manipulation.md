@@ -20,7 +20,7 @@ Please note that, when no output directory is given, ==the content of datacards 
 
 usage: remove_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--log-level LOG_LEVEL]
-                            input names [names ...]
+                            DATACARD NAME [NAME ...]
 
 Script to remove one or multiple (nuisance) parameters from a datacard.
 Example usage:
@@ -34,12 +34,13 @@ Example usage:
 # remove parameters listed in a file
 > remove_parameters.py datacard.txt parameters.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
-  names                 names of parameters or files containing parameter
+  NAME                  names of parameters or files containing parameter
                         names to remove line by line; supports patterns
 
 optional arguments:
@@ -62,7 +63,7 @@ optional arguments:
 
 usage: rename_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--mass MASS] [--log-level LOG_LEVEL]
-                            input OLD_NAME=NEW_NAME [OLD_NAME=NEW_NAME ...]
+                            DATACARD OLD_NAME=NEW_NAME [OLD_NAME=NEW_NAME ...]
 
 Script to rename one or multiple (nuisance) parameters in a datacard.
 Example usage:
@@ -73,10 +74,11 @@ Example usage:
 # rename via rules in files
 > rename_parameters.py datacard.txt my_rules.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
   OLD_NAME=NEW_NAME     translation rules for one or multiple parameter names
                         in the format 'old_name=new_name', or files containing
@@ -102,7 +104,7 @@ optional arguments:
 
 usage: add_parameter.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                         [--log-level LOG_LEVEL]
-                        input name type [spec [spec ...]]
+                        DATACARD NAME TYPE [SPEC [SPEC ...]]
 
 Script to add arbitrary parameters to the datacard.
 Example usage:
@@ -113,23 +115,23 @@ Example usage:
 # add a lnN nuisance for a specific process across all bins
 > add_parameter.py datacard.txt new_nuisance lnN "*,ttZ,1.05" -d output_directory
 
-# add a lnN nuisance for a all processes in two specific bins
+# add a lnN nuisance for all processes in two specific bins
 > add_parameter.py datacard.txt new_nuisance lnN "bin1,*,1.05" "bin2,*,1.07" -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
-  name                  name of the parameter to add
-  type                  type of the parameter to add
-  spec                  specification of parameter arguments; for columnar
-                        parameters types (e.g. lnN or shape* nuisances),
-                        comma-separated triplets in the format
-                        'bin,process,value' are expected; patterns are
-                        supported and evaluated in the given order for all
-                        existing bin process pairs; for all other types, the
-                        specification is used as is
+  NAME                  name of the parameter to add
+  TYPE                  type of the parameter to add
+  SPEC                  specification of parameter arguments; for columnar
+                        parameter types (e.g. lnN or shape* nuisances), comma-
+                        separated triplets in the format 'bin,process,value'
+                        are expected; patterns are supported and evaluated in
+                        the given order for all existing bin process pairs;
+                        for all other types, the specification is used as is
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -144,6 +146,126 @@ optional arguments:
 ```
 
 
+### Merge
+
+```shell hl_lines="1 24-28"
+> merge_parameters.py --help
+
+usage: merge_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
+                           [--flip-parameters FLIP_PARAMETERS]
+                           [--auto-rate-flip] [--auto-rate-max]
+                           [--auto-rate-envelope] [--auto-shape-average]
+                           [--auto-shape-envelope] [--digits DIGITS]
+                           [--mass MASS] [--log-level LOG_LEVEL]
+                           DATACARD MERGED_NAME names [names ...]
+
+Script to merge multiple (nuisance) parameters of the same type into a new,
+single one. Currently, only parameters with columnar type "lnN", "lnU" and
+"shape" are supported. Example usage:
+
+# merge two parameters
+> merge_parameters.py datacard.txt CMS_eff_m CMS_eff_m_iso CMS_eff_m_id -d output_directory
+
+# merge parameters via fnmatch wildcards (note the quotes)
+> merge_parameters.py datacard.txt CMS_eff_m "CMS_eff_m_*" -d output_directory
+
+Note 1: The use of an output directory is recommended to keep input files
+        unchanged.
+
+Note 2: This script is not intended to be used to merge incompatible systemati
+        uncertainties. Its only purpose is to reduce the number of parameters by
+        merging the effect of (probably small) uncertainties that are related at
+        analysis level, e.g. multiple types of lepton efficiency corrections.
+        Please refer the doc string of "merge_parameters()" for more info.
+
+positional arguments:
+  DATACARD              the datacard to read and possibly update (see
+                        --directory)
+  MERGED_NAME           name of the newly merged parameter
+  names                 names of parameters or files containing names of
+                        parameters line by line to merge; supports patterns
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --no-shapes, -n       do not copy shape files to the output directory when
+                        --directory is set
+  --flip-parameters FLIP_PARAMETERS
+                        comma-separated list of parameters whose effect should
+                        be flipped, i.e., flips effects of up and down
+                        variations; supports patterns
+  --auto-rate-flip      only for lnN and lnU; when set, up and down variations
+                        of a parameter are swapped when they change the rate
+                        in the relative opposite directions; otherwise, an
+                        error is raised
+  --auto-rate-max       only for lnN and lnU; when set, the maximum effect of
+                        a parameter is used when both up and down variation
+                        change the rate in the same direction; otherwise, an
+                        error is raised
+  --auto-rate-envelope  only for lnN and lnU; when set, the effect on the new
+                        parameter is constructed as the envelope of effects of
+                        parameters to merge
+  --auto-shape-average  only for shape; when set and shapes to merge contain
+                        both positive negative effects in the same bin,
+                        propagate errors separately and then use their
+                        average; otherwise, an error is raised
+  --auto-shape-envelope
+                        only for shape; when set, the merged shape variations
+                        of the new parameter are constructed as the envelopes
+                        of shapes of parameters to merge
+  --digits DIGITS       the amount of digits for rounding merged parameters;
+                        defaults to 3
+  --mass MASS, -m MASS  mass hypothesis; default: 125
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+```
+
+
+### Fix `lnN` encoding
+
+```shell hl_lines="1"
+> fix_lnN_parameter.py --help
+
+usage: fix_lnN_parameter.py [-h] [--directory [DIRECTORY]] [--no-shapes]
+                            [--digits DIGITS] [--log-level LOG_LEVEL]
+                            DATACARD NAME [NAME ...]
+
+Script to correct yield decreasing effects of lnN nuisances from
+"1-u" to "1/(1+u)" syntax. Example usage:
+
+# fix a certain parameter
+> fix_lnN_parameter.py datacard.txt lumi_13TeV -d output_directory
+
+# fix multiple parameters (note the quotes)
+> fix_lnN_parameter.py datacard.txt "lumi_*" -d output_directory
+
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
+
+positional arguments:
+  DATACARD              the datacard to read and possibly update (see
+                        --directory)
+  NAME                  names of lnN parameters or files containing lnN
+                        parameter names to fix line by line; supports patterns
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --no-shapes, -n       do not copy shape files to the output directory when
+                        --directory is set
+  --digits DIGITS       the amount of digits for rounding converted effects;
+                        defaults to 4
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+```
+
+
 ## Adjusting processes
 
 ### Remove
@@ -153,7 +275,7 @@ optional arguments:
 
 usage: remove_processes.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                            [--log-level LOG_LEVEL]
-                           input names [names ...]
+                           DATACARD NAME [NAME ...]
 
 Script to remove one or multiple processes from a datacard.
 Example usage:
@@ -167,12 +289,13 @@ Example usage:
 # remove processes listed in a file
 > remove_processes.py datacard.txt processes.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
-  names                 names of processes or files containing process names
+  NAME                  names of processes or files containing process names
                         to remove line by line; supports patterns
 
 optional arguments:
@@ -195,7 +318,7 @@ optional arguments:
 
 usage: rename_processes.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                            [--mass MASS] [--log-level LOG_LEVEL]
-                           input OLD_NAME=NEW_NAME [OLD_NAME=NEW_NAME ...]
+                           DATACARD OLD_NAME=NEW_NAME [OLD_NAME=NEW_NAME ...]
 
 Script to rename one or multiple processes in a datacard.
 Example usage:
@@ -206,10 +329,11 @@ Example usage:
 # rename via rules in files
 > rename_processes.py datacard.txt my_rules.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
   OLD_NAME=NEW_NAME     translation rules for one or multiple process names in
                         the format 'old_name=new_name', or files containing
@@ -232,11 +356,11 @@ optional arguments:
 ### Remove
 
 ```shell hl_lines="1"
-remove_bin_process_pairs.py --help
+> remove_bin_process_pairs.py --help
 
 usage: remove_bin_process_pairs.py [-h] [--directory [DIRECTORY]]
                                    [--no-shapes] [--log-level LOG_LEVEL]
-                                   input BIN_NAME,PROCESS_NAME
+                                   DATACARD BIN_NAME,PROCESS_NAME
                                    [BIN_NAME,PROCESS_NAME ...]
 
 Script to remove one or multiple bin process pairs from a datacard.
@@ -254,10 +378,11 @@ Example usage:
 # remove bin process pairs listed in a file
 > remove_bin_process_pairs.py datacard.txt pairs.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
   BIN_NAME,PROCESS_NAME
                         names of bin process pairs to remove in the format
@@ -286,7 +411,7 @@ optional arguments:
 
 usage: remove_bins.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                       [--log-level LOG_LEVEL]
-                      input names [names ...]
+                      DATACARD NAME [NAME ...]
 
 Script to remove one or multiple bins from a datacard.
 Example usage:
@@ -300,12 +425,13 @@ Example usage:
 # remove bins listed in a file
 > remove_bins.py datacard.txt bins.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
-  names                 names of bins or files containing bin names to remove
+  NAME                  names of bins or files containing bin names to remove
                         line by line; supports patterns
 
 optional arguments:
@@ -330,17 +456,18 @@ optional arguments:
 
 usage: prettify_datacard.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--no-preamble] [--log-level LOG_LEVEL]
-                            input
+                            DATACARD
 
 Script to prettify a datacard.
 Example usage:
 
 > prettify_datacard.py datacard.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
-  input                 the datacard to read and possibly update (see
+  DATACARD              the datacard to read and possibly update (see
                         --directory)
 
 optional arguments:

@@ -7,7 +7,8 @@ Example usage:
 
 > prettify_datacard.py datacard.txt -d output_directory
 
-Note: The use of an output directory is recommended to keep input files unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 """
 
 import os
@@ -61,7 +62,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument("input", help="the datacard to read and possibly update (see --directory)")
+    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
+        "update (see --directory)")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
@@ -71,7 +73,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # configure the logger
-    logger.setLevel(args.log_level)
+    logger.setLevel(args.log_level.upper())
 
     # add the parameter
     prettify_datacard(args.input, directory=args.directory, skip_shapes=args.no_shapes,
