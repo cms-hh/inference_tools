@@ -217,50 +217,8 @@ optional arguments:
                         of the new parameter are constructed as the envelopes
                         of shapes of parameters to merge
   --digits DIGITS       the amount of digits for rounding merged parameters;
-                        defaults to 3
-  --mass MASS, -m MASS  mass hypothesis; default: 125
-  --log-level LOG_LEVEL, -l LOG_LEVEL
-                        python log level; default: INFO
-```
-
-
-### Fix `lnN` encoding
-
-```shell hl_lines="1"
-> fix_lnN_parameter.py --help
-
-usage: fix_lnN_parameter.py [-h] [--directory [DIRECTORY]] [--no-shapes]
-                            [--digits DIGITS] [--log-level LOG_LEVEL]
-                            DATACARD NAME [NAME ...]
-
-Script to correct yield decreasing effects of lnN nuisances from
-"1-u" to "1/(1+u)" syntax. Example usage:
-
-# fix a certain parameter
-> fix_lnN_parameter.py datacard.txt lumi_13TeV -d output_directory
-
-# fix multiple parameters (note the quotes)
-> fix_lnN_parameter.py datacard.txt "lumi_*" -d output_directory
-
-Note: The use of an output directory is recommended to keep input files
-      unchanged.
-
-positional arguments:
-  DATACARD              the datacard to read and possibly update (see
-                        --directory)
-  NAME                  names of lnN parameters or files containing lnN
-                        parameter names to fix line by line; supports patterns
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --directory [DIRECTORY], -d [DIRECTORY]
-                        directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
-  --no-shapes, -n       do not copy shape files to the output directory when
-                        --directory is set
-  --digits DIGITS       the amount of digits for rounding converted effects;
                         defaults to 4
+  --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
 ```
