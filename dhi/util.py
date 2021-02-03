@@ -14,7 +14,6 @@ import array
 import contextlib
 import tempfile
 import logging
-import resource
 
 
 # modules and objects from lazy imports
@@ -180,7 +179,7 @@ def minimize_1d(objective, bounds, start=None, niter=10, **kwargs):
 
 
 def create_tgraph(n, *args, **kwargs):
-    """create_tgraph(n, *args, pad=None)
+    """ create_tgraph(n, *args, pad=None)
     Creates a ROOT graph with *n* points, where the type is *TGraph* for two, *TGraphErrors* for
     4 and *TGraphAsymmErrors* for six *args*. Each argument is converted to a python array with
     typecode "f". When *pad* is *True*, the graph is padded by one additional point on each side
@@ -339,6 +338,7 @@ def poisson_asym_errors(v):
 
 
 class TFileCache(object):
+
     def __init__(self, logger=None):
         super(TFileCache, self).__init__()
 
@@ -395,11 +395,8 @@ class TFileCache(object):
                 tfile = ROOT.TFile(tmp_path, mode)
                 self._w_cache[abs_path] = {"tmp_path": tmp_path, "tfile": tfile, "objects": []}
 
-                self.logger.debug(
-                    "opened tfile {} with mode {} in temporary location {}".format(
-                        abs_path, mode, tmp_path
-                    )
-                )
+                self.logger.debug("opened tfile {} with mode {} in temporary location {}".format(
+                    abs_path, mode, tmp_path))
 
             return self._w_cache[abs_path]["tfile"]
 
@@ -428,9 +425,8 @@ class TFileCache(object):
             for abs_path, data in self._r_cache.items():
                 if data["tfile"] and data["tfile"].IsOpen():
                     data["tfile"].Close()
-            self.logger.debug(
-                "closed {} cached file(s) opened for reading".format(len(self._r_cache))
-            )
+            self.logger.debug("closed {} cached file(s) opened for reading".format(
+                len(self._r_cache)))
 
         if self._w_cache:
             # close files opened for reading, write objects and move to actual location
@@ -452,13 +448,11 @@ class TFileCache(object):
 
                     if not skip_write:
                         shutil.move(data["tmp_path"], abs_path)
-                        self.logger.debug(
-                            "moving back temporary file {} to {}".format(data["tmp_path"], abs_path)
-                        )
+                        self.logger.debug("moving back temporary file {} to {}".format(
+                            data["tmp_path"], abs_path))
 
-            self.logger.debug(
-                "closed {} cached file(s) opened for writing".format(len(self._w_cache))
-            )
+            self.logger.debug("closed {} cached file(s) opened for writing".format(
+                len(self._w_cache)))
             ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = {};".format(ignore_level_orig))
 
         # clear
@@ -505,21 +499,3 @@ class ROOTColorGetter(object):
             return c
         else:
             raise AttributeError("cannot interpret '{}' as color".format(obj))
-
-
-def ulimit(lower=False, *args, **kwargs):
-    assert not args
-    for key, value in kwargs.items():
-        res = getattr(resource, "RLIMIT_%s" % key.upper())
-        soft, hard = [
-            float("inf") if v == resource.RLIM_INFINITY else v for v in resource.getrlimit(res)
-        ]
-        if value in ("hard", max):
-            value = hard
-        else:
-            value = min(value, hard)
-        if not lower:
-            value = max(value, soft)
-        resource.setrlimit(
-            res, tuple(resource.RLIM_INFINITY if v == float("inf") else v for v in (value, hard))
-        )
