@@ -6,13 +6,16 @@ Script to add arbitrary parameters to the datacard.
 Example usage:
 
 # add auto MC stats
-> add_parameter.py datacard.txt "*" autoMCStats 10 -d output_directory
+> add_parameter.py datacard.txt '*' autoMCStats 10 -d output_directory
 
-# add a lnN nuisance for a specific process across all bins
-> add_parameter.py datacard.txt new_nuisance lnN "*,ttZ,1.05" -d output_directory
+# add a lnN nuisance for a specific process across all bins (note the quotes)
+> add_parameter.py datacard.txt new_nuisance lnN '*,ttZ,1.05' -d output_directory
 
-# add a lnN nuisance for all processes in two specific bins
-> add_parameter.py datacard.txt new_nuisance lnN "bin1,*,1.05" "bin2,*,1.07" -d output_directory
+# add a lnN nuisance for all processes in two specific bins (note the quotes)
+> add_parameter.py datacard.txt new_nuisance lnN 'bin1,*,1.05' 'bin2,*,1.07' -d output_directory
+
+# add a lnN nuisance for all but ttbar processes in all bins (note the quotes)
+> add_parameter.py datacard.txt new_nuisance lnN '*,!tt*,1.05' -d output_directory
 
 Note: The use of an output directory is recommended to keep input files
       unchanged.
@@ -114,10 +117,17 @@ def add_parameter(datacard, param_name, param_type, param_spec=None, directory=N
             for bin_name, process_name in zip(bin_names, process_names):
                 # go through param spec and stop when the first match is found
                 for spec_bin_name, spec_process_name, spec_effect in param_spec:
-                    if not multi_match(bin_name, spec_bin_name):
+                    # check the bin name pattern which may start with a negating "!"
+                    neg = spec_bin_name.startswith("!")
+                    if multi_match(bin_name, spec_bin_name[int(neg):]) == neg:
                         continue
-                    if not multi_match(process_name, spec_process_name):
+
+                    # check the process name pattern which may start with a negating "!"
+                    neg = spec_process_name.startswith("!")
+                    if multi_match(process_name, spec_process_name[int(neg):]) == neg:
                         continue
+
+                    # add the effect
                     parts.append(str(spec_effect))
                     break
                 else:
@@ -147,8 +157,8 @@ if __name__ == "__main__":
     parser.add_argument("spec", nargs="*", metavar="SPEC", help="specification of parameter "
         "arguments; for columnar parameter types (e.g. lnN or shape* nuisances), comma-separated "
         "triplets in the format 'bin,process,value' are expected; patterns are supported and "
-        "evaluated in the given order for all existing bin process pairs; for all other types, the "
-        "specification is used as is")
+        "evaluated in the given order for all existing bin process pairs; prepending '!' to a "
+        "pattern negates its meaning; for all other types, the specification is used as is")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "

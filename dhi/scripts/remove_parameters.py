@@ -9,7 +9,7 @@ Example usage:
 > remove_parameters.py datacard.txt CMS_btag_JES CMS_btag_JER -d output_directory
 
 # remove parameters via fnmatch wildcards (note the quotes)
-> remove_parameters.py datacard.txt "CMS_btag_JE?" -d output_directory
+> remove_parameters.py datacard.txt 'CMS_btag_JE?' -d output_directory
 
 # remove parameters listed in a file
 > remove_parameters.py datacard.txt parameters.txt -d output_directory

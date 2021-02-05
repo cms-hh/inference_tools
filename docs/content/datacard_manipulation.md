@@ -29,7 +29,7 @@ Example usage:
 > remove_parameters.py datacard.txt CMS_btag_JES CMS_btag_JER -d output_directory
 
 # remove parameters via fnmatch wildcards (note the quotes)
-> remove_parameters.py datacard.txt "CMS_btag_JE?" -d output_directory
+> remove_parameters.py datacard.txt 'CMS_btag_JE?' -d output_directory
 
 # remove parameters listed in a file
 > remove_parameters.py datacard.txt parameters.txt -d output_directory
@@ -110,13 +110,16 @@ Script to add arbitrary parameters to the datacard.
 Example usage:
 
 # add auto MC stats
-> add_parameter.py datacard.txt "*" autoMCStats 10 -d output_directory
+> add_parameter.py datacard.txt '*' autoMCStats 10 -d output_directory
 
-# add a lnN nuisance for a specific process across all bins
-> add_parameter.py datacard.txt new_nuisance lnN "*,ttZ,1.05" -d output_directory
+# add a lnN nuisance for a specific process across all bins (note the quotes)
+> add_parameter.py datacard.txt new_nuisance lnN '*,ttZ,1.05' -d output_directory
 
-# add a lnN nuisance for all processes in two specific bins
-> add_parameter.py datacard.txt new_nuisance lnN "bin1,*,1.05" "bin2,*,1.07" -d output_directory
+# add a lnN nuisance for all processes in two specific bins (note the quotes)
+> add_parameter.py datacard.txt new_nuisance lnN 'bin1,*,1.05' 'bin2,*,1.07' -d output_directory
+
+# add a lnN nuisance for all but ttbar processes in all bins (note the quotes)
+> add_parameter.py datacard.txt new_nuisance lnN '*,!tt*,1.05' -d output_directory
 
 Note: The use of an output directory is recommended to keep input files
       unchanged.
@@ -167,7 +170,7 @@ single one. Currently, only parameters with columnar type "lnN", "lnU" and
 > merge_parameters.py datacard.txt CMS_eff_m CMS_eff_m_iso CMS_eff_m_id -d output_directory
 
 # merge parameters via fnmatch wildcards (note the quotes)
-> merge_parameters.py datacard.txt CMS_eff_m "CMS_eff_m_*" -d output_directory
+> merge_parameters.py datacard.txt CMS_eff_m 'CMS_eff_m_*' -d output_directory
 
 Note 1: The use of an output directory is recommended to keep input files
         unchanged.
@@ -242,7 +245,7 @@ Example usage:
 > remove_processes.py datacard.txt qqHH_CV_1_C2V_2_kl_1 -d output_directory
 
 # remove processes via fnmatch wildcards (note the quotes)
-> remove_processes.py datacard.txt "qqHH_CV_1_C2V_*_kl_1" -d output_directory
+> remove_processes.py datacard.txt 'qqHH_CV_1_C2V_*_kl_1' -d output_directory
 
 # remove processes listed in a file
 > remove_processes.py datacard.txt processes.txt -d output_directory
@@ -328,10 +331,10 @@ Example usage:
 > remove_bin_process_pairs.py datacard.txt ch1,ttZ -d output_directory
 
 # remove all processes for a specific bin via wildcards (note the quotes)
-> remove_bin_process_pairs.py datacard.txt "ch1,*" -d output_directory
+> remove_bin_process_pairs.py datacard.txt 'ch1,*' -d output_directory
 
 # remove all bins for a specific process via wildcards (note the quotes)
-> remove_bin_process_pairs.py datacard.txt "*,ttZ" -d output_directory
+> remove_bin_process_pairs.py datacard.txt '*,ttZ' -d output_directory
 
 # remove bin process pairs listed in a file
 > remove_bin_process_pairs.py datacard.txt pairs.txt -d output_directory
@@ -378,7 +381,7 @@ Example usage:
 > remove_bins.py datacard.txt ch1 -d output_directory
 
 # remove bins via fnmatch wildcards (note the quotes)
-> remove_bins.py datacard.txt "ch*" -d output_directory
+> remove_bins.py datacard.txt 'ch*' -d output_directory
 
 # remove bins listed in a file
 > remove_bins.py datacard.txt bins.txt -d output_directory

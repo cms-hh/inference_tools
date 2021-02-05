@@ -9,7 +9,7 @@ Example usage:
 > remove_processes.py datacard.txt qqHH_CV_1_C2V_2_kl_1 -d output_directory
 
 # remove processes via fnmatch wildcards (note the quotes)
-> remove_processes.py datacard.txt "qqHH_CV_1_C2V_*_kl_1" -d output_directory
+> remove_processes.py datacard.txt 'qqHH_CV_1_C2V_*_kl_1' -d output_directory
 
 # remove processes listed in a file
 > remove_processes.py datacard.txt processes.txt -d output_directory

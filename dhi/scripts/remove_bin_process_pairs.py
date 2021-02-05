@@ -9,10 +9,10 @@ Example usage:
 > remove_bin_process_pairs.py datacard.txt ch1,ttZ -d output_directory
 
 # remove all processes for a specific bin via wildcards (note the quotes)
-> remove_bin_process_pairs.py datacard.txt "ch1,*" -d output_directory
+> remove_bin_process_pairs.py datacard.txt 'ch1,*' -d output_directory
 
 # remove all bins for a specific process via wildcards (note the quotes)
-> remove_bin_process_pairs.py datacard.txt "*,ttZ" -d output_directory
+> remove_bin_process_pairs.py datacard.txt '*,ttZ' -d output_directory
 
 # remove bin process pairs listed in a file
 > remove_bin_process_pairs.py datacard.txt pairs.txt -d output_directory

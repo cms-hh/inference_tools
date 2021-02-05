@@ -10,7 +10,7 @@ single one. Currently, only parameters with columnar type "lnN", "lnU" and
 > merge_parameters.py datacard.txt CMS_eff_m CMS_eff_m_iso CMS_eff_m_id -d output_directory
 
 # merge parameters via fnmatch wildcards (note the quotes)
-> merge_parameters.py datacard.txt CMS_eff_m "CMS_eff_m_*" -d output_directory
+> merge_parameters.py datacard.txt CMS_eff_m 'CMS_eff_m_*' -d output_directory
 
 Note 1: The use of an output directory is recommended to keep input files
         unchanged.
@@ -364,8 +364,8 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
 
                 elif new_type in ("lnN", "lnU"):
                     # helpers to convert a value in lnN/U format to a signed uncertainty and back
-                    ln2unc = lambda v: ((v - 1.) if v >= 1 else (1. - v**-1.))
-                    unc2ln = lambda v: (1. + v) if v >= 0 else (1 - v)**-1.
+                    ln2unc = lambda v: v - 1.
+                    unc2ln = lambda v: 1. + v
                     rnd = lambda v: "{{:.{}f}}".format(digits).format(v)
 
                     # consider the merged effect to be symmetric when all effets have only one entry

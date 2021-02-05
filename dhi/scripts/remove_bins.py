@@ -9,7 +9,7 @@ Example usage:
 > remove_bins.py datacard.txt ch1 -d output_directory
 
 # remove bins via fnmatch wildcards (note the quotes)
-> remove_bins.py datacard.txt "ch*" -d output_directory
+> remove_bins.py datacard.txt 'ch*' -d output_directory
 
 # remove bins listed in a file
 > remove_bins.py datacard.txt bins.txt -d output_directory
