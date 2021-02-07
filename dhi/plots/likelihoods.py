@@ -33,6 +33,7 @@ def plot_likelihood_scan_1d(
     x_min=None,
     x_max=None,
     y_min=None,
+    y_max=None,
     y_log=False,
     model_parameters=None,
     campaign=None,
@@ -45,11 +46,10 @@ def plot_likelihood_scan_1d(
     value of the poi that leads to the best likelihood. Otherwise, it is estimated from the
     interpolated curve.
 
-    When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *y_min* sets the lower
-    limit of the y-axis and defaults to 0, or 0.01 when *y_log* is *True*. *x_min* and *x_max*
-    define the x-axis range and default to the range of poi values. *model_parameters* can be a
-    dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
-    campaign label defined in *dhi.config.campaign_labels*.
+    *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
+    the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
+    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d
     """
@@ -76,11 +76,15 @@ def plot_likelihood_scan_1d(
     if y_log:
         if y_min is None:
             y_min = 1e-2
-        y_max = y_min * 10**(1.35 * math.log10(y_max_value / y_min))
+        if y_max is None:
+            y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
+        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.35)
     else:
         if y_min is None:
             y_min = 0.
-        y_max = 1.35 * (y_max_value - y_min)
+        if y_max is None:
+            y_max = 1.35 * (y_max_value - y_min)
+        y_max_line = y_max / 1.35 + y_min
 
     # evaluate the scan, run interpolation and error estimation
     scan = evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min)
@@ -108,7 +112,7 @@ def plot_likelihood_scan_1d(
 
     # lines at chi2_1 intervals
     for n in [chi2_levels[1][1], chi2_levels[1][2]]:
-        if n < y_max_value:
+        if n < y_max_line:
             line = ROOT.TLine(x_min, n, x_max, n)
             r.setup_line(line, props={"LineColor": colors.red, "LineStyle": 2, "NDC": False})
             draw_objs.append(line)
@@ -117,17 +121,17 @@ def plot_likelihood_scan_1d(
     if theory_value:
         # theory graph and line
         g_thy = create_tgraph(1, theory_value[0], 0, theory_value[2], theory_value[1], 0,
-            y_max_value)
+            y_max_line)
         r.setup_graph(g_thy, props={"FillStyle": 3244, "MarkerStyle": 20, "MarkerSize": 0},
             color=colors.red, color_flags="lfm")
-        line_thy = ROOT.TLine(theory_value[0], 0., theory_value[0], y_max_value)
+        line_thy = ROOT.TLine(theory_value[0], 0., theory_value[0], y_max_line)
         r.setup_line(line_thy, props={"NDC": False}, color=colors.red)
         draw_objs.append((g_thy, "SAME,2"))
         draw_objs.append(line_thy)
         legend_entries.append((g_thy, "Theory prediction"))
 
     # line for best fit value
-    line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_value)
+    line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
     r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors.black)
     fit_label = "{} = {}".format(to_root_latex(poi_data[poi].label),
         scan.num_min.str(format="%.2f", style="root"))
@@ -180,6 +184,7 @@ def plot_likelihood_scans_1d(
     x_min=None,
     x_max=None,
     y_min=None,
+    y_max=None,
     y_log=False,
     model_parameters=None,
     campaign=None,
@@ -198,8 +203,8 @@ def plot_likelihood_scans_1d(
     *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
     down uncertainties which is drawn as a vertical bar.
 
-    *x_min* and *x_max* define the x-axis range of POI, and *y_min* controls the minimum y-axis
-    value. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
+    *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
+    the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
     refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
@@ -244,11 +249,15 @@ def plot_likelihood_scans_1d(
     if y_log:
         if y_min is None:
             y_min = 1e-2
-        y_max = y_min * 10**(1.35 * math.log10(y_max_value / y_min))
+        if y_max is None:
+            y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
+        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.35)
     else:
         if y_min is None:
             y_min = 0.
-        y_max = 1.35 * (y_max_value - y_min)
+        if y_max is None:
+            y_max = 1.35 * (y_max_value - y_min)
+        y_max_line = y_max / 1.35 + y_min
 
     # start plotting
     r.setup_style()
@@ -266,7 +275,7 @@ def plot_likelihood_scans_1d(
 
     # lines at chi2_1 intervals
     for n in [chi2_levels[1][1], chi2_levels[1][2]]:
-        if n < y_max_value:
+        if n < y_max:
             line = ROOT.TLine(x_min, n, x_max, n)
             r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
             draw_objs.append(line)
@@ -275,10 +284,10 @@ def plot_likelihood_scans_1d(
     if theory_value:
         # theory graph and line
         g_thy = create_tgraph(1, theory_value[0], 0, theory_value[2], theory_value[1], 0,
-            y_max_value)
+            y_max_line)
         r.setup_graph(g_thy, props={"FillStyle": 3244, "MarkerStyle": 20, "MarkerSize": 0},
             color=colors.red, color_flags="lfm")
-        line_thy = ROOT.TLine(theory_value[0], 0., theory_value[0], y_max_value)
+        line_thy = ROOT.TLine(theory_value[0], 0., theory_value[0], y_max_line)
         r.setup_line(line_thy, props={"NDC": False}, color=colors.red)
         draw_objs.append((g_thy, "SAME,2"))
         draw_objs.append(line_thy)
@@ -299,7 +308,7 @@ def plot_likelihood_scans_1d(
         legend_entries.append((g_nll, d["name"]))
 
         # line for best fit value
-        line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_value)
+        line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
         r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors[col])
         draw_objs.append(line_fit)
 
@@ -622,10 +631,10 @@ def plot_likelihood_scans_2d(
         # create two histograms for plotting 1 and 2 sigma contours
         h1 = ROOT.TH2F("h1_{}".format(i), "", *binning)
         h2 = ROOT.TH2F("h2_{}".format(i), "", *binning)
-        r.setup_hist(h1, props={"LineWidth": 2, "LineColor": colors[col], "LineStyle": 1,
-           "Contour": (1, array.array("d", [chi2_levels[2][1]]))})
-        r.setup_hist(h2, props={"LineWidth": 2, "LineColor": colors[col], "LineStyle": 2,
-           "Contour": (1, array.array("d", [chi2_levels[2][2]]))})
+        r.setup_hist(h1, props={"LineWidth": 2, "LineStyle": 1,
+            "Contour": (1, array.array("d", [chi2_levels[2][1]]))}, color=colors[col])
+        r.setup_hist(h2, props={"LineWidth": 2, "LineStyle": 2,
+           "Contour": (1, array.array("d", [chi2_levels[2][2]]))}, color=colors[col])
 
         # fill them
         for x, y in np.ndindex(exp.shape):
@@ -641,8 +650,8 @@ def plot_likelihood_scans_2d(
         draw_objs.append((h1, "SAME,CONT3"))
         draw_objs.append((h2, "SAME,CONT3"))
         legend_entries.append((g_fit, "{} (best fit)".format(d["name"]), "P"))
-        legend_entries.append((h1, "#pm1#sigma"))
-        legend_entries.append((h2, "#pm2#sigma"))
+        legend_entries.append((h1, "#pm1#sigma", "l"))
+        legend_entries.append((h2, "#pm2#sigma", "l"))
 
     # model parameter label
     if model_parameters:

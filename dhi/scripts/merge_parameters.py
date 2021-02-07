@@ -15,7 +15,7 @@ single one. Currently, only parameters with columnar type "lnN", "lnU" and
 Note 1: The use of an output directory is recommended to keep input files
         unchanged.
 
-Note 2: This script is not intended to be used to merge incompatible systemati
+Note 2: This script is not intended to be used to merge incompatible systematic
         uncertainties. Its only purpose is to reduce the number of parameters by
         merging the effect of (probably small) uncertainties that are related at
         analysis level, e.g. multiple types of lepton efficiency corrections.
