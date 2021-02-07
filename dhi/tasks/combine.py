@@ -43,9 +43,10 @@ class HHModelTask(AnalysisTask):
     valid_hh_model_options = {"noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc"}
 
     hh_model = luigi.Parameter(
-        default="HHModelPinv:model_default",
-        description="the name of the HH model relative to dhi.models with optional configuration "
-        "options in the format module.model_name[@opt1[@opt2...]]; valid options are {}; default: "
+        default="HHModelPinv.model_default",
+        description="the location of the HH model to use with optional configuration options in "
+        "the format module.model_name[@opt1[@opt2...]]; when no module name is given, the default "
+        "one 'dhi.models.HHModelPinv' is assumed; valid options are {}; default: "
         "HHModelPinv.model_default".format(",".join(valid_hh_model_options)),
     )
 
@@ -66,6 +67,12 @@ class HHModelTask(AnalysisTask):
         # the format used to be "module:model_name" before so adjust it to support legacy commands
         hh_model = hh_model.replace(":", ".")
 
+        # when there is no "." in the string, assume it to be the name of a model in the default
+        # model file "HHModelPinv"
+        if "." not in hh_model:
+            hh_model = "HHModelPinv.{}".format(hh_model)
+
+        # split into module, model name and options
         m = re.match(r"^(.+)\.([^\.@]+)(@(.+))?$", hh_model)
         if not m:
             raise Exception("invalid hh_model format '{}'".format(hh_model))
@@ -265,23 +272,22 @@ class HHModelTask(AnalysisTask):
 class MultiHHModelTask(HHModelTask):
 
     hh_models = law.CSVParameter(
-        description="multiple names of the HH models relative to dhi.models in the format "
-        "module.model_name[@opt]; default: empty",
+        description="comma-separated locations of HH models to use with optional configurations, "
+        "each in the format module.model_name[@opt1[@opt2...]]; no default",
         brace_expand=True,
     )
-
     hh_model_order = law.CSVParameter(
         default=(),
         cls=luigi.IntParameter,
         significant=False,
-        description="indices of models in hh_models for reordering; not used when empty; "
-        "default: empty",
+        description="comma-separated indices of models in hh_models for reordering; not used when "
+        "empty; no default",
     )
     hh_model_names = law.CSVParameter(
         default=(),
         significant=False,
-        description="names of hh models for plotting purposes; applied before reordering with "
-        "hh_model_order; default: empty",
+        description="comma-separated names of hh models for plotting purposes; applied before "
+        "reordering with hh_model_order; no default",
         brace_expand=True,
     )
 
