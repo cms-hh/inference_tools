@@ -169,9 +169,10 @@ class PlotUpperLimits(POIScanTask, POIPlotTask):
         name = self.create_plot_name(["limits", self.get_output_postfix(), parts])
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         # prepare the output
         output = self.output()
@@ -270,9 +271,10 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         name = self.create_plot_name(["multilimits", self.get_output_postfix(), parts])
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         # prepare the output
         output = self.output()
@@ -351,6 +353,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
 
 
 class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
+
     def requires(self):
         return [MergeUpperLimits.req(self, hh_model=hh_model) for hh_model in self.hh_models]
 
@@ -367,9 +370,10 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         name = self.create_plot_name(["multilimitsbymodel", self.get_output_postfix(), parts])
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         # prepare the output
         output = self.output()
@@ -516,9 +520,10 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         name = self.create_plot_name(["limitsatpoint", self.get_output_postfix(), parts])
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         import numpy as np
 

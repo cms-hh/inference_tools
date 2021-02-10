@@ -49,7 +49,6 @@ class LikelihoodScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondo
             " -m {self.mass}"
             " -t {self.toys}"
             " --algo grid"
-            " --expectSignal 1"
             " --redefineSignalPOIs {self.joined_pois}"
             " --gridPoints {self.joined_scan_points}"
             " --setParameterRanges {self.joined_scan_ranges}"
@@ -139,9 +138,10 @@ class PlotLikelihoodScan(POIScanTask, POIPlotTask):
         )
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         import numpy as np
 
@@ -238,9 +238,10 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
         )
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         import numpy as np
 
@@ -344,9 +345,10 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
         )
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         import numpy as np
 

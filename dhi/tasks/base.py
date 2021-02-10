@@ -15,7 +15,9 @@ import law
 import six
 
 
-law.contrib.load("git", "htcondor", "matplotlib", "numpy", "root", "tasks", "wlcg")
+law.contrib.load(
+    "git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks", "wlcg",
+)
 
 
 class LocalTarget(law.LocalTarget):
@@ -47,8 +49,13 @@ class BaseTask(law.Task):
         "CSV parameter accepts a single integer value which sets the task recursion depth to also "
         "print the commands of required tasks (0 means non-recursive)",
     )
+    notify_slack = law.slack.NotifySlackParameter()
+    notify_telegram = law.telegram.NotifyTelegramParameter()
+
+    exclude_params_req = {"notify_slack", "notify_telegram"}
 
     interactive_params = law.Task.interactive_params + ["print_command"]
+
     task_namespace = os.getenv("DHI_TASK_NAMESPACE")
 
     def _print_command(self, args):

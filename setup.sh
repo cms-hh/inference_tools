@@ -26,6 +26,10 @@ setup() {
     export DHI_ORIG_PYTHONPATH="$PYTHONPATH"
     export DHI_ORIG_PYTHON3PATH="$PYTHON3PATH"
     export DHI_ORIG_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
+    export DHI_SLACK_TOKEN="${DHI_SLACK_TOKEN:-}"
+    export DHI_SLACK_CHANNEL="${DHI_SLACK_CHANNEL:-}"
+    export DHI_TELEGRAM_TOKEN="${DHI_TELEGRAM_TOKEN:-}"
+    export DHI_TELEGRAM_CHAT="${DHI_TELEGRAM_CHAT:-}"
 
     # lang defaults
     [ -z "$LANGUAGE" ] && export LANGUAGE="en_US.UTF-8"
@@ -122,6 +126,9 @@ setup() {
         # python packages
         dhi_pip_install luigi==2.8.2 || return "$?"
         dhi_pip_install --no-deps git+https://github.com/riga/scinum.git || return "$?"
+
+        # optional packages, disabled at the moment
+        # dhi_pip_install python-telegram-bot==12.3.0
 
         date "+%s" > "$flag_file_sw"
     fi

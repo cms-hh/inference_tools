@@ -283,9 +283,10 @@ class PlotPullsAndImpacts(PlotTask, POITask):
         name = self.create_plot_name(["pulls_impacts", self.get_output_postfix(), parts])
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         # prepare the output
         output = self.output()

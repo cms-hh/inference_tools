@@ -46,9 +46,10 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
         name = self.create_plot_name(["exclusionbestfit", self.get_output_postfix()])
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         import numpy as np
         import numpy.lib.recfunctions as rec
@@ -157,9 +158,10 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         name = self.create_plot_name(["exclusionbestfit2d", self.get_output_postfix()])
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         import numpy as np
 

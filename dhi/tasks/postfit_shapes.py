@@ -102,9 +102,10 @@ class PlotPostfitSOverB(POIPlotTask):
         name = self.create_plot_name(["postfitsoverb", self.get_output_postfix()])
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         # prepare the output
         output = self.output()
