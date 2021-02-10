@@ -72,8 +72,11 @@ def plot_limit_scan(
     scan_values = expected_values[scan_parameter]
     if observed_values is not None:
         observed_values = check_values(observed_values, ["limit"])
+    has_thy = theory_values is not None
+    has_thy_err = False
     if theory_values is not None:
         theory_values = check_values(theory_values, ["xsec"])
+        has_thy_err = "xsec_p1" in theory_values and "xsec_m1" in theory_values
 
     # set default ranges
     if x_min is None:
@@ -101,7 +104,7 @@ def plot_limit_scan(
     legend_entries = 6 * [(h_dummy, " ", "")]
 
     # helper to read values into graphs
-    def create_graph(values=expected_values, key="limit", sigma=None):
+    def create_graph(values=expected_values, key="limit", sigma=None, insert=None):
         return create_tgraph(
             len(values[key]),
             scan_values,
@@ -111,6 +114,7 @@ def plot_limit_scan(
             (values[key] - values["{}_m{}".format(key, sigma)]) if sigma else 0,
             (values["{}_p{}".format(key, sigma)] - values[key]) if sigma else 0,
             pad=True,
+            insert=insert,
         )
 
     # 2 sigma band
@@ -152,21 +156,9 @@ def plot_limit_scan(
         y_max_value = max(y_max_value, max(observed_values["limit"]))
         y_min_value = min(y_min_value, min(observed_values["limit"]))
 
-    # theory prediction
-    if theory_values is not None:
-        if "xsec_p1" in theory_values and "xsec_m1" in theory_values:
-            g_thy = create_graph(values=theory_values, key="xsec", sigma=1)
-            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0, "FillStyle": 3244}, color=colors.red, color_flags="lf")
-            draw_objs.append((g_thy, "SAME,C4"))
-            y_min_value = min(y_min_value, min(theory_values["xsec_m1"]))
-        else:
-            g_thy = create_graph(values=theory_values, key="xsec")
-            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0}, color=colors.red, color_flags="l")
-            draw_objs.append((g_thy, "SAME,L"))
-            y_min_value = min(y_min_value, min(theory_values["xsec"]))
-        legend_entries[0 if observed_values is None else 1] = (g_thy, "Theory prediction")
+    # get theory prediction limits
+    if has_thy:
+        y_min_value = min(y_min_value, min(theory_values["xsec_m1" if has_thy_err else "xsec"]))
 
     # set limits
     if y_min is None:
@@ -181,6 +173,23 @@ def plot_limit_scan(
             y_max = 1.35 * (y_max_value - y_min)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
+
+    # theory prediction
+    if has_thy:
+        if has_thy_err:
+            # when the maximum value is far above the maximum y range, ROOT will fail drawing the
+            # first point correctly, so insert two values that are so off that it does not matter
+            insert = [(0, -1e7, 0, 0, 0, 0, 0)] if max(theory_values["xsec"]) > y_max else None
+            g_thy = create_graph(values=theory_values, key="xsec", sigma=1, insert=insert)
+            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
+                "MarkerSize": 0, "FillStyle": 3244}, color=colors.red, color_flags="lf")
+            draw_objs.append((g_thy, "SAME,C3"))
+        else:
+            g_thy = create_graph(values=theory_values, key="xsec")
+            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
+                "MarkerSize": 0}, color=colors.red, color_flags="l")
+            draw_objs.append((g_thy, "SAME,L"))
+        legend_entries[0 if observed_values is None else 1] = (g_thy, "Theory prediction")
 
     # model parameter label
     if model_parameters:
@@ -268,12 +277,15 @@ def plot_limit_scans(
     assert(all(scan_parameter in ev for ev in expected_values))
     assert(all("limit" in ev for ev in expected_values))
     scan_values = expected_values[0][scan_parameter]
+    has_thy = theory_values is not None
+    has_thy_err = False
     if theory_values is not None:
         # convert record array to dicts mapping to arrays
         if isinstance(theory_values, np.ndarray):
             theory_values = {key: theory_values[key] for key in theory_values.dtype.names}
         assert(scan_parameter in theory_values)
         assert("xsec" in theory_values)
+        has_thy_err = "xsec_p1" in theory_values and "xsec_m1" in theory_values
 
     # set default ranges
     if x_min is None:
@@ -298,24 +310,6 @@ def plot_limit_scans(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
-    # theory prediction
-    if theory_values is not None:
-        if "xsec_p1" in theory_values and "xsec_m1" in theory_values:
-            g_thy = create_tgraph(len(scan_values), scan_values, theory_values["xsec"], 0, 0,
-                theory_values["xsec"] - theory_values["xsec_m1"],
-                theory_values["xsec_p1"] - theory_values["xsec"], pad=True)
-            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0, "FillStyle": 3244}, color=colors.red, color_flags="lf")
-            draw_objs.append((g_thy, "SAME,C4"))
-            y_min_value = min(y_min_value, min(theory_values["xsec_m1"]))
-        else:
-            g_thy = create_tgraph(len(scan_values), scan_values, theory_values["xsec"])
-            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-                "MarkerSize": 0}, color=colors.red, color_flags="l")
-            draw_objs.append((g_thy, "SAME,L"))
-            y_min_value = min(y_min_value, min(theory_values["xsec"]))
-        legend_entries.append((g_thy, "Theory prediction"))
-
     # central values
     for i, (ev, col) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1])):
         mask = ~np.isnan(ev["limit"])
@@ -323,9 +317,13 @@ def plot_limit_scans(
         r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.7},
             color=colors[col])
         draw_objs.append((g_exp, "SAME,PL"))
-        legend_entries.insert(0, (g_exp, names[n_graphs - i - 1]))
+        legend_entries.append((g_exp, names[n_graphs - i - 1]))
         y_max_value = max(y_max_value, max(ev["limit"]))
         y_min_value = min(y_min_value, min(ev["limit"]))
+
+    # get theory prediction limits
+    if has_thy:
+        y_min_value = min(y_min_value, min(theory_values["xsec_m1" if has_thy_err else "xsec"]))
 
     # set limits
     if y_min is None:
@@ -340,6 +338,26 @@ def plot_limit_scans(
             y_max = 1.35 * (y_max_value - y_min)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
+
+    # draw the theory prediction
+    if has_thy:
+        scan_values_thy = theory_values[scan_parameter]
+        if has_thy_err:
+            # when the maximum value is far above the maximum y range, ROOT will fail drawing the
+            # first point correctly, so insert two values that are so off that it does not matter
+            insert = [(0, -1e7, 0, 0, 0, 0, 0)] if max(theory_values["xsec"]) > y_max else None
+            g_thy = create_tgraph(len(scan_values_thy), scan_values_thy, theory_values["xsec"],
+                0, 0, theory_values["xsec"] - theory_values["xsec_m1"],
+                theory_values["xsec_p1"] - theory_values["xsec"], pad=True, insert=insert)
+            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
+                "MarkerSize": 0, "FillStyle": 3244}, color=colors.red, color_flags="lf")
+            draw_objs.insert(1, (g_thy, "SAME,C3"))
+        else:
+            g_thy = create_tgraph(len(scan_values_thy), scan_values_thy, theory_values["xsec"])
+            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
+                "MarkerSize": 0}, color=colors.red, color_flags="l")
+            draw_objs.insert(1, (g_thy, "SAME,L"))
+        legend_entries.append((g_thy, "Theory prediction"))
 
     # model parameter label
     if model_parameters:

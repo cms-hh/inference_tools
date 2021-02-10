@@ -179,11 +179,12 @@ def minimize_1d(objective, bounds, start=None, niter=10, **kwargs):
 
 
 def create_tgraph(n, *args, **kwargs):
-    """create_tgraph(n, *args, pad=None)
+    """create_tgraph(n, *args, pad=None, insert=None)
     Creates a ROOT graph with *n* points, where the type is *TGraph* for two, *TGraphErrors* for
     4 and *TGraphAsymmErrors* for six *args*. Each argument is converted to a python array with
     typecode "f". When *pad* is *True*, the graph is padded by one additional point on each side
-    with the same edge value.
+    with the same edge value. When *insert* is given, it should be a list of tuples with values
+    ``(index, values...)`` denoting the index, coordinates and errors of points to be inserted.
     """
     ROOT = import_ROOT()
 
@@ -203,10 +204,21 @@ def create_tgraph(n, *args, **kwargs):
             a = n * list(a)
         _args.append(list(a))
 
-    # apply edge padding when requested
-    if kwargs.get("pad"):
-        n += 2
-        _args = [(a[:1] + a + a[-1:]) for a in _args]
+    # apply edge padding when requested with a configurable width
+    pad = kwargs.get("pad")
+    if pad:
+        w = 1 if not isinstance(pad, int) else int(pad)
+        n += 2 * w
+        _args = [(w * a[:1] + a + w * a[-1:]) for a in _args]
+
+    # insert custom points
+    insert = kwargs.get("insert")
+    if insert:
+        for values in insert:
+            idx, values = values[0], values[1:]
+            for i, v in enumerate(values):
+                _args[i].insert(idx, v)
+            n += 1
 
     if n == 0:
         return cls(n)
