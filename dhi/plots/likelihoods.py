@@ -326,6 +326,9 @@ def plot_likelihood_scans_1d(
         props={"NColumns": legend_cols})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
+    legend_box = r.routines.create_legend_box(legend, pad, "tr",
+        props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+    draw_objs.insert(-1, legend_box)
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -650,8 +653,8 @@ def plot_likelihood_scans_2d(
         draw_objs.append((h1, "SAME,CONT3"))
         draw_objs.append((h2, "SAME,CONT3"))
         legend_entries.append((g_fit, "{} (best fit)".format(d["name"]), "P"))
-        legend_entries.append((h1, "#pm1#sigma", "l"))
-        legend_entries.append((h2, "#pm2#sigma", "l"))
+        legend_entries.append((h1, "#pm 1 #sigma", "l"))
+        legend_entries.append((h2, "#pm 2 #sigma", "l"))
 
     # model parameter label
     if model_parameters:

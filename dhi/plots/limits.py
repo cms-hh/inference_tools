@@ -123,7 +123,7 @@ def plot_limit_scan(
         r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
             "MarkerSize": 0, "FillColor": colors.yellow})
         draw_objs.append((g_2sigma, "SAME,4"))
-        legend_entries[5] = (g_2sigma, "#pm 2#sigma expected")
+        legend_entries[5] = (g_2sigma, "#pm 2 #sigma expected")
         y_max_value = max(y_max_value, max(expected_values["limit_p2"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m2"]))
 
@@ -133,7 +133,7 @@ def plot_limit_scan(
         r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
             "MarkerSize": 0, "FillColor": colors.green})
         draw_objs.append((g_1sigma, "SAME,4"))
-        legend_entries[4] = (g_1sigma, "#pm 1#sigma expected")
+        legend_entries[4] = (g_1sigma, "#pm 1 #sigma expected")
         y_max_value = max(y_max_value, max(expected_values["limit_p1"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m1"]))
 
@@ -202,6 +202,9 @@ def plot_limit_scan(
     legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
+    legend_box = r.routines.create_legend_box(legend, pad, "tr",
+        props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+    draw_objs.insert(-1, legend_box)
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -373,6 +376,9 @@ def plot_limit_scans(
         props={"NColumns": legend_cols})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
+    legend_box = r.routines.create_legend_box(legend, pad, "tr",
+        props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+    draw_objs.insert(-1, legend_box)
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -546,14 +552,14 @@ def plot_limit_points(
     r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
         "MarkerSize": 0, "FillColor": colors.yellow})
     draw_objs.append((g_2sigma, "SAME,2"))
-    legend_entries[5] = (g_2sigma, r"#pm 2#sigma expected")
+    legend_entries[5] = (g_2sigma, r"#pm 2 #sigma expected")
 
     # 1 sigma band
     g_1sigma = create_graph(sigma=1)
     r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
         "MarkerSize": 0, "FillColor": colors.green})
     draw_objs.append((g_1sigma, "SAME,2"))
-    legend_entries[4] = (g_1sigma, r"#pm 1#sigma expected")
+    legend_entries[4] = (g_1sigma, r"#pm 1 #sigma expected")
 
     # central values
     g_exp = create_graph(sigma=0)

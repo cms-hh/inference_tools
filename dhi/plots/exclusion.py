@@ -369,7 +369,7 @@ def plot_exclusion_and_bestfit_2d(
             r.setup_graph(g, props={"LineStyle": 2, "LineColor": colors.black, "MarkerStyle": 20,
                 "MarkerSize": 0, "FillColor": colors.light_grey})
             draw_objs.append((g, "F,SAME"))
-        legend_entries.append((g, "#pm 2#sigma expected"))
+        legend_entries.append((g, "#pm 2 #sigma expected"))
 
     # -1 and +1 sigma exclusion
     if has_unc1:
@@ -377,7 +377,7 @@ def plot_exclusion_and_bestfit_2d(
             r.setup_graph(g, props={"LineStyle": 2, "LineColor": colors.black, "MarkerStyle": 20,
                 "MarkerSize": 0, "FillColor": colors.grey})
             draw_objs.append((g, "F,SAME"))
-        legend_entries.insert(0, (g, "#pm 1#sigma expected"))
+        legend_entries.insert(0, (g, "#pm 1 #sigma expected"))
 
         p1_col = colors.light_grey if has_unc2 else colors.white
         for g in contours["limit_p1"]:
@@ -452,7 +452,7 @@ def plot_exclusion_and_bestfit_2d(
         label = "Best fit value (observed)"
     elif expected_likelihoods:
         likelihoods, scan_minima = expected_likelihoods, expected_scan_minima
-        label = "Best fit value (observed)"
+        label = "Best fit value (expected)"
     if likelihoods:
         scan = evaluate_likelihood_scan_2d(likelihoods[scan_parameter1],
             likelihoods[scan_parameter2], likelihoods["dnll2"],
@@ -484,13 +484,12 @@ def plot_exclusion_and_bestfit_2d(
                 y_offset=48 + i * 24, props={"TextSize": 20}))
 
     # legend
-    # legend_box = ROOT.TBox(x_min, y_max - 0.24 * (y_max - y_min), x_max, y_max)
-    # r.setup_box(legend_box, props={"LineWidth": 0, "FillStyle": 1001,
-    #     "FillColor": colors.white_trans_30})
-    # draw_objs.append(legend_box)
     legend = r.routines.create_legend(pad=pad, width=480, n=3, x2=-44, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
+    legend_box = r.routines.create_legend_box(legend, pad, "lrt",
+        props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+    draw_objs.insert(-1, legend_box)
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)

@@ -22,7 +22,7 @@ def _setup_styles():
     s.legend_y2 = -15
     s.legend_dy = 32
     s.legend.TextSize = 20
-    s.legend.FillStyle = 1001
+    s.legend.FillStyle = 1
 
 
 def use_style(style_name):
