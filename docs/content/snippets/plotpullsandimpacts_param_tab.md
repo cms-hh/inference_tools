@@ -2,6 +2,6 @@ The `PlotPullsAndImpacts` task collects fit results from `MergePullsAndImpacts` 
 
 <div class="dhi_parameter_table">
 
---8<-- "content/snippets/parameters.md@-2,20,19,16,14,17,18,28,29,33,27,30,31,32,3,4"
+--8<-- "content/snippets/parameters.md@-2,20,19,16,14,48,17,18,28,29,33,27,30,31,32,3,4"
 
 </div>

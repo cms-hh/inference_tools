@@ -33,8 +33,8 @@ def plot_significance_scan(
     """
     Creates a plot for the significance scan of a *poi* over a *scan_parameter* and saves it at
     *path*. *expected_values* should be a mapping to lists of values or a record array with keys
-    "<poi_name>" and "significance". When *observed_values* is given, it should be single lists of
-    values with the same length as the lists given in *expected_values*.
+    "<poi_name>" and "significance". When *observed_values* is given, it should have the same
+    structure as *expected_values*.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
     given values. *model_parameters* can be a dictionary of key-value pairs of model parameters.
@@ -45,19 +45,23 @@ def plot_significance_scan(
     import plotlib.root as r
     ROOT = import_ROOT()
 
-    # convert record array to dict mapping to arrays
-    if isinstance(expected_values, np.ndarray):
-        expected_values = {key: expected_values[key] for key in expected_values.dtype.names}
+    # helper to check and convert record arrays to dict mappings to arrays
+    def check_values(values):
+        if isinstance(values, np.ndarray):
+            values = {key: values[key] for key in values.dtype.names}
+        assert(scan_parameter in values)
+        assert("significance" in values)
+        return values
 
     # input checks
-    assert(scan_parameter in expected_values)
-    assert("significance" in expected_values)
+    expected_values = check_values(expected_values)
     scan_values = expected_values[scan_parameter]
     n_points = len(scan_values)
     assert(all(len(d) == n_points for d in expected_values.values()))
     if observed_values is not None:
-        assert(len(observed_values) == n_points)
-        observed_values = np.array(observed_values)
+        observed_values = check_values(observed_values)
+        scan_values_obs = observed_values[scan_parameter]
+        n_points_obs = len(scan_values_obs)
 
     # set default ranges
     if x_min is None:
@@ -92,13 +96,13 @@ def plot_significance_scan(
 
     # observed values
     if observed_values is not None:
-        g_obs = create_tgraph(n_points, scan_values, observed_values)
+        g_obs = create_tgraph(n_points_obs, scan_values_obs, observed_values["significance"])
         r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
             "MarkerSize": 0.7}, color=colors.red)
         draw_objs.append((g_obs, "SAME,PL"))
         legend_entries.append((g_obs, "Observed"))
-        y_max_value = max(y_max_value, max(observed_values))
-        y_min_value = min(y_min_value, min(observed_values))
+        y_max_value = max(y_max_value, max(observed_values["significance"]))
+        y_min_value = min(y_min_value, min(observed_values["significance"]))
 
     # set limits
     if y_min is None:

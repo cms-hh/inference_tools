@@ -473,6 +473,7 @@ def plot_limit_points(
             has_obs = True
             x_min_value = min(x_min_value, d["observed"])
             x_max_value = max(x_max_value, d["observed"])
+            d["observed"] = [d["observed"]]
         if "theory" in d:
             if not isinstance(d["theory"], (tuple, list)):
                 d["theory"] = 3 * (d["theory"],)
@@ -524,7 +525,8 @@ def plot_limit_points(
         create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{SM}"))
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
-    r.setup_x_axis(h_dummy.GetXaxis(), pad, props={"TitleOffset": 1.2})
+    r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={
+        "TitleOffset": r.get_stable_distance("v", 1.2)})
     draw_objs.append((h_dummy, "HIST"))
 
     # setup up to 6 legend entries that are inserted by index downstream
@@ -570,11 +572,11 @@ def plot_limit_points(
 
     # observed values
     if has_obs:
-        g_inj = create_graph(obs=True)
+        g_inj = create_graph(key="observed")
         r.setup_graph(g_inj, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-            "MarkerSiz2e": 2})
-        draw_objs.append((g_inj, "SAME,PEZ"))
-        legend_entries[0] = (g_inj, "Observed limit")
+            "MarkerSize": 0})
+        draw_objs.append((g_inj, "SAME,EZ"))
+        legend_entries[0] = (g_inj, "Observed")
 
     # vertical line for theory prediction, represented by a graph in case of uncertainties
     if has_thy:
@@ -610,7 +612,7 @@ def plot_limit_points(
         if obs is None:
             return y_label_tmpl % (label, fmt(exp))
         else:
-            return y_label_tmpl_obs % (label, fmt(exp), fmt(obs))
+            return y_label_tmpl_obs % (label, fmt(exp), fmt(obs[0]))
 
     h_dummy.GetYaxis().SetBinLabel(1, "")
     for i, d in enumerate(data):

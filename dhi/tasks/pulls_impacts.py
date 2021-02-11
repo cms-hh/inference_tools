@@ -87,13 +87,20 @@ class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
         name = "fit__{}__{}.root".format(self.get_output_postfix(), self.branch_data)
         return self.local_target(name)
 
+    @property
+    def blinded_args(self):
+        if self.unblinded:
+            return ""
+        else:
+            return "-t {self.toys}".format(self=self)
+
     def build_command(self):
         # build the part of the command that is common between the initial fit and nuisance fits
         common_cmd = (
             "combine -M MultiDimFit {workspace}"
             " -v 1"
             " -m {self.mass}"
-            " -t {self.toys}"
+            " {self.blinded_args}"
             " --robustFit 1"
             " --redefineSignalPOIs {self.pois[0]}"
             " --setParameterRanges {self.pois[0]}={start},{stop}"
@@ -167,17 +174,22 @@ class MergePullsAndImpacts(POITask):
         params = req.workspace_parameters
 
         # helper to extract results from an fit file target
-        def extract_values(inp, param):
+        def extract_values(b, param):
             # read the plain values
-            values = inp.load(formatter="uproot")["limit"].arrays(param)
+            values = inputs[b].load(formatter="uproot")["limit"].arrays(param)
             # check that each arrays has length 3
             for p, v in values.items():
                 if v.size != 3:
                     raise ValueError(
-                        "fit result for parameter '{}' at {} must contain 3 entries, "
-                        "but found {}, this might be likely due to a failed fit, so you might want "
-                        "to add '--X-rtd MINIMIZER_analytic' to combine via --custom-args".format(
-                            p, inp.path, v.size)
+                        "fit result for parameter '{0}' of branch {1} stored at {2} must contain 3 "
+                        "entries, but found {3}; this is likely due to a failed fit, so you can "
+                        "try to remove the file and add\n\n"
+                        "--{4}-custom-args='--X-rtd MINIMIZER_analytic'\n\n"
+                        "to your law command, or you skip this particular branch by adding\n\n"
+                        "--{4}-branches 0-{5},{6}-\n\n"
+                        "which effectively selects all branches but the failing one".format(
+                            p, b, inputs[b].path, v.size, "PullsAndImpacts", b - 1, b + 1
+                        )
                     )
             # return the values dict when multiple params were given, otherwise a single array
             return values if isinstance(param, (list, tuple)) else values[param]
@@ -188,7 +200,7 @@ class MergePullsAndImpacts(POITask):
 
         # load and store nominal value
         poi = self.pois[0]
-        nom = extract_values(inputs[0], poi)
+        nom = extract_values(0, poi)
         data["POIs"] = [{"name": poi, "fit": nom[[1, 0, 2]].tolist()}]
         self.publish_message("read nominal values")
 
@@ -199,7 +211,7 @@ class MergePullsAndImpacts(POITask):
             if b == 0:
                 continue
 
-            vals = extract_values(inputs[b], [poi, name])
+            vals = extract_values(b, [poi, name])
             d = OrderedDict()
             d["name"] = name
             d["type"] = params[name]["type"]
