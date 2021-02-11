@@ -27,7 +27,7 @@ colors = colors.root
 def plot_likelihood_scan_1d(
     path,
     poi,
-    expected_values,
+    values,
     theory_value=None,
     poi_min=None,
     x_min=None,
@@ -35,21 +35,24 @@ def plot_likelihood_scan_1d(
     y_min=None,
     y_max=None,
     y_log=False,
+    measurement_label=None,
     model_parameters=None,
     campaign=None,
 ):
     """
-    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *path*. *expected_values*
-    should be a mapping to lists of values or a record array with keys "<poi_name>" and "dnll2".
-    *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
-    down uncertainties which is drawn as a vertical bar. When *poi_min* is set, it should be the
-    value of the poi that leads to the best likelihood. Otherwise, it is estimated from the
-    interpolated curve.
+    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *path*. *values* should be a
+    mapping to lists of values or a record array with keys "<poi_name>" and "dnll2". *theory_value*
+    can be a 3-tuple denoting the nominal theory prediction of the POI and its up and down
+    uncertainties which is drawn as a vertical bar. When *poi_min* is set, it should be the value of
+    the poi that leads to the best likelihood. Otherwise, it is estimated from the interpolated
+    curve.
 
     *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
     the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
-    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    When *measurement_label* is set, it should be a string that is drawn as the first legend entry
+    to denote the type of the measurement (e.g. observed or expected). *model_parameters* can be a
+    dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
+    campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d
     """
@@ -57,8 +60,8 @@ def plot_likelihood_scan_1d(
     ROOT = import_ROOT()
 
     # get valid poi and delta nll values
-    poi_values = np.array(expected_values[poi], dtype=np.float32)
-    dnll2_values = np.array(expected_values["dnll2"], dtype=np.float32)
+    poi_values = np.array(values[poi], dtype=np.float32)
+    dnll2_values = np.array(values["dnll2"], dtype=np.float32)
 
     # set x range
     if x_min is None:
@@ -151,6 +154,8 @@ def plot_likelihood_scan_1d(
                 y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
+    if measurement_label:
+        legend_entries.insert(0, (h_dummy, measurement_label, "l"))
     legend = r.routines.create_legend(pad=pad, width=230, n=len(legend_entries))
     r.setup_legend(legend)
     for tpl in legend_entries:
@@ -187,6 +192,7 @@ def plot_likelihood_scans_1d(
     y_max=None,
     y_log=False,
     model_parameters=None,
+    measurement_label=None,
     campaign=None,
 ):
     """
@@ -194,7 +200,7 @@ def plot_likelihood_scans_1d(
     All information should be passed as a list *data*. Entries must be dictionaries with the
     following content:
 
-        - "expected_values": A mapping to lists of values or a record array with keys "<poi1_name>",
+        - "values": A mapping to lists of values or a record array with keys "<poi1_name>",
           "<poi2_name>" and "dnll2".
         - "poi_min": A float describing the best fit value of the POI. When not set, the minimum is
           estimated from the interpolated curve.
@@ -204,9 +210,11 @@ def plot_likelihood_scans_1d(
     down uncertainties which is drawn as a vertical bar.
 
     *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
-    the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
-    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. When
+    *measurement_label* is set, it should be a string that is drawn as the first legend entry to
+    denote the type of the measurement (e.g. observed or expected) *model_parameters* can be a
+    dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
+    campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d_1
     """
@@ -215,19 +223,19 @@ def plot_likelihood_scans_1d(
 
     # validate data entries
     for i, d in enumerate(data):
-        # convert expected values to arrays
-        assert("expected_values" in d)
-        exp_values = d["expected_values"]
-        if isinstance(exp_values, np.ndarray):
-            exp_values = {k: exp_values[k] for k in exp_values.dtype.names}
-        assert(poi in exp_values)
-        assert("dnll2" in exp_values)
+        # convert likelihood values to arrays
+        assert("values" in d)
+        values = d["values"]
+        if isinstance(values, np.ndarray):
+            values = {k: values[k] for k in values.dtype.names}
+        assert(poi in values)
+        assert("dnll2" in values)
         # keep only valid points
-        exp_values = {k: np.array(v, dtype=np.float32) for k, v in exp_values.items()}
-        mask = ~np.isnan(exp_values["dnll2"])
-        exp_values[poi] = exp_values[poi][mask]
-        exp_values["dnll2"] = exp_values["dnll2"][mask]
-        d["expected_values"] = exp_values
+        values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}
+        mask = ~np.isnan(values["dnll2"])
+        values[poi] = values[poi][mask]
+        values["dnll2"] = values["dnll2"][mask]
+        d["values"] = values
         # check poi minimum
         d.setdefault("poi_min", None)
         # default name
@@ -235,14 +243,14 @@ def plot_likelihood_scans_1d(
 
     # set x range
     if x_min is None:
-        x_min = min([min(d["expected_values"][poi]) for d in data])
+        x_min = min([min(d["values"][poi]) for d in data])
     if x_max is None:
-        x_max = max([max(d["expected_values"][poi]) for d in data])
+        x_max = max([max(d["values"][poi]) for d in data])
 
     # set y range
     y_max_value = max([
-        d["expected_values"]["dnll2"][
-            (d["expected_values"][poi] >= x_min) & (d["expected_values"][poi] <= x_min)
+        d["values"]["dnll2"][
+            (d["values"][poi] >= x_min) & (d["values"][poi] <= x_min)
         ]
         for d in data
     ])
@@ -296,12 +304,12 @@ def plot_likelihood_scans_1d(
     # perform scans and draw nll curves
     for d, col in zip(data, color_sequence[:len(data)]):
         # evaluate the scan, run interpolation and error estimation
-        scan = evaluate_likelihood_scan_1d(d["expected_values"][poi], d["expected_values"]["dnll2"],
+        scan = evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"],
             poi_min=d["poi_min"])
 
         # draw the curve
-        g_nll = create_tgraph(len(d["expected_values"][poi]), d["expected_values"][poi],
-            d["expected_values"]["dnll2"])
+        g_nll = create_tgraph(len(d["values"][poi]), d["values"][poi],
+            d["values"]["dnll2"])
         r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75},
             color=colors[col])
         draw_objs.append((g_nll, "SAME,CP"))
@@ -320,6 +328,8 @@ def plot_likelihood_scans_1d(
                 y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
+    if measurement_label:
+        legend_entries.insert(0, (h_dummy, measurement_label, "l"))
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
     legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
     legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
@@ -353,7 +363,7 @@ def plot_likelihood_scan_2d(
     path,
     poi1,
     poi2,
-    expected_values,
+    values,
     poi1_min=None,
     poi2_min=None,
     x_min=None,
@@ -363,22 +373,24 @@ def plot_likelihood_scan_2d(
     z_min=None,
     z_max=None,
     fill_nans=True,
+    measurement_label=None,
     model_parameters=None,
     campaign=None,
 ):
     """
     Creates a likelihood plot of the 2D scan of two POIs *poi1* and *poi2*, and saves it at *path*.
-    *expected_values* should be a mapping to lists of values or a record array with keys
-    "<poi1_name>", "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be
-    the values of the POIs that lead to the best likelihood. Otherwise, they are  estimated from the
-    interpolated curve.
+    *values* should be a mapping to lists of values or a record array with keys "<poi1_name>",
+    "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be the values of
+    the POIs that lead to the best likelihood. Otherwise, they are  estimated from the interpolated
+    curve.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
     and default to the ranges of the poi values. *z_min* and *z_max* limit the range of the z-axis.
     When *fill_nans* is *True*, points with failed fits, denoted by nan values, are filled with the
-    averages of neighboring fits. *model_parameters* can be a dictionary of key-value pairs of model
-    parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*.
+    averages of neighboring fits. When *measurement_label* is set, it should be a string that is
+    drawn to denote the type of the measurement (e.g. observed or expected). *model_parameters* can
+    be a dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
+    campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d
     """
@@ -386,9 +398,9 @@ def plot_likelihood_scan_2d(
     ROOT = import_ROOT()
 
     # get poi and delta nll values
-    poi1_values = np.array(expected_values[poi1], dtype=np.float32)
-    poi2_values = np.array(expected_values[poi2], dtype=np.float32)
-    dnll2_values = np.array(expected_values["dnll2"], dtype=np.float32)
+    poi1_values = np.array(values[poi1], dtype=np.float32)
+    poi2_values = np.array(values[poi2], dtype=np.float32)
+    dnll2_values = np.array(values["dnll2"], dtype=np.float32)
 
     # evaluate the scan, run interpolation and error estimation
     scan = evaluate_likelihood_scan_2d(
@@ -479,17 +491,19 @@ def plot_likelihood_scan_2d(
     draw_objs.append((h1, "SAME,CONT3"))
     draw_objs.append((h2, "SAME,CONT3"))
 
-    # best fit value labels
+    # measurement and best fit value labels
     fit_label1 = "{} = {}".format(to_root_latex(poi_data[poi1].label),
         scan.num1_min.str(format="%.2f", style="root"))
     fit_label2 = "{} = {}".format(to_root_latex(poi_data[poi2].label),
         scan.num2_min.str(format="%.2f", style="root"))
-    fit_label1 = r.routines.create_top_right_label(fit_label1, pad=pad, x_offset=150, y_offset=30,
-        props={"TextAlign": 13})
-    fit_label2 = r.routines.create_top_right_label(fit_label2, pad=pad, x_offset=150, y_offset=68,
-        props={"TextAlign": 13})
-    draw_objs.append(fit_label1)
-    draw_objs.append(fit_label2)
+    labels = [fit_label1, fit_label2]
+    if measurement_label:
+        labels.insert(0, (measurement_label))
+    for i, l in enumerate(labels):
+        dy = 25 if measurement_label and i == 1 else 35
+        l = r.routines.create_top_right_label(l, pad=pad, x_offset=160, y_offset=30 + i * dy,
+            props={"TextAlign": 13})
+        draw_objs.append(l)
 
     # model parameter label
     if model_parameters:
@@ -527,6 +541,7 @@ def plot_likelihood_scans_2d(
     y_min=None,
     y_max=None,
     fill_nans=True,
+    measurement_label=None,
     model_parameters=None,
     campaign=None,
 ):
@@ -535,7 +550,7 @@ def plot_likelihood_scans_2d(
     saves it at *path*. All information should be passed as a list *data*. Entries must be
     dictionaries with the following content:
 
-        - "expected_values": A mapping to lists of values or a record array with keys "<poi1_name>",
+        - "values": A mapping to lists of values or a record array with keys "<poi1_name>",
           "<poi2_name>" and "dnll2".
         - "poi_mins": A list of two floats describing the best fit value of the two POIs. When not
           set, the minima are estimated from the interpolated curve.
@@ -543,9 +558,13 @@ def plot_likelihood_scans_2d(
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
     and default to the ranges of the poi values. When *fill_nans* is *True*, points with failed
-    fits, denoted by nan values, are filled with the averages of neighboring fits.
-    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    fits, denoted by nan values, are filled with the averages of neighboring fits. When
+    *measurement_label* is set, it should be a string that is drawn to denote the type of the
+    measurement (e.g. observed or expected). *model_parameters* can be a dictionary of key-value
+    pairs of model parameters. *campaign* should refer to the name of a campaign label defined in
+    *dhi.config.campaign_labels*.
+
+    TODO: The *measurement_label* is not yet shown.
 
     Example: Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d_1
     """
@@ -554,16 +573,16 @@ def plot_likelihood_scans_2d(
 
     # validate data entries
     for i, d in enumerate(data):
-        # convert expected values to arrays
-        assert("expected_values" in d)
-        exp_values = d["expected_values"]
-        if isinstance(exp_values, np.ndarray):
-            exp_values = {k: exp_values[k] for k in exp_values.dtype.names}
-        assert(poi1 in exp_values)
-        assert(poi2 in exp_values)
-        assert("dnll2" in exp_values)
-        exp_values = {k: np.array(v, dtype=np.float32) for k, v in exp_values.items()}
-        d["expected_values"] = exp_values
+        # convert likelihood values to arrays
+        assert("values" in d)
+        values = d["values"]
+        if isinstance(values, np.ndarray):
+            values = {k: values[k] for k in values.dtype.names}
+        assert(poi1 in values)
+        assert(poi2 in values)
+        assert("dnll2" in values)
+        values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}
+        d["values"] = values
         # check poi minima
         d["poi_mins"] = d.get("poi_mins") or [None, None]
         assert(len(d["poi_mins"]) == 2)
@@ -572,13 +591,13 @@ def plot_likelihood_scans_2d(
 
     # set ranges
     if x_min is None:
-        x_min = min([min(d["expected_values"][poi1]) for d in data])
+        x_min = min([min(d["values"][poi1]) for d in data])
     if x_max is None:
-        x_max = max([max(d["expected_values"][poi1]) for d in data])
+        x_max = max([max(d["values"][poi1]) for d in data])
     if y_min is None:
-        y_min = min([min(d["expected_values"][poi2]) for d in data])
+        y_min = min([min(d["values"][poi2]) for d in data])
     if y_max is None:
-        y_max = max([max(d["expected_values"][poi2]) for d in data])
+        y_max = max([max(d["values"][poi2]) for d in data])
 
     # start plotting
     r.setup_style()
@@ -598,18 +617,18 @@ def plot_likelihood_scans_2d(
     for d, col in zip(data, color_sequence[:len(data)]):
         # evaluate the scan
         scan = evaluate_likelihood_scan_2d(
-            d["expected_values"][poi1], d["expected_values"][poi2], d["expected_values"]["dnll2"],
+            d["values"][poi1], d["values"][poi2], d["values"]["dnll2"],
             poi1_min=d["poi_mins"][0], poi2_min=d["poi_mins"][1],
         )
 
         # for each set of expected values, transform the poi coordinates and dnll2 values into a 2d
         # array where the inner (outer) dimension refers to poi1 (poi2)
-        e1 = np.unique(d["expected_values"][poi1])
-        e2 = np.unique(d["expected_values"][poi2])
-        i1 = np.searchsorted(e1, d["expected_values"][poi1], side="right") - 1
-        i2 = np.searchsorted(e2, d["expected_values"][poi2], side="right") - 1
+        e1 = np.unique(d["values"][poi1])
+        e2 = np.unique(d["values"][poi2])
+        i1 = np.searchsorted(e1, d["values"][poi1], side="right") - 1
+        i2 = np.searchsorted(e2, d["values"][poi2], side="right") - 1
         exp = np.zeros((e2.size, e1.size), dtype=np.float32)
-        exp[i2, i1] = d["expected_values"]["dnll2"]
+        exp[i2, i1] = d["values"]["dnll2"]
 
         # optionally fill nans with averages over neighboring points
         if fill_nans:
@@ -620,10 +639,10 @@ def plot_likelihood_scans_2d(
             exp[[p[0] for p in nmeans], [p[1] for p in nmeans]] = nmeans.values()
 
         # infer the binning
-        _x_min = min(d["expected_values"][poi1])
-        _x_max = max(d["expected_values"][poi1])
-        _y_min = min(d["expected_values"][poi2])
-        _y_max = max(d["expected_values"][poi2])
+        _x_min = min(d["values"][poi1])
+        _x_max = max(d["values"][poi1])
+        _y_min = min(d["values"][poi2])
+        _y_max = max(d["values"][poi2])
         bin_width1 = (_x_max - _x_min) / (len(e1) - 1)
         bin_width2 = (_y_max - _y_min) / (len(e2) - 1)
         binning = (

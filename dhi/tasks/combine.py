@@ -181,7 +181,7 @@ class HHModelTask(AnalysisTask):
             # get the xsec and apply it to every
             xsec = get_xsec(**_xsec_kwargs)
             for key in point.dtype.names:
-                if key.startswith("limit"):
+                if key.startswith("limit") or key == "observed":
                     point[key] *= xsec
 
         return data
@@ -788,6 +788,10 @@ class POITask(DatacardTask, ParameterValuesTask):
         sort=True,
         description="comma-separated names of groups of parameters to be frozen",
     )
+    unblinded = luigi.BoolParameter(
+        default=False,
+        description="unblinded computation and plotting of results; default: False",
+    )
 
     force_n_pois = None
     allow_parameter_values_in_pois = False
@@ -852,6 +856,10 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     def get_output_postfix(self, join=True, exclude_params=None, include_params=None):
         parts = []
+
+        # add the unblinded flag
+        if self.unblinded:
+            parts.append(["unblinded"])
 
         # add pois
         parts.append(["poi"] + list(self.pois))
@@ -987,7 +995,8 @@ class POIScanTask(POITask, ParameterScanTask):
             parts = POITask.get_output_postfix(self, join=False, exclude_params=exclude_params)
 
             # insert the scan configuration
-            parts = parts[:1] + ParameterScanTask.get_output_postfix(self, join=False) + parts[1:]
+            i = 2 if self.unblinded else 1
+            parts = parts[:i] + ParameterScanTask.get_output_postfix(self, join=False) + parts[i:]
 
         return self.join_postfix(parts) if join else parts
 

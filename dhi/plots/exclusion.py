@@ -34,9 +34,11 @@ def plot_exclusion_and_bestfit_1d(
     """
     Creates a plot showing exluded regions of a *poi* over a *scan_parameter* for multiple analysis
     (or channels) as well as best fit values and saves it at *path*. *data* should be a list of
-    dictionaries with fields "expected_limits" and "expected_nll", and optionally *observed_limits*,
-    *observed_nll* and "name" (shown on the y-axis). The former four should be given as either
-    dictionaries or numpy record arrays containing fields *poi* and "limit", or *poi* and "dnll2".
+    dictionaries with fields "name", "expected_limits" and "nll_values", and optionally
+    *observed_limits*, and "scan_min". Limits and NLL values should be given as either dictionaries
+    or numpy record arrays containing fields *poi* and "limit", or *poi* and "dnll2". When a value
+    for "scan_min" is given, this value is used to mark the best fit value (e.g. from combine's
+    internal interpolation). Otherwise, the value is extracted in a custom interpolation approach.
     When the name is a key of dhi.config.br_hh_names, its value is used as a label instead. Example:
 
     .. code-block:: python
@@ -46,9 +48,11 @@ def plot_exclusion_and_bestfit_1d(
             poi="r",
             scan_parameter="kl",
             data=[{
+                "name": "...",
                 "expected_limits": {"kl": [...], "limit": [...]},
-                "expected_nll": {"kl": [...], "dnll2": [...]},
-                "expected_scan_min": 1.0,
+                "observed_limits": {"kl": [...], "limit": [...]},  # optional
+                "nll_values": {"kl": [...], "dnll2": [...]},
+                "scan_min": 1.0,  # optional
             }, {
                 ...
             }],
@@ -67,7 +71,7 @@ def plot_exclusion_and_bestfit_1d(
     # check minimal fields per data entry
     assert(all("name" in d for d in data))
     assert(all("expected_limits" in d for d in data))
-    assert(all("expected_nll" in d for d in data))
+    assert(all("nll_values" in d for d in data))
     n = len(data)
     has_obs = any("observed_limits" in d for d in data)
     scan_values = np.array(data[0]["expected_limits"][scan_parameter])
@@ -111,6 +115,8 @@ def plot_exclusion_and_bestfit_1d(
     scan_label = to_root_latex(poi_data[scan_parameter].label)
     h_dummy = ROOT.TH1F("dummy", ";{};".format(scan_label), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
+    r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={
+        "TitleOffset": r.get_stable_distance("v", 1.2)})
     draw_objs.append((h_dummy, "HIST"))
 
     # expected exclusion area from intersections of limit with 1
@@ -141,15 +147,15 @@ def plot_exclusion_and_bestfit_1d(
         r.setup_graph(g_excl_obs, color=colors.red, color_flags="f",
             props={"FillStyle": 3354, "MarkerStyle": 20, "MarkerSize": 0, "LineWidth": 0})
         draw_objs.append((g_excl_obs, "SAME,2"))
-        legend_entries.append((g_excl_obs, "Excluded (observed)"))
+        legend_entries.insert(-1, (g_excl_obs, "Excluded (observed)"))
     else:
         # dummy legend entry
         legend_entries.append((h_dummy, " ", ""))
 
     # best fit values
     scans = [
-        evaluate_likelihood_scan_1d(d["expected_nll"][scan_parameter], d["expected_nll"]["dnll2"],
-            poi_min=d.get("expected_scan_min"))
+        evaluate_likelihood_scan_1d(d["nll_values"][scan_parameter], d["nll_values"]["dnll2"],
+            poi_min=d.get("scan_min"))
         for d in data
     ]
     g_bestfit = create_tgraph(n,
@@ -241,10 +247,8 @@ def plot_exclusion_and_bestfit_2d(
     xsec_levels=None,
     xsec_label_positions=None,
     xsec_unit=None,
-    expected_likelihoods=None,
-    expected_scan_minima=None,
-    observed_likelihoods=None,
-    observed_scan_minima=None,
+    nll_values=None,
+    scan_minima=None,
     draw_sm_point=True,
     x_min=None,
     x_max=None,
@@ -256,7 +260,7 @@ def plot_exclusion_and_bestfit_2d(
     """
     Creates a 2D plot showing excluded regions of two paramters *scan_parameter1* and
     *scan_parameter2* extracted from limits on a *poi* and saves it at *path*. The limit values must
-    be passed via *expected_values* which should be a mapping to lists of values or a record array
+    be passed via *expected_limits* which should be a mapping to lists of values or a record array
     with keys "<scan_parameter1>", "<scan_parameter2>", "limit", and optionally "limit_p1",
     "limit_m1", "limit_p2" and "limit_m2" to denote uncertainties at 1 and 2 sigma. When
     *observed_limits* it set, it should have the same format (except for the uncertainties) to draw
@@ -273,15 +277,13 @@ def plot_exclusion_and_bestfit_2d(
     *scan_parameter1* and *scan_parameter2*) and the rotation of a label for that contour level.
     *xsec_unit* can be a string that is appended to every label.
 
-    When *expected_likelihoods* (*observed_likelihoods*) is set, it is used to extract expected
-    (observed) best fit values and their uncertainties which are drawn as well. When set, it should
-    be a mapping to lists of values or a record array with keys "<scan_parameter1>",
-    "<scan_parameter2>" and "dnll2". By default, the position of the best value is directly
-    extracted from the likelihood values. However, when *expected_scan_minima*
-    (*observed_scan_minima*) is a 2-tuple of positions per scan parameter, this best fit value is
-    used instead, e.g. to use combine's internally interpolated value. It should be noted that the
-    expected best fit value is not drawn in case the *observed_likelihoods* is defined. In any case,
-    the standard model point at (1, 1) as drawn as well unless *draw_sm_point* is *False*.
+    When *nll_values* is set, it is used to extract expected best fit values and their uncertainties
+    which are drawn as well. When set, it should be a mapping to lists of values or a record array
+    with keys "<scan_parameter1>", "<scan_parameter2>" and "dnll2". By default, the position of the
+    best value is directly extracted from the likelihood values. However, when *scan_minima* is a
+    2-tuple of positions per scan parameter, this best fit value is used instead, e.g. to use
+    combine's internally interpolated value. The standard model point at (1, 1) as drawn as well
+    unless *draw_sm_point* is *False*.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the range of the x- and y-axis, respectively, and
     default to the scan parameter ranges found in *expected_limits*. *model_parameters* can be a
@@ -300,29 +302,29 @@ def plot_exclusion_and_bestfit_2d(
         return arr
 
     expected_limits = rec2dict(expected_limits)
-    expected_likelihoods = rec2dict(expected_likelihoods)
+    if observed_limits:
+        observed_limits = rec2dict(observed_limits)
+    nll_values = rec2dict(nll_values)
     xsec_values = rec2dict(xsec_values)
 
     # input checks
     assert(scan_parameter1 in expected_limits)
     assert(scan_parameter2 in expected_limits)
     assert("limit" in expected_limits)
+    if observed_limits:
+        assert(scan_parameter1 in observed_limits)
+        assert(scan_parameter2 in observed_limits)
+        assert("limit" in observed_limits)
     if xsec_values:
         assert(scan_parameter1 in xsec_values)
         assert(scan_parameter2 in xsec_values)
         assert("xsec" in xsec_values)
-    if expected_likelihoods:
-        assert(scan_parameter1 in expected_likelihoods)
-        assert(scan_parameter2 in expected_likelihoods)
-        assert("dnll2" in expected_likelihoods)
-    if expected_scan_minima:
-        assert(len(expected_scan_minima) == 2)
-    if observed_likelihoods:
-        assert(scan_parameter1 in observed_likelihoods)
-        assert(scan_parameter2 in observed_likelihoods)
-        assert("dnll2" in observed_likelihoods)
-    if observed_scan_minima:
-        assert(len(observed_scan_minima) == 2)
+    if nll_values:
+        assert(scan_parameter1 in nll_values)
+        assert(scan_parameter2 in nll_values)
+        assert("dnll2" in nll_values)
+    if scan_minima:
+        assert(len(scan_minima) == 2)
 
     # set shown ranges
     if x_min is None:
@@ -445,17 +447,10 @@ def plot_exclusion_and_bestfit_2d(
             draw_objs.append((g, "F,SAME"))
         legend_entries.append((g, "Excluded (observed)", "AF"))
 
-    # best fit point, observed or expected
-    likelihoods, scan_minima = None, None
-    if observed_likelihoods:
-        likelihoods, scan_minima = observed_likelihoods, observed_scan_minima
-        label = "Best fit value (observed)"
-    elif expected_likelihoods:
-        likelihoods, scan_minima = expected_likelihoods, expected_scan_minima
-        label = "Best fit value (expected)"
-    if likelihoods:
-        scan = evaluate_likelihood_scan_2d(likelihoods[scan_parameter1],
-            likelihoods[scan_parameter2], likelihoods["dnll2"],
+    # best fit point
+    if nll_values:
+        scan = evaluate_likelihood_scan_2d(nll_values[scan_parameter1],
+            nll_values[scan_parameter2], nll_values["dnll2"],
             poi1_min=scan_minima and scan_minima[0], poi2_min=scan_minima and scan_minima[1])
         g_fit = ROOT.TGraphAsymmErrors(1)
         g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
@@ -467,7 +462,7 @@ def plot_exclusion_and_bestfit_2d(
             g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
         r.setup_graph(g_fit, props={"FillStyle": 0}, color=colors.black)
         draw_objs.append((g_fit, "PEZ"))
-        legend_entries.append((g_fit, label, "LPE"))
+        legend_entries.append((g_fit, "Best fit value", "LPE"))
 
     # SM point
     if draw_sm_point:

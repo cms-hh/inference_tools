@@ -38,14 +38,19 @@ class UpperLimits(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
     def output(self):
         return self.local_target("limit__" + self.get_output_postfix() + ".root")
 
+    @property
+    def blinded_args(self):
+        if self.unblinded:
+            return ""
+        else:
+            return "-t {self.toys} --run expected --noFitAsimov".format(self=self)
+
     def build_command(self):
         return (
             "combine -M AsymptoticLimits {workspace}"
             " -v 1"
             " -m {self.mass}"
-            " -t {self.toys}"
-            " --run expected"
-            " --noFitAsimov"
+            " {self.blinded_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
@@ -61,7 +66,7 @@ class UpperLimits(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
         )
 
     @classmethod
-    def load_limits(cls, target):
+    def load_limits(cls, target, unblinded=False):
         import numpy as np
 
         # load raw values
@@ -80,6 +85,12 @@ class UpperLimits(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
         else:
             # both 1 and 2 sigma variations exist
             values = (limits[2], limits[3], limits[1], limits[4], limits[0])
+
+        # when unblinded, append the observed value
+        if unblinded:
+            # get the observed value
+            obs = limits[5] if len(limits) == 6 else np.nan
+            values += (obs,)
 
         return values
 
@@ -107,11 +118,14 @@ class MergeUpperLimits(POIScanTask):
             ("limit_p2", np.float32),
             ("limit_m2", np.float32),
         ]
+        if self.unblinded:
+            dtype.append(("observed", np.float32))
+
         scan_task = self.requires()
         for branch, inp in self.input()["collection"].targets.items():
             scan_values = scan_task.branch_map[branch]
-            exp_values = UpperLimits.load_limits(inp)
-            records.append(scan_values + tuple(exp_values))
+            limits = UpperLimits.load_limits(inp, unblinded=self.unblinded)
+            records.append(scan_values + limits)
 
         data = np.array(records, dtype=dtype)
         self.output().dump(data=data, formatter="numpy")
@@ -178,17 +192,17 @@ class PlotUpperLimits(POIScanTask, POIPlotTask):
         output = self.output()
         output.parent.touch()
 
-        # load expected limit values
-        exp_values = self.input().load(formatter="numpy")["data"]
+        # load limit values
+        limit_values = self.input().load(formatter="numpy")["data"]
 
         # rescale from limit on r to limit on xsec when requested, depending on the poi
         thy_values = None
         xsec_unit = None
         if self.poi in self.r_pois:
             if self.xsec in ["pb", "fb"]:
-                exp_values = self.convert_to_xsecs(
+                limit_values = self.convert_to_xsecs(
                     self.poi,
-                    exp_values,
+                    limit_values,
                     self.xsec,
                     self.br,
                     param_keys=[self.scan_parameter],
@@ -197,7 +211,7 @@ class PlotUpperLimits(POIScanTask, POIPlotTask):
                 thy_values = self.get_theory_xsecs(
                     self.poi,
                     [self.scan_parameter],
-                    exp_values[self.scan_parameter],
+                    limit_values[self.scan_parameter],
                     self.xsec,
                     self.br,
                     xsec_kwargs=self.parameter_values_dict,
@@ -208,15 +222,15 @@ class PlotUpperLimits(POIScanTask, POIPlotTask):
                 thy_values = self.get_theory_xsecs(
                     self.poi,
                     [self.scan_parameter],
-                    exp_values[self.scan_parameter],
+                    limit_values[self.scan_parameter],
                     normalize=True,
                     xsec_kwargs=self.parameter_values_dict,
                 )
 
         # some printing
         for v in range(-2, 4 + 1):
-            if v in exp_values[self.scan_parameter]:
-                record = exp_values[exp_values[self.scan_parameter] == v][0]
+            if v in limit_values[self.scan_parameter]:
+                record = limit_values[limit_values[self.scan_parameter] == v][0]
                 self.publish_message(
                     "{} = {} -> {} {}".format(
                         self.scan_parameter,
@@ -226,13 +240,22 @@ class PlotUpperLimits(POIScanTask, POIPlotTask):
                     )
                 )
 
+        # prepare observed values
+        obs_values = None
+        if self.unblinded:
+            obs_values = {
+                self.scan_parameter: limit_values[self.scan_parameter],
+                "limit": limit_values["observed"],
+            }
+
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scan",
             path=output.path,
             poi=self.poi,
             scan_parameter=self.scan_parameter,
-            expected_values=exp_values,
+            expected_values=limit_values,
+            observed_values=obs_values,
             theory_values=thy_values,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
@@ -247,6 +270,9 @@ class PlotUpperLimits(POIScanTask, POIPlotTask):
 
 
 class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
+
+    unblinded = None
+
     @classmethod
     def modify_param_values(cls, params):
         params = PlotUpperLimits.modify_param_values(params)
@@ -281,19 +307,19 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         output.parent.touch()
 
         # load limit values
-        exp_values = []
+        limit_values = []
         names = []
         thy_values = None
         xsec_unit = None
         for i, inp in enumerate(self.input()):
-            _exp_values = inp.load(formatter="numpy")["data"]
+            _limit_values = inp.load(formatter="numpy")["data"]
 
             # rescale from limit on r to limit on xsec when requested, depending on the poi
             if self.poi in self.r_pois:
                 if self.xsec in ["pb", "fb"]:
-                    _exp_values = self.convert_to_xsecs(
+                    _limit_values = self.convert_to_xsecs(
                         self.poi,
-                        _exp_values,
+                        _limit_values,
                         self.xsec,
                         self.br,
                         param_keys=[self.scan_parameter],
@@ -304,7 +330,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
                         thy_values = self.get_theory_xsecs(
                             self.poi,
                             [self.scan_parameter],
-                            _exp_values[self.scan_parameter],
+                            _limit_values[self.scan_parameter],
                             self.xsec,
                             self.br,
                             xsec_kwargs=self.parameter_values_dict,
@@ -314,12 +340,12 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
                     thy_values = self.get_theory_xsecs(
                         self.poi,
                         [self.scan_parameter],
-                        _exp_values[self.scan_parameter],
+                        _limit_values[self.scan_parameter],
                         normalize=True,
                         xsec_kwargs=self.parameter_values_dict,
                     )
 
-            exp_values.append(_exp_values)
+            limit_values.append(_limit_values)
             names.append("datacards {}".format(i + 1))
 
         # set names if requested
@@ -328,7 +354,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
 
         # reoder if requested
         if self.datacard_order:
-            exp_values = [exp_values[i] for i in self.datacard_order]
+            limit_values = [limit_values[i] for i in self.datacard_order]
             names = [names[i] for i in self.datacard_order]
 
         # call the plot function
@@ -338,7 +364,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
             poi=self.poi,
             scan_parameter=self.scan_parameter,
             names=names,
-            expected_values=exp_values,
+            expected_values=limit_values,
             theory_values=thy_values,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
@@ -353,6 +379,8 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
 
 
 class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
+
+    unblinded = None
 
     def requires(self):
         return [MergeUpperLimits.req(self, hh_model=hh_model) for hh_model in self.hh_models]
@@ -380,20 +408,20 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         output.parent.touch()
 
         # load limit values
-        exp_values = []
+        limit_values = []
         names = []
         thy_values = None
         xsec_unit = None
         for i, (hh_model, inp) in enumerate(zip(self.hh_models, self.input())):
-            _exp_values = inp.load(formatter="numpy")["data"]
+            _limit_values = inp.load(formatter="numpy")["data"]
 
             # rescale from limit on r to limit on xsec when requested, depending on the poi
             if self.poi in self.r_pois:
                 if self.xsec in ["pb", "fb"]:
-                    _exp_values = self._convert_to_xsecs(
+                    _limit_values = self._convert_to_xsecs(
                         hh_model,
                         self.poi,
-                        _exp_values,
+                        _limit_values,
                         self.xsec,
                         self.br,
                         param_keys=[self.scan_parameter],
@@ -405,7 +433,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
                             hh_model,
                             self.poi,
                             [self.scan_parameter],
-                            _exp_values[self.scan_parameter],
+                            _limit_values[self.scan_parameter],
                             self.xsec,
                             self.br,
                             xsec_kwargs=self.parameter_values_dict,
@@ -416,7 +444,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
                         hh_model,
                         self.poi,
                         [self.scan_parameter],
-                        _exp_values[self.scan_parameter],
+                        _limit_values[self.scan_parameter],
                         normalize=True,
                         xsec_kwargs=self.parameter_values_dict,
                     )
@@ -426,7 +454,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
             if name.startswith("model "):
                 name = name.split("model ", 1)[-1]
 
-            exp_values.append(_exp_values)
+            limit_values.append(_limit_values)
             names.append(name)
 
         # set names if requested
@@ -435,7 +463,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
 
         # reoder if requested
         if self.hh_model_order:
-            exp_values = [exp_values[i] for i in self.hh_model_order]
+            limit_values = [limit_values[i] for i in self.hh_model_order]
 
         # call the plot function
         self.call_plot_func(
@@ -444,7 +472,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
             poi=self.poi,
             scan_parameter=self.scan_parameter,
             names=names,
-            expected_values=exp_values,
+            expected_values=limit_values,
             theory_values=thy_values,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
@@ -533,8 +561,13 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
 
         # load limit values
         names = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
-        exp_values = np.array(
-            [UpperLimits.load_limits(coll["collection"][0]) for coll in self.input()],
+        if self.unblinded:
+            names .append("observed")
+        limit_values = np.array(
+            [
+                UpperLimits.load_limits(coll["collection"][0], unblinded=self.unblinded)
+                for coll in self.input()
+            ],
             dtype=[(name, np.float32) for name in names],
         )
 
@@ -543,8 +576,8 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         xsec_unit = None
         if self.poi in self.r_pois:
             if self.xsec in ["pb", "fb"]:
-                exp_values = self.convert_to_xsecs(
-                    self.poi, exp_values, self.xsec, self.br, xsec_kwargs=self.parameter_values_dict
+                limit_values = self.convert_to_xsecs(
+                    self.poi, limit_values, self.xsec, self.br, xsec_kwargs=self.parameter_values_dict
                 )
                 thy_value = self.get_theory_xsecs(
                     self.poi,
@@ -567,14 +600,15 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
 
         # fill data entries as expected by the plot function
         data = []
-        for i, exp_record in enumerate(exp_values):
-            data.append(
-                {
-                    "name": "datacards {}".format(i + 1),
-                    "expected": exp_record.tolist(),
-                    "theory": thy_value and thy_value[0].tolist()[1],
-                }
-            )
+        for i, record in enumerate(limit_values):
+            entry = {
+                "name": "datacards {}".format(i + 1),
+                "expected": record.tolist()[:5],
+                "theory": thy_value and thy_value[0].tolist()[1],
+            }
+            if self.unblinded:
+                entry["observed"] = float(record[5])
+            data.append(entry)
 
         # set names if requested
         if self.datacard_names:
