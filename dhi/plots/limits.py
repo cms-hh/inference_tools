@@ -525,8 +525,8 @@ def plot_limit_points(
         create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{SM}"))
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
-    r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={
-        "TitleOffset": r.get_stable_distance("v", 1.2)})
+    r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"TitleOffset": 1.2,
+        "LabelOffset": r.pixel_to_coord(canvas, y=4)})
     draw_objs.append((h_dummy, "HIST"))
 
     # setup up to 6 legend entries that are inserted by index downstream

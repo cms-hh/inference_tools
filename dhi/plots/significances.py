@@ -257,7 +257,7 @@ def plot_significance_scans(
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
     legend_box = r.routines.create_legend_box(legend, pad, "tr",
-        props={"LineWidth": 0, "FillColor": colors.white_trans_70 * 0 + 2})
+        props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
     # cms label

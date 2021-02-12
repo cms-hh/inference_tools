@@ -500,7 +500,7 @@ def plot_likelihood_scan_2d(
     if measurement_label:
         labels.insert(0, (measurement_label))
     for i, l in enumerate(labels):
-        dy = 25 if measurement_label and i == 1 else 35
+        dy = 25 if measurement_label and i == 1 else 30
         l = r.routines.create_top_right_label(l, pad=pad, x_offset=160, y_offset=30 + i * dy,
             props={"TextAlign": 13})
         draw_objs.append(l)

@@ -116,7 +116,7 @@ def plot_exclusion_and_bestfit_1d(
     h_dummy = ROOT.TH1F("dummy", ";{};".format(scan_label), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={
-        "TitleOffset": r.get_stable_distance("v", 1.2)})
+        "TitleOffset": 1.2, "LabelOffset": r.pixel_to_coord(canvas, y=4)})
     draw_objs.append((h_dummy, "HIST"))
 
     # expected exclusion area from intersections of limit with 1
@@ -144,7 +144,7 @@ def plot_exclusion_and_bestfit_1d(
     # observed
     if has_obs:
         g_excl_obs = create_exclusion_graph("observed_limits")
-        r.setup_graph(g_excl_obs, color=colors.red, color_flags="f",
+        r.setup_graph(g_excl_obs, color=colors.blue_signal, color_flags="f",
             props={"FillStyle": 3354, "MarkerStyle": 20, "MarkerSize": 0, "LineWidth": 0})
         draw_objs.append((g_excl_obs, "SAME,2"))
         legend_entries.insert(-1, (g_excl_obs, "Excluded (observed)"))
@@ -170,12 +170,12 @@ def plot_exclusion_and_bestfit_1d(
     draw_objs.append((g_bestfit, "PEZ"))
     legend_entries.append((g_bestfit, "Best fit value"))
 
-    # vertical line at 1
+    # theory prediction
     if x_min < 1:
-        line_one = ROOT.TLine(1., 0., 1., n)
-        r.setup_line(line_one, props={"NDC": False, "LineStyle": 7}, color=colors.black)
-        draw_objs.insert(-1, line_one)
-        legend_entries.append((line_one, "Theory prediction", "l"))
+        line_thy = ROOT.TLine(1., 0., 1., n)
+        r.setup_line(line_thy, props={"NDC": False, "LineStyle": 1}, color=colors.red)
+        draw_objs.insert(-1, line_thy)
+        legend_entries.append((line_thy, "Theory prediction", "l"))
 
     # line to separate combined result
     if len(data) > 1 and data[-1]["name"].lower() == "combined":
