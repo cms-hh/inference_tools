@@ -252,15 +252,18 @@ class PlotPullsAndImpacts(PlotTask, POITask):
         description="when True, --parameter-order is neglected and parameters are ordered by "
         "absolute maximum impact; default: False",
     )
-    pull_range = luigi.FloatParameter(
-        default=2.0,
+    pull_range = luigi.IntParameter(
+        default=2,
         significant=False,
-        description="the maximum value of pulls on the lower x-axis; default: 2.0",
+        description="the maximum integer value of pulls on the lower x-axis; default: 2",
     )
     impact_range = luigi.FloatParameter(
-        default=5.0,
+        default=-1.0,
         significant=False,
-        description="the maximum value of impacts on the upper x-axis; default: 5.0",
+        description="the maximum value of impacts on the upper x-axis; for visual clearness, both "
+        "x-axes have the same divisions, so make sure that the ratio impact_range/pull_range "
+        "is a rational number with few digits; when not positive, an automatic value is chosen; "
+        "default: -1.0",
     )
     x_min = None
     x_max = None
