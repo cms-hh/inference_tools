@@ -123,6 +123,7 @@ module 'dhi.tasks.postfit_shapes', 2 task(s):
 module 'dhi.tasks.gof', 3 task(s):
     - GoodnessOfFit
     - PlotGoodnessOfFit
+    - PlotMultipleGoodnessOfFits
     - MergeGoodnessOfFit
 
 module 'dhi.tasks.test', 1 task(s):
@@ -137,7 +138,7 @@ module 'dhi.tasks.exclusion', 2 task(s):
     - PlotExclusionAndBestFit
     - PlotExclusionAndBestFit2D
 
-written 35 task(s) to index file '/your/path/inference/.law/index'
+written 36 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type
