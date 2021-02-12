@@ -8,7 +8,13 @@ import law
 import luigi
 
 from dhi.tasks.base import HTCondorWorkflow, view_output_plots
-from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
+from dhi.tasks.combine import (
+    MultiDatacardTask,
+    CombineCommandTask,
+    POITask,
+    POIPlotTask,
+    CreateWorkspace,
+)
 
 
 class GoodnessOfFit(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
@@ -172,6 +178,61 @@ class PlotGoodnessOfFit(POIPlotTask):
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
+            model_parameters=self.get_shown_parameters(),
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
+        )
+
+
+class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
+
+    y_min = None
+    y_max = None
+
+    def requires(self):
+        return [
+            MergeGoodnessOfFit.req(self, datacards=datacards) for datacards in self.multi_datacards
+        ]
+
+    def output(self):
+        name = self.create_plot_name(["multigofs", self.get_output_postfix()])
+        return self.local_target(name)
+
+    @law.decorator.log
+    @law.decorator.notify
+    @view_output_plots
+    @law.decorator.safe_output
+    def run(self):
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
+
+        # load input data
+        data = []
+        for i, inp in enumerate(self.input()):
+            d = inp.load(formatter="json")
+
+            # add a default name
+            d["name"] = "Cards {}".format(i + 1)
+
+            data.append(d)
+
+        # set names if requested
+        if self.datacard_names:
+            for d, name in zip(data, self.datacard_names):
+                d["name"] = name
+
+        # reoder if requested
+        if self.datacard_order:
+            data = [data[i] for i in self.datacard_order]
+
+        # call the plot function
+        self.call_plot_func(
+            "dhi.plots.gof.plot_gofs",
+            path=output.path,
+            data=data,
+            algorithm=self.algorithm,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
