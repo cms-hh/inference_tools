@@ -38,7 +38,7 @@ def plot_gof_distribution(
     given values. *model_parameters* can be a dictionary of key-value pairs of model parameters.
     *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
-    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/gof.html
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/gof.html#testing-a-datacard
     """
     import plotlib.root as r
     ROOT = import_ROOT()

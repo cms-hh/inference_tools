@@ -59,7 +59,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Run the for POI `r_qqhh`, scanning over `C2V` in the range `[-10,10]` with two points per integer step, including edges.
+**1.** Run the scan for POI `r_qqhh`, scanning over `C2V` in the range `[-10,10]` with two points per integer step, including edges.
 
 ```shell hl_lines="4-5"
 law run PlotSignificanceScan \

@@ -13,6 +13,10 @@ from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWo
 
 class GoodnessOfFit(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
+    toys = luigi.IntParameter(
+        default=1,
+        description="the positive number of toys to sample; default: 1",
+    )
     toys_per_task = luigi.IntParameter(
         default=1,
         description="the number of toys to generate per task; the number of tasks in this workflow "
