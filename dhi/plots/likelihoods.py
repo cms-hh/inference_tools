@@ -123,11 +123,11 @@ def plot_likelihood_scan_1d(
     # theory prediction with uncertainties
     if theory_value:
         # theory graph and line
-        g_thy = create_tgraph(1, theory_value[0], 0, theory_value[2], theory_value[1], 0,
+        g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1], y_min,
             y_max_line)
         r.setup_graph(g_thy, props={"FillStyle": 3244, "MarkerStyle": 20, "MarkerSize": 0},
             color=colors.red, color_flags="lfm")
-        line_thy = ROOT.TLine(theory_value[0], 0., theory_value[0], y_max_line)
+        line_thy = ROOT.TLine(theory_value[0], y_min, theory_value[0], y_max_line)
         r.setup_line(line_thy, props={"NDC": False}, color=colors.red)
         draw_objs.append((g_thy, "SAME,2"))
         draw_objs.append(line_thy)

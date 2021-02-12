@@ -121,4 +121,53 @@ class MergeGoodnessOfFit(POITask):
                 data["toys"].extend(values.tolist())
 
         # save the result as json
-        self.output().dump(data, indent=4, formatter="json")
+        self.output().dump(data, formatter="json")
+
+
+class PlotGoodnessOfFit(POIPlotTask):
+
+    toys = GoodnessOfFit.toys
+    toys_per_task = GoodnessOfFit.toys_per_task
+    algorithm = GoodnessOfFit.algorithm
+
+    z_min = None
+    z_max = None
+
+    def store_parts(self):
+        parts = super(PlotGoodnessOfFit, self).store_parts()
+        parts["gof"] = "{}__t{}__n{}".format(self.algorithm, self.toys, self.toys_per_task)
+        return parts
+
+    def requires(self):
+        return MergeGoodnessOfFit.req(self)
+
+    def output(self):
+        name = self.create_plot_name(["gofs", self.get_output_postfix()])
+        return self.local_target(name)
+
+    @law.decorator.log
+    @law.decorator.notify
+    @view_output_plots
+    @law.decorator.safe_output
+    def run(self):
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
+
+        # load input data
+        gof_data = self.input().load(formatter="json")
+
+        # call the plot function
+        self.call_plot_func(
+            "dhi.plots.gof.plot_gof_distribution",
+            path=output.path,
+            data=gof_data["data"],
+            toys=gof_data["toys"],
+            algorithm=self.algorithm,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
+            y_min=self.get_axis_limit("y_min"),
+            y_max=self.get_axis_limit("y_max"),
+            model_parameters=self.get_shown_parameters(),
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
+        )
