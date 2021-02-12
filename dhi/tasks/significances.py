@@ -38,15 +38,15 @@ class SignificanceScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCon
     @property
     def blinded_args(self):
         if self.unblinded:
-            return ""
+            return "--seed {self.branch}".format(self=self)
         else:
-            return "-t {self.toys}".format(self=self)
+            return "--toys {self.toys} --seed {self.branch}".format(self=self)
 
     def build_command(self):
         return (
             "combine -M Significance {workspace}"
-            " -v 1"
-            " -m {self.mass}"
+            " --verbose 1"
+            " --mass {self.mass}"
             " {self.blinded_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
@@ -55,7 +55,7 @@ class SignificanceScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCon
             " {self.combine_stable_options}"
             " {self.custom_args}"
             " && "
-            "mv higgsCombineTest.Significance.mH{self.mass_int}.root {output}"
+            "mv higgsCombineTest.Significance.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
             workspace=self.input().path,

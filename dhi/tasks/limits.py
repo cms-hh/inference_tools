@@ -41,15 +41,16 @@ class UpperLimits(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
     @property
     def blinded_args(self):
         if self.unblinded:
-            return ""
+            return "--seed {self.branch}".format(self=self)
         else:
-            return "-t {self.toys} --run expected --noFitAsimov".format(self=self)
+            return "--toys {self.toys} --seed {self.branch} --run expected --noFitAsimov".format(
+                self=self)
 
     def build_command(self):
         return (
             "combine -M AsymptoticLimits {workspace}"
-            " -v 1"
-            " -m {self.mass}"
+            " --verbose 1"
+            " --mass {self.mass}"
             " {self.blinded_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
@@ -58,7 +59,7 @@ class UpperLimits(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
             " {self.combine_stable_options}"
             " {self.custom_args}"
             " && "
-            "mv higgsCombineTest.AsymptoticLimits.mH{self.mass_int}.root {output}"
+            "mv higgsCombineTest.AsymptoticLimits.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
             workspace=self.input().path,

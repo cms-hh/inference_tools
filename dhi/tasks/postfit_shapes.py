@@ -44,13 +44,13 @@ class PostFitShapes(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWork
         if self.unblinded:
             return ""
         else:
-            return "-t {self.toys}".format(self=self)
+            return "--toys {self.toys}".format(self=self)
 
     def build_command(self):
         return (
             "combine -M FitDiagnostics {workspace}"
-            " -v 1"
-            " -m {self.mass}"
+            " --verbose 1"
+            " --mass {self.mass}"
             " {self.blinded_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameters {self.joined_parameter_values}"

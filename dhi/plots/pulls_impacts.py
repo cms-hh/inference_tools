@@ -284,8 +284,8 @@ def plot_pulls_impacts(
         legend = r.routines.create_legend(pad=pad, width=170, n=3)
         r.setup_legend(legend)
         legend.AddEntry(g_pull, "Pull")
-        legend.AddEntry(g_impact_hi, "Impact +1 #sigma")
-        legend.AddEntry(g_impact_lo, "Impact -1 #sigma")
+        legend.AddEntry(g_impact_hi, "Impact +1 #sigma", "F")
+        legend.AddEntry(g_impact_lo, "Impact -1 #sigma", "F")
         draw_objs.append(legend)
         legend_box = r.routines.create_legend_box(legend, pad, "tlr",
             props={"LineWidth": 0, "FillColor": colors.white_trans_70})

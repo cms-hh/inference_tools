@@ -437,6 +437,12 @@ class PlotTask(AnalysisTask):
         choices=["pdf", "png"],
         description="the type of the output plot file; choices: pdf,png; default: pdf",
     )
+    plot_postfix = luigi.Parameter(
+        default=law.NO_STR,
+        significant=False,
+        description="an arbitrary postfix that is added with to underscores to all paths of "
+        "produced plots; no default",
+    )
     view_cmd = luigi.Parameter(
         default=law.NO_STR,
         significant=False,
@@ -487,6 +493,8 @@ class PlotTask(AnalysisTask):
     def create_plot_name(self, *parts):
         if len(parts) == 1:
             parts = law.util.make_list(parts[0])
+        if self.plot_postfix and self.plot_postfix != law.NO_STR:
+            parts += (self.plot_postfix,)
         return "{}.{}".format(self.join_postfix(parts), self.file_type)
 
     def get_plot_func(self, func_id):

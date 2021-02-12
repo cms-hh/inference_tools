@@ -45,15 +45,15 @@ class LikelihoodScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondo
     @property
     def blinded_args(self):
         if self.unblinded:
-            return ""
+            return "--seed {self.branch}".format(self=self)
         else:
-            return "-t {self.toys}".format(self=self)
+            return "--toys {self.toys} --seed {self.branch}".format(self=self)
 
     def build_command(self):
         return (
             "combine -M MultiDimFit {workspace}"
-            " -v 1"
-            " -m {self.mass}"
+            " --verbose 1"
+            " --mass {self.mass}"
             " {self.blinded_args}"
             " --algo grid"
             " --redefineSignalPOIs {self.joined_pois}"
@@ -69,7 +69,7 @@ class LikelihoodScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondo
             " {self.combine_stable_options}"
             " {self.custom_args}"
             " && "
-            "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.root {output}"
+            "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
             workspace=self.input().path,

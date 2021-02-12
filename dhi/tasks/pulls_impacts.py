@@ -90,50 +90,47 @@ class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
     @property
     def blinded_args(self):
         if self.unblinded:
-            return ""
+            return "--seed {self.branch}".format(self=self)
         else:
-            return "-t {self.toys}".format(self=self)
+            return "--toys {self.toys} --seed {self.branch}".format(self=self)
 
     def build_command(self):
-        # build the part of the command that is common between the initial fit and nuisance fits
-        common_cmd = (
+        # define branch dependent options
+        if self.branch == 0:
+            # initial fit
+            branch_opts = "--algo singles"
+        else:
+            # nuisance fits
+            branch_opts = "--algo impact -P {} --floatOtherPOIs 1 --saveInactivePOI 1".format(
+                self.branch_data)
+
+        return (
             "combine -M MultiDimFit {workspace}"
-            " -v 1"
-            " -m {self.mass}"
+            " --verbose 1"
+            " --mass {self.mass}"
             " {self.blinded_args}"
-            " --robustFit 1"
             " --redefineSignalPOIs {self.pois[0]}"
             " --setParameterRanges {self.pois[0]}={start},{stop}"
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
+            " --robustFit 1"
             " {self.combine_stable_options}"
             " {self.custom_args}"
-            " {{branch_opts}}"
+            " {branch_opts}"
             " && "
-            "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.root {output}"
+            "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
             workspace=self.input().path,
             output=self.output().path,
             start=poi_data[self.pois[0]].range[0],
             stop=poi_data[self.pois[0]].range[1],
+            branch_opts=branch_opts,
         )
 
-        # merge with branch dependent options
-        if self.branch == 0:
-            # initial fit
-            branch_opts = "--algo singles"
-        else:
-            # nuisance fits
-            branch_opts = (
-                " --algo impact" " -P {}" " --floatOtherPOIs 1" " --saveInactivePOI 1"
-            ).format(self.branch_data)
-
-        return common_cmd.format(branch_opts=branch_opts)
-
     def htcondor_output_postfix(self):
-        postfix = super(HTCondorWorkflow, self).htcondor_output_postfix()
+        postfix = super(PullsAndImpacts, self).htcondor_output_postfix()
 
         parts = []
         if self.mc_stats:
