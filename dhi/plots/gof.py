@@ -48,9 +48,9 @@ def plot_gof_distribution(
 
     # set default ranges
     if x_min is None:
-        x_min = min([data] + toys) / 1.1
+        x_min = min([data] + toys) / 1.2
     if x_max is None:
-        x_max = max([data] + toys) * 1.1
+        x_max = max([data] + toys) * 1.2
 
     # start plotting
     r.setup_style()
