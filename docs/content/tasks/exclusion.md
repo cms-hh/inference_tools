@@ -33,13 +33,21 @@ Output:
 
 ```mermaid
 graph LR;
-    A(PlotExclusionAndBestFit) --> B(MergeUpperLimits);
-    A(PlotExclusionAndBestFit) --> C(MergeLikelihoodScan);
-    B --> D([UpperLimits]);
-    D --> F(CreateWorkspace);
-    F --> G(CombineDatacards);
-    C --> E([LikelihoodScan]);
-    E --> F;
+    A(PlotExclusionAndBestFit) --> B1(MergeUpperLimits);
+    A --> C1(MergeLikelihoodScan);
+    B1 --> D1([UpperLimits]);
+    D1 --> F1(CreateWorkspace);
+    F1 --> G1(CombineDatacards);
+    C1 --> E1([LikelihoodScan]);
+    E1 --> F1;
+    A --> B2(MergeUpperLimits);
+    A --> C2(MergeLikelihoodScan);
+    B2 --> D2([UpperLimits]);
+    D2 --> F2(CreateWorkspace);
+    F2 --> G2(CombineDatacards);
+    C2 --> E2([LikelihoodScan]);
+    E2 --> F2;
+    A --> ...;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.

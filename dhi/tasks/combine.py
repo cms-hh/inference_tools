@@ -1019,6 +1019,12 @@ class CombineCommandTask(CommandTask):
         significant=False,
         description="the number of toys to sample; -1 will use the asymptotic method; default: -1",
     )
+    optimize_discretes = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when set, use additional combine flags to optimize the minimization of "
+        "likelihoods with containing discrete parameters; default: False",
+    )
 
     combine_stable_options = (
         "--cminDefaultMinimizerType Minuit2"
@@ -1026,7 +1032,21 @@ class CombineCommandTask(CommandTask):
         " --cminFallbackAlgo Minuit2,0:1.0"
     )
 
+    combine_discrete_options = (
+        "--X-rt MINIMIZER_freezeDisassociatedParams"
+        " --X-rtd MINIMIZER_multiMin_hideConstants"
+        " --X-rtd MINIMIZER_multiMin_maskConstraints"
+        " --X-rtd MINIMIZER_multiMin_maskChannels=2"
+    )
+
     exclude_index = True
+
+    @property
+    def combine_optimization_args(self):
+        args = self.combine_stable_options
+        if self.optimize_discretes:
+            args += " " + self.combine_discrete_options
+        return args
 
 
 class POIPlotTask(PlotTask, POITask):

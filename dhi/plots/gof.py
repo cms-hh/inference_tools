@@ -231,7 +231,7 @@ def plot_gofs(
         "LabelOffset": r.pixel_to_coord(canvas, y=4)})
     h_dummy.GetYaxis().SetBinLabel(1, "")
     draw_objs.append((h_dummy, "HIST"))
-    y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{#Delta = %.1f#sigma}}"
+    y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{#Delta = %.1f #sigma}}"
 
     # draw curves and data lines
     for i, (d, fd) in enumerate(zip(data, fit_data)):

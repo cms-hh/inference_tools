@@ -87,7 +87,7 @@ class GoodnessOfFit(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWork
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
-            " {self.combine_stable_options}"
+            " {self.combine_optimization_args}"
             " {self.custom_args}"
             " && "
             "mv higgsCombineTest.GoodnessOfFit.mH{self.mass_int}.{self.branch}.root {output}"

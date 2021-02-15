@@ -115,7 +115,7 @@ class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --robustFit 1"
-            " {self.combine_stable_options}"
+            " {self.combine_optimization_args}"
             " {self.custom_args}"
             " {branch_opts}"
             " && "

@@ -22,7 +22,7 @@ from dhi.tasks.significances import PlotSignificanceScan, PlotMultipleSignifican
 from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
 from dhi.tasks.exclusion import PlotExclusionAndBestFit, PlotExclusionAndBestFit2D
 from dhi.tasks.postfit_shapes import PlotPostfitSOverB
-from dhi.tasks.gof import PlotGoodnessOfFit
+from dhi.tasks.gof import PlotGoodnessOfFit, PlotMultipleGoodnessOfFits
 from dhi.tasks.studies.model_selection import (
     PlotMorphingScales, PlotMorphedDiscriminant, PlotStatErrorScan,
 )
@@ -49,6 +49,7 @@ class TestPlots(AnalysisTask):
     no_exclusion_and_bestfit_2d = luigi.BoolParameter(default=False)
     no_postfit_s_over_b = luigi.BoolParameter(default=False)
     no_goodness_of_fit = luigi.BoolParameter(default=False)
+    no_multiple_goodness_of_fits = luigi.BoolParameter(default=False)
     no_morphing_scales = luigi.BoolParameter(default=False)
     no_morphed_discriminant = luigi.BoolParameter(default=False)
     no_stat_error_scan = luigi.BoolParameter(default=False)
@@ -194,8 +195,17 @@ class TestPlots(AnalysisTask):
             reqs["goodness_of_fit"] = PlotGoodnessOfFit.req(self,
                 datacards=ggf_cards,
                 pois=("r",),
-                toys=100,
-                toys_per_task=10,
+                toys=300,
+                toys_per_task=15,
+            )
+
+        if not self.no_multiple_goodness_of_fits:
+            reqs["multiple_goodness_of_fits"] = PlotMultipleGoodnessOfFits.req(self,
+                multi_datacards=multi_cards,
+                datacard_names=multi_cards_names,
+                pois=("r",),
+                toys=300,
+                toys_per_task=15,
             )
 
         if not self.no_morphing_scales:
