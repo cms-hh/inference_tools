@@ -451,7 +451,8 @@ optional arguments:
 > yield_table.py --help
 
 usage: yield_table.py [-h] [--bins BINS [BINS ...]] [--log-level LOG_LEVEL]
-                      [--table-fmt TABLE_FMT] [--data-name DATA_NAME]
+                      [--table-fmt TABLE_FMT] [--precision PRECISION]
+                      [--data-name DATA_NAME]
                       DATACARD
 
 Script to get yield tables from a datacard.
@@ -465,11 +466,14 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   --bins BINS [BINS ...]
-                        Regex to group bins. Default: '.+'.
+                        Regex to group bins, supports multiple expressions.
+                        Default: '.+'.
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
   --table-fmt TABLE_FMT
                         Table format. Default: 'github'.
+  --precision PRECISION
+                        Decimal precision. Default: '2'.
   --data-name DATA_NAME
                         Name of observation. Default: 'data_obs'.
 ```
