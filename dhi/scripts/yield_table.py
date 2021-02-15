@@ -20,7 +20,7 @@ from dhi.util import real_path, create_console_logger, import_ROOT
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
-def yield_table(datacard, bins, tablefmt, data_name):
+def yield_table(datacard, bins, tablefmt, data_name, precision):
     ROOT = import_ROOT()
     datacard = real_path(datacard)
     dc, sb = create_datacard_instance(datacard, create_shape_builder=True)
@@ -47,7 +47,7 @@ def yield_table(datacard, bins, tablefmt, data_name):
                     rate = 0.0
                     error = 0.0
                 r += Number(rate, error)
-            prate.append(tmpl.format(r.str("%.2f", style=style)))
+            prate.append(tmpl.format(r.str("%.{}f".format(precision), style=style)))
         content.append(prate)
     print(
         tabulate.tabulate(
@@ -75,11 +75,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--bins",
         nargs="+",
-        help="Regex to group bins. Default: '.+'.",
+        help="Regex to group bins, supports multiple expressions. Default: '.+'.",
         default=".+",
     )
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
     parser.add_argument("--table-fmt", default="github", help="Table format. Default: 'github'.")
+    parser.add_argument("--precision", default="2", help="Decimal precision. Default: '2'.")
     parser.add_argument(
         "--data-name", default="data_obs", help="Name of observation. Default: 'data_obs'."
     )
@@ -93,4 +94,4 @@ if __name__ == "__main__":
     else:
         bins = args.bins
     # add the parameter
-    yield_table(args.input, bins, args.table_fmt, args.data_name)
+    yield_table(args.input, bins, args.table_fmt, args.data_name, args.precision)
