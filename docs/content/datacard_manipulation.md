@@ -444,3 +444,32 @@ optional arguments:
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
 ```
+
+### Print yield tables (w/ stat. unc.)
+
+```shell hl_lines="1"
+> yield_table.py --help
+
+usage: yield_table.py [-h] [--bins BINS [BINS ...]] [--log-level LOG_LEVEL]
+                      [--table-fmt TABLE_FMT] [--data-name DATA_NAME]
+                      DATACARD
+
+Script to get yield tables from a datacard.
+Example usage:
+
+> yield_table.py datacard.txt --table-fmt latex
+
+positional arguments:
+  DATACARD              the datacard to read
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --bins BINS [BINS ...]
+                        Regex to group bins. Default: '.+'.
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --table-fmt TABLE_FMT
+                        Table format. Default: 'github'.
+  --data-name DATA_NAME
+                        Name of observation. Default: 'data_obs'.
+```
