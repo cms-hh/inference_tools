@@ -126,7 +126,7 @@ setup() {
         # python packages
         dhi_pip_install luigi==2.8.2 || return "$?"
         dhi_pip_install --no-deps git+https://github.com/riga/scinum.git || return "$?"
-        dhi_pip_install tabulate || return "$?"
+        dhi_pip_install tabulate==0.8.7 || return "$?"
 
         # optional packages, disabled at the moment
         # dhi_pip_install python-telegram-bot==12.3.0
