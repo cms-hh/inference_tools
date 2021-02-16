@@ -437,10 +437,22 @@ class DatacardTask(HHModelTask):
                 _paths = list(glob.glob(os.path.join(dc_path, pattern)))
 
             # when directories are given, assume to find a file "datacard.txt"
-            _paths = [
-                (os.path.join(path, "datacard.txt") if os.path.isdir(path) else path)
-                for path in _paths
-            ]
+            # when such a file does not exist, but a directory "latest" does, use it and try again
+            __paths = []
+            for path in _paths:
+                if os.path.isdir(path):
+                    dir_path = path
+                    while True:
+                        card = os.path.join(dir_path, "datacard.txt")
+                        latest = os.path.join(dir_path, "latest")
+                        if os.path.isfile(card):
+                            path = card
+                        elif os.path.isdir(latest):
+                            dir_path = os.path.realpath(latest)
+                            continue
+                        break
+                __paths.append(path)
+            _paths = __paths
 
             # keep only existing cards
             _paths = filter(os.path.exists, _paths)
