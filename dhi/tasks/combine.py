@@ -477,7 +477,7 @@ class DatacardTask(HHModelTask):
         if not paths and not store_dir:
             raise Exception("a store_dir is required when no datacard paths are provided")
 
-        # join to pairs and sorted by path
+        # join to pairs and sort by path
         pairs = sorted(list(zip(paths, bin_names)), key=lambda pair: pair[0])
 
         # merge bin names and paths again

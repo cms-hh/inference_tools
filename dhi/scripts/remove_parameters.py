@@ -24,7 +24,7 @@ import re
 from dhi.datacard_tools import (
     bundle_datacard, manipulate_datacard, update_datacard_count, expand_file_lines,
 )
-from dhi.util import real_path, multi_match, create_console_logger
+from dhi.util import real_path, multi_match, create_console_logger, patch_object
 
 
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
@@ -140,10 +140,14 @@ if __name__ == "__main__":
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
         "the output directory when --directory is set")
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
+    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
+        "line; default: {}".format(logger.name))
     args = parser.parse_args()
 
     # configure the logger
     logger.setLevel(args.log_level.upper())
 
     # run the removing
-    remove_parameters(args.input, args.names, directory=args.directory, skip_shapes=args.no_shapes)
+    with patch_object(logger, "name", args.log_name):
+        remove_parameters(args.input, args.names, directory=args.directory,
+            skip_shapes=args.no_shapes)

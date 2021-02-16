@@ -95,4 +95,5 @@ nav:
     - Goodness-of-fit tests: tasks/gof.md
     - Best practices: tasks/practices.md
   - Datacard manipulation: datacard_manipulation.md
+  - Useful scripts: scripts.md
   - Interactive datacard viewer: view_datacard.html

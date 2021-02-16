@@ -53,6 +53,8 @@ optional arguments:
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        remove_parameters
 ```
 
 
@@ -94,6 +96,8 @@ optional arguments:
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        rename_parameters
 ```
 
 
@@ -147,6 +151,8 @@ optional arguments:
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        add_parameter
 ```
 
 
@@ -225,6 +231,8 @@ optional arguments:
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        merge_parameters
 ```
 
 
@@ -270,6 +278,8 @@ optional arguments:
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        remove_processes
 ```
 
 
@@ -311,6 +321,8 @@ optional arguments:
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        rename_processes
 ```
 
 ## Adjusting bin process pairs
@@ -361,6 +373,8 @@ optional arguments:
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        remove_bin_process_pairs
 ```
 
 
@@ -406,6 +420,8 @@ optional arguments:
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        remove_bins
 ```
 
 
@@ -443,37 +459,6 @@ optional arguments:
   --no-preamble         remove any existing preamble
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
-```
-
-### Print yield tables (w/ stat. unc.)
-
-```shell hl_lines="1"
-> yield_table.py --help
-
-usage: yield_table.py [-h] [--bins BINS [BINS ...]] [--log-level LOG_LEVEL]
-                      [--table-fmt TABLE_FMT] [--precision PRECISION]
-                      [--data-name DATA_NAME]
-                      DATACARD
-
-Script to get yield tables from a datacard.
-Example usage:
-
-> yield_table.py datacard.txt --table-fmt latex
-
-positional arguments:
-  DATACARD              the datacard to read
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --bins BINS [BINS ...]
-                        Regex to group bins, supports multiple expressions.
-                        Default: '.+'.
-  --log-level LOG_LEVEL, -l LOG_LEVEL
-                        python log level; default: INFO
-  --table-fmt TABLE_FMT
-                        Table format. Default: 'github'.
-  --precision PRECISION
-                        Decimal precision. Default: '2'.
-  --data-name DATA_NAME
-                        Name of observation. Default: 'data_obs'.
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        prettify_datacard
 ```

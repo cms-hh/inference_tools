@@ -28,7 +28,9 @@ from dhi.datacard_tools import (
     columnar_parameter_directives, bundle_datacard, manipulate_datacard, update_datacard_count,
     expand_variables, expand_file_lines, ShapeLine,
 )
-from dhi.util import import_ROOT, real_path, multi_match, create_console_logger, TFileCache
+from dhi.util import (
+    import_ROOT, TFileCache, real_path, multi_match, create_console_logger, patch_object,
+)
 
 
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
@@ -505,6 +507,8 @@ if __name__ == "__main__":
         "merged parameters; defaults to 4")
     parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
+    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
+        "line; default: {}".format(logger.name))
     args = parser.parse_args()
 
     # configure the logger
@@ -514,8 +518,9 @@ if __name__ == "__main__":
     flip_parameters = (args.flip_parameters and args.flip_parameters.split(",")) or []
 
     # run the merging
-    merge_parameters(args.input, args.merged, args.names, directory=args.directory,
-        skip_shapes=args.no_shapes, flip_parameters=flip_parameters,
-        auto_rate_flip=args.auto_rate_flip, auto_rate_max=args.auto_rate_max,
-        auto_rate_envelope=args.auto_rate_envelope, auto_shape_average=args.auto_shape_average,
-         auto_shape_envelope=args.auto_shape_envelope, digits=args.digits, mass=args.mass)
+    with patch_object(logger, "name", args.log_name):
+        merge_parameters(args.input, args.merged, args.names, directory=args.directory,
+            skip_shapes=args.no_shapes, flip_parameters=flip_parameters,
+            auto_rate_flip=args.auto_rate_flip, auto_rate_max=args.auto_rate_max,
+            auto_rate_envelope=args.auto_rate_envelope, auto_shape_average=args.auto_shape_average,
+            auto_shape_envelope=args.auto_shape_envelope, digits=args.digits, mass=args.mass)

@@ -18,7 +18,7 @@ Note: The use of an output directory is recommended to keep input files
 import os
 
 from dhi.datacard_tools import DatacardRenamer, ShapeLine, update_shape_name, expand_variables
-from dhi.util import create_console_logger
+from dhi.util import create_console_logger, patch_object
 
 
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
@@ -183,11 +183,14 @@ if __name__ == "__main__":
         "names in shape files")
     parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
+    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
+        "line; default: {}".format(logger.name))
     args = parser.parse_args()
 
     # configure the logger
     logger.setLevel(args.log_level.upper())
 
     # run the renaming
-    rename_processes(args.input, args.rules, directory=args.directory, skip_shapes=args.no_shapes,
-        mass=args.mass)
+    with patch_object(logger, "name", args.log_name):
+        rename_processes(args.input, args.rules, directory=args.directory,
+            skip_shapes=args.no_shapes, mass=args.mass)

@@ -14,7 +14,7 @@ import tabulate
 from scinum import Number
 
 from dhi.datacard_tools import create_datacard_instance
-from dhi.util import real_path, create_console_logger, import_ROOT
+from dhi.util import real_path, create_console_logger, import_ROOT, patch_object
 
 
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
@@ -79,6 +79,8 @@ if __name__ == "__main__":
         default=".+",
     )
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
+    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
+        "line; default: {}".format(logger.name))
     parser.add_argument("--table-fmt", default="github", help="Table format. Default: 'github'.")
     parser.add_argument("--precision", default="2", help="Decimal precision. Default: '2'.")
     parser.add_argument(
@@ -93,5 +95,7 @@ if __name__ == "__main__":
         bins = [args.bins]
     else:
         bins = args.bins
+
     # add the parameter
-    yield_table(args.input, bins, args.table_fmt, args.data_name, args.precision)
+    with patch_object(logger, "name", args.log_name):
+        yield_table(args.input, bins, args.table_fmt, args.data_name, args.precision)
