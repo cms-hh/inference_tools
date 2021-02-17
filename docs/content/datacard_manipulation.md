@@ -219,7 +219,7 @@ optional arguments:
                         parameter is constructed as the envelope of effects of
                         parameters to merge
   --auto-shape-average  only for shape; when set and shapes to merge contain
-                        both positive negative effects in the same bin,
+                        both positive and negative effects in the same bin,
                         propagate errors separately and then use their
                         average; otherwise, an error is raised
   --auto-shape-envelope

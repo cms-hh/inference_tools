@@ -47,14 +47,14 @@ class GoodnessOfFit(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWork
             raise ValueError("the number of toys must be positive for goodness-of-fit tests")
 
     def create_branch_map(self):
-        # the first branch is the measurement, all other branches reflect groups of toys
-        n_toys = []
-        n_toys = [-1] + list(map(len, law.util.iter_chunks(self.toys, self.toys_per_task)))
-        return dict(enumerate(n_toys))
+        # the branch map refers to indices of toys in that branch, with 0 meaning the test on data
+        all_toy_indices = list(range(1, self.toys + 1))
+        toy_indices = [[0]] + list(law.util.iter_chunks(all_toy_indices, self.toys_per_task))
+        return dict(enumerate(toy_indices))
 
     def store_parts(self):
         parts = super(GoodnessOfFit, self).store_parts()
-        parts["gof"] = "{}__t{}__n{}".format(self.algorithm, self.toys, self.toys_per_task)
+        parts["gof"] = self.algorithm
         return parts
 
     def workflow_requires(self):
@@ -66,15 +66,16 @@ class GoodnessOfFit(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWork
         return CreateWorkspace.req(self)
 
     def output(self):
-        name = self.join_postfix(["gof", self.get_output_postfix(), self.branch])
+        if self.branch == 0:
+            postfix = "b0_data"
+        else:
+            postfix = "b{}_toy{}To{}".format(self.branch, self.branch_data[0], self.branch_data[-1])
+        name = self.join_postfix(["gof", self.get_output_postfix(), postfix])
         return self.local_target(name + ".root")
 
     def build_command(self):
         # skip toys for the measurement (branch 0)
-        if self.branch == 0:
-            branch_opts = ""
-        else:
-            branch_opts = "--toys {self.branch_data}".format(self=self)
+        branch_opts = "" if self.branch == 0 else "--toys {}".format(len(self.branch_data))
 
         return (
             "combine -M GoodnessOfFit {workspace}"
@@ -98,6 +99,10 @@ class GoodnessOfFit(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWork
             branch_opts=branch_opts,
         )
 
+    def htcondor_output_postfix(self):
+        postfix = super(GoodnessOfFit, self).htcondor_output_postfix()
+        return "{}__t{}_p{}".format(postfix, self.toys, self.toys_per_task)
+
 
 class MergeGoodnessOfFit(POITask):
 
@@ -107,14 +112,16 @@ class MergeGoodnessOfFit(POITask):
 
     def store_parts(self):
         parts = super(MergeGoodnessOfFit, self).store_parts()
-        parts["gof"] = "{}__t{}__n{}".format(self.algorithm, self.toys, self.toys_per_task)
+        parts["gof"] = self.algorithm
         return parts
 
     def requires(self):
         return GoodnessOfFit.req(self)
 
     def output(self):
-        return self.local_target("gofs__" + self.get_output_postfix() + ".json")
+        toys_postfix = "t{}_pt{}".format(self.toys, self.toys_per_task)
+        name = self.join_postfix(["gofs", self.get_output_postfix(), toys_postfix])
+        return self.local_target(name + ".json")
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -145,14 +152,15 @@ class PlotGoodnessOfFit(POIPlotTask):
 
     def store_parts(self):
         parts = super(PlotGoodnessOfFit, self).store_parts()
-        parts["gof"] = "{}__t{}__n{}".format(self.algorithm, self.toys, self.toys_per_task)
+        parts["gof"] = self.algorithm
         return parts
 
     def requires(self):
         return MergeGoodnessOfFit.req(self)
 
     def output(self):
-        name = self.create_plot_name(["gofs", self.get_output_postfix()])
+        toys_postfix = "t{}_pt{}".format(self.toys, self.toys_per_task)
+        name = self.create_plot_name(["gofs", self.get_output_postfix(), toys_postfix])
         return self.local_target(name)
 
     @law.decorator.log
@@ -194,7 +202,8 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
         ]
 
     def output(self):
-        name = self.create_plot_name(["multigofs", self.get_output_postfix()])
+        toys_postfix = "t{}_pt{}".format(self.toys, self.toys_per_task)
+        name = self.create_plot_name(["multigofs", self.get_output_postfix(), toys_postfix])
         return self.local_target(name)
 
     @law.decorator.log

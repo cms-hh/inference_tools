@@ -498,8 +498,8 @@ if __name__ == "__main__":
         "when set, the effect on the new parameter is constructed as the envelope of effects of "
         "parameters to merge")
     parser.add_argument("--auto-shape-average", action="store_true", help="only for shape; when "
-        "set and shapes to merge contain both positive negative effects in the same bin, propagate "
-        "errors separately and then use their average; otherwise, an error is raised")
+        "set and shapes to merge contain both positive abd negative effects in the same bin, "
+        "propagate errors separately and then use their average; otherwise, an error is raised")
     parser.add_argument("--auto-shape-envelope", action="store_true", help="only for shape; when "
         "set, the merged shape variations of the new parameter are constructed as the envelopes of "
         "shapes of parameters to merge")
