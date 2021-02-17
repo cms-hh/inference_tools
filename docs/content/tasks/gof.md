@@ -103,7 +103,7 @@ law run PlotMultipleGoodnessOfFits \
 
 Output:
 
-![Mutliple goodness-of-fit tests](../images/multigofs__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0.png)
+![Mutliple goodness-of-fit tests](../images/multigofs__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0__t1000_pt20.png)
 
 
 #### Dependencies

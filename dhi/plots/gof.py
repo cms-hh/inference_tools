@@ -44,13 +44,15 @@ def plot_gof_distribution(
     ROOT = import_ROOT()
 
     # check values
-    toys = list(toys)
+    toys = remove_nans_and_outliers(list(toys))
 
     # set default ranges
+    x_min_value = min([data] + toys)
+    x_max_value = max([data] + toys)
     if x_min is None:
-        x_min = min([data] + toys) / 1.2
+        x_min = x_min_value - 0.2 * (x_max_value - x_min_value)
     if x_max is None:
-        x_max = max([data] + toys) * 1.2
+        x_max = x_max_value + 0.2 * (x_max_value - x_min_value)
 
     # start plotting
     r.setup_style()
@@ -73,16 +75,14 @@ def plot_gof_distribution(
     draw_objs.append((h_toys, "SAME,HIST"))
     legend_entries.append((h_toys, "{} toys ({})".format(len(toys), algorithm)))
 
-    # make a simple gaus fit and determine how many stddevs the data point is off
-    fit_res = h_toys.Fit("gaus", "QEMNS").Get()
-    toy_ampl = fit_res.Parameter(0)
-    toy_mean = fit_res.Parameter(1)
-    toy_stddev = fit_res.Parameter(2)
+    # make a simple gaus fit
+    toy_mean, toy_stddev = fit_toys_gaus(toys, x_min=x_min, x_max=x_max, n_bins=32)
+    toy_ampl = fit_amplitude_gaus(h_toys, toy_mean, toy_stddev)
     data_pull = abs(data - toy_mean) / toy_stddev
 
     # draw the fit
-    f_fit = ROOT.TF1("fit", "{}*exp(-0.5*((x-{})/{})^2)".format(toy_ampl, toy_mean, toy_stddev),
-        x_min, x_max)
+    formula = "{} * exp(-0.5 * ((x - {}) / {})^2)".format(toy_ampl, toy_mean, toy_stddev)
+    f_fit = ROOT.TF1("fit", formula, x_min, x_max)
     r.setup_func(f_fit, props={})
     draw_objs.append((f_fit, "SAME"))
 
@@ -100,7 +100,7 @@ def plot_gof_distribution(
     r.setup_line(line_data, props={"NDC": False, "LineWidth": 2, "LineStyle": 7},
         color=colors.blue_signal)
     draw_objs.append(line_data)
-    legend_entries.append((line_data, "Data (#Delta = {:.1f} #sigma)".format(data_pull), "L"))
+    legend_entries.append((line_data, "Data (#Delta = {:.2f} #sigma)".format(data_pull), "L"))
 
     # model parameter label
     if model_parameters:
@@ -140,9 +140,8 @@ def plot_gofs(
     path,
     data,
     algorithm,
-    show_histograms=True,
-    x_min=None,
-    x_max=None,
+    x_min=-3.,
+    x_max=3.,
     model_parameters=None,
     campaign=None,
 ):
@@ -151,8 +150,7 @@ def plot_gofs(
     Each entry in *data* should contain the fields "name", "data" (the test statistic value
     corresponding to real data) and "toys" (a list of test statistic values for toys). The name of
     the *algorithm* used for the test is shown in the legend. Per entry, a gaussion fit is drawn
-    to visualize the distribution of toys. When *show_histograms*, a small histogram is shown in
-    addition.
+    to visualize the distribution of toys.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
     given values. *model_parameters* can be a dictionary of key-value pairs of model parameters.
@@ -169,6 +167,7 @@ def plot_gofs(
         assert("name" in d)
         assert("data" in d)
         assert("toys" in d)
+        d["toys"] = remove_nans_and_outliers(list(d["toys"]))
 
     # some constants for plotting
     canvas_width = 800  # pixels
@@ -203,35 +202,35 @@ def plot_gofs(
     fit_data = []
     for i, d in enumerate(data):
         # make a simple gaus fit and determine how many stddevs the data point is off
-        h_toys = ROOT.TH1F("h_toys_{}".format(i), "", 32, min(d["toys"]), max(d["toys"]))
-        for v in d["toys"]:
-            h_toys.Fill(v)
-        fit_res = h_toys.Fit("gaus", "QEMNS").Get()
+        mean, stddev = fit_toys_gaus(d["toys"])
         fd = {}
-        fd["amplitude"] = fit_res.Parameter(0)
-        fd["mean"] = fit_res.Parameter(1)
-        fd["stddev"] = fit_res.Parameter(2)
-        fd["data_diff"] = d["data"] - fd["mean"]
-        fd["data_pull"] = fd["data_diff"] / fd["stddev"]
+        fd["mean"] = mean
+        fd["stddev"] = stddev
+        fd["data_diff"] = d["data"] - mean
+        fd["data_pull"] = fd["data_diff"] / stddev
         fit_data.append(fd)
 
     # default x range
-    max_stddev = max(fd["stddev"] for fd in fit_data)
-    min_data_diff = min(fd["data_diff"] for fd in fit_data)
-    max_data_diff = max(fd["data_diff"] for fd in fit_data)
     if x_min is None:
-        x_min = min(-3 * max_stddev, min_data_diff * 1.25)
+        x_min = -3.
     if x_max is None:
-        x_max = max(3 * max_stddev, max_data_diff * 1.25)
+        x_max = 3.
 
     # dummy histogram to control axes
-    h_dummy = ROOT.TH1F("dummy", ";#Delta Test statistic (t - #tilde{t}_{toys});", 1, x_min, x_max)
+    h_dummy = ROOT.TH1F("dummy", ";Normalized test statistic (t - #mu_{toys}) / #sigma_{toys};",
+        1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"TitleOffset": 1.2,
         "LabelOffset": r.pixel_to_coord(canvas, y=4)})
     h_dummy.GetYaxis().SetBinLabel(1, "")
     draw_objs.append((h_dummy, "HIST"))
-    y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{#Delta = %.1f #sigma}}"
+    y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{#Delta = %.2f #sigma}}"
+    fit_label_tmpl = "#splitline{#mu = %.1f}{#sigma = %.1f}"
+
+    # vertical line at 1
+    v_line = ROOT.TLine(0, 0, 0, n)
+    r.setup_line(v_line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
+    draw_objs.append(v_line)
 
     # draw curves and data lines
     for i, (d, fd) in enumerate(zip(data, fit_data)):
@@ -243,27 +242,36 @@ def plot_gofs(
             r.setup_line(h_line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
             draw_objs.append(h_line)
 
-        # stylized histograms
-        if show_histograms:
-            h_toys = ROOT.TH1F("h_toys_{}".format(i), "", 32, x_min, x_max)
-            r.setup_hist(h_toys)
-            for v in d["toys"]:
-                h_toys.Fill(v - fd["mean"])
-            h_toys.Scale(0.75 / h_toys.GetMaximum())
-            for b in range(1, h_toys.GetNbinsX() + 1):
-                h_toys.SetBinContent(b, h_toys.GetBinContent(b) + y_offset)
-            draw_objs.append((h_toys, "SAME,HIST"))
+        # fit stats label
+        fit_label_x = r.get_x(84, pad, anchor="right")
+        fit_label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
+        fit_label = fit_label_tmpl % (fd["mean"], fd["stddev"])
+        fit_label = ROOT.TLatex(fit_label_x, fit_label_y, fit_label)
+        r.setup_latex(fit_label, props={"NDC": True, "TextAlign": 12, "TextSize": 16})
+        draw_objs.append(fit_label)
 
-        # create a vertically shifted, centrally aligned gaus curve
-        f_fit = ROOT.TF1("fit", "{} + 0.75*exp(-0.5*((x)/{})^2)".format(y_offset, fd["stddev"]),
-            x_min, x_max)
-        r.setup_func(f_fit, props={})
+        # stylized histograms
+        h_toys = ROOT.TH1F("h_toys_{}".format(i), "", 32, x_min, x_max)
+        r.setup_hist(h_toys)
+        for v in d["toys"]:
+            h_toys.Fill((v - fd["mean"]) / fd["stddev"])
+        h_scale = 0.75 / h_toys.GetMaximum()
+        h_toys.Scale(h_scale)
+        ampl = fit_amplitude_gaus(h_toys, 0, 1)
+        for b in range(1, h_toys.GetNbinsX() + 1):
+            h_toys.SetBinContent(b, h_toys.GetBinContent(b) + y_offset)
+        draw_objs.append((h_toys, "SAME,HIST"))
+
+        # create a common gaus curve to visualize the fit quality
+        formula = "{} + {} * exp(-0.5 * x^2)".format(y_offset, ampl)
+        f_fit = ROOT.TF1("fit", formula, x_min, x_max)
+        r.setup_func(f_fit)
         draw_objs.append((f_fit, "SAME"))
         if i == 0:
             legend_entries.append((f_fit, "{} toys ({})".format(len(d["toys"]), algorithm), "L"))
 
         # data lines as graphs
-        g_data = create_tgraph(1, d["data"] - fd["mean"], y_offset, 0, 0, 0, 1)
+        g_data = create_tgraph(1, (d["data"] - fd["mean"]) / fd["stddev"], y_offset, 0, 0, 0, 1)
         r.setup_graph(g_data, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
             "MarkerSize": 0}, color=colors.blue_signal)
         draw_objs.append((g_data, "SAME,EZ"))
@@ -272,7 +280,7 @@ def plot_gofs(
 
         # name labels on the y-axis
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
-        label = y_label_tmpl % (d["name"], abs(fd["data_pull"]))
+        label = y_label_tmpl % (label, abs(fd["data_pull"]))
         label_x = r.get_x(10, canvas)
         label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
         label = ROOT.TLatex(label_x, label_y, label)
@@ -318,3 +326,73 @@ def plot_gofs(
     # save
     r.update_canvas(canvas)
     canvas.SaveAs(path)
+
+
+def remove_nans_and_outliers(toys, sigma_outlier=10.):
+    # remove nans
+    valid_toys = [t for t in toys if not math.isnan(t)]
+    if len(valid_toys) != len(toys):
+        print("\nWARNING: found {} nan's in toy values\n".format(len(toys) - len(valid_toys)))
+        toys = valid_toys
+
+    # remove outliers using distances from normalized medians
+    median = np.median(toys)
+    diffs = [abs(t - median) for t in toys]
+    norm = np.median(diffs)
+    valid_toys = [t for t, diff in zip(toys, diffs) if diff / norm < sigma_outlier]
+    if len(valid_toys) != len(toys):
+        print("\nWARNING: found {} outliers in toy values\n".format(len(toys) - len(valid_toys)))
+        toys = valid_toys
+
+    return toys
+
+
+def fit_toys_gaus(toys, x_min=None, x_max=None, n_bins=32):
+    from plotlib.util import create_random_name
+    ROOT = import_ROOT()
+
+    # compute the initial range
+    x_min_value = min(toys)
+    x_max_value = max(toys)
+    if x_min is None:
+        x_min = x_min_value - 0.2 * (x_max_value - x_min_value)
+    if x_max is None:
+        x_max = x_max_value + 0.2 * (x_max_value - x_min_value)
+
+    # create a first histogram and perform a fit
+    h1 = ROOT.TH1F(create_random_name(), "", n_bins, x_min, x_max)
+    for t in toys:
+        h1.Fill(t)
+    fit1 = h1.Fit("gaus", "QEMNS").Get()
+    if not fit1:
+        raise Exception("initial toy fit failed")
+
+    # compute the range again to cover 3 sigma of the initial fit and repeat
+    mean = fit1.Parameter(1)
+    stddev = fit1.Parameter(2)
+    x_min2 = mean - 3 * stddev
+    x_max2 = mean + 3 * stddev
+    h2 = ROOT.TH1F(create_random_name(), "", n_bins, x_min2, x_max2)
+    for t in toys:
+        h2.Fill(t)
+    fit2 = h2.Fit("gaus", "QEMNS").Get()
+
+    # return mean and stddev
+    return fit2.Parameter(1), fit2.Parameter(2)
+
+
+def fit_amplitude_gaus(hist, mean, stddev):
+    from plotlib.util import create_random_name
+    ROOT = import_ROOT()
+
+    # create the function and set an initial guess
+    f = ROOT.TF1(create_random_name(), "[0] * exp(-0.5 * ((x - {}) / {})^2)".format(mean, stddev),
+        hist.GetXaxis().GetXmin(), hist.GetXaxis().GetXmax())
+    f.SetParLimits(0, 0., 10. * hist.GetMaximum())
+
+    # perform the fit
+    fit = hist.Fit(f.GetName(), "QEMNS").Get()
+    if not fit:
+        raise Exception("amplitude fit failed")
+
+    return fit.Parameter(0)
