@@ -176,6 +176,12 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         "current one, instead of using bundled versions of the repository and software; "
         "default: False",
     )
+    htcondor_group = luigi.Parameter(
+        default=law.NO_STR,
+        significant=False,
+        description="the name of an accounting group on the cluster to handle user priority; not "
+        "used when empty; default: empty",
+    )
 
     exclude_params_branch = {"max_runtime"}
 
@@ -205,6 +211,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         # copy the entire environment when requests
         if self.htcondor_getenv:
             config.custom_content.append(("getenv", "true"))
+
         # the CERN htcondor setup requires a "log" config, but we can safely set it to /dev/null
         # if you are interested in the logs of the batch system itself, set a meaningful value here
         config.custom_content.append(("log", "/dev/null"))
@@ -215,6 +222,10 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         # request cpus
         if self.request_cpus > 0:
             config.custom_content.append(("RequestCpus", self.request_cpus))
+
+        # accounting group for priority on the cluster
+        if self.htcondor_group and self.htcondor_group != law.NO_STR:
+            config.custom_content.append(("+AccountingGroup", self.htcondor_group))
 
         # render_variables are rendered into all files sent with a job
         if self.htcondor_getenv:
