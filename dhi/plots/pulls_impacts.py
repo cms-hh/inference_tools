@@ -270,7 +270,7 @@ def plot_pulls_impacts(
         # pull graph
         arr = lambda vals: array.array("f", vals)
         g_pull = ROOT.TGraphAsymmErrors(n,
-            arr([param.pull[1] for param in _params]),
+            arr([(-1e5 if param.is_rate_param else param.pull[1]) for param in _params]),
             arr([n - i - 0.5 for i in range(n)]),
             arr([-param.pull[0] for param in _params]),
             arr([param.pull[2] for param in _params]),
@@ -279,6 +279,17 @@ def plot_pulls_impacts(
         )
         r.setup_graph(g_pull, props={"MarkerStyle": 20, "MarkerSize": 1.2, "LineWidth": 1})
         draw_objs.append((g_pull, "PEZ"))
+
+        # plain post-fit intervals as texts for rateParam's
+        rate_label_tmpl = "%.2f^{ +%.2f}_{ -%.2f}"
+        for i, param in enumerate(_params):
+            if not param.is_rate_param:
+                continue
+            down, nominal, up = param.postfit
+            rate_label = rate_label_tmpl % (nominal, up - nominal, nominal - down)
+            rate_label = ROOT.TLatex(0, n - i - 0.5, rate_label)
+            r.setup_latex(rate_label, props={"NDC": False, "TextAlign": 22, "TextSize": 16})
+            draw_objs.append(rate_label)
 
         # legend
         legend = r.routines.create_legend(pad=pad, width=170, n=3)
@@ -367,6 +378,9 @@ class Parameter(object):
 
         # whether or not this parameter comes from autoMCStats
         self.is_mc_stats = self.name.startswith("prop_bin")
+
+        # whether or not this parameter comes from a rateParam
+        self.is_rate_param = self.type == "Unrecognised" and tuple(self.prefit) == (2.0, 1.0, 0.0)
 
 
 def read_patterns(patterns):
