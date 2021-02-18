@@ -169,6 +169,10 @@ def plot_gofs(
         assert("toys" in d)
         d["toys"] = remove_nans_and_outliers(list(d["toys"]))
 
+    # get the number of toys per entry
+    n_toys = [len(d["toys"]) for d in data]
+    n_toys_even = len(set(n_toys)) == 1
+
     # some constants for plotting
     canvas_width = 800  # pixels
     top_margin = 35  # pixels
@@ -226,6 +230,8 @@ def plot_gofs(
     draw_objs.append((h_dummy, "HIST"))
     y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{#Delta = %.2f #sigma}}"
     fit_label_tmpl = "#splitline{#mu = %.1f}{#sigma = %.1f}"
+    if not n_toys_even:
+        fit_label_tmpl = "#splitline{{N = %d}}{{{}}}".format(fit_label_tmpl)
 
     # vertical line at 1
     v_line = ROOT.TLine(0, 0, 0, n)
@@ -245,7 +251,10 @@ def plot_gofs(
         # fit stats label
         fit_label_x = r.get_x(84, pad, anchor="right")
         fit_label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
-        fit_label = fit_label_tmpl % (fd["mean"], fd["stddev"])
+        fit_label_data = (fd["mean"], fd["stddev"])
+        if not n_toys_even:
+            fit_label_data = (len(d["toys"]),) + fit_label_data
+        fit_label = fit_label_tmpl % fit_label_data
         fit_label = ROOT.TLatex(fit_label_x, fit_label_y, fit_label)
         r.setup_latex(fit_label, props={"NDC": True, "TextAlign": 12, "TextSize": 16})
         draw_objs.append(fit_label)
@@ -268,7 +277,8 @@ def plot_gofs(
         r.setup_func(f_fit)
         draw_objs.append((f_fit, "SAME"))
         if i == 0:
-            legend_entries.append((f_fit, "{} toys ({})".format(len(d["toys"]), algorithm), "L"))
+            toy_label = "{} toys".format(len(d["toys"])) if n_toys_even else "Toys"
+            legend_entries.append((f_fit, "{} ({})".format(toy_label, algorithm), "L"))
 
         # data lines as graphs
         g_data = create_tgraph(1, (d["data"] - fd["mean"]) / fd["stddev"], y_offset, 0, 0, 0, 1)

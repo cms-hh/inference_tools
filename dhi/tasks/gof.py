@@ -193,16 +193,51 @@ class PlotGoodnessOfFit(POIPlotTask):
 
 class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
 
+    toys = law.CSVParameter(
+        cls=luigi.IntParameter,
+        default=(1,),
+        description="comma-separated list of positive amounts of toys per datacard sequence in "
+        "--multi-datacards; when one value is given, it is used for all datacard sequences; "
+        "default: (1,)",
+    )
+    toys_per_task = law.CSVParameter(
+        cls=luigi.IntParameter,
+        default=(1,),
+        description="comma-separated list of numbers per datacard sequence in --multi-datacards to "
+        "define the amount of toys to generate per task; when one value is given, it is used for "
+        "all datacard sequences; default: (1,)",
+    )
+
     y_min = None
     y_max = None
 
+    def __init__(self, *args, **kwargs):
+        super(PlotMultipleGoodnessOfFits, self).__init__(*args, **kwargs)
+
+        # check toys and toys_per_task
+        n_seqs = len(self.multi_datacards)
+        if len(self.toys) == 1:
+            self.toys *= n_seqs
+        elif len(self.toys) != n_seqs:
+            raise ValueError("the number of --toys values must either be one or match the amount "
+                "of datacard sequences in --multi-datacards ({}), but got {}".format(
+                n_seqs, len(self.toys)))
+        if len(self.toys_per_task) == 1:
+            self.toys_per_task *= n_seqs
+        elif len(self.toys_per_task) != n_seqs:
+            raise ValueError("the number of --toys-per-task values must either be one or match the "
+                "amount of datacard sequences in --multi-datacards ({}), but got {}".format(
+                n_seqs, len(self.toys_per_task)))
+
     def requires(self):
         return [
-            MergeGoodnessOfFit.req(self, datacards=datacards) for datacards in self.multi_datacards
+            MergeGoodnessOfFit.req(self, datacards=datacards, toys=t, toys_per_task=tpt)
+            for datacards, t, tpt in zip(self.multi_datacards, self.toys, self.toys_per_task)
         ]
 
     def output(self):
-        toys_postfix = "t{}_pt{}".format(self.toys, self.toys_per_task)
+        tpl_to_str = lambda tpl: "_".join(map(str, tpl))
+        toys_postfix = "t{}_pt{}".format(tpl_to_str(self.toys), tpl_to_str(self.toys_per_task))
         name = self.create_plot_name(["multigofs", self.get_output_postfix(), toys_postfix])
         return self.local_target(name)
 
