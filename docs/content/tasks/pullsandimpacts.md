@@ -21,6 +21,12 @@ Output:
 ![Pulls and impacts](../images/pulls_impacts__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0.png)
 
 
+!!! info "Failing fits"
+
+    It might happen that some parameter fits fail to converge.
+    When this is the case, you will see an error thrown by `MergePullsAndImpacts`, suggesting that you should either remove the outputs of the failed fits and try again with different fit stability options ([fit options in combine](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/nonstandard/#fit-options)), or that you can also proceed without the failed parameters.
+
+
 #### Dependencies
 
 ```mermaid

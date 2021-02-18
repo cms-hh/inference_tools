@@ -169,36 +169,52 @@ class MergePullsAndImpacts(POITask):
         inputs = req.output().collection.targets
         branch_map = req.branch_map
         params = req.workspace_parameters
+        poi = self.pois[0]
 
-        # helper to extract results from an fit file target
-        def extract_values(b, param):
-            # read the plain values
-            values = inputs[b].load(formatter="uproot")["limit"].arrays(param)
-            # check that each arrays has length 3
-            for p, v in values.items():
-                if v.size != 3:
-                    raise ValueError(
-                        "fit result for parameter '{0}' of branch {1} stored at {2} must contain 3 "
-                        "entries, but found {3}; this is likely due to a failed fit, so you can "
-                        "try to remove the file and add\n\n"
-                        "--{4}-custom-args='--X-rtd MINIMIZER_analytic'\n\n"
-                        "to your law command, or you skip this particular branch by adding\n\n"
-                        "--{4}-branches 0-{5},{6}-\n\n"
-                        "which effectively selects all branches but the failing one".format(
-                            p, b, inputs[b].path, v.size, "PullsAndImpacts", b - 1, b + 1
-                        )
-                    )
-            # return the values dict when multiple params were given, otherwise a single array
-            return values if isinstance(param, (list, tuple)) else values[param]
+        # extract all fit results
+        fit_results = {}
+        fail_info = []
+        for b, name in branch_map.items():
+            tree = inputs[b].load(formatter="uproot")["limit"]
+            values = tree.arrays([poi] if b == 0 else [poi, name])
+            # the fit converged when there are 3 values in the parameter array
+            converged = values[poi if b == 0 else name].size == 3
+            if not converged:
+                fail_info.append((b, name, inputs[b].path))
+            else:
+                fit_results[b] = values
 
-        # merge into data structure similar to the one produced by CombineHarvester
-        # the only difference is that two sided impacts are stored as well
+        # throw an error with instructions when a fit failed
+        if fail_info:
+            failing_branches = [b for b, _, _ in fail_info]
+            working_branches = [b for b in branch_map if b not in failing_branches]
+            working_branches = law.util.range_join(working_branches, to_str=True)
+            c = law.util.colored
+            msg = "{} failing parameter fit(s) detected:\n".format(len(fail_info))
+            for b, name, _ in fail_info:
+                msg += "  {} (branch {})\n".format(name, b)
+            msg += c("\nYou have two options\n\n", style=("underlined", "bright"))
+            msg += "  " + c("1.", "magenta")
+            msg += " You can try to remove the corresponding output files via\n\n"
+            for _, _, path in fail_info:
+                msg += "       rm {}\n".format(path)
+            msg += "\n     and then add different fit stability options such as\n\n"
+            msg += c("       --PullsAndImpacts-custom-args='--X-rtd MINIMIZER_analytic'\n",
+                style="bright")
+            msg += "\n     to your 'law run ...' command.\n\n"
+            msg += "  " + c("2.", "magenta")
+            msg += " You can proceed with the converging fits only by adding\n\n"
+            msg += c("       --PullsAndImpacts-branches {}\n\n".format(working_branches),
+                style="bright")
+            msg += "     which effectively skips all failing fits.\n"
+            raise Exception(msg)
+
+        # merge values and parameter infos into data structure similar to the one produced by
+        # CombineHarvester the only difference is that two sided impacts are stored as well
         data = OrderedDict(method="default")
 
         # load and store nominal value
-        poi = self.pois[0]
-        nom = extract_values(0, poi)
-        data["POIs"] = [{"name": poi, "fit": nom[[1, 0, 2]].tolist()}]
+        data["POIs"] = [{"name": poi, "fit": fit_results[0][poi][[1, 0, 2]].tolist()}]
         self.publish_message("read nominal values")
 
         # load and store parameter results
@@ -208,7 +224,7 @@ class MergePullsAndImpacts(POITask):
             if b == 0:
                 continue
 
-            vals = extract_values(b, [poi, name])
+            vals = fit_results[b]
             d = OrderedDict()
             d["name"] = name
             d["type"] = params[name]["type"]
