@@ -38,7 +38,25 @@ source setup.sh some_name
 where the value of `some_name` is your choice, and the script interactively guides you through the quick setup process.
 To use the same configuration the next time, ==make sure to use the same value you passed before.==
 
-**Note**: In case you want to reinstall the software stack or combine from scratch, prepend `DHI_REINSTALL_SOFTWARE=1` or `DHI_REINSTALL_COMBINE=1` to the `source` commend, e.g.
+
+#### Integrating the `datacards_run2` repository
+
+Datacards for the combination are stored in the (protected) [`datacards_run2` repository](https://gitlab.cern.ch/hh/results/datacards_run2).
+Some of the inference tools (especially the automated workflows) can directly inspect and use these datacards without much configuration.
+You only have to set the environment variable `DHI_DATACARDS_RUN2` to the location of your local checkout.
+If you decided to use a configurable setup (see above), you will be asked for the value of this variable interactively.
+For instance, you could clone the repository first to a location of your choice,
+
+```shell
+git clone --recursive ssh://git@gitlab.cern.ch:7999/hh/results/datacards_run2.git /your/path
+```
+
+(note that using `ssh://...` is recommended), and then use `/your/path` for the `DHI_DATACARDS_RUN2` variable later on.
+
+
+#### Reinstalling software
+
+In case you want to reinstall the software stack or combine from scratch, prepend `DHI_REINSTALL_SOFTWARE=1` or `DHI_REINSTALL_COMBINE=1` to the `source` commend, e.g.
 
 ```shell
 DHI_REINSTALL_SOFTWARE=1 source setup.sh some_name
@@ -63,6 +81,11 @@ loading module 'dhi.tasks', done
 module 'law.contrib.git', 1 task(s):
     - law.git.BundleGitRepository
 
+module 'dhi.tasks.combine', 3 task(s):
+    - InputDatacards
+    - CombineDatacards
+    - CreateWorkspace
+
 module 'dhi.tasks.base', 2 task(s):
     - BundleRepo
     - BundleSoftware
@@ -75,10 +98,12 @@ module 'dhi.tasks.limits', 6 task(s):
     - MergeUpperLimits
     - PlotMultipleUpperLimits
 
-module 'dhi.tasks.likelihoods', 3 task(s):
+module 'dhi.tasks.likelihoods', 5 task(s):
     - LikelihoodScan
     - PlotLikelihoodScan
+    - PlotMultipleLikelihoodScansByModel
     - MergeLikelihoodScan
+    - PlotMultipleLikelihoodScans
 
 module 'dhi.tasks.significances', 4 task(s):
     - SignificanceScan
@@ -91,6 +116,16 @@ module 'dhi.tasks.pulls_impacts', 3 task(s):
     - PlotPullsAndImpacts
     - MergePullsAndImpacts
 
+module 'dhi.tasks.postfit_shapes', 2 task(s):
+    - PostFitShapes
+    - PlotPostfitSOverB
+
+module 'dhi.tasks.gof', 3 task(s):
+    - GoodnessOfFit
+    - PlotGoodnessOfFit
+    - PlotMultipleGoodnessOfFits
+    - MergeGoodnessOfFit
+
 module 'dhi.tasks.test', 1 task(s):
     - test.TestPlots
 
@@ -99,19 +134,11 @@ module 'dhi.tasks.studies.model_selection', 3 task(s):
     - study.PlotMorphedDiscriminant
     - study.PlotStatErrorScan
 
-module 'dhi.tasks.combine', 2 task(s):
-    - CombineDatacards
-    - CreateWorkspace
-
-module 'dhi.tasks.postfit_shapes', 2 task(s):
-    - PostFitShapes
-    - PlotPostfitSOverB
-
 module 'dhi.tasks.exclusion', 2 task(s):
     - PlotExclusionAndBestFit
     - PlotExclusionAndBestFit2D
 
-written 29 task(s) to index file '/your/path/inference/.law/index'
+written 36 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type

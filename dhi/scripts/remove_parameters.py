@@ -9,7 +9,7 @@ Example usage:
 > remove_parameters.py datacard.txt CMS_btag_JES CMS_btag_JER -d output_directory
 
 # remove parameters via fnmatch wildcards (note the quotes)
-> remove_parameters.py datacard.txt "CMS_btag_JE?" -d output_directory
+> remove_parameters.py datacard.txt 'CMS_btag_JE?' -d output_directory
 
 # remove parameters listed in a file
 > remove_parameters.py datacard.txt parameters.txt -d output_directory
@@ -22,9 +22,10 @@ import os
 import re
 
 from dhi.datacard_tools import (
-    bundle_datacard, manipulate_datacard, update_datacard_count, expand_file_lines,
+    columnar_parameter_directives, bundle_datacard, manipulate_datacard, update_datacard_count,
+    expand_file_lines,
 )
-from dhi.util import real_path, multi_match, create_console_logger
+from dhi.util import real_path, multi_match, create_console_logger, patch_object
 
 
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
@@ -62,11 +63,15 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
         if content.get("parameters"):
             to_remove = []
             for i, param_line in enumerate(content["parameters"]):
-                param_name = param_line.split()[0]
+                param_line = param_line.split()
+                if len(param_line) < 2:
+                    continue
+                param_name, param_type = param_line[:2]
                 if multi_match(param_name, patterns):
                     logger.info("remove parameter {}".format(param_name))
                     to_remove.append(i)
-                    removed_nuisance_names.add(param_name)  # TODO: are all of them nuisances?
+                    if multi_match(param_type, columnar_parameter_directives):
+                        removed_nuisance_names.add(param_name)
 
             # change lines in-place
             lines = [line for i, line in enumerate(content["parameters"]) if i not in to_remove]
@@ -90,7 +95,7 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                 group_line = "{} group = {}".format(group_name, " ".join(param_names))
                 content["groups"][i] = group_line
 
-        # remove group themselves
+        # remove groups themselves
         if content.get("groups"):
             to_remove = []
             for i, group_line in enumerate(content["groups"]):
@@ -140,10 +145,14 @@ if __name__ == "__main__":
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
         "the output directory when --directory is set")
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
+    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
+        "line; default: {}".format(logger.name))
     args = parser.parse_args()
 
     # configure the logger
     logger.setLevel(args.log_level.upper())
 
     # run the removing
-    remove_parameters(args.input, args.names, directory=args.directory, skip_shapes=args.no_shapes)
+    with patch_object(logger, "name", args.log_name):
+        remove_parameters(args.input, args.names, directory=args.directory,
+            skip_shapes=args.no_shapes)

@@ -85,7 +85,7 @@ class MyTask(law.Task):
 
 `luigi`, as the underlying core package behind law, already provides plenty of objects for defining task workflows.
 In the above example, we use the standard string `Parameter` as well as the `FloatParameter` from luigi, whereas the `CSVParameter` is shipped with law.
-While the two former have a straight forward behavior for decoding from and encoding to values on the command line.
+The two former have a straight forward behavior for decoding from and encoding to values on the command line.
 The `CSVParameter` interprets strings such as `1,2,3` as a python tuple `(1, 2, 3)` to be used in the task.
 Here, we also configure the type of each particular item to be an integer with the `cls` argument, and we want each value to appear only once by using the `unique` argument.
 See the [`CSVParameter` documentation](https://law.readthedocs.io/en/latest/api/parameter.html#law.parameter.CSVParameter) for more info.
@@ -145,7 +145,7 @@ law run TaskB --x foo --z bar
 will also invoke `TaskA`.
 The tasks share the parameter `x` so it seems only natural to pass the *value* of `x` from `TaskB` on to `TaskA` when the requirement is defined.
 ==This is achieved by calling `:::python Task.req()` which is defined on all classes inheriting from `law.Task`.==
-The method determines the intersection of parameters between a task class and a task instances, and creates an instance of `TaskA` with parameter values taken from the `TaskB` instance.
+The method determines the intersection of parameters between a task class and a task instance, and creates an instance of `TaskA` with parameter values taken from the `TaskB` instance.
 Thus, `:::python TaskA.req(self)` is identical to `:::python TaskA(x=self.x)` in the example above.
 The intersection of common parameters is often larger, so the benefit of using `:::python Task.req()` becomes more obvious. Opposed to that, the parameteter `TaskB.z` is not *forwarded*.
 Similarly, `TaskA.y` will use its default value `"y_value"`.

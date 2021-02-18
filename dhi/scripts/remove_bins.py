@@ -9,7 +9,7 @@ Example usage:
 > remove_bins.py datacard.txt ch1 -d output_directory
 
 # remove bins via fnmatch wildcards (note the quotes)
-> remove_bins.py datacard.txt "ch*" -d output_directory
+> remove_bins.py datacard.txt 'ch*' -d output_directory
 
 # remove bins listed in a file
 > remove_bins.py datacard.txt bins.txt -d output_directory
@@ -67,10 +67,13 @@ if __name__ == "__main__":
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
         "the output directory when --directory is set")
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
+    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
+        "line; default: {}".format(logger.name))
     args = parser.parse_args()
 
     # configure the logger
     logger.setLevel(args.log_level.upper())
 
     # run the removing
-    remove_bins(args.input, args.names, directory=args.directory, skip_shapes=args.no_shapes)
+    with patch_object(logger, "name", args.log_name):
+        remove_bins(args.input, args.names, directory=args.directory, skip_shapes=args.no_shapes)

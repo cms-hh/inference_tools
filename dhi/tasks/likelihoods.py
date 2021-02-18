@@ -42,14 +42,20 @@ class LikelihoodScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondo
     def output(self):
         return self.local_target("likelihood__" + self.get_output_postfix() + ".root")
 
+    @property
+    def blinded_args(self):
+        if self.unblinded:
+            return "--seed {self.branch}".format(self=self)
+        else:
+            return "--toys {self.toys} --seed {self.branch}".format(self=self)
+
     def build_command(self):
         return (
             "combine -M MultiDimFit {workspace}"
-            " -v 1"
-            " -m {self.mass}"
-            " -t {self.toys}"
+            " --verbose 1"
+            " --mass {self.mass}"
+            " {self.blinded_args}"
             " --algo grid"
-            " --expectSignal 1"
             " --redefineSignalPOIs {self.joined_pois}"
             " --gridPoints {self.joined_scan_points}"
             " --setParameterRanges {self.joined_scan_ranges}"
@@ -60,10 +66,10 @@ class LikelihoodScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondo
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --robustFit 1"
-            " {self.combine_stable_options}"
+            " {self.combine_optimization_args}"
             " {self.custom_args}"
             " && "
-            "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.root {output}"
+            "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
             workspace=self.input().path,
@@ -139,9 +145,10 @@ class PlotLikelihoodScan(POIScanTask, POIPlotTask):
         )
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         import numpy as np
 
@@ -151,7 +158,7 @@ class PlotLikelihoodScan(POIScanTask, POIPlotTask):
 
         # load scan data
         data = self.input().load(formatter="numpy")
-        exp_values = data["data"]
+        values = data["data"]
         # poi minima
         poi_mins = [
             (None if np.isnan(data["poi_mins"][i]) else float(data["poi_mins"][i]))
@@ -179,13 +186,15 @@ class PlotLikelihoodScan(POIScanTask, POIPlotTask):
                 "dhi.plots.likelihoods.plot_likelihood_scan_1d",
                 path=output.path,
                 poi=self.pois[0],
-                expected_values=exp_values,
+                values=values,
                 theory_value=theory_value,
                 poi_min=poi_mins[0],
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
+                y_max=self.get_axis_limit("y_max"),
                 y_log=self.y_log,
+                measurement_label="Observed" if self.unblinded else "Expected",
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )
@@ -195,7 +204,7 @@ class PlotLikelihoodScan(POIScanTask, POIPlotTask):
                 path=output.path,
                 poi1=self.pois[0],
                 poi2=self.pois[1],
-                expected_values=exp_values,
+                values=values,
                 poi1_min=poi_mins[0],
                 poi2_min=poi_mins[1],
                 x_min=self.get_axis_limit("x_min"),
@@ -204,6 +213,7 @@ class PlotLikelihoodScan(POIScanTask, POIPlotTask):
                 y_max=self.get_axis_limit("y_max"),
                 z_min=self.get_axis_limit("z_min"),
                 z_max=self.get_axis_limit("z_max"),
+                measurement_label="Observed" if self.unblinded else "Expected",
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )
@@ -237,9 +247,10 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
         )
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         import numpy as np
 
@@ -251,8 +262,9 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
         data = []
         for i, inp in enumerate(self.input()):
             _data = inp.load(formatter="numpy")
-            # expected data
-            exp_values = _data["data"]
+
+            # likelihood values
+            values = _data["data"]
 
             # poi minima
             poi_mins = [
@@ -262,7 +274,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
             # store a data entry
             data.append(dict([
-                ("expected_values", exp_values),
+                ("values", values),
                 ("poi_min", poi_mins[0]) if self.n_pois == 1 else ("poi_mins", poi_mins),
                 ("name", "Cards {}".format(i + 1)),
             ]))
@@ -302,7 +314,9 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
+                y_max=self.get_axis_limit("y_max"),
                 y_log=self.y_log,
+                measurement_label="Observed" if self.unblinded else "Expected",
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )
@@ -318,6 +332,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 y_min=self.get_axis_limit("y_min"),
                 y_max=self.get_axis_limit("y_max"),
                 model_parameters=self.get_shown_parameters(),
+                measurement_label="Observed" if self.unblinded else "Expected",
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )
 
@@ -342,9 +357,10 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
         )
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         import numpy as np
 
@@ -356,8 +372,9 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
         data = []
         for hh_model, inp in zip(self.hh_models, self.input()):
             _data = inp.load(formatter="numpy")
-            # expected data
-            exp_values = _data["data"]
+
+            # likelihood values
+            values = _data["data"]
 
             # poi minima
             poi_mins = [
@@ -372,7 +389,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
 
             # store a data entry
             data.append(dict([
-                ("expected_values", exp_values),
+                ("values", values),
                 ("poi_min", poi_mins[0]) if self.n_pois == 1 else ("poi_mins", poi_mins),
                 ("name", name),
             ]))
@@ -413,7 +430,9 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
+                y_max=self.get_axis_limit("y_max"),
                 y_log=self.y_log,
+                measurement_label="Observed" if self.unblinded else "Expected",
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )
@@ -428,6 +447,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
                 y_max=self.get_axis_limit("y_max"),
+                measurement_label="Observed" if self.unblinded else "Expected",
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )

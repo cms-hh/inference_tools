@@ -29,7 +29,7 @@ Example usage:
 > remove_parameters.py datacard.txt CMS_btag_JES CMS_btag_JER -d output_directory
 
 # remove parameters via fnmatch wildcards (note the quotes)
-> remove_parameters.py datacard.txt "CMS_btag_JE?" -d output_directory
+> remove_parameters.py datacard.txt 'CMS_btag_JE?' -d output_directory
 
 # remove parameters listed in a file
 > remove_parameters.py datacard.txt parameters.txt -d output_directory
@@ -53,6 +53,8 @@ optional arguments:
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        remove_parameters
 ```
 
 
@@ -94,6 +96,8 @@ optional arguments:
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        rename_parameters
 ```
 
 
@@ -110,13 +114,16 @@ Script to add arbitrary parameters to the datacard.
 Example usage:
 
 # add auto MC stats
-> add_parameter.py datacard.txt "*" autoMCStats 10 -d output_directory
+> add_parameter.py datacard.txt '*' autoMCStats 10 -d output_directory
 
-# add a lnN nuisance for a specific process across all bins
-> add_parameter.py datacard.txt new_nuisance lnN "*,ttZ,1.05" -d output_directory
+# add a lnN nuisance for a specific process across all bins (note the quotes)
+> add_parameter.py datacard.txt new_nuisance lnN '*,ttZ,1.05' -d output_directory
 
-# add a lnN nuisance for all processes in two specific bins
-> add_parameter.py datacard.txt new_nuisance lnN "bin1,*,1.05" "bin2,*,1.07" -d output_directory
+# add a lnN nuisance for all processes in two specific bins (note the quotes)
+> add_parameter.py datacard.txt new_nuisance lnN 'bin1,*,1.05' 'bin2,*,1.07' -d output_directory
+
+# add a lnN nuisance for all but ttbar processes in all bins (note the quotes)
+> add_parameter.py datacard.txt new_nuisance lnN '*,!tt*,1.05' -d output_directory
 
 Note: The use of an output directory is recommended to keep input files
       unchanged.
@@ -131,7 +138,8 @@ positional arguments:
                         separated triplets in the format 'bin,process,value'
                         are expected; patterns are supported and evaluated in
                         the given order for all existing bin process pairs;
-                        for all other types, the specification is used as is
+                        prepending '!' to a pattern negates its meaning; for
+                        all other types, the specification is used as is
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -143,6 +151,8 @@ optional arguments:
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        add_parameter
 ```
 
 
@@ -167,12 +177,12 @@ single one. Currently, only parameters with columnar type "lnN", "lnU" and
 > merge_parameters.py datacard.txt CMS_eff_m CMS_eff_m_iso CMS_eff_m_id -d output_directory
 
 # merge parameters via fnmatch wildcards (note the quotes)
-> merge_parameters.py datacard.txt CMS_eff_m "CMS_eff_m_*" -d output_directory
+> merge_parameters.py datacard.txt CMS_eff_m 'CMS_eff_m_*' -d output_directory
 
 Note 1: The use of an output directory is recommended to keep input files
         unchanged.
 
-Note 2: This script is not intended to be used to merge incompatible systemati
+Note 2: This script is not intended to be used to merge incompatible systematic
         uncertainties. Its only purpose is to reduce the number of parameters by
         merging the effect of (probably small) uncertainties that are related at
         analysis level, e.g. multiple types of lepton efficiency corrections.
@@ -209,7 +219,7 @@ optional arguments:
                         parameter is constructed as the envelope of effects of
                         parameters to merge
   --auto-shape-average  only for shape; when set and shapes to merge contain
-                        both positive negative effects in the same bin,
+                        both positive and negative effects in the same bin,
                         propagate errors separately and then use their
                         average; otherwise, an error is raised
   --auto-shape-envelope
@@ -217,52 +227,12 @@ optional arguments:
                         of the new parameter are constructed as the envelopes
                         of shapes of parameters to merge
   --digits DIGITS       the amount of digits for rounding merged parameters;
-                        defaults to 3
+                        defaults to 4
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
-```
-
-
-### Fix `lnN` encoding
-
-```shell hl_lines="1"
-> fix_lnN_parameter.py --help
-
-usage: fix_lnN_parameter.py [-h] [--directory [DIRECTORY]] [--no-shapes]
-                            [--digits DIGITS] [--log-level LOG_LEVEL]
-                            DATACARD NAME [NAME ...]
-
-Script to correct yield decreasing effects of lnN nuisances from
-"1-u" to "1/(1+u)" syntax. Example usage:
-
-# fix a certain parameter
-> fix_lnN_parameter.py datacard.txt lumi_13TeV -d output_directory
-
-# fix multiple parameters (note the quotes)
-> fix_lnN_parameter.py datacard.txt "lumi_*" -d output_directory
-
-Note: The use of an output directory is recommended to keep input files
-      unchanged.
-
-positional arguments:
-  DATACARD              the datacard to read and possibly update (see
-                        --directory)
-  NAME                  names of lnN parameters or files containing lnN
-                        parameter names to fix line by line; supports patterns
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --directory [DIRECTORY], -d [DIRECTORY]
-                        directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
-  --no-shapes, -n       do not copy shape files to the output directory when
-                        --directory is set
-  --digits DIGITS       the amount of digits for rounding converted effects;
-                        defaults to 4
-  --log-level LOG_LEVEL, -l LOG_LEVEL
-                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        merge_parameters
 ```
 
 
@@ -284,7 +254,7 @@ Example usage:
 > remove_processes.py datacard.txt qqHH_CV_1_C2V_2_kl_1 -d output_directory
 
 # remove processes via fnmatch wildcards (note the quotes)
-> remove_processes.py datacard.txt "qqHH_CV_1_C2V_*_kl_1" -d output_directory
+> remove_processes.py datacard.txt 'qqHH_CV_1_C2V_*_kl_1' -d output_directory
 
 # remove processes listed in a file
 > remove_processes.py datacard.txt processes.txt -d output_directory
@@ -308,6 +278,8 @@ optional arguments:
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        remove_processes
 ```
 
 
@@ -349,6 +321,8 @@ optional arguments:
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        rename_processes
 ```
 
 ## Adjusting bin process pairs
@@ -370,10 +344,10 @@ Example usage:
 > remove_bin_process_pairs.py datacard.txt ch1,ttZ -d output_directory
 
 # remove all processes for a specific bin via wildcards (note the quotes)
-> remove_bin_process_pairs.py datacard.txt "ch1,*" -d output_directory
+> remove_bin_process_pairs.py datacard.txt 'ch1,*' -d output_directory
 
 # remove all bins for a specific process via wildcards (note the quotes)
-> remove_bin_process_pairs.py datacard.txt "*,ttZ" -d output_directory
+> remove_bin_process_pairs.py datacard.txt '*,ttZ' -d output_directory
 
 # remove bin process pairs listed in a file
 > remove_bin_process_pairs.py datacard.txt pairs.txt -d output_directory
@@ -399,6 +373,8 @@ optional arguments:
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        remove_bin_process_pairs
 ```
 
 
@@ -420,7 +396,7 @@ Example usage:
 > remove_bins.py datacard.txt ch1 -d output_directory
 
 # remove bins via fnmatch wildcards (note the quotes)
-> remove_bins.py datacard.txt "ch*" -d output_directory
+> remove_bins.py datacard.txt 'ch*' -d output_directory
 
 # remove bins listed in a file
 > remove_bins.py datacard.txt bins.txt -d output_directory
@@ -444,12 +420,14 @@ optional arguments:
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        remove_bins
 ```
 
 
 ## Miscellaneous
 
-### Prettify datacard
+### Prettify a datacard
 
 ```shell hl_lines="1"
 > prettify_datacard.py --help
@@ -481,4 +459,6 @@ optional arguments:
   --no-preamble         remove any existing preamble
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        prettify_datacard
 ```

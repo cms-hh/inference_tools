@@ -46,9 +46,10 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
         name = self.create_plot_name(["exclusionbestfit", self.get_output_postfix()])
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         import numpy as np
         import numpy.lib.recfunctions as rec
@@ -62,24 +63,28 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
         for i, inp in enumerate(self.input()):
             # load limits
             limit_data = inp["limits"].load(formatter="numpy")
-            exp_limits = limit_data["data"]
+            limits = limit_data["data"]
 
             # load likelihoods
             ll_data = inp["likelihoods"].load(formatter="numpy")
-            exp_nll = ll_data["data"]
+            nll_values = ll_data["data"]
             # scan parameter mininum
-            exp_scan_min = ll_data["poi_mins"][0]
-            exp_scan_min = None if np.isnan(exp_scan_min) else float(exp_scan_min)
+            scan_min = ll_data["poi_mins"][0]
+            scan_min = None if np.isnan(scan_min) else float(scan_min)
 
             # store data
-            data.append(
-                {
-                    "name": "datacards {}".format(i + 1),
-                    "expected_limits": exp_limits,
-                    "expected_nll": exp_nll,
-                    "expected_scan_min": exp_scan_min,
-                }
+            entry = dict(
+                name="datacards {}".format(i + 1),
+                expected_limits=limits,
+                nll_values=nll_values,
+                scan_min=scan_min,
             )
+            if self.unblinded:
+                entry["observed_limits"] = {
+                    self.scan_parameter_names[0]: limits[self.scan_parameter_names[0]],
+                    "limit": limits["observed"],
+                }
+            data.append(entry)
 
         # set names if requested
         if self.datacard_names:
@@ -157,9 +162,10 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         name = self.create_plot_name(["exclusionbestfit2d", self.get_output_postfix()])
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         import numpy as np
 
@@ -169,7 +175,16 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
 
         # load limit scan data
         inputs = self.input()
-        exp_limits = inputs["limits"].load(formatter="numpy")["data"]
+        limits = inputs["limits"].load(formatter="numpy")["data"]
+
+        # prepare observed limits
+        obs_limits = None
+        if self.unblinded:
+            obs_limits = {
+                self.scan_parameter_names[0]: limits[self.scan_parameter_names[0]],
+                self.scan_parameter_names[1]: limits[self.scan_parameter_names[1]],
+                "limit": limits["observed"],
+            }
 
         # also compute limit values in a specified unit when requested
         xsec_values = None
@@ -221,11 +236,11 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
                 xsec_levels = self.xsec_contours or None
 
         # load likelihood scan data
-        llh_data = inputs["likelihoods"].load(formatter="numpy")
-        exp_llh_values = llh_data["data"]
+        ll_data = inputs["likelihoods"].load(formatter="numpy")
+        nll_values = ll_data["data"]
         # scan parameter minima
-        exp_scan_mins = [llh_data["poi_mins"][i] for i in range(self.n_scan_parameters)]
-        exp_scan_mins = [(None if np.isnan(v) else float(v)) for v in exp_scan_mins]
+        scan_mins = [ll_data["poi_mins"][i] for i in range(self.n_scan_parameters)]
+        scan_mins = [(None if np.isnan(v) else float(v)) for v in scan_mins]
 
         # call the plot function
         self.call_plot_func(
@@ -234,16 +249,14 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
             poi=self.pois[0],
             scan_parameter1=self.scan_parameter_names[0],
             scan_parameter2=self.scan_parameter_names[1],
-            expected_limits=exp_limits,
-            observed_limits=None,
+            expected_limits=limits,
+            observed_limits=obs_limits,
             xsec_values=xsec_values,
             xsec_levels=xsec_levels,
             xsec_unit=self.xsec,
             xsec_label_positions=xsec_label_positions,
-            expected_likelihoods=exp_llh_values,
-            expected_scan_minima=exp_scan_mins,
-            observed_likelihoods=None,
-            observed_scan_minima=None,
+            nll_values=nll_values,
+            scan_minima=scan_mins,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),

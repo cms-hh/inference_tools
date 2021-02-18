@@ -7,7 +7,6 @@ Base tasks dedicated to inference.
 import os
 import sys
 import re
-import math
 import glob
 import importlib
 import itertools
@@ -44,9 +43,10 @@ class HHModelTask(AnalysisTask):
     valid_hh_model_options = {"noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc"}
 
     hh_model = luigi.Parameter(
-        default="HHModelPinv:model_default",
-        description="the name of the HH model relative to dhi.models with optional configuration "
-        "options in the format module.model_name[@opt1[@opt2...]]; valid options are {}; default: "
+        default="HHModelPinv.model_default",
+        description="the location of the HH model to use with optional configuration options in "
+        "the format module.model_name[@opt1[@opt2...]]; when no module name is given, the default "
+        "one 'dhi.models.HHModelPinv' is assumed; valid options are {}; default: "
         "HHModelPinv.model_default".format(",".join(valid_hh_model_options)),
     )
 
@@ -67,6 +67,12 @@ class HHModelTask(AnalysisTask):
         # the format used to be "module:model_name" before so adjust it to support legacy commands
         hh_model = hh_model.replace(":", ".")
 
+        # when there is no "." in the string, assume it to be the name of a model in the default
+        # model file "HHModelPinv"
+        if "." not in hh_model:
+            hh_model = "HHModelPinv.{}".format(hh_model)
+
+        # split into module, model name and options
         m = re.match(r"^(.+)\.([^\.@]+)(@(.+))?$", hh_model)
         if not m:
             raise Exception("invalid hh_model format '{}'".format(hh_model))
@@ -175,7 +181,7 @@ class HHModelTask(AnalysisTask):
             # get the xsec and apply it to every
             xsec = get_xsec(**_xsec_kwargs)
             for key in point.dtype.names:
-                if key.startswith("limit"):
+                if key.startswith("limit") or key == "observed":
                     point[key] *= xsec
 
         return data
@@ -266,23 +272,22 @@ class HHModelTask(AnalysisTask):
 class MultiHHModelTask(HHModelTask):
 
     hh_models = law.CSVParameter(
-        description="multiple names of the HH models relative to dhi.models in the format "
-        "module.model_name[@opt]; default: empty",
+        description="comma-separated locations of HH models to use with optional configurations, "
+        "each in the format module.model_name[@opt1[@opt2...]]; no default",
         brace_expand=True,
     )
-
     hh_model_order = law.CSVParameter(
         default=(),
         cls=luigi.IntParameter,
         significant=False,
-        description="indices of models in hh_models for reordering; not used when empty; "
-        "default: empty",
+        description="comma-separated indices of models in hh_models for reordering; not used when "
+        "empty; no default",
     )
     hh_model_names = law.CSVParameter(
         default=(),
         significant=False,
-        description="names of hh models for plotting purposes; applied before reordering with "
-        "hh_model_order; default: empty",
+        description="comma-separated names of hh models for plotting purposes; applied before "
+        "reordering with hh_model_order; no default",
         brace_expand=True,
     )
 
@@ -432,10 +437,22 @@ class DatacardTask(HHModelTask):
                 _paths = list(glob.glob(os.path.join(dc_path, pattern)))
 
             # when directories are given, assume to find a file "datacard.txt"
-            _paths = [
-                (os.path.join(path, "datacard.txt") if os.path.isdir(path) else path)
-                for path in _paths
-            ]
+            # when such a file does not exist, but a directory "latest" does, use it and try again
+            __paths = []
+            for path in _paths:
+                if os.path.isdir(path):
+                    dir_path = path
+                    while True:
+                        card = os.path.join(dir_path, "datacard.txt")
+                        latest = os.path.join(dir_path, "latest")
+                        if os.path.isfile(card):
+                            path = card
+                        elif os.path.isdir(latest):
+                            dir_path = os.path.realpath(latest)
+                            continue
+                        break
+                __paths.append(path)
+            _paths = __paths
 
             # keep only existing cards
             _paths = filter(os.path.exists, _paths)
@@ -460,7 +477,7 @@ class DatacardTask(HHModelTask):
         if not paths and not store_dir:
             raise Exception("a store_dir is required when no datacard paths are provided")
 
-        # join to pairs and sorted by path
+        # join to pairs and sort by path
         pairs = sorted(list(zip(paths, bin_names)), key=lambda pair: pair[0])
 
         # merge bin names and paths again
@@ -783,6 +800,10 @@ class POITask(DatacardTask, ParameterValuesTask):
         sort=True,
         description="comma-separated names of groups of parameters to be frozen",
     )
+    unblinded = luigi.BoolParameter(
+        default=False,
+        description="unblinded computation and plotting of results; default: False",
+    )
 
     force_n_pois = None
     allow_parameter_values_in_pois = False
@@ -847,6 +868,10 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     def get_output_postfix(self, join=True, exclude_params=None, include_params=None):
         parts = []
+
+        # add the unblinded flag
+        if self.unblinded:
+            parts.append(["unblinded"])
 
         # add pois
         parts.append(["poi"] + list(self.pois))
@@ -918,6 +943,9 @@ class POITask(DatacardTask, ParameterValuesTask):
     def joined_frozen_groups(self):
         return ",".join(self.frozen_groups) or '""'
 
+    def htcondor_output_postfix(self):
+        return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
+
 
 class POIScanTask(POITask, ParameterScanTask):
 
@@ -982,7 +1010,8 @@ class POIScanTask(POITask, ParameterScanTask):
             parts = POITask.get_output_postfix(self, join=False, exclude_params=exclude_params)
 
             # insert the scan configuration
-            parts = parts[:1] + ParameterScanTask.get_output_postfix(self, join=False) + parts[1:]
+            i = 2 if self.unblinded else 1
+            parts = parts[:i] + ParameterScanTask.get_output_postfix(self, join=False) + parts[i:]
 
         return self.join_postfix(parts) if join else parts
 
@@ -993,23 +1022,6 @@ class POIScanTask(POITask, ParameterScanTask):
             values.pop(p, None)
 
         return ",".join("{}={}".format(*tpl) for tpl in values.items()) if join else values
-
-
-class CombineCommandTask(CommandTask):
-
-    toys = luigi.IntParameter(
-        default=-1,
-        significant=False,
-        description="the number of toys to sample; -1 will use the asymptotic method; default: -1",
-    )
-
-    combine_stable_options = (
-        "--cminDefaultMinimizerType Minuit2"
-        " --cminDefaultMinimizerStrategy 0"
-        " --cminFallbackAlgo Minuit2,0:1.0"
-    )
-
-    exclude_index = True
 
 
 class POIPlotTask(PlotTask, POITask):
@@ -1040,6 +1052,43 @@ class InputDatacards(DatacardTask, law.ExternalTask):
         )
 
 
+class CombineCommandTask(CommandTask):
+
+    toys = luigi.IntParameter(
+        default=-1,
+        significant=False,
+        description="the number of toys to sample; -1 will use the asymptotic method; default: -1",
+    )
+    optimize_discretes = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when set, use additional combine flags to optimize the minimization of "
+        "likelihoods with containing discrete parameters; default: False",
+    )
+
+    combine_stable_options = (
+        "--cminDefaultMinimizerType Minuit2"
+        " --cminDefaultMinimizerStrategy 0"
+        " --cminFallbackAlgo Minuit2,0:1.0"
+    )
+
+    combine_discrete_options = (
+        "--X-rt MINIMIZER_freezeDisassociatedParams"
+        " --X-rtd MINIMIZER_multiMin_hideConstants"
+        " --X-rtd MINIMIZER_multiMin_maskConstraints"
+        " --X-rtd MINIMIZER_multiMin_maskChannels=2"
+    )
+
+    exclude_index = True
+
+    @property
+    def combine_optimization_args(self):
+        args = self.combine_stable_options
+        if self.optimize_discretes:
+            args += " " + self.combine_discrete_options
+        return args
+
+
 class CombineDatacards(DatacardTask, CombineCommandTask):
 
     priority = 100
@@ -1060,18 +1109,19 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
     def output(self):
         return self.local_target("datacard.txt")
 
-    def build_command(self, datacards=None):
-        if not datacards:
-            datacards = self.datacards
+    def build_command(self, input_cards=None, output_card=None):
+        if not input_cards:
+            input_cards = self.datacards
+        if not output_card:
+            output_card = self.output().path
 
-        inputs = " ".join(datacards)
-        output = self.output()
+        return "combineCards.py {} {} > {}".format(
+            self.custom_args,
+            " ".join(input_cards),
+            output_card,
+        )
 
-        if len(datacards) == 1:
-            return "cp {} {}".format(inputs, output.path)
-        else:
-            return "combineCards.py {} {} > {}".format(self.custom_args, inputs, output.path)
-
+    @law.decorator.log
     @law.decorator.safe_output
     def run(self):
         # immediately complain when no datacard paths were set but just a store directory
@@ -1084,7 +1134,6 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         tmp_dir.touch()
 
         # remove any bin name from the datacard paths
-        # should this come from external task? If so, what about bin_names?
         datacards = [self.split_datacard_path(card)[0] for card in self.datacards]
         bin_names = [self.split_datacard_path(card)[1] for card in self.datacards]
 
@@ -1098,9 +1147,8 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         ]
 
         # build and run the command
-        output = self.output()
-        output.parent.touch()
-        self.run_command(self.build_command(datacards), cwd=tmp_dir.path)
+        output_card = tmp_dir.child("merged_XXXXXX.txt", type="f", mktemp_pattern=True)
+        self.run_command(self.build_command(datacards, output_card.path), cwd=tmp_dir.path)
 
         # remove ggf and vbf processes that are not covered by the physics model
         mod, model = self.load_hh_model()
@@ -1114,11 +1162,14 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
                 "trying to remove processe(s) {} from the combined datacard as they "
                 "are not part of the phyics model {}".format(",".join(to_remove), self.hh_model)
             )
-            remove_processes_script(output.path, map("{}*".format, to_remove))
+            remove_processes_script(output_card.path, map("{}*".format, to_remove))
 
-        # copy shape files to output location
+        # copy shape files and the datacard to the output location
+        output = self.output()
+        output.parent.touch()
         for basename in tmp_dir.listdir(pattern="*.root", type="f"):
             tmp_dir.child(basename).copy_to(output.parent)
+        output_card.copy_to(output)
 
 
 class CreateWorkspace(DatacardTask, CombineCommandTask):

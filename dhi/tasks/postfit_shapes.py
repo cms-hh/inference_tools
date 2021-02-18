@@ -39,20 +39,27 @@ class PostFitShapes(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWork
     def output(self):
         return self.local_target("fitdiagnostics__{}.root".format(self.get_output_postfix()))
 
+    @property
+    def blinded_args(self):
+        if self.unblinded:
+            return ""
+        else:
+            return "--toys {self.toys}".format(self=self)
+
     def build_command(self):
         return (
             "combine -M FitDiagnostics {workspace}"
-            " -m {self.mass}"
-            " -v 1"
-            " -t {self.toys}"
-            " --expectSignal 1"
+            " --verbose 1"
+            " --mass {self.mass}"
+            " {self.blinded_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --saveShapes  --skipBOnlyFit"
             " --saveWithUncertainties"
-            " {self.combine_stable_options}"
+            " --saveNormalizations"
+            " {self.combine_optimization_args}"
             " {self.custom_args}"
             " && "
             "mv fitDiagnostics.root {output}"
@@ -102,9 +109,10 @@ class PlotPostfitSOverB(POIPlotTask):
         name = self.create_plot_name(["postfitsoverb", self.get_output_postfix()])
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         # prepare the output
         output = self.output()

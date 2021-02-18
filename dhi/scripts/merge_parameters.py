@@ -10,12 +10,12 @@ single one. Currently, only parameters with columnar type "lnN", "lnU" and
 > merge_parameters.py datacard.txt CMS_eff_m CMS_eff_m_iso CMS_eff_m_id -d output_directory
 
 # merge parameters via fnmatch wildcards (note the quotes)
-> merge_parameters.py datacard.txt CMS_eff_m "CMS_eff_m_*" -d output_directory
+> merge_parameters.py datacard.txt CMS_eff_m 'CMS_eff_m_*' -d output_directory
 
 Note 1: The use of an output directory is recommended to keep input files
         unchanged.
 
-Note 2: This script is not intended to be used to merge incompatible systemati
+Note 2: This script is not intended to be used to merge incompatible systematic
         uncertainties. Its only purpose is to reduce the number of parameters by
         merging the effect of (probably small) uncertainties that are related at
         analysis level, e.g. multiple types of lepton efficiency corrections.
@@ -28,7 +28,9 @@ from dhi.datacard_tools import (
     columnar_parameter_directives, bundle_datacard, manipulate_datacard, update_datacard_count,
     expand_variables, expand_file_lines, ShapeLine,
 )
-from dhi.util import import_ROOT, real_path, multi_match, create_console_logger, TFileCache
+from dhi.util import (
+    import_ROOT, TFileCache, real_path, multi_match, create_console_logger, patch_object,
+)
 
 
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
@@ -364,8 +366,8 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
 
                 elif new_type in ("lnN", "lnU"):
                     # helpers to convert a value in lnN/U format to a signed uncertainty and back
-                    ln2unc = lambda v: ((v - 1.) if v >= 1 else (1. - v**-1.))
-                    unc2ln = lambda v: (1. + v) if v >= 0 else (1 - v)**-1.
+                    ln2unc = lambda v: v - 1.
+                    unc2ln = lambda v: 1. + v
                     rnd = lambda v: "{{:.{}f}}".format(digits).format(v)
 
                     # consider the merged effect to be symmetric when all effets have only one entry
@@ -496,8 +498,8 @@ if __name__ == "__main__":
         "when set, the effect on the new parameter is constructed as the envelope of effects of "
         "parameters to merge")
     parser.add_argument("--auto-shape-average", action="store_true", help="only for shape; when "
-        "set and shapes to merge contain both positive negative effects in the same bin, propagate "
-        "errors separately and then use their average; otherwise, an error is raised")
+        "set and shapes to merge contain both positive abd negative effects in the same bin, "
+        "propagate errors separately and then use their average; otherwise, an error is raised")
     parser.add_argument("--auto-shape-envelope", action="store_true", help="only for shape; when "
         "set, the merged shape variations of the new parameter are constructed as the envelopes of "
         "shapes of parameters to merge")
@@ -505,6 +507,8 @@ if __name__ == "__main__":
         "merged parameters; defaults to 4")
     parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
+    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
+        "line; default: {}".format(logger.name))
     args = parser.parse_args()
 
     # configure the logger
@@ -514,8 +518,9 @@ if __name__ == "__main__":
     flip_parameters = (args.flip_parameters and args.flip_parameters.split(",")) or []
 
     # run the merging
-    merge_parameters(args.input, args.merged, args.names, directory=args.directory,
-        skip_shapes=args.no_shapes, flip_parameters=flip_parameters,
-        auto_rate_flip=args.auto_rate_flip, auto_rate_max=args.auto_rate_max,
-        auto_rate_envelope=args.auto_rate_envelope, auto_shape_average=args.auto_shape_average,
-         auto_shape_envelope=args.auto_shape_envelope, digits=args.digits, mass=args.mass)
+    with patch_object(logger, "name", args.log_name):
+        merge_parameters(args.input, args.merged, args.names, directory=args.directory,
+            skip_shapes=args.no_shapes, flip_parameters=flip_parameters,
+            auto_rate_flip=args.auto_rate_flip, auto_rate_max=args.auto_rate_max,
+            auto_rate_envelope=args.auto_rate_envelope, auto_shape_average=args.auto_shape_average,
+            auto_shape_envelope=args.auto_shape_envelope, digits=args.digits, mass=args.mass)

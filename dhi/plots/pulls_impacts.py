@@ -12,7 +12,7 @@ import array
 import six
 
 from dhi.config import poi_data, campaign_labels, colors
-from dhi.util import import_ROOT, multi_match, to_root_latex, linspace
+from dhi.util import import_ROOT, multi_match, to_root_latex, linspace, colored
 from dhi.plots.styles import use_style
 
 
@@ -29,8 +29,8 @@ def plot_pulls_impacts(
     skip_parameters=None,
     order_parameters=None,
     order_by_impact=False,
-    pull_range=2.,
-    impact_range=20.,
+    pull_range=2,
+    impact_range=-1,
     best_fit_value=None,
     labels=None,
     campaign=None,
@@ -51,13 +51,15 @@ def plot_pulls_impacts(
     parameters. When *order_by_impact* is *True*, *order_parameters* is neglected and the order is
     derived using the largest absolute impact.
 
-    The symmetric range of pulls on the bottom x-axis is defined by *pull_range* whereas the range
-    of the top x-axis associated to impact values is set by *impact_range*. For the purpose of
-    visual clearness, the tick marks on both axes are identical, so one needs to make sure that
-    *pull_range* and *impact_range* match.
+    The symmetric range of pulls on the bottom x-axis is defined by *pull_range* (an integer)
+    whereas the range of the top x-axis associated to impact values is set by *impact_range*. For
+    the purpose of visual clearness, the tick marks on both axes are identical, so one needs to make
+    sure that *pull_range* and *impact_range* match. When *impact_range* is not positive, an
+    automatic value is chosen per page.
 
     *best_fit_value* can be a 3-tuple (central value, unsigned +error, unsigned -error) that is
-    shown as a text at the top of the plot. *labels* should be a dictionary or a json file
+    shown as a text at the top of the plot. When empty, it is extracted from *data* which contains
+    the value following combine's NLL interpolation. *labels* should be a dictionary or a json file
     containing a dictionary that maps nuisances names to labels shown in the plot. *campaign* should
     refer to the name of a campaign label defined in dhi.config.campaign_labels.
 
@@ -65,6 +67,9 @@ def plot_pulls_impacts(
     """
     import plotlib.root as r
     ROOT = import_ROOT()
+
+    pull_range = int(pull_range)
+    auto_impact_range = impact_range <= 0
 
     # read data when a path is given
     if isinstance(data, six.string_types):
@@ -131,7 +136,6 @@ def plot_pulls_impacts(
     entry_height = 30  # pixels
     head_space = 130  # pixels
     x_min, x_max = -pull_range, pull_range
-    x_ratio = float(impact_range) / pull_range
 
     # plot per page
     for page in range(n_pages):
@@ -155,6 +159,39 @@ def plot_pulls_impacts(
         # get the y maximum
         y_max = (canvas_height - top_margin - bottom_margin) / float(entry_height)
 
+        # define the impact_range and derive the x_ratio
+        if auto_impact_range:
+            # get the maximum absolute impact on this page
+            max_impact = max(max(abs(v) for v in p.impact) for p in _params)
+            # determine possible ratios and pick the one that is slightly larger (using a threshold)
+            ratios = sum(([round(f * 10**x, 4) for f in range(1, 6)] for x in range(-4, 4)), [])
+            for ratio in ratios:
+                _impact_range = pull_range * ratio
+                if _impact_range * 0.85 > max_impact:
+                    impact_range = _impact_range
+                    break
+            else:
+                impact_range = 1.
+                print("{}: could not determine an automatic impact range for maximum impact {} and "
+                    "pull_range {}, using 1 instead".format(
+                        colored("WARNING", "red"), max_impact, pull_range
+                    )
+                )
+        else:
+            # warn when there is a mismatch between pull and impact ranges
+            # which will not lead to a wrong plot, but misplaced impact ticks on the top x-axis
+            # definition: there is a mismatch if "impact_range / pull_range" has too many decimal
+            # digits, which is especially true for irrational numbers
+            n_frac = len(str(float(impact_range) / pull_range).split(".", 1)[1])
+            if n_frac > 3:
+                print("{}: the upper impact_range of {} does not seem to match the lower "
+                    "pull_range of {}, which will lead to a mismatch between numbers and ticks of "
+                    "the top x-axis or longish decimal numbers".format(
+                        colored("WARNING", "red"), impact_range, pull_range
+                    )
+                )
+        x_ratio = float(impact_range) / pull_range
+
         # setup the default style and create canvas and pad
         r.setup_style()
         canvas, (pad,) = r.routines.create_canvas(width=canvas_width, height=canvas_height,
@@ -167,29 +204,30 @@ def plot_pulls_impacts(
         h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
         r.setup_hist(h_dummy, props={"LineWidth": 0, "Maximum": y_max}, pad=pad)
         x_axis = h_dummy.GetXaxis()
-        r.setup_x_axis(x_axis, pad, props={"TitleOffset": 1.3,
+        n_div = (800 if pull_range <= 3 else 400) + 2 * pull_range
+        r.setup_x_axis(x_axis, pad, props={"Ndivisions": -n_div, "TitleOffset": 1.3,
             "LabelOffset": r.pixel_to_coord(canvas, y=4)})
         draw_objs.append((h_dummy, "HIST"))
 
         # draw a second axis at the top denoting impact values
         x2_axis = ROOT.TGaxis(x_min, y_max, x_max, y_max, x_min * x_ratio, x_max * x_ratio,
-            x_axis.GetNdivisions(), "S")
+            n_div, "SN")
         x2_title = "Impact #Delta" + to_root_latex(poi_data[poi].label)
         r.setup_x_axis(x2_axis, pad, props={"Title": x2_title, "TickLength": 0.,
             "LabelOffset": r.pixel_to_coord(canvas, y=-24), "TitleOffset": -1.2})
         draw_objs.append(x2_axis)
 
         # y axis labels and ticks
-        tick_length = 0.15
         h_dummy.GetYaxis().SetBinLabel(1, "")
         for i, param in enumerate(_params):
             # parameter labels
             label = to_root_latex(labels.get(param.name, param.name))
-            label = ROOT.TLatex(x_min - 0.05, n - i - 0.5, label)
+            label = ROOT.TLatex(x_min - (x_max - x_min) * 0.0125, n - i - 0.5, label)
             r.setup_latex(label, props={"NDC": False, "TextAlign": 32, "TextSize": 20})
             draw_objs.append(label)
 
             # left and right ticks
+            tick_length = (x_max - x_min) * 0.0375
             tl = ROOT.TLine(x_min, i + 1, x_min + tick_length, i + 1)
             tr = ROOT.TLine(x_max, i + 1, x_max - tick_length, i + 1)
             r.setup_line(tl, props={"NDC": False})
@@ -221,17 +259,18 @@ def plot_pulls_impacts(
         draw_objs.append((g_impact_overlap, "2"))
 
         # vertical, dashed lines at all integer and half-integer values
-        for x in linspace(-5, 5, 21):
+        for x in linspace(x_min, x_max, 2 * (x_max - x_min) + 1):
             if not (x_min < x < x_max):
                 continue
-            l = ROOT.TLine(x, 0, x, n)
-            r.setup_line(l, props={"NDC": False, "LineWidth": 1, "LineColor": 14, "LineStyle": 3})
+            l = ROOT.TLine(x, 0, x, y_max)
+            c = colors.light_grey_trans if x % 1. else colors.dark_grey
+            r.setup_line(l, props={"NDC": False, "LineWidth": 1, "LineColor": c, "LineStyle": 3})
             draw_objs.append(l)
 
         # pull graph
         arr = lambda vals: array.array("f", vals)
         g_pull = ROOT.TGraphAsymmErrors(n,
-            arr([param.pull[1] for param in _params]),
+            arr([(-1e5 if param.is_rate_param else param.pull[1]) for param in _params]),
             arr([n - i - 0.5 for i in range(n)]),
             arr([-param.pull[0] for param in _params]),
             arr([param.pull[2] for param in _params]),
@@ -241,30 +280,50 @@ def plot_pulls_impacts(
         r.setup_graph(g_pull, props={"MarkerStyle": 20, "MarkerSize": 1.2, "LineWidth": 1})
         draw_objs.append((g_pull, "PEZ"))
 
+        # plain post-fit intervals as texts for rateParam's
+        rate_label_tmpl = "%.2f^{ +%.2f}_{ -%.2f}"
+        for i, param in enumerate(_params):
+            if not param.is_rate_param:
+                continue
+            down, nominal, up = param.postfit
+            rate_label = rate_label_tmpl % (nominal, up - nominal, nominal - down)
+            rate_label = ROOT.TLatex(0, n - i - 0.5, rate_label)
+            r.setup_latex(rate_label, props={"NDC": False, "TextAlign": 22, "TextSize": 16})
+            draw_objs.append(rate_label)
+
         # legend
         legend = r.routines.create_legend(pad=pad, width=170, n=3)
         r.setup_legend(legend)
         legend.AddEntry(g_pull, "Pull")
-        legend.AddEntry(g_impact_hi, "Impact +1#sigma")
-        legend.AddEntry(g_impact_lo, "Impact -1#sigma")
+        legend.AddEntry(g_impact_hi, "Impact +1 #sigma", "F")
+        legend.AddEntry(g_impact_lo, "Impact -1 #sigma", "F")
         draw_objs.append(legend)
+        legend_box = r.routines.create_legend_box(legend, pad, "tlr",
+            props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+        draw_objs.insert(-1, legend_box)
 
         # best fit value label
+        if not best_fit_value:
+            for p in data["POIs"]:
+                if p["name"] == poi:
+                    d, n, u = p["fit"]
+                    best_fit_value = (n, u - n, n - d)
+                    break
         if best_fit_value:
-            fit_label = "{} = {:.2f}^{{+{:.2f}}}_{{-{:.2f}}}".format(
+            fit_label = "{} = {:.2f}^{{ +{:.2f}}}_{{ -{:.2f}}}".format(
                 to_root_latex(poi_data[poi].label), *best_fit_value)
             fit_label = r.routines.create_top_left_label(fit_label, pad=pad, y_offset=80,
                 x=0.5 * (r.get_x(0, pad, "right") + r.get_x(0, pad)), props={"TextAlign": 21})
             draw_objs.append(fit_label)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad, x_offset=8, y_offset=50)
+        cms_labels = r.routines.create_cms_labels(pad=pad, x_offset=10, y_offset=50)
         draw_objs.extend(cms_labels)
 
         # campaign label
         if campaign:
             campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
-            campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, x_offset=8,
+            campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, x_offset=10,
                 y_offset=80)
             draw_objs.append(campaign_label)
 
@@ -319,6 +378,9 @@ class Parameter(object):
 
         # whether or not this parameter comes from autoMCStats
         self.is_mc_stats = self.name.startswith("prop_bin")
+
+        # whether or not this parameter comes from a rateParam
+        self.is_rate_param = self.type == "Unrecognised" and tuple(self.prefit) == (2.0, 1.0, 0.0)
 
 
 def read_patterns(patterns):

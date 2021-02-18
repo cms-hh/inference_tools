@@ -168,7 +168,6 @@ class DatacardRenamer(object):
         return self._tfile_cache.open_tfile(path, mode)
 
     def get_tobj(self, path, obj_name, mode):
-        print "GET TOBJ", path, obj_name, mode
         ROOT = import_ROOT()
         tfile = path if isinstance(path, ROOT.TFile) else self.open_tfile(path, mode)
 

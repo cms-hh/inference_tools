@@ -114,6 +114,46 @@ def to_root_latex(s):
     return s
 
 
+shell_colors = {
+    "default": 39,
+    "black": 30,
+    "red": 31,
+    "green": 32,
+    "yellow": 33,
+    "blue": 34,
+    "magenta": 35,
+    "cyan": 36,
+    "light_gray": 37,
+    "dark_gray": 90,
+    "light_red": 91,
+    "light_green": 92,
+    "light_yellow": 93,
+    "light_blue": 94,
+    "light_magenta": 95,
+    "light_cyan": 96,
+    "white": 97,
+}
+
+
+def colored(msg, color=None, force=False):
+    """
+    Return the colored version of a string *msg*. Unless *force* is *True*, the *msg* string is
+    returned unchanged in case the output is not a tty. Simplified from law.util.colored.
+    """
+    if not force:
+        try:
+            tty = os.isatty(sys.stdout.fileno())
+        except:
+            tty = False
+
+        if not tty:
+            return msg
+
+    color = shell_colors.get(color, shell_colors["default"])
+
+    return "\033[{}m{}\033[0m".format(color, msg)
+
+
 def linspace(start, stop, steps, precision=7):
     """
     Same as np.linspace with *start*, *stop* and *steps* being directly forwarded but the generated
@@ -179,11 +219,12 @@ def minimize_1d(objective, bounds, start=None, niter=10, **kwargs):
 
 
 def create_tgraph(n, *args, **kwargs):
-    """ create_tgraph(n, *args, pad=None)
+    """create_tgraph(n, *args, pad=None, insert=None)
     Creates a ROOT graph with *n* points, where the type is *TGraph* for two, *TGraphErrors* for
     4 and *TGraphAsymmErrors* for six *args*. Each argument is converted to a python array with
     typecode "f". When *pad* is *True*, the graph is padded by one additional point on each side
-    with the same edge value.
+    with the same edge value. When *insert* is given, it should be a list of tuples with values
+    ``(index, values...)`` denoting the index, coordinates and errors of points to be inserted.
     """
     ROOT = import_ROOT()
 
@@ -203,10 +244,21 @@ def create_tgraph(n, *args, **kwargs):
             a = n * list(a)
         _args.append(list(a))
 
-    # apply edge padding when requested
-    if kwargs.get("pad"):
-        n += 2
-        _args = [(a[:1] + a + a[-1:]) for a in _args]
+    # apply edge padding when requested with a configurable width
+    pad = kwargs.get("pad")
+    if pad:
+        w = 1 if not isinstance(pad, int) else int(pad)
+        n += 2 * w
+        _args = [(w * a[:1] + a + w * a[-1:]) for a in _args]
+
+    # insert custom points
+    insert = kwargs.get("insert")
+    if insert:
+        for values in insert:
+            idx, values = values[0], values[1:]
+            for i, v in enumerate(values):
+                _args[i].insert(idx, v)
+            n += 1
 
     if n == 0:
         return cls(n)
@@ -338,7 +390,6 @@ def poisson_asym_errors(v):
 
 
 class TFileCache(object):
-
     def __init__(self, logger=None):
         super(TFileCache, self).__init__()
 
@@ -395,8 +446,11 @@ class TFileCache(object):
                 tfile = ROOT.TFile(tmp_path, mode)
                 self._w_cache[abs_path] = {"tmp_path": tmp_path, "tfile": tfile, "objects": []}
 
-                self.logger.debug("opened tfile {} with mode {} in temporary location {}".format(
-                    abs_path, mode, tmp_path))
+                self.logger.debug(
+                    "opened tfile {} with mode {} in temporary location {}".format(
+                        abs_path, mode, tmp_path
+                    )
+                )
 
             return self._w_cache[abs_path]["tfile"]
 
@@ -425,8 +479,9 @@ class TFileCache(object):
             for abs_path, data in self._r_cache.items():
                 if data["tfile"] and data["tfile"].IsOpen():
                     data["tfile"].Close()
-            self.logger.debug("closed {} cached file(s) opened for reading".format(
-                len(self._r_cache)))
+            self.logger.debug(
+                "closed {} cached file(s) opened for reading".format(len(self._r_cache))
+            )
 
         if self._w_cache:
             # close files opened for reading, write objects and move to actual location
@@ -448,11 +503,13 @@ class TFileCache(object):
 
                     if not skip_write:
                         shutil.move(data["tmp_path"], abs_path)
-                        self.logger.debug("moving back temporary file {} to {}".format(
-                            data["tmp_path"], abs_path))
+                        self.logger.debug(
+                            "moving back temporary file {} to {}".format(data["tmp_path"], abs_path)
+                        )
 
-            self.logger.debug("closed {} cached file(s) opened for writing".format(
-                len(self._w_cache)))
+            self.logger.debug(
+                "closed {} cached file(s) opened for writing".format(len(self._w_cache))
+            )
             ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = {};".format(ignore_level_orig))
 
         # clear

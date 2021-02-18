@@ -14,7 +14,7 @@ Note: The use of an output directory is recommended to keep input files
 import os
 
 from dhi.datacard_tools import bundle_datacard, read_datacard_blocks, write_datacard_pretty
-from dhi.util import real_path, create_console_logger
+from dhi.util import real_path, create_console_logger, patch_object
 
 
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
@@ -70,11 +70,14 @@ if __name__ == "__main__":
         "the output directory when --directory is set")
     parser.add_argument("--no-preamble", action="store_true", help="remove any existing preamble")
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
+    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
+        "line; default: {}".format(logger.name))
     args = parser.parse_args()
 
     # configure the logger
     logger.setLevel(args.log_level.upper())
 
     # add the parameter
-    prettify_datacard(args.input, directory=args.directory, skip_shapes=args.no_shapes,
-        skip_preamble=args.no_preamble)
+    with patch_object(logger, "name", args.log_name):
+        prettify_datacard(args.input, directory=args.directory, skip_shapes=args.no_shapes,
+            skip_preamble=args.no_preamble)

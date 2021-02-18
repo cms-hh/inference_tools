@@ -75,7 +75,7 @@ br_hh_names = DotDict(
     wwzz=r"WWZZ",
 )
 
-# campaign labels
+# campaign labels, extended by HH branching names
 campaign_labels = DotDict(
     {
         "2016": "2016 (13 TeV)",
@@ -84,6 +84,7 @@ campaign_labels = DotDict(
         "run2": "Run 2 (13 TeV)",
     }
 )
+campaign_labels.update(br_hh_names)
 
 # poi defaults (value, range, points, taken from physics model) and labels
 poi_data = DotDict(
@@ -108,8 +109,10 @@ colors = DotDict(
         black=1,
         white=10,
         white_trans_30=(10, 0.3),
+        white_trans_70=(10, 0.7),
         grey=921,
         light_grey=920,
+        light_grey_trans=(920, 0.5),
         dark_grey=13,
         dark_grey_trans=(13, 0.33),
         red=628,

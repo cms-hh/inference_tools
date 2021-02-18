@@ -15,7 +15,9 @@ import law
 import six
 
 
-law.contrib.load("git", "htcondor", "matplotlib", "numpy", "root", "tasks", "wlcg")
+law.contrib.load(
+    "git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks", "wlcg",
+)
 
 
 class LocalTarget(law.LocalTarget):
@@ -47,8 +49,13 @@ class BaseTask(law.Task):
         "CSV parameter accepts a single integer value which sets the task recursion depth to also "
         "print the commands of required tasks (0 means non-recursive)",
     )
+    notify_slack = law.slack.NotifySlackParameter()
+    notify_telegram = law.telegram.NotifyTelegramParameter()
+
+    exclude_params_req = {"notify_slack", "notify_telegram"}
 
     interactive_params = law.Task.interactive_params + ["print_command"]
+
     task_namespace = os.getenv("DHI_TASK_NAMESPACE")
 
     def _print_command(self, args):
@@ -169,6 +176,12 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         "current one, instead of using bundled versions of the repository and software; "
         "default: False",
     )
+    htcondor_group = luigi.Parameter(
+        default=law.NO_STR,
+        significant=False,
+        description="the name of an accounting group on the cluster to handle user priority; not "
+        "used when empty; default: empty",
+    )
 
     exclude_params_branch = {"max_runtime"}
 
@@ -198,6 +211,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         # copy the entire environment when requests
         if self.htcondor_getenv:
             config.custom_content.append(("getenv", "true"))
+
         # the CERN htcondor setup requires a "log" config, but we can safely set it to /dev/null
         # if you are interested in the logs of the batch system itself, set a meaningful value here
         config.custom_content.append(("log", "/dev/null"))
@@ -208,6 +222,10 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         # request cpus
         if self.request_cpus > 0:
             config.custom_content.append(("RequestCpus", self.request_cpus))
+
+        # accounting group for priority on the cluster
+        if self.htcondor_group and self.htcondor_group != law.NO_STR:
+            config.custom_content.append(("+AccountingGroup", self.htcondor_group))
 
         # render_variables are rendered into all files sent with a job
         if self.htcondor_getenv:
@@ -430,6 +448,12 @@ class PlotTask(AnalysisTask):
         choices=["pdf", "png"],
         description="the type of the output plot file; choices: pdf,png; default: pdf",
     )
+    plot_postfix = luigi.Parameter(
+        default=law.NO_STR,
+        significant=False,
+        description="an arbitrary postfix that is added with to underscores to all paths of "
+        "produced plots; no default",
+    )
     view_cmd = luigi.Parameter(
         default=law.NO_STR,
         significant=False,
@@ -480,6 +504,8 @@ class PlotTask(AnalysisTask):
     def create_plot_name(self, *parts):
         if len(parts) == 1:
             parts = law.util.make_list(parts[0])
+        if self.plot_postfix and self.plot_postfix != law.NO_STR:
+            parts += (self.plot_postfix,)
         return "{}.{}".format(self.join_postfix(parts), self.file_type)
 
     def get_plot_func(self, func_id):

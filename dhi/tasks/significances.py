@@ -35,21 +35,27 @@ class SignificanceScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCon
     def output(self):
         return self.local_target("significance__" + self.get_output_postfix() + ".root")
 
+    @property
+    def blinded_args(self):
+        if self.unblinded:
+            return "--seed {self.branch}".format(self=self)
+        else:
+            return "--toys {self.toys} --seed {self.branch}".format(self=self)
+
     def build_command(self):
         return (
             "combine -M Significance {workspace}"
-            " -m {self.mass}"
-            " -v 1"
-            " -t {self.toys}"
-            " --signalForSignificance 1"
+            " --verbose 1"
+            " --mass {self.mass}"
+            " {self.blinded_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
-            " {self.combine_stable_options}"
+            " {self.combine_optimization_args}"
             " {self.custom_args}"
             " && "
-            "mv higgsCombineTest.Significance.mH{self.mass_int}.root {output}"
+            "mv higgsCombineTest.Significance.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
             workspace=self.input().path,
@@ -94,23 +100,32 @@ class PlotSignificanceScan(POIScanTask, POIPlotTask):
     force_scan_parameters_unequal_pois = True
 
     def requires(self):
-        return MergeSignificanceScan.req(self)
+        reqs = {}
+        if self.unblinded:
+            reqs["expected"] = MergeSignificanceScan.req(self, unblinded=False)
+            reqs["observed"] = MergeSignificanceScan.req(self, unblinded=True)
+        else:
+            reqs["expected"] = MergeSignificanceScan.req(self, unblinded=False)
+        return reqs
 
     def output(self):
         name = self.create_plot_name(["significances", self.get_output_postfix()])
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         # prepare the output
         output = self.output()
         output.parent.touch()
 
-        # load expected significances
+        # load significances
+        inputs = self.input()
         scan_parameter = self.scan_parameter_names[0]
-        exp_values = self.input().load(formatter="numpy")["data"]
+        exp_values = inputs["expected"].load(formatter="numpy")["data"]
+        obs_values = inputs["observed"].load(formatter="numpy")["data"] if self.unblinded else None
 
         # some printing
         for v in range(-2, 4 + 1):
@@ -127,6 +142,7 @@ class PlotSignificanceScan(POIScanTask, POIPlotTask):
             poi=self.pois[0],
             scan_parameter=scan_parameter,
             expected_values=exp_values,
+            observed_values=obs_values,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
@@ -137,6 +153,9 @@ class PlotSignificanceScan(POIScanTask, POIPlotTask):
 
 
 class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
+
+    unblinded = None
+
     @classmethod
     def modify_param_values(cls, params):
         params = PlotSignificanceScan.modify_param_values(params)
@@ -153,9 +172,10 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
         name = self.create_plot_name(["multisignificances", self.get_output_postfix()])
         return self.local_target(name)
 
+    @law.decorator.log
+    @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
-    @law.decorator.log
     def run(self):
         # prepare the output
         output = self.output()

@@ -147,7 +147,29 @@ More detailed information on the different scans & fits be found in the followin
     </div>
   </a>
 
+  <a href="tasks/gof.html#testing-a-datacard">
+    <div class="dhi_image_box">
+      <div>
+        <img src="images/gofs__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0.png" />
+      </div>
+      <div>
+        Goodness-of-fit test
+      </div>
+    </div>
+  </a>
+
+  <a href="tasks/gof.html#testing-multiple-datacards">
+    <div class="dhi_image_box">
+      <div>
+        <img src="images/multigofs__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0__t1000_pt20.png" />
+      </div>
+      <div>
+        Multiple goodness-of-fit tests
+      </div>
+    </div>
+  </a>
+
   <div style="clear: both;"></div>
 </div>
 
-An experimental interactive datacard viewer exists too (thanks to [Benjamin Fischer](https://git.rwth-aachen.de/3pia/cms_analyses/common/-/blob/master/view_datacard.html)).
+An experimental [interactive datacard viewer](view_datacard.html) exists too (thanks to [B. Fischer](https://git.rwth-aachen.de/3pia/cms_analyses/common/-/blob/master/view_datacard.html)).
