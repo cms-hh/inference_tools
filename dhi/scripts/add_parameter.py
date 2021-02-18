@@ -140,7 +140,8 @@ def add_parameter(datacard, param_name, param_type, param_spec=None, directory=N
             content["parameters"].append(param_line)
 
         # increase kmax in counts
-        update_datacard_count(content, "kmax", 1, diff=True, logger=logger)
+        if is_columnar:
+            update_datacard_count(content, "kmax", 1, diff=True, logger=logger)
 
 
 if __name__ == "__main__":

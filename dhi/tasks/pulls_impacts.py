@@ -239,6 +239,11 @@ class PlotPullsAndImpacts(PlotTask, POITask):
         description="number of parameters per page; creates a single page when < 1; only applied "
         "for file type 'pdf'; default: -1",
     )
+    page = luigi.IntParameter(
+        default=-1,
+        description="the number of the page to print (starting at 0) when --parameters-per-page is "
+        "set; prints all pages when negative; default: -1",
+    )
     order_parameters = law.CSVParameter(
         default=(),
         description="list of parameters or files containing parameters line-by-line for ordering; "
@@ -291,6 +296,8 @@ class PlotPullsAndImpacts(PlotTask, POITask):
             parts.append("mcstats")
         if self.skip_parameters:
             parts.append("skip_" + law.util.create_hash(sorted(self.skip_parameters)))
+        if self.page >= 0:
+            parts.append("page{}".format(self.page))
 
         name = self.create_plot_name(["pulls_impacts", self.get_output_postfix(), parts])
         return self.local_target(name)
@@ -313,6 +320,7 @@ class PlotPullsAndImpacts(PlotTask, POITask):
             path=output.path,
             data=data,
             parameters_per_page=self.parameters_per_page,
+            selected_page=self.page,
             skip_parameters=self.skip_parameters,
             order_parameters=self.order_parameters,
             order_by_impact=self.order_by_impact,

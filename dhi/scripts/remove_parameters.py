@@ -22,7 +22,8 @@ import os
 import re
 
 from dhi.datacard_tools import (
-    bundle_datacard, manipulate_datacard, update_datacard_count, expand_file_lines,
+    columnar_parameter_directives, bundle_datacard, manipulate_datacard, update_datacard_count,
+    expand_file_lines,
 )
 from dhi.util import real_path, multi_match, create_console_logger, patch_object
 
@@ -62,11 +63,15 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
         if content.get("parameters"):
             to_remove = []
             for i, param_line in enumerate(content["parameters"]):
-                param_name = param_line.split()[0]
+                param_line = param_line.split()
+                if len(param_line) < 2:
+                    continue
+                param_name, param_type = param_line[:2]
                 if multi_match(param_name, patterns):
                     logger.info("remove parameter {}".format(param_name))
                     to_remove.append(i)
-                    removed_nuisance_names.add(param_name)  # TODO: are all of them nuisances?
+                    if multi_match(param_type, columnar_parameter_directives):
+                        removed_nuisance_names.add(param_name)
 
             # change lines in-place
             lines = [line for i, line in enumerate(content["parameters"]) if i not in to_remove]
@@ -90,7 +95,7 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                 group_line = "{} group = {}".format(group_name, " ".join(param_names))
                 content["groups"][i] = group_line
 
-        # remove group themselves
+        # remove groups themselves
         if content.get("groups"):
             to_remove = []
             for i, group_line in enumerate(content["groups"]):

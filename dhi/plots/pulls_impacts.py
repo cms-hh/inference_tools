@@ -180,7 +180,7 @@ def plot_pulls_impacts(
         else:
             # warn when there is a mismatch between pull and impact ranges
             # which will not lead to a wrong plot, but misplaced impact ticks on the top x-axis
-            # definition: the ranges mispatch of "impact_range / pull_range" has too many decimal
+            # definition: there is a mismatch if "impact_range / pull_range" has too many decimal
             # digits, which is especially true for irrational numbers
             n_frac = len(str(float(impact_range) / pull_range).split(".", 1)[1])
             if n_frac > 3:

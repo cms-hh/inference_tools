@@ -58,6 +58,7 @@ class PostFitShapes(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWork
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --saveShapes"
             " --saveWithUncertainties"
+            " --saveNormalizations"
             " {self.combine_optimization_args}"
             " {self.custom_args}"
             " && "
