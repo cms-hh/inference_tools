@@ -1024,6 +1024,34 @@ class POIScanTask(POITask, ParameterScanTask):
         return ",".join("{}={}".format(*tpl) for tpl in values.items()) if join else values
 
 
+class POIPlotTask(PlotTask, POITask):
+
+    show_parameters = law.CSVParameter(
+        default=(),
+        significant=False,
+        description="comma-separated list of parameters that are shown in the plot even if they "
+        "are 1; default: empty",
+    )
+
+    def get_shown_parameters(self):
+        parameter_values = self._joined_parameter_values(join=False)
+        for p, v in list(parameter_values.items()):
+            if v == 1 and p not in self.show_parameters:
+                parameter_values.pop(p, None)
+        return parameter_values
+
+
+class InputDatacards(DatacardTask, law.ExternalTask):
+    version = None
+    hh_model = None
+    mass = None
+
+    def output(self):
+        return law.TargetCollection(
+            [law.LocalFileTarget(self.split_datacard_path(card)[0]) for card in self.datacards]
+        )
+
+
 class CombineCommandTask(CommandTask):
 
     toys = luigi.IntParameter(
@@ -1061,34 +1089,6 @@ class CombineCommandTask(CommandTask):
         return args
 
 
-class POIPlotTask(PlotTask, POITask):
-
-    show_parameters = law.CSVParameter(
-        default=(),
-        significant=False,
-        description="comma-separated list of parameters that are shown in the plot even if they "
-        "are 1; default: empty",
-    )
-
-    def get_shown_parameters(self):
-        parameter_values = self._joined_parameter_values(join=False)
-        for p, v in list(parameter_values.items()):
-            if v == 1 and p not in self.show_parameters:
-                parameter_values.pop(p, None)
-        return parameter_values
-
-
-class InputDatacards(DatacardTask, law.ExternalTask):
-    version = None
-    hh_model = None
-    mass = None
-
-    def output(self):
-        return law.TargetCollection(
-            [law.LocalFileTarget(self.split_datacard_path(card)[0]) for card in self.datacards]
-        )
-
-
 class CombineDatacards(DatacardTask, CombineCommandTask):
 
     priority = 100
@@ -1109,18 +1109,19 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
     def output(self):
         return self.local_target("datacard.txt")
 
-    def build_command(self, datacards=None):
-        if not datacards:
-            datacards = self.datacards
+    def build_command(self, input_cards=None, output_card=None):
+        if not input_cards:
+            input_cards = self.datacards
+        if not output_card:
+            output_card = self.output().path
 
-        inputs = " ".join(datacards)
-        output = self.output()
+        return "combineCards.py {} {} > {}".format(
+            self.custom_args,
+            " ".join(input_cards),
+            output_card,
+        )
 
-        if len(datacards) == 1:
-            return "cp {} {}".format(inputs, output.path)
-        else:
-            return "combineCards.py {} {} > {}".format(self.custom_args, inputs, output.path)
-
+    @law.decorator.log
     @law.decorator.safe_output
     def run(self):
         # immediately complain when no datacard paths were set but just a store directory
@@ -1133,7 +1134,6 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         tmp_dir.touch()
 
         # remove any bin name from the datacard paths
-        # should this come from external task? If so, what about bin_names?
         datacards = [self.split_datacard_path(card)[0] for card in self.datacards]
         bin_names = [self.split_datacard_path(card)[1] for card in self.datacards]
 
@@ -1147,9 +1147,8 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         ]
 
         # build and run the command
-        output = self.output()
-        output.parent.touch()
-        self.run_command(self.build_command(datacards), cwd=tmp_dir.path)
+        output_card = tmp_dir.child("merged_XXXXXX.txt", type="f", mktemp_pattern=True)
+        self.run_command(self.build_command(datacards, output_card.path), cwd=tmp_dir.path)
 
         # remove ggf and vbf processes that are not covered by the physics model
         mod, model = self.load_hh_model()
@@ -1163,11 +1162,14 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
                 "trying to remove processe(s) {} from the combined datacard as they "
                 "are not part of the phyics model {}".format(",".join(to_remove), self.hh_model)
             )
-            remove_processes_script(output.path, map("{}*".format, to_remove))
+            remove_processes_script(output_card.path, map("{}*".format, to_remove))
 
-        # copy shape files to output location
+        # copy shape files and the datacard to the output location
+        output = self.output()
+        output.parent.touch()
         for basename in tmp_dir.listdir(pattern="*.root", type="f"):
             tmp_dir.child(basename).copy_to(output.parent)
+        output_card.copy_to(output)
 
 
 class CreateWorkspace(DatacardTask, CombineCommandTask):
