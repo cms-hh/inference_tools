@@ -11,7 +11,7 @@ from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
 
 
-class PostFitShapes(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+class PostfitShapes(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     pois = law.CSVParameter(
         default=("r",),
@@ -29,7 +29,7 @@ class PostFitShapes(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWork
         return [""]  # single branch with empty data
 
     def workflow_requires(self):
-        reqs = super(PostFitShapes, self).workflow_requires()
+        reqs = super(PostfitShapes, self).workflow_requires()
         reqs["workspace"] = self.requires_from_branch()
         return reqs
 
@@ -72,7 +72,7 @@ class PostFitShapes(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWork
 
 class PlotPostfitSOverB(POIPlotTask):
 
-    pois = PostFitShapes.pois
+    pois = PostfitShapes.pois
     bins = law.CSVParameter(
         cls=luigi.FloatParameter,
         default=(8,),
@@ -103,7 +103,7 @@ class PlotPostfitSOverB(POIPlotTask):
     force_n_pois = 1
 
     def requires(self):
-        return PostFitShapes.req(self)
+        return PostfitShapes.req(self)
 
     def output(self):
         name = self.create_plot_name(["postfitsoverb", self.get_output_postfix()])

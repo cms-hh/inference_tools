@@ -121,7 +121,7 @@ module 'dhi.tasks.pulls_impacts', 3 task(s):
     - MergePullsAndImpacts
 
 module 'dhi.tasks.postfit_shapes', 2 task(s):
-    - PostFitShapes
+    - PostfitShapes
     - PlotPostfitSOverB
 
 module 'dhi.tasks.gof', 3 task(s):

@@ -19,10 +19,14 @@ from dhi.tasks.combine import (
 from dhi.config import br_hh
 
 
-class UpperLimits(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+class UpperLimitsBase(POIScanTask):
+
+    force_scan_parameters_unequal_pois = True
+
+
+class UpperLimits(UpperLimitsBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     run_command_in_tmp = True
-    force_scan_parameters_unequal_pois = True
 
     def create_branch_map(self):
         return self.get_scan_linspace()
@@ -96,9 +100,7 @@ class UpperLimits(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
         return values
 
 
-class MergeUpperLimits(POIScanTask):
-
-    force_scan_parameters_unequal_pois = True
+class MergeUpperLimits(UpperLimitsBase):
 
     def requires(self):
         return UpperLimits.req(self)
@@ -132,7 +134,7 @@ class MergeUpperLimits(POIScanTask):
         self.output().dump(data=data, formatter="numpy")
 
 
-class PlotUpperLimits(POIScanTask, POIPlotTask):
+class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
 
     xsec = luigi.ChoiceParameter(
         default=law.NO_STR,
@@ -156,7 +158,6 @@ class PlotUpperLimits(POIScanTask, POIPlotTask):
 
     restrict_n_pois = 1
     restrict_n_scan_parameters = 1
-    force_scan_parameters_unequal_pois = True
 
     def __init__(self, *args, **kwargs):
         super(PlotUpperLimits, self).__init__(*args, **kwargs)

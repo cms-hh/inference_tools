@@ -9,13 +9,13 @@ from collections import OrderedDict
 import law
 import luigi
 
-from dhi.tasks.base import HTCondorWorkflow, PlotTask, view_output_plots
-from dhi.tasks.combine import CombineCommandTask, POITask, CreateWorkspace
+from dhi.tasks.base import HTCondorWorkflow, view_output_plots
+from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
 from dhi.config import poi_data, nuisance_labels
 from dhi.datacard_tools import get_workspace_parameters
 
 
-class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+class PullsAndImpactsBase(POITask):
 
     skip_parameters = law.CSVParameter(
         default=(),
@@ -31,6 +31,10 @@ class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
     mc_stats_patterns = ["prop_bin*"]
 
     force_n_pois = 1
+
+
+class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+
     run_command_in_tmp = True
 
     def __init__(self, *args, **kwargs):
@@ -141,12 +145,7 @@ class PullsAndImpacts(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWo
         return postfix
 
 
-class MergePullsAndImpacts(POITask):
-
-    mc_stats = PullsAndImpacts.mc_stats
-    skip_parameters = PullsAndImpacts.skip_parameters
-
-    force_n_pois = 1
+class MergePullsAndImpacts(PullsAndImpactsBase):
 
     def requires(self):
         return PullsAndImpacts.req(self)
@@ -246,10 +245,8 @@ class MergePullsAndImpacts(POITask):
         self.output().dump(data, indent=4, formatter="json")
 
 
-class PlotPullsAndImpacts(PlotTask, POITask):
+class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
 
-    mc_stats = MergePullsAndImpacts.mc_stats
-    skip_parameters = MergePullsAndImpacts.skip_parameters
     parameters_per_page = luigi.IntParameter(
         default=-1,
         description="number of parameters per page; creates a single page when < 1; only applied "
@@ -289,8 +286,6 @@ class PlotPullsAndImpacts(PlotTask, POITask):
     y_max = None
     z_min = None
     z_max = None
-
-    force_n_pois = 1
 
     def __init__(self, *args, **kwargs):
         super(PlotPullsAndImpacts, self).__init__(*args, **kwargs)

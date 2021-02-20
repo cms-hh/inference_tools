@@ -19,14 +19,17 @@ from dhi.tasks.combine import (
     CreateWorkspace,
 )
 
-
-class LikelihoodScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+class LikelihoodBase(POIScanTask):
 
     pois = copy.copy(POIScanTask.pois)
     pois._default = ("kl",)
 
-    run_command_in_tmp = True
     force_scan_parameters_equal_pois = True
+
+
+class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+
+    run_command_in_tmp = True
 
     def create_branch_map(self):
         return self.get_scan_linspace()
@@ -77,9 +80,7 @@ class LikelihoodScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondo
         )
 
 
-class MergeLikelihoodScan(POIScanTask):
-
-    force_scan_parameters_equal_pois = True
+class MergeLikelihoodScan(LikelihoodBase):
 
     def requires(self):
         return LikelihoodScan.req(self)
@@ -120,7 +121,7 @@ class MergeLikelihoodScan(POIScanTask):
         self.output().dump(data=data, poi_mins=np.array(poi_mins), formatter="numpy")
 
 
-class PlotLikelihoodScan(POIScanTask, POIPlotTask):
+class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
     y_log = luigi.BoolParameter(
         default=False,
@@ -129,7 +130,6 @@ class PlotLikelihoodScan(POIScanTask, POIPlotTask):
 
     force_n_pois = (1, 2)
     force_n_scan_parameters = (1, 2)
-    force_scan_parameters_equal_pois = True
 
     def requires(self):
         return MergeLikelihoodScan.req(self)

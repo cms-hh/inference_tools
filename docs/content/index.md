@@ -1,7 +1,7 @@
 Welcome to the documentation of the [HH inference tools](https://gitlab.cern.ch/hh/tools/inference).
 
 Read the [Introduction](introduction.md) for the setup instructions of this repository.
-More detailed information on the different scans & fits be found in the following sections:
+More detailed information on the different scans & fits can be found in the following sections:
 
 <div class="dhi_image_boxes">
   <a href="tasks/limits.html#limit-on-poi-vs-scan-parameter">
