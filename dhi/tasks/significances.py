@@ -122,6 +122,11 @@ class MergeSignificanceScan(SignificanceBase):
 
 class PlotSignificanceScan(SignificanceBase, POIPlotTask):
 
+    y_log = luigi.BoolParameter(
+        default=False,
+        description="apply log scaling to the y-axis; default: False",
+    )
+
     z_min = None
     z_max = None
 
@@ -138,7 +143,12 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
         return reqs
 
     def output(self):
-        name = self.create_plot_name(["significances", self.get_output_postfix()])
+        # additional postfix
+        parts = []
+        if self.y_log:
+            parts.append("log")
+
+        name = self.create_plot_name(["significances", self.get_output_postfix(), parts])
         return self.local_target(name)
 
     @law.decorator.log
@@ -176,6 +186,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
+            y_log=self.y_log,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
@@ -198,7 +209,12 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
         ]
 
     def output(self):
-        name = self.create_plot_name(["multisignificances", self.get_output_postfix()])
+        # additional postfix
+        parts = []
+        if self.y_log:
+            parts.append("log")
+
+        name = self.create_plot_name(["multisignificances", self.get_output_postfix(), parts])
         return self.local_target(name)
 
     @law.decorator.log
@@ -238,6 +254,7 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
+            y_log=self.y_log,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )

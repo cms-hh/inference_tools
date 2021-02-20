@@ -8,7 +8,7 @@ import math
 
 import numpy as np
 
-from dhi.config import poi_data, campaign_labels, colors, color_sequence
+from dhi.config import poi_data, br_hh_names, campaign_labels, colors, color_sequence
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int
 from dhi.plots.styles import use_style
 
@@ -27,6 +27,7 @@ def plot_significance_scan(
     x_max=None,
     y_min=None,
     y_max=None,
+    y_log=False,
     model_parameters=None,
     campaign=None,
 ):
@@ -37,8 +38,9 @@ def plot_significance_scan(
     structure as *expected_values*.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
-    given values. *model_parameters* can be a dictionary of key-value pairs of model parameters.
-    *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    given values. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
+    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/significances.html#significance-vs-scan-parameter
     """
@@ -71,7 +73,7 @@ def plot_significance_scan(
 
     # start plotting
     r.setup_style()
-    canvas, (pad,) = r.routines.create_canvas()
+    canvas, (pad,) = r.routines.create_canvas(pad_props={"Logy": y_log})
     pad.cd()
     draw_objs = []
     legend_entries = []
@@ -80,7 +82,7 @@ def plot_significance_scan(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "Significance ({}) over background-only / #sigma".format(poi_data[poi].label)
+    y_title = "Significance over background-only / #sigma"
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
@@ -105,20 +107,28 @@ def plot_significance_scan(
         y_min_value = min(y_min_value, min(observed_values["significance"]))
 
     # set limits
-    if y_min is None:
-        y_min = 0.
-    if y_max is None:
-        y_max = 1.35 * (y_max_value - y_min)
+    if y_log:
+        if y_min is None:
+            y_min = 1e-2
+        if y_max is None:
+            y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
+        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.35)
+    else:
+        if y_min is None:
+            y_min = 0.
+        if y_max is None:
+            y_max = 1.35 * (y_max_value - y_min)
+        y_max_line = y_max / 1.35 + y_min
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
     # horizontal lines at full integers up to 5
-    for y in range(1, 5 + 1):
+    for y in range(1, max(5, int(math.floor(y_max_value))) + 1):
         if not (y_min < y < y_max):
             continue
         line = ROOT.TLine(x_min, y, x_max, y)
-        r.setup_line(line, props={"LineStyle": 7, "NDC": False}, color=colors.red)
-        draw_objs.append(line)
+        r.setup_line(line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
+        draw_objs.insert(1, line)
 
     # model parameter label
     if model_parameters:
@@ -165,6 +175,7 @@ def plot_significance_scans(
     x_max=None,
     y_min=None,
     y_max=None,
+    y_log=False,
     model_parameters=None,
     campaign=None,
 ):
@@ -175,8 +186,9 @@ def plot_significance_scans(
     in a different curve. *names* denote the names of significance curves shown in the legend.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
-    given values. *model_parameters* can be a dictionary of key-value pairs of model parameters.
-    *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    given values. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
+    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/significances.html#multiple-significance-scans-vs-scan-parameter
     """
@@ -209,7 +221,7 @@ def plot_significance_scans(
 
     # start plotting
     r.setup_style()
-    canvas, (pad,) = r.routines.create_canvas()
+    canvas, (pad,) = r.routines.create_canvas(pad_props={"Logy": y_log})
     pad.cd()
     draw_objs = []
     legend_entries = []
@@ -218,7 +230,7 @@ def plot_significance_scans(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "Significance ({}) over background-only / #sigma".format(poi_data[poi].label)
+    y_title = "Significance over background-only / #sigma"
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
@@ -229,17 +241,34 @@ def plot_significance_scans(
         r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
             "MarkerSize": 0.7}, color=colors[col])
         draw_objs.append((g_exp, "SAME,PL"))
-        legend_entries.append((g_exp, names[n_graphs - i - 1]))
+        name = names[n_graphs - i - 1]
+        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name))))
         y_max_value = max(y_max_value, max(ev["significance"]))
         y_min_value = min(y_min_value, min(ev["significance"]))
 
     # set limits
-    if y_min is None:
-        y_min = 0.
-    if y_max is None:
-        y_max = 1.35 * (y_max_value - y_min)
+    if y_log:
+        if y_min is None:
+            y_min = 1e-2
+        if y_max is None:
+            y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
+        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.35)
+    else:
+        if y_min is None:
+            y_min = 0.
+        if y_max is None:
+            y_max = 1.35 * (y_max_value - y_min)
+        y_max_line = y_max / 1.35 + y_min
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
+
+    # horizontal lines at full integers up to 5
+    for y in range(1, max(5, int(math.floor(y_max_value))) + 1):
+        if not (y_min < y < y_max):
+            continue
+        line = ROOT.TLine(x_min, y, x_max, y)
+        r.setup_line(line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
+        draw_objs.insert(1, line)
 
     # model parameter label
     if model_parameters:

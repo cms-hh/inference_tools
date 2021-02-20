@@ -12,7 +12,7 @@ import scipy.interpolate
 import scipy.optimize
 from scinum import Number
 
-from dhi.config import poi_data, campaign_labels, chi2_levels, colors, color_sequence
+from dhi.config import poi_data, br_hh_names, campaign_labels, chi2_levels, colors, color_sequence
 from dhi.util import (
     import_ROOT, to_root_latex, get_neighbor_coordinates, create_tgraph, DotDict, minimize_1d,
     try_int,
@@ -313,7 +313,7 @@ def plot_likelihood_scans_1d(
         r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75},
             color=colors[col])
         draw_objs.append((g_nll, "SAME,CP"))
-        legend_entries.append((g_nll, d["name"]))
+        legend_entries.append((g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"]))))
 
         # line for best fit value
         line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
@@ -671,7 +671,8 @@ def plot_likelihood_scans_2d(
         draw_objs.append((g_fit, "PEZ"))
         draw_objs.append((h1, "SAME,CONT3"))
         draw_objs.append((h2, "SAME,CONT3"))
-        legend_entries.append((g_fit, "{} (best fit)".format(d["name"]), "P"))
+        name = to_root_latex(br_hh_names.get(d["name"], d["name"]))
+        legend_entries.append((g_fit, "{} (best fit)".format(name), "P"))
         legend_entries.append((h1, "#pm 1 #sigma", "l"))
         legend_entries.append((h2, "#pm 2 #sigma", "l"))
 
