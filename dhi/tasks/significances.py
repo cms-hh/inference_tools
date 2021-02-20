@@ -5,6 +5,7 @@ Tasks related to significance calculation.
 """
 
 import law
+import luigi
 
 from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import (
@@ -16,10 +17,38 @@ from dhi.tasks.combine import (
 )
 
 
-class SignificanceScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+class SignificanceBase(POIScanTask):
+
+    force_scan_parameters_unequal_pois = True
+    allow_parameter_values_in_pois = True
+
+    postfit_toys = luigi.BoolParameter(
+        default=False,
+        description="when set, create frequentist postfit toys, producing a-posteriori expected "
+        "significances, which depend on observed data; has no effect when --unblinded is used as "
+        "well; default: False"
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(SignificanceBase, self).__init__(*args, **kwargs)
+
+        if self.unblinded and self.postfit_toys:
+            self.postfit_toys = False
+            self.logger.warning("both unblinded and postfit_toys were set, will only consider "
+                "the unblinded flag")
+
+    def get_output_postfix(self, join=True):
+        parts = super(SignificanceBase, self).get_output_postfix(join=False)
+
+        if not self.unblinded and self.postfit_toys:
+            parts.insert(0, ["postfit"])
+
+        return self.join_postfix(parts) if join else parts
+
+
+class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     run_command_in_tmp = True
-    force_scan_parameters_unequal_pois = True
 
     def create_branch_map(self):
         return self.get_scan_linspace()
@@ -63,7 +92,7 @@ class SignificanceScan(POIScanTask, CombineCommandTask, law.LocalWorkflow, HTCon
         )
 
 
-class MergeSignificanceScan(POIScanTask):
+class MergeSignificanceScan(SignificanceBase):
     def requires(self):
         return SignificanceScan.req(self)
 
@@ -91,19 +120,19 @@ class MergeSignificanceScan(POIScanTask):
         self.output().dump(data=data, formatter="numpy")
 
 
-class PlotSignificanceScan(POIScanTask, POIPlotTask):
+class PlotSignificanceScan(SignificanceBase, POIPlotTask):
 
     z_min = None
     z_max = None
 
     force_n_scan_parameters = 1
-    force_scan_parameters_unequal_pois = True
 
     def requires(self):
         reqs = {}
         if self.unblinded:
             reqs["expected"] = MergeSignificanceScan.req(self, unblinded=False)
-            reqs["observed"] = MergeSignificanceScan.req(self, unblinded=True)
+            reqs["observed"] = MergeSignificanceScan.req(self, unblinded=True,
+                frequentist_toys=False)
         else:
             reqs["expected"] = MergeSignificanceScan.req(self, unblinded=False)
         return reqs
