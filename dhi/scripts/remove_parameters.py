@@ -57,7 +57,7 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
     # start removing
     with manipulate_datacard(datacard) as content:
         # keep track of which exact parameters were removed that describe nuisances
-        removed_nuisance_names = set()
+        removed_nuisance_names = []
 
         # remove from parameters
         if content.get("parameters"):
@@ -71,7 +71,7 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                     logger.info("remove parameter {}".format(param_name))
                     to_remove.append(i)
                     if multi_match(param_type, columnar_parameter_directives):
-                        removed_nuisance_names.add(param_name)
+                        removed_nuisance_names.append(param_name)
 
             # change lines in-place
             lines = [line for i, line in enumerate(content["parameters"]) if i not in to_remove]
