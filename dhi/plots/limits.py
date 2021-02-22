@@ -120,7 +120,7 @@ def plot_limit_scan(
     # 2 sigma band
     if "limit_p2" in expected_values and "limit_m2" in expected_values:
         g_2sigma = create_graph(sigma=2)
-        r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
+        r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2, "MarkerStyle": 20,
             "MarkerSize": 0, "FillColor": colors.yellow})
         draw_objs.append((g_2sigma, "SAME,4"))
         legend_entries[5] = (g_2sigma, "#pm 2 #sigma expected")
@@ -130,7 +130,7 @@ def plot_limit_scan(
     # 1 sigma band
     if "limit_p1" in expected_values and "limit_m1" in expected_values:
         g_1sigma = create_graph(sigma=1)
-        r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
+        r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2, "MarkerStyle": 20,
             "MarkerSize": 0, "FillColor": colors.green})
         draw_objs.append((g_1sigma, "SAME,4"))
         legend_entries[4] = (g_1sigma, "#pm 1 #sigma expected")
@@ -139,7 +139,7 @@ def plot_limit_scan(
 
     # central values
     g_exp = create_graph()
-    r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
+    r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 2, "MarkerStyle": 20,
         "MarkerSize": 0})
     draw_objs.append((g_exp, "SAME,LZ"))
     legend_entries[3] = (g_exp, "Median expected")
@@ -551,21 +551,21 @@ def plot_limit_points(
 
     # 2 sigma band
     g_2sigma = create_graph(sigma=2)
-    r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
+    r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2, "MarkerStyle": 20,
         "MarkerSize": 0, "FillColor": colors.yellow})
     draw_objs.append((g_2sigma, "SAME,2"))
     legend_entries[5] = (g_2sigma, r"#pm 2 #sigma expected")
 
     # 1 sigma band
     g_1sigma = create_graph(sigma=1)
-    r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
+    r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2, "MarkerStyle": 20,
         "MarkerSize": 0, "FillColor": colors.green})
     draw_objs.append((g_1sigma, "SAME,2"))
     legend_entries[4] = (g_1sigma, r"#pm 1 #sigma expected")
 
     # central values
     g_exp = create_graph(sigma=0)
-    r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
+    r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 2, "MarkerStyle": 20,
         "MarkerSize": 0})
     draw_objs.append((g_exp, "SAME,EZ"))
     legend_entries[3] = (g_exp, "Median expected")

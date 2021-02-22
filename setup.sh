@@ -112,6 +112,7 @@ setup() {
     export PATH="$DHI_BASE/bin:$DHI_BASE/dhi/scripts:$DHI_BASE/modules/law/bin:$DHI_SOFTWARE/bin:$PATH"
     export PYTHONPATH="$DHI_BASE:$DHI_BASE/modules/law:$DHI_BASE/modules/plotlib:$DHI_SOFTWARE/lib/python${pyv}/site-packages:$DHI_SOFTWARE/lib64/python${pyv}/site-packages:$PYTHONPATH"
     export PYTHONWARNINGS="ignore"
+    export PYTHONNOUSERSITE="1"
     export GLOBUS_THREAD_MODEL="none"
     ulimit -s unlimited
 
