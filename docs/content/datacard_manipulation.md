@@ -107,7 +107,7 @@ optional arguments:
 > add_parameter.py --help
 
 usage: add_parameter.py [-h] [--directory [DIRECTORY]] [--no-shapes]
-                        [--log-level LOG_LEVEL]
+                        [--log-level LOG_LEVEL] [--log-name LOG_NAME]
                         DATACARD NAME TYPE [SPEC [SPEC ...]]
 
 Script to add arbitrary parameters to the datacard.
@@ -135,11 +135,13 @@ positional arguments:
   TYPE                  type of the parameter to add
   SPEC                  specification of parameter arguments; for columnar
                         parameter types (e.g. lnN or shape* nuisances), comma-
-                        separated triplets in the format 'bin,process,value'
-                        are expected; patterns are supported and evaluated in
-                        the given order for all existing bin process pairs;
-                        prepending '!' to a pattern negates its meaning; for
-                        all other types, the specification is used as is
+                        separated triplets in the format '[BIN,PROCESS,]VALUE'
+                        are expected; when no bin and process names are given,
+                        the parameter is added to all existing ones; patterns
+                        are supported and evaluated in the given order for all
+                        existing bin process pairs; prepending '!' to a
+                        pattern negates its meaning; for all other types, the
+                        specification is used as is
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -233,6 +235,60 @@ optional arguments:
                         python log level; default: INFO
   --log-name LOG_NAME   name of the logger on the command line; default:
                         merge_parameters
+```
+
+
+### Flip
+
+```shell
+> flip_parameters.py --hep
+
+usage: flip_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
+                          [--mass MASS] [--log-level LOG_LEVEL]
+                          [--log-name LOG_NAME]
+                          DATACARD NAME [NAME ...]
+
+Script to flip the effect of one or multiple (nuisance) parameters in a
+datacard. Currently, only parameters with columnar type "lnN", "lnU" and "shape"
+are supported. Example usage:
+
+# flip via simple names
+> flip_parameters.py datacard.txt alpha_s_ttH alpha_s_tt -d output_directory
+
+# flip via name patterns (note the quotes)
+> flip_parameters.py datacard.txt 'alpha_s_*' -d output_directory
+
+# flip via bin, process and name patterns (note the quotes)
+> flip_parameters.py datacard.txt '*,ch1,alpha_s_*' -d output_directory
+
+# flip via rules in files
+> flip_parameters.py datacard.txt my_rules.txt -d output_directory
+
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
+
+positional arguments:
+  DATACARD              the datacard to read and possibly update (see
+                        --directory)
+  NAME                  names of parameters whose effect should be flipped in
+                        the format '[BIN,PROCESS,]PARAMETER'; when a bin and
+                        process names are given, the effect is only flipped in
+                        those; patterns are supported; prepending '!' to a
+                        pattern negates its meaning; a name can also refer to
+                        a file with names in the above format line by line
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --no-shapes, -n       do not change parameter names in shape files
+  --mass MASS, -m MASS  mass hypothesis; default: 125
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        flip_parameters
 ```
 
 

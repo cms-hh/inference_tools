@@ -63,9 +63,10 @@ def add_parameter(datacard, param_name, param_type, param_spec=None, directory=N
             raise Exception("a specification is required when adding columnar parameters")
         _param_spec = []
         for s in param_spec:
-            if not isinstance(s, (tuple, list)):
-                s = s.split(",")
-            if len(s) != 3:
+            s = tuple(s) if isinstance(s, (tuple, list)) else tuple(s.split(","))
+            if len(s) == 1:
+                s = ("*", "*") + s
+            elif len(s) != 3:
                 raise Exception("specification {} must have length 3".format(s))
             _param_spec.append(s)
         param_spec = _param_spec
@@ -157,7 +158,8 @@ if __name__ == "__main__":
     parser.add_argument("type", metavar="TYPE", help="type of the parameter to add")
     parser.add_argument("spec", nargs="*", metavar="SPEC", help="specification of parameter "
         "arguments; for columnar parameter types (e.g. lnN or shape* nuisances), comma-separated "
-        "triplets in the format 'bin,process,value' are expected; patterns are supported and "
+        "triplets in the format '[BIN,PROCESS,]VALUE' are expected; when no bin and process names "
+        "are given, the parameter is added to all existing ones; patterns are supported and "
         "evaluated in the given order for all existing bin process pairs; prepending '!' to a "
         "pattern negates its meaning; for all other types, the specification is used as is")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "

@@ -25,7 +25,7 @@ from dhi.util import create_console_logger, patch_object
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
-def rename_parameter(datacard, rules, directory=None, skip_shapes=False, mass="125"):
+def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="125"):
     """
     Reads a *datacard* and renames parameters according to translation *rules*. A rule should be a
     sequence of length 2 containing the old and the new parameter name.
@@ -191,5 +191,5 @@ if __name__ == "__main__":
 
     # run the renaming
     with patch_object(logger, "name", args.log_name):
-        rename_parameter(args.input, args.rules, directory=args.directory,
+        rename_parameters(args.input, args.rules, directory=args.directory,
             skip_shapes=args.no_shapes, mass=args.mass)

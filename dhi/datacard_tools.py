@@ -62,14 +62,14 @@ class DatacardRenamer(object):
 
         return pairs
 
-    def __init__(self, datacard, rules, directory=None, skip_shapes=False, logger=None):
+    def __init__(self, datacard, rules=None, directory=None, skip_shapes=False, logger=None):
         super(DatacardRenamer, self).__init__()
 
         # store attributes
         self._datacard_orig = datacard
         self.datacard = real_path(datacard)
-        self._rules_orig = rules
-        self.rules = None
+        self._rules_orig = rules or []
+        self.rules = OrderedDict()
         self.skip_shapes = skip_shapes
         self.logger = logger or logging.getLogger(
             "{}_{}".format(self.__class__.__name__, hex(id(self)))
