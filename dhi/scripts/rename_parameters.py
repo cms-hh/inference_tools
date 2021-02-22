@@ -174,7 +174,7 @@ if __name__ == "__main__":
     parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
         "update (see --directory)")
     parser.add_argument("rules", nargs="+", metavar="OLD_NAME=NEW_NAME", help="translation rules "
-        "for one or multiple parameter names in the format 'old_name=new_name', or files "
+        "for one or multiple parameter names in the format 'OLD_NAME=NEW_NAME', or files "
         "containing these rules in the same format line by line")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")

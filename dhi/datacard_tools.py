@@ -646,17 +646,22 @@ def update_shape_files(func, datacard, target_datacard=None, skip=("FAKE",)):
                 content["shapes"][i] = new_line
 
 
-def bundle_datacard(datacard, directory, skip_shapes=False):
+def bundle_datacard(datacard, directory, shapes_directory=".", skip_shapes=False):
     """
     Takes a *datacard* given by its path, copies it as well as the shape files it refers to a new
-    location given by *directory* and updates the shape lines accordingly to be relative paths.
-    When *skip_shapes* is *True*, only the datacard is copied. The path to the new datacard is
-    returned.
+    location given by *directory* and updates the shape lines accordingly. When a *shapes_directory*
+    is given, the shape files are copied to this directory instead, which can be relative to
+    *directory*. When *skip_shapes* is *True*, only the datacard is copied. The path to the new
+    datacard is returned.
     """
-    # prepare the directory
+    # prepare the directories
     directory = real_path(directory)
     if not os.path.exists(directory):
         os.makedirs(directory)
+    shapes_directory_relative = not shapes_directory.startswith("/")
+    shapes_directory = real_path(os.path.join(directory, shapes_directory or "."))
+    if not os.path.exists(shapes_directory):
+        os.makedirs(shapes_directory)
 
     # copy the card itself
     src_datacard = real_path(datacard)
@@ -671,8 +676,11 @@ def bundle_datacard(datacard, directory, skip_shapes=False):
             if skip_shapes:
                 copied_files[abs_shape_file] = abs_shape_file
             else:
-                copied_files[abs_shape_file] = copy_no_collisions(abs_shape_file, directory)
-        return os.path.basename(copied_files[abs_shape_file])
+                copied_files[abs_shape_file] = copy_no_collisions(abs_shape_file, shapes_directory)
+        if shapes_directory_relative:
+            return os.path.relpath(copied_files[abs_shape_file], directory)
+        else:
+            return copied_files[abs_shape_file]
 
     update_shape_files(update_and_copy, dst_datacard)
 

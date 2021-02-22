@@ -83,7 +83,7 @@ positional arguments:
   DATACARD              the datacard to read and possibly update (see
                         --directory)
   OLD_NAME=NEW_NAME     translation rules for one or multiple parameter names
-                        in the format 'old_name=new_name', or files containing
+                        in the format 'OLD_NAME=NEW_NAME', or files containing
                         these rules in the same format line by line
 
 optional arguments:
@@ -240,7 +240,7 @@ optional arguments:
 
 ### Flip
 
-```shell
+```shell hl_lines="1"
 > flip_parameters.py --hep
 
 usage: flip_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
@@ -364,7 +364,7 @@ positional arguments:
   DATACARD              the datacard to read and possibly update (see
                         --directory)
   OLD_NAME=NEW_NAME     translation rules for one or multiple process names in
-                        the format 'old_name=new_name', or files containing
+                        the format 'OLD_NAME=NEW_NAME', or files containing
                         these rules in the same format line by line
 
 optional arguments:
@@ -482,6 +482,44 @@ optional arguments:
 
 
 ## Miscellaneous
+
+### Bundle a datacard
+
+```shell hl_lines="1"
+> bundle_datacard.py --help
+
+usage: bundle_datacard.py [-h] [--shapes-directory SHAPES_DIRECTORY]
+                          [--log-level LOG_LEVEL] [--log-name LOG_NAME]
+                          DATACARD DIRECTORY
+
+Script to bundle a datacard, i.e., the card itself and the shape files it
+contains are copied to a target directory. Example usage:
+
+# bundle a single datacard
+> bundle_datacard.py datacard.txt some_directory
+
+# bundle multiple cards (note the quotes)
+> bundle_datacard.py 'datacard_*.txt' some_directory
+
+# bundle a single datacard and move shapes into a subdirectory
+> bundle_datacard.py -s shapes 'datacard_*.txt' some_directory
+
+positional arguments:
+  DATACARD              the datacard to bundle into the target directory;
+                        supports patterns to bundle multiple datacards
+  DIRECTORY             target directory
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --shapes-directory SHAPES_DIRECTORY, -s SHAPES_DIRECTORY
+                        an optional subdirectory when shape files are bundled,
+                        relative to the target directory; default: .
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        bundle_datacard
+```
+
 
 ### Prettify a datacard
 
