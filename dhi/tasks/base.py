@@ -157,7 +157,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         significant=False,
         description="maximum runtime; default unit is hours; default: 2",
     )
-    request_cpus = luigi.IntParameter(
+    htcondor_cpus = luigi.IntParameter(
         default=law.NO_INT,
         significant=False,
         description="number of CPUs to request; empty value leads to the cluster default setting; "
@@ -183,7 +183,9 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         "used when empty; default: empty",
     )
 
-    exclude_params_branch = {"max_runtime"}
+    exclude_params_branch = {
+        "max_runtime", "htcondor_cpus", "htcondor_flavor", "htcondor_getenv", "htcondor_group",
+    }
 
     def htcondor_workflow_requires(self):
         reqs = law.htcondor.HTCondorWorkflow.htcondor_workflow_requires(self)
@@ -220,8 +222,8 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         config.custom_content.append(("+MaxRuntime", int(math.floor(self.max_runtime * 3600)) - 1))
 
         # request cpus
-        if self.request_cpus > 0:
-            config.custom_content.append(("RequestCpus", self.request_cpus))
+        if self.htcondor_cpus > 0:
+            config.custom_content.append(("RequestCpus", self.htcondor_cpus))
 
         # accounting group for priority on the cluster
         if self.htcondor_group and self.htcondor_group != law.NO_STR:

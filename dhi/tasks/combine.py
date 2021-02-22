@@ -591,13 +591,21 @@ class ParameterValuesTask(AnalysisTask):
         "'name1=value1,name2=value2,...'",
     )
 
+    sort_parameter_values = True
+
     @classmethod
     def modify_param_values(cls, params):
         params = AnalysisTask.modify_param_values(params)
 
         # sort parameters
         if "parameter_values" in params:
-            params["parameter_values"] = tuple(sorted(params["parameter_values"]))
+            parameter_values = params["parameter_values"]
+            for p in parameter_values:
+                if "=" not in p:
+                    raise ValueError("invalid parameter value format '{}'".format(p))
+            if cls.sort_parameter_values:
+                parameter_values = sorted(parameter_values, key=lambda p: p.split("=", 1)[0])
+            params["parameter_values"] = tuple(parameter_values)
 
         return params
 
@@ -623,7 +631,6 @@ class ParameterValuesTask(AnalysisTask):
 
     def _joined_parameter_values(self, join=True):
         values = OrderedDict(self.parameter_values_dict)
-
         return ",".join("{}={}".format(*tpl) for tpl in values.items()) if join else values
 
     @property
@@ -642,6 +649,7 @@ class ParameterScanTask(AnalysisTask):
     )
 
     force_n_scan_parameters = None
+    sort_scan_parameters = True
 
     @classmethod
     def modify_param_values(cls, params):
@@ -676,6 +684,9 @@ class ParameterScanTask(AnalysisTask):
                     points = int(stop - start + 1)
 
                 _scan_parameters.append((name, start, stop, points))
+
+            if cls.sort_scan_parameters:
+                _scan_parameters = sorted(_scan_parameters, key=lambda tpl: tpl[0])
 
             params["scan_parameters"] = tuple(_scan_parameters)
 
@@ -807,10 +818,17 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     force_n_pois = None
     allow_parameter_values_in_pois = False
+    sort_pois = True
 
     @classmethod
     def modify_param_values(cls, params):
         params = DatacardTask.modify_param_values(params)
+        # no call to ParameterValuesTask.modify_param_values as its functionality is replaced below
+
+        # sort pois
+        if "pois" in params:
+            if cls.sort_pois:
+                params["pois"] = tuple(sorted(params["pois"]))
 
         # remove r and k pois from parameter values that are one, sort the rest
         if "parameter_values" in params:
@@ -822,13 +840,19 @@ class POITask(DatacardTask, ParameterValuesTask):
                 if name in cls.all_pois and float(value) == 1:
                     continue
                 parameter_values.append(p)
-            params["parameter_values"] = tuple(sorted(parameter_values))
+            if cls.sort_parameter_values:
+                parameter_values = sorted(parameter_values, key=lambda p: p.split("=", 1)[0])
+            params["parameter_values"] = tuple(parameter_values)
 
         # remove r and k pois from frozen parameters as they are frozen by default, sort the rest
         if "frozen_parameters" in params:
             params["frozen_parameters"] = tuple(
                 sorted(p for p in params["frozen_parameters"] if p not in cls.all_pois)
             )
+
+        # sort frozen groups
+        if "frozen_groups" in params:
+            params["frozen_groups"] = tuple(sorted(params["frozen_groups"]))
 
         return params
 
@@ -885,7 +909,7 @@ class POITask(DatacardTask, ParameterValuesTask):
         if exclude_params:
             params = OrderedDict((p, v) for p, v in params.items() if p not in exclude_params)
         if include_params:
-            params.update(include_params)
+            params.update((k, include_params[k]) for k in sorted(include_params.keys()))
         parts.append(["params"] + ["{}{}".format(*tpl) for tpl in params.items()])
 
         # add frozen paramaters

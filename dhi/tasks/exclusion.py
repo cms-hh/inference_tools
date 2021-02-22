@@ -140,6 +140,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
     force_n_pois = 1
     force_n_scan_parameters = 2
     force_scan_parameters_unequal_pois = True
+    sort_scan_parameters = False
 
     def __init__(self, *args, **kwargs):
         super(PlotExclusionAndBestFit2D, self).__init__(*args, **kwargs)

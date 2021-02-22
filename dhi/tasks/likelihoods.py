@@ -130,6 +130,8 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
     force_n_pois = (1, 2)
     force_n_scan_parameters = (1, 2)
+    sort_pois = False
+    sort_scan_parameters = False
 
     def requires(self):
         return MergeLikelihoodScan.req(self)

@@ -468,7 +468,7 @@ def plot_exclusion_and_bestfit_2d(
     if draw_sm_point:
         g_sm = create_tgraph(1, 1, 1)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
-        draw_objs.insert(1, (g_sm, "P"))
+        draw_objs.insert(-1, (g_sm, "P"))
         legend_entries.append((g_sm, "Standard model", "P"))
 
     # model parameter label

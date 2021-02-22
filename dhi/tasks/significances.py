@@ -131,6 +131,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
     z_max = None
 
     force_n_scan_parameters = 1
+    sort_pois = False
 
     def requires(self):
         reqs = {}

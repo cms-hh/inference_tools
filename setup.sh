@@ -200,10 +200,14 @@ interactive_setup() {
 
     # when the setup already exists and it's not the default one,
     # source the corresponding env file and stop
-    if ! $setup_is_default && [ -f "$env_file" ]; then
-        echo -e "using variables for setup '\x1b[0;49;35m$setup_name\x1b[0m' from $env_file"
-        source "$env_file" ""
-        return "0"
+    if ! $setup_is_default; then
+        if [ -f "$env_file" ]; then
+            echo -e "using variables for setup '\x1b[0;49;35m$setup_name\x1b[0m' from $env_file"
+            source "$env_file" ""
+            return "0"
+        else
+            echo -e "no setup file $env_file found for setup '\x1b[0;49;35m$setup_name\x1b[0m'"
+        fi
     fi
 
     export_and_save() {

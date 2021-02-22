@@ -142,6 +142,8 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
     z_min = None
     z_max = None
 
+    sort_pois = False
+
     def requires(self):
         return MergeGoodnessOfFit.req(self)
 
