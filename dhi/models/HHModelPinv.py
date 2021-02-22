@@ -1,7 +1,8 @@
 ###################################
-# Author : L. Cadamuro (UF)
-# Date   : 22/04/2020
-# Brief  : code that implements the HH model in combine
+# Author      : L. Cadamuro (UF)
+# Date        : 22/04/2020
+# Brief       : code that implements the HH model in combine
+# Additions by: Marcel Rieger, Fabio Monti
 # structure of the code :
 # xxHHSample  -> defines the interface to the user, that will pass the xs and the coupling setups
 # xxHHFormula -> implements the matrix component representation, that calculates the symbolic scalings
@@ -505,6 +506,28 @@ class HHModel(PhysicsModel):
         # at this point we are dealing with a background process that is also not single-H-scaled,
         # so it is safe to return 1 since any misconfiguration should have been raised already
         return 1.
+
+    def done(self):
+        super(HHModel, self).done()
+
+        # get the number of matched ggF and VBF samples
+        isamples_ggf = set()
+        isamples_vbf = set()
+        for isample, hh_name in sum((self.scalingMap.values()), []):
+            if hh_name == "GGF":
+                isamples_ggf.add(isample)
+            elif hh_name == "VBF":
+                isamples_vbf.add(isample)
+
+        # complain when the number of seen samples does not match the amount of model samples
+        if len(isamples_ggf) not in (0, len(self.ggf_formula.sample_list)):
+            raise Exception("the number of seen ggF samples ({}) does not match the number of "
+                "samples expected by the HH physics model ({})".format(
+                len(isamples_ggf), len(self.ggf_formula.sample_list)))
+        if len(isamples_vbf) not in (0, len(self.vbf_formula.sample_list)):
+            raise Exception("the number of seen VBF samples ({}) does not match the number of "
+                "samples expected by the HH physics model ({})".format(
+                len(isamples_vbf), len(self.vbf_formula.sample_list)))
 
 
 # ggf samples with keys (kl, kt), ordered by kl
