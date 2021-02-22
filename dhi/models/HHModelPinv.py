@@ -665,7 +665,7 @@ def create_ggf_xsec_func(formula=None):
         print(get_ggf_xec(kl=2., unc="up"))
         # -> 0.014305...
 
-    Formulas are taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=60.
+    Formulas are taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=63.
     """
     if formula is None:
         formula = model_default.ggf_formula
@@ -673,7 +673,7 @@ def create_ggf_xsec_func(formula=None):
     # create the lambdify'ed evaluation function
     n_samples = len(formula.sample_list)
     symbol_names = ["kl", "kt"] + list(map("s{}".format, range(n_samples)))
-    func = lambdify(symbols(symbol_names), formula.sigma)
+    xsec_func = lambdify(symbols(symbol_names), formula.sigma)
 
     # nlo-to-nnlo scaling functions in case nnlo is set
     xsec_nlo = lambda kl: 0.001 * 1.115 * (62.5339 - 44.3231 * kl + 9.6340 * kl**2.)
@@ -691,26 +691,33 @@ def create_ggf_xsec_func(formula=None):
     )
 
     def apply_uncertainty_nnlo(kl, xsec_nom, unc):
-        # compute absolute values of the scale uncertainties
-        if unc.lower() == "up":
-            xsec_unc = xsec_nnlo_scale_up(kl) - xsec_nom
-        elif unc.lower() == "down":
-            xsec_unc = xsec_nnlo_scale_down(kl) - xsec_nom
-        else:
+        # note on kt: in the twiki linked above, uncertainties on the ggF production cross section
+        # are quoted for different kl values but otherwise fully SM parameters, esp. kt=1;
+        # however, the nominal cross section *xsec_nom* might be subject to a different kt value
+        # and thus, the following implementation assumes that the relative uncertainties according
+        # to the SM recommendation are preserved; for instance, if the the scale uncertainty for
+        # kl=2,kt=1 would be 10%, then the code below will assume an uncertainty for kl=2,kt!=1 of
+        # 10% as well
+
+        # compute the relative, signed scale uncertainty
+        if unc.lower() not in ("up", "down"):
             raise ValueError("unc must be 'up' or 'down', got '{}'".format(unc))
+        scale_func = {"up": xsec_nnlo_scale_up, "down": xsec_nnlo_scale_down}[unc.lower()]
+        xsec_nom_kt1 = xsec_func(kl, 1., *(sample.val_xs for sample in formula.sample_list))[0, 0]
+        xsec_unc = (scale_func(kl) - xsec_nom_kt1) / xsec_nom_kt1
 
         # combine with flat 3% PDF uncertainty, preserving the sign
         unc_sign = 1 if xsec_unc > 0 else -1
-        xsec_unc = unc_sign * ((0.03 * xsec_nom)**2. + xsec_unc**2.)**0.5
+        xsec_unc = unc_sign * (xsec_unc**2. + 0.03**2.)**0.5
 
-        # add signed uncertainty back to nominal value
-        xsec = xsec_nom + xsec_unc
+        # compute the shifted absolute value
+        xsec = xsec_nom * (1. + xsec_unc)
 
         return xsec
 
     # wrap into another function to apply defaults and nlo-to-nnlo scaling
     def wrapper(kl=1., kt=1., nnlo=True, unc=None):
-        xsec = func(kl, kt, *(sample.val_xs for sample in formula.sample_list))[0, 0]
+        xsec = xsec_func(kl, kt, *(sample.val_xs for sample in formula.sample_list))[0, 0]
 
         # nnlo scaling?
         if nnlo:
@@ -748,11 +755,11 @@ def create_vbf_xsec_func(formula=None):
     # create the lambdify'ed evaluation function
     n_samples = len(formula.sample_list)
     symbol_names = ["C2V", "CV", "kl"] + list(map("s{}".format, range(n_samples)))
-    func = lambdify(symbols(symbol_names), formula.sigma)
+    xsec_func = lambdify(symbols(symbol_names), formula.sigma)
 
     # wrap into another function to apply defaults
     def wrapper(C2V=1., CV=1., kl=1.):
-        xsec = func(C2V, CV, kl, *(sample.val_xs for sample in formula.sample_list))[0, 0]
+        xsec = xsec_func(C2V, CV, kl, *(sample.val_xs for sample in formula.sample_list))[0, 0]
         return xsec
 
     return wrapper
