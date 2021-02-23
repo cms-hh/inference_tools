@@ -102,7 +102,7 @@ def plot_gof_distribution(
     draw_objs.append(line_data)
     legend_entries.append((line_data, "Data (#Delta = {:.2f} #sigma)".format(data_pull), "L"))
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
@@ -305,7 +305,7 @@ def plot_gofs(
         r.setup_line(tr, props={"NDC": False, "LineWidth": 1})
         draw_objs.extend([tl, tr])
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))

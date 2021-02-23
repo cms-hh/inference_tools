@@ -420,6 +420,7 @@ class CommandTask(AnalysisTask):
         return p
 
     @law.decorator.log
+    @law.decorator.notify
     @law.decorator.safe_output
     def run(self, **kwargs):
         self.pre_run_command()

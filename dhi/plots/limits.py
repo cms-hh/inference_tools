@@ -191,7 +191,7 @@ def plot_limit_scan(
             draw_objs.append((g_thy, "SAME,L"))
         legend_entries[0 if observed_values is None else 1] = (g_thy, "Theory prediction")
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
@@ -362,7 +362,7 @@ def plot_limit_scans(
             draw_objs.insert(1, (g_thy, "SAME,L"))
         legend_entries.append((g_thy, "Theory prediction"))
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
@@ -411,6 +411,7 @@ def plot_limit_points(
     model_parameters=None,
     h_lines=None,
     campaign=None,
+    digits=None,
 ):
     """
     Creates a plot showing a comparison of limits of multiple analysis (or channels) on a *poi* and
@@ -450,7 +451,8 @@ def plot_limit_points(
     branching ratio. *model_parameters* can be a dictionary of key-value pairs of model parameters.
     *h_lines* can be a list of integers denoting positions where additional horizontal lines are
     drawn for visual guidance. *campaign* should refer to the name of a campaign label defined in
-    dhi.config.campaign_labels.
+    dhi.config.campaign_labels. *digits* controls the number of digits of the limit values shown for
+    each entry. When *None*, a number based on the lowest limit values is determined automatically.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-at-a-certain-point-of-parameters
     """
@@ -461,6 +463,7 @@ def plot_limit_points(
     n = len(data)
     has_obs = False
     has_thy = False
+    has_thy_err = False
     x_min_value = 1e5
     x_max_value = -1e5
     for d in data:
@@ -475,9 +478,13 @@ def plot_limit_points(
             x_max_value = max(x_max_value, d["observed"])
             d["observed"] = [d["observed"]]
         if "theory" in d:
-            if not isinstance(d["theory"], (tuple, list)):
+            if isinstance(d["theory"], (tuple, list)):
+                if len(d["theory"]) == 3:
+                    has_thy_err = True
+                else:
+                    assert(len(d["theory"]) == 1)
+            else:
                 d["theory"] = 3 * (d["theory"],)
-            assert(len(d["theory"]) in (1, 3))
             has_thy = True
             x_min_value = min(x_min_value, min(d["theory"]))
             x_max_value = max(x_max_value, max(d["theory"]))
@@ -572,14 +579,14 @@ def plot_limit_points(
 
     # observed values
     if has_obs:
-        g_inj = create_graph(key="observed")
-        r.setup_graph(g_inj, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
+        g_obs = create_graph(key="observed")
+        r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
             "MarkerSize": 0})
-        draw_objs.append((g_inj, "SAME,EZ"))
-        legend_entries[0] = (g_inj, "Observed")
+        draw_objs.append((g_obs, "SAME,EZ"))
+        legend_entries[0] = (g_obs, "Observed")
 
     # vertical line for theory prediction, represented by a graph in case of uncertainties
-    if has_thy:
+    if has_thy and any((d["theory"][0] >= x_min) for d in data):
         # uncertainty line
         g_thy_line = create_graph(key="theory")
         r.setup_graph(g_thy_line, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
@@ -587,7 +594,6 @@ def plot_limit_points(
         draw_objs.append((g_thy_line, "SAME,LZ"))
         legend_entry = (g_thy_line, "Theory prediction")
         # uncertainty area
-        has_thy_err = any(len(d.get("theory", [])) == 3 for d in data)
         if has_thy_err:
             g_thy_area = create_graph(key="theory", sigma=1)
             r.setup_graph(g_thy_area, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
@@ -606,9 +612,15 @@ def plot_limit_points(
     # y axis labels and ticks
     y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{Expected %s}}"
     y_label_tmpl_obs = "#splitline{#bf{%s}}{#scale[0.75]{#splitline{Expected %s}{Observed %s}}}"
+    if digits is None:
+        min_limit = min(sum((([d["expected"][0]] + [d.get("observed", 1e7)]) for d in data), []))
+        digits = determine_limit_digits(min_limit, is_xsec=bool(xsec_unit))
 
     def make_y_label(name, exp, obs=None):
-        fmt = lambda v: "{:.1f} {}".format(v, xsec_unit) if xsec_unit else "{:.2f}".format(v)
+        if xsec_unit:
+            fmt = lambda v: "{{:.{}f}} {{}}".format(digits).format(v, xsec_unit)
+        else:
+            fmt = lambda v: "{{:.{}f}}".format(digits).format(v)
         if obs is None:
             return y_label_tmpl % (label, fmt(exp))
         else:
@@ -638,7 +650,7 @@ def plot_limit_points(
         r.setup_line(tr, props={"NDC": False, "LineWidth": 1})
         draw_objs.extend([tl, tr])
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
@@ -674,3 +686,21 @@ def create_hh_process_label(poi="r", br=None):
         {"r_qqhh": "jj"}.get(poi, ""),
         "#scale[0.75]{{ ({})}}".format(to_root_latex(br_hh_names[br])) if br in br_hh_names else "",
     )
+
+
+def determine_limit_digits(limit, is_xsec=False):
+    # TODO: adapt to publication style
+    if is_xsec:
+        if limit < 10:
+            return 2
+        elif limit < 200:
+            return 1
+        else:
+            return 0
+    else:
+        if limit < 10:
+            return 2
+        elif limit < 300:
+            return 1
+        else:
+            return 0

@@ -189,7 +189,7 @@ def plot_s_over_b(
     h_dummy2.SetMinimum(y2_min)
     h_dummy2.SetMaximum(y2_max)
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))

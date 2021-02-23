@@ -130,7 +130,7 @@ def plot_significance_scan(
         r.setup_line(line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
         draw_objs.insert(1, line)
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
@@ -270,7 +270,7 @@ def plot_significance_scans(
         r.setup_line(line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
         draw_objs.insert(1, line)
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))

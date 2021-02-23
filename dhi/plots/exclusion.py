@@ -7,6 +7,7 @@ Exclusion result plots using ROOT.
 import math
 import array
 import uuid
+import itertools
 
 import numpy as np
 import scipy.interpolate
@@ -204,7 +205,7 @@ def plot_exclusion_and_bestfit_1d(
         r.setup_line(tr, props={"NDC": False, "LineWidth": 1})
         draw_objs.extend([tl, tr])
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
@@ -357,38 +358,41 @@ def plot_exclusion_and_bestfit_2d(
             continue
 
         # store contour graphs
-        contours[key] = get_contours(expected_limits[scan_parameter1],
-            expected_limits[scan_parameter2], expected_limits[key], levels=[1.])[0]
+        contours[key] = get_contours(
+            expected_limits[scan_parameter1],
+            expected_limits[scan_parameter2],
+            expected_limits[key],
+            levels=[1.],
+            frame_kwargs=[{"mode": "edge"}] + [{"mode": "contour+"}],
+        )[0]
 
     # style graphs and add to draw objects, from outer to inner graphs (-2, -1, +1, +2), followed by
     # nominal or observed
     has_unc1 = "limit_p1" in contours and "limit_m1" in contours
     has_unc2 = "limit_p2" in contours and "limit_m2" in contours
 
-    # -2 sigma exclusion
-    if has_unc2:
-        for g in contours["limit_m2"]:
-            r.setup_graph(g, props={"LineStyle": 2, "LineColor": colors.black, "MarkerStyle": 20,
-                "MarkerSize": 0, "FillColor": colors.light_grey})
-            draw_objs.append((g, "F,SAME"))
-        legend_entries.append((g, "#pm 2 #sigma expected"))
-
-    # -1 and +1 sigma exclusion
-    if has_unc1:
-        for g in contours["limit_m1"]:
-            r.setup_graph(g, props={"LineStyle": 2, "LineColor": colors.black, "MarkerStyle": 20,
-                "MarkerSize": 0, "FillColor": colors.grey})
-            draw_objs.append((g, "F,SAME"))
-        legend_entries.insert(0, (g, "#pm 1 #sigma expected"))
-
-        p1_col = colors.light_grey if has_unc2 else colors.white
-        for g in contours["limit_p1"]:
-            r.setup_graph(g, props={"FillColor": p1_col})
-            draw_objs.append((g, "F,SAME"))
-
     # +2 sigma exclusion
     if has_unc2:
         for g in contours["limit_p2"]:
+            r.setup_graph(g, props={"LineStyle": 2, "FillColor": colors.light_grey})
+            draw_objs.append((g, "F,SAME"))
+        legend_entries.append((g, "#pm 2 #sigma expected", "LF"))
+
+    # -1 and +1 sigma exclusion
+    if has_unc1:
+        for g in contours["limit_p1"]:
+            r.setup_graph(g, props={"LineStyle": 2, "FillColor": colors.grey})
+            draw_objs.append((g, "F,SAME"))
+        legend_entries.insert(0, (g, "#pm 1 #sigma expected", "LF"))
+
+        p1_col = colors.light_grey if has_unc2 else colors.white
+        for g in contours["limit_m1"]:
+            r.setup_graph(g, props={"FillColor": p1_col})
+            draw_objs.append((g, "F,SAME"))
+
+    # -2 sigma exclusion
+    if has_unc2:
+        for g in contours["limit_m2"]:
             r.setup_graph(g, props={"FillColor": colors.white})
             draw_objs.append((g, "F,SAME"))
 
@@ -400,8 +404,12 @@ def plot_exclusion_and_bestfit_2d(
             xsec_label_positions = None
 
         # get contour graphs
-        xsec_contours = get_contours(xsec_values[scan_parameter1], xsec_values[scan_parameter2],
-            xsec_values["xsec"], levels=xsec_levels, min_points=10)
+        xsec_contours = get_contours(
+            xsec_values[scan_parameter1],
+            xsec_values[scan_parameter2],
+            xsec_values["xsec"],
+            levels=xsec_levels,
+        )
 
         # draw them
         for graphs, level in zip(xsec_contours, xsec_levels):
@@ -428,24 +436,36 @@ def plot_exclusion_and_bestfit_2d(
 
     # nominal exclusion
     for g in contours["limit"]:
-        r.setup_graph(g, props={"LineStyle": 2, "LineColor": colors.black, "MarkerStyle": 20,
-            "MarkerSize": 0})
+        r.setup_graph(g, props={"LineStyle": 2})
         draw_objs.append((g, "L,SAME"))
     legend_entries.insert(0, (g, "Excluded (expected)", "L"))
 
     # observed exclusion
+    # for testing
+    # observed_limits = {
+    #     scan_parameter1: expected_limits[scan_parameter1],
+    #     scan_parameter2: expected_limits[scan_parameter2],
+    #     "limit": expected_limits["limit"] * 1.2,
+    # }
     if observed_limits:
         # get contours
-        obs_contours = get_contours(observed_limits[scan_parameter1],
-            observed_limits[scan_parameter2], observed_limits["limit"], levels=[1.])[0]
+        obs_contours = get_contours(
+            observed_limits[scan_parameter1],
+            observed_limits[scan_parameter2],
+            observed_limits["limit"],
+            levels=[1.],
+            frame_kwargs=[{"mode": "edge"}],
+        )[0]
 
         # draw them
         for g in obs_contours:
-            r.setup_graph(g, props={"LineStyle": 1, "LineColor": colors.black, "MarkerStyle": 20,
-                "MarkerSize": 0, "FillColor": colors.blue_signal_trans})
+            # create an inverted graph to close the outer polygon
+            g_inv = invert_graph(g, padding=1000.)
+            r.setup_graph(g, props={"LineStyle": 1})
+            r.setup_graph(g_inv, props={"LineStyle": 1, "FillColor": colors.blue_signal_trans})
             draw_objs.append((g, "L,SAME"))
-            draw_objs.append((g, "F,SAME"))
-        legend_entries.append((g, "Excluded (observed)", "AF"))
+            draw_objs.append((g_inv, "F,SAME"))
+        legend_entries.append((g_inv, "Excluded (observed)", "AF"))
 
     # best fit point
     if nll_values:
@@ -471,7 +491,7 @@ def plot_exclusion_and_bestfit_2d(
         draw_objs.insert(-1, (g_sm, "P"))
         legend_entries.append((g_sm, "Standard model", "P"))
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
@@ -562,7 +582,16 @@ def evaluate_limit_scan_1d(scan_values, limit_values):
     )
 
 
-def pad_histogram(hist, wx, wy, **kwargs):
+def frame_histogram(hist, x_width, y_width, mode="edge", frame_value=None, contour_level=None):
+    # when the mode is "contour-", edge values below the level are set to a higher value which
+    # effectively closes contour areas that are below (thus the "-") the contour level
+    # when the mode is "contour++", the opposite happens to close contour areas above the level
+    assert(mode in ["edge", "constant", "contour+", "contour-"])
+    if mode == "constant":
+        assert(frame_value is not None)
+    elif mode in ["contour+", "contour-"]:
+        assert(contour_level is not None)
+
     # first, extract histogram data into a 2D array (x-axis is inner dimension 1)
     data = np.array([
         [
@@ -572,24 +601,36 @@ def pad_histogram(hist, wx, wy, **kwargs):
         for by in range(1, hist.GetNbinsY() + 1)
     ])
 
-    # pad the data, passing all kwargs to np.pad
-    pad_x = 1 if wx > 0 else 0
-    pad_y = 1 if wy > 0 else 0
-    data = np.pad(data, pad_width=[(pad_y, pad_y), (pad_x, pad_x)], **kwargs)
+    # pad the data
+    if mode == "constant":
+        pad_kwargs = {"mode": "constant", "constant_values": frame_value}
+    else:
+        pad_kwargs = {"mode": "edge"}
+    data = np.pad(data, pad_width=[1, 1], **pad_kwargs)
+
+    # update frame values
+    if mode in ["contour+", "contour-"]:
+        # close contours depending on the mode
+        idxs = list(itertools.product((0, data.shape[0] - 1), range(0, data.shape[1])))
+        idxs += list(itertools.product(range(1, data.shape[0] - 1), (0, data.shape[1] - 1)))
+        for i, j in idxs:
+            if mode == "contour-":
+                if data[i, j] < contour_level:
+                    data[i, j] = contour_level + 10 * abs(contour_level)
+            elif mode == "contour+":
+                if data[i, j] > contour_level:
+                    data[i, j] = contour_level - 10 * abs(contour_level)
 
     # amend bin edges
-    edges_x = [hist.GetXaxis().GetBinLowEdge(bx) for bx in range(1, hist.GetNbinsX() + 2)]
-    edges_y = [hist.GetYaxis().GetBinLowEdge(by) for by in range(1, hist.GetNbinsY() + 2)]
-    if wx > 0:
-        edges_x = [edges_x[0] - wx] + edges_x + [edges_x[-1] + wx]
-    if wy > 0:
-        edges_y = [edges_y[0] - wy] + edges_y + [edges_y[-1] + wy]
+    x_edges = [hist.GetXaxis().GetBinLowEdge(bx) for bx in range(1, hist.GetNbinsX() + 2)]
+    y_edges = [hist.GetYaxis().GetBinLowEdge(by) for by in range(1, hist.GetNbinsY() + 2)]
+    x_edges = [x_edges[0] - x_width] + x_edges + [x_edges[-1] + x_width]
+    y_edges = [y_edges[0] - y_width] + y_edges + [y_edges[-1] + y_width]
 
-    # combine data and edges into a new histogram
-    hist_padded = hist.__class__(str(uuid.uuid4()), "", len(edges_x) - 1, array.array("d", edges_x),
-        len(edges_y) - 1, array.array("d", edges_y))
+    # combine data and edges into a new histogram and fill it
+    hist_padded = hist.__class__(str(uuid.uuid4()), "", len(x_edges) - 1, array.array("d", x_edges),
+        len(y_edges) - 1, array.array("d", y_edges))
     hist_padded.SetDirectory(0)
-
     for by, _data in enumerate(data):
         for bx, z in enumerate(_data):
             hist_padded.SetBinContent(bx + 1, by + 1, z)
@@ -617,38 +658,49 @@ def fill_hist(h, x_values, y_values, z_values):
 
 
 # helper to extract contours
-def get_contours(x_values, y_values, z_values, levels, min_points=5):
+def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_points=5):
     ROOT = import_ROOT()
 
-    # infer number of bins, axis ranges and bin widths of histograms used to extract contours
-    n_x = len(set(x_values))
-    n_y = len(set(y_values))
-    min_x = min(x_values)
-    max_x = max(x_values)
-    min_y = min(y_values)
-    max_y = max(y_values)
-    w_x = (max_x - min_x) / (n_x - 1)
-    w_y = (max_y - min_y) / (n_y - 1)
+    # to extract contours, we need a 2D histogram with optimized bin widths, edges and padding
+    def get_min_diff(values):
+        values = sorted(set(values))
+        diffs = [(values[i + 1] - values[i]) for i in range(len(values) - 1)]
+        return min(diffs)
+
+    # x axis
+    x_min = min(x_values)
+    x_max = max(x_values)
+    x_width = get_min_diff(x_values)
+    x_n = (x_max - x_min) / x_width
+    x_n = int(x_n + 1) if try_int(x_n) else int(math.ceil(x_n))
+
+    # y axis
+    y_min = min(y_values)
+    y_max = max(y_values)
+    y_width = get_min_diff(y_values)
+    y_n = (y_max - y_min) / y_width
+    y_n = int(y_n + 1) if try_int(y_n) else int(math.ceil(y_n))
 
     # create and fill a hist
-    h = ROOT.TH2F(str(uuid.uuid4()), "",
-        n_x, min_x - 0.5 * w_x, max_x + 0.5 * w_x,
-        n_y, min_y - 0.5 * w_y, max_y + 0.5 * w_y,
-    )
+    h = ROOT.TH2F(str(uuid.uuid4()), "", x_n, x_min, x_max, y_n, y_min, y_max)
     fill_hist(h, x_values, y_values, z_values)
 
-    # pad with edge values, then with a rather large one to definitely close contours
-    h = pad_histogram(h, w_x * 0.02, w_y * 0.02, mode="edge")
-    h = pad_histogram(h, w_x * 0.02, w_y * 0.02, mode="constant", constant_values=100)
-
     # get contours in a nested list of graphs
-    contours = [_get_contour(h, l) for l in levels]
+    contours = []
+    frame_kwargs = frame_kwargs if isinstance(frame_kwargs, (list, tuple)) else [frame_kwargs]
+    for l in levels:
+        # frame the histogram
+        _h = h
+        for fk in filter(bool, frame_kwargs):
+            w = fk.pop("width", 0.01)
+            _h = frame_histogram(_h, x_width * w, y_width * w, contour_level=l, **fk)
 
-    # store contour graphs with a minimum number of points
-    return [
-        [g for g in graphs if g.GetN() >= min_points]
-        for graphs in contours
-    ]
+        # get the contour graphs and filter by the number of points
+        graphs = _get_contour(_h, l)
+        graphs = [g for g in graphs if g.GetN() >= min_points]
+        contours.append(graphs)
+
+    return contours
 
 
 def _get_contour(hist, level):
@@ -691,3 +743,35 @@ def get_auto_contour_levels(values, steps=(1,)):
                 levels.append(l)
 
     return levels
+
+
+def invert_graph(g, x_min=None, x_max=None, y_min=None, y_max=None, padding=0.):
+    ROOT = import_ROOT()
+
+    # get all graph values
+    x_values, y_values = [], []
+    x, y = ROOT.Double(), ROOT.Double()
+    for i in range(g.GetN()):
+        g.GetPoint(i, x, y)
+        x_values.append(float(x))
+        y_values.append(float(y))
+
+    # get default extrema
+    x_min = (min(x_values) if x_min is None else x_min) - padding
+    x_max = (max(x_values) if x_max is None else x_max) + padding
+    y_min = (min(y_values) if y_min is None else y_min) - padding
+    y_max = (max(y_values) if y_max is None else y_max) + padding
+
+    # copy the graph with prepended extrema
+    g_inv = ROOT.TGraph(g.GetN() + 5)
+    g_inv.SetPoint(0, x_min, y_min)
+    g_inv.SetPoint(1, x_min, y_max)
+    g_inv.SetPoint(2, x_max, y_max)
+    g_inv.SetPoint(3, x_max, y_min)
+    g_inv.SetPoint(4, x_min, y_min)
+
+    # copy remaining points
+    for i, (x, y) in enumerate(zip(x_values, y_values)):
+        g_inv.SetPoint(i + 5, x, y)
+
+    return g_inv

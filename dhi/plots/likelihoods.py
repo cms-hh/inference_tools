@@ -146,7 +146,7 @@ def plot_likelihood_scan_1d(
     r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75})
     draw_objs.append((g_nll, "SAME,CP"))
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
@@ -320,7 +320,7 @@ def plot_likelihood_scans_1d(
         r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors[col])
         draw_objs.append(line_fit)
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
@@ -505,7 +505,7 @@ def plot_likelihood_scan_2d(
             props={"TextAlign": 13})
         draw_objs.append(l)
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
@@ -676,7 +676,7 @@ def plot_likelihood_scans_2d(
         legend_entries.append((h1, "#pm 1 #sigma", "l"))
         legend_entries.append((h2, "#pm 2 #sigma", "l"))
 
-    # model parameter label
+    # model parameter labels
     if model_parameters:
         for i, (p, v) in enumerate(model_parameters.items()):
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
