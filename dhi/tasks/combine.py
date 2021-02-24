@@ -411,6 +411,8 @@ class DatacardTask(HHModelTask):
         paths = []
         bin_names = []
         store_dir = None
+        dc_path = os.path.expandvars("$DHI_DATACARDS_RUN2")
+        single_dc_matched = []
 
         # try to resolve all patterns
         for i, pattern in enumerate(patterns):
@@ -433,8 +435,10 @@ class DatacardTask(HHModelTask):
 
             # when the pattern did not match anything, repeat relative to the datacards_run2 dir
             if not _paths and "DHI_DATACARDS_RUN2" in os.environ:
-                dc_path = os.path.expandvars("$DHI_DATACARDS_RUN2")
                 _paths = list(glob.glob(os.path.join(dc_path, pattern)))
+                single_dc_matched.append(len(_paths) == 1)
+            else:
+                single_dc_matched.append(False)
 
             # when directories are given, assume to find a file "datacard.txt"
             # when such a file does not exist, but a directory "latest" does, use it and try again
@@ -488,6 +492,15 @@ class DatacardTask(HHModelTask):
                 bin_name_counter[bin_name] += 1
                 bin_name += str(bin_name_counter[bin_name])
             datacards.append("{}={}".format(bin_name, path) if bin_name else path)
+
+        # when all matched datacards were found in the dc path and no store dir is set,
+        # set it to a readable value
+        if not store_dir and single_dc_matched and all(single_dc_matched):
+            parts = [
+                os.path.relpath(os.path.dirname(p), dc_path).replace(os.sep, "_")
+                for p in sorted(paths)
+            ]
+            store_dir = "__".join(parts)
 
         return datacards, store_dir
 
