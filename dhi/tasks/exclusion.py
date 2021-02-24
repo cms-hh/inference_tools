@@ -19,6 +19,13 @@ from dhi.config import br_hh
 
 class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
 
+    h_lines = law.CSVParameter(
+        cls=luigi.IntParameter,
+        default=tuple(),
+        significant=False,
+        description="comma-separated vertical positions of horizontal lines; default: empty",
+    )
+
     y_min = None
     y_max = None
     z_min = None
@@ -105,6 +112,7 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             model_parameters=self.get_shown_parameters(),
+            h_lines=self.h_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
 
@@ -192,10 +200,22 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         xsec_levels = None
         xsec_label_positions = None
         if self.pois[0] in self.r_pois and self.xsec_contours:
+            # obtain xsec values for the visible range
+            def visible_border(i, j, axis_param):
+                axis_limt = self.get_axis_limit(axis_param)
+                if axis_limt is None:
+                    return self.scan_parameters[i][j]
+                else:
+                    comp = min if axis_param.endswith("_min") else max
+                    return comp(axis_limt, self.scan_parameters[i][j])
+            linspace_parameters = [
+                (None, visible_border(0, 1, "x_min"), visible_border(0, 2, "x_max"), None),
+                (None, visible_border(1, 1, "y_min"), visible_border(1, 2, "y_max"), None),
+            ]
             xsec_values = self.get_theory_xsecs(
                 self.pois[0],
                 self.scan_parameter_names,
-                self.get_scan_linspace(0.1),
+                self._get_scan_linspace(linspace_parameters, step_size=0.1),
                 self.xsec,
                 self.br,
                 xsec_kwargs=self.parameter_values_dict,

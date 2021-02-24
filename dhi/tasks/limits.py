@@ -606,7 +606,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
             entry = {
                 "name": "datacards {}".format(i + 1),
                 "expected": record.tolist()[:5],
-                "theory": thy_value and thy_value[0].tolist()[1],
+                "theory": thy_value and thy_value[0].tolist()[1:],
             }
             if self.unblinded:
                 entry["observed"] = float(record[5])

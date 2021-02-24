@@ -196,7 +196,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 y_min=self.get_axis_limit("y_min"),
                 y_max=self.get_axis_limit("y_max"),
                 y_log=self.y_log,
-                measurement_label="Observed" if self.unblinded else "Expected",
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )
@@ -215,7 +214,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 y_max=self.get_axis_limit("y_max"),
                 z_min=self.get_axis_limit("z_min"),
                 z_max=self.get_axis_limit("z_max"),
-                measurement_label="Observed" if self.unblinded else "Expected",
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )
@@ -318,7 +316,6 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 y_min=self.get_axis_limit("y_min"),
                 y_max=self.get_axis_limit("y_max"),
                 y_log=self.y_log,
-                measurement_label="Observed" if self.unblinded else "Expected",
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )
@@ -334,7 +331,6 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 y_min=self.get_axis_limit("y_min"),
                 y_max=self.get_axis_limit("y_max"),
                 model_parameters=self.get_shown_parameters(),
-                measurement_label="Observed" if self.unblinded else "Expected",
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )
 
@@ -434,7 +430,6 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 y_min=self.get_axis_limit("y_min"),
                 y_max=self.get_axis_limit("y_max"),
                 y_log=self.y_log,
-                measurement_label="Observed" if self.unblinded else "Expected",
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )
@@ -449,7 +444,6 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
                 y_max=self.get_axis_limit("y_max"),
-                measurement_label="Observed" if self.unblinded else "Expected",
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )

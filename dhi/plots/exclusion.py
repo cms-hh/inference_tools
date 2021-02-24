@@ -30,6 +30,7 @@ def plot_exclusion_and_bestfit_1d(
     x_min=None,
     x_max=None,
     model_parameters=None,
+    h_lines=None,
     campaign=None,
 ):
     """
@@ -61,8 +62,9 @@ def plot_exclusion_and_bestfit_1d(
 
     *x_min* and *x_max* define the range of the x-axis and default to the maximum range of poi
     values passed in data. *model_parameters* can be a dictionary of key-value pairs of model
-    parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*.
+    parameters. *h_lines* can be a list of integers denoting positions where additional horizontal
+    lines are drawn for visual guidance. *campaign* should refer to the name of a campaign label
+    defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/exclusion.html#comparison-of-exclusion-performance
     """
@@ -178,11 +180,12 @@ def plot_exclusion_and_bestfit_1d(
         draw_objs.insert(-1, line_thy)
         legend_entries.append((line_thy, "Theory prediction", "l"))
 
-    # line to separate combined result
-    if len(data) > 1 and data[-1]["name"].lower() == "combined":
-        line_obs = ROOT.TLine(x_min, 1., x_max, 1)
-        r.setup_line(line_obs, props={"NDC": False}, color=12)
-        draw_objs.append(line_obs)
+    # horizontal guidance lines
+    if h_lines:
+        for i in h_lines:
+            line_obs = ROOT.TLine(x_min, float(i), x_max, float(i))
+            r.setup_line(line_obs, props={"NDC": False}, color=12)
+            draw_objs.append(line_obs)
 
     # y axis labels and ticks
     h_dummy.GetYaxis().SetBinLabel(1, "")
@@ -414,7 +417,7 @@ def plot_exclusion_and_bestfit_2d(
         # draw them
         for graphs, level in zip(xsec_contours, xsec_levels):
             for g in graphs:
-                r.setup_graph(g, props={"LineColor": colors.dark_grey_trans, "LineStyle": 3,
+                r.setup_graph(g, props={"LineColor": colors.dark_grey_trans_70, "LineStyle": 3,
                     "LineWidth": 1})
                 draw_objs.append((g, "L,SAME"))
 
@@ -429,7 +432,7 @@ def plot_exclusion_and_bestfit_2d(
                         continue
                     xsec_label = ROOT.TLatex(0., 0., text)
                     r.setup_latex(xsec_label, props={"NDC": False, "TextSize": 12, "TextAlign": 22,
-                        "TextColor": colors.dark_grey_trans, "TextAngle": rot})
+                        "TextColor": colors.dark_grey_trans_70, "TextAngle": rot})
                     xsec_label.SetX(x)
                     xsec_label.SetY(y)
                     draw_objs.append((xsec_label, "SAME"))
@@ -491,13 +494,6 @@ def plot_exclusion_and_bestfit_2d(
         draw_objs.insert(-1, (g_sm, "P"))
         legend_entries.append((g_sm, "Standard model", "P"))
 
-    # model parameter labels
-    if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
-                y_offset=48 + i * 24, props={"TextSize": 20}))
-
     # legend
     legend = r.routines.create_legend(pad=pad, width=480, n=3, x2=-44, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
@@ -505,6 +501,13 @@ def plot_exclusion_and_bestfit_2d(
     legend_box = r.routines.create_legend_box(legend, pad, "lrt",
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
+
+    # model parameter labels
+    if model_parameters:
+        for i, (p, v) in enumerate(model_parameters.items()):
+            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
+            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
+                y_offset=48 + i * 24, props={"TextSize": 20}))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)

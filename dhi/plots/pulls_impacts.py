@@ -263,7 +263,7 @@ def plot_pulls_impacts(
             if not (x_min < x < x_max):
                 continue
             l = ROOT.TLine(x, 0, x, y_max)
-            c = colors.light_grey_trans if x % 1. else colors.dark_grey
+            c = colors.light_grey_trans_50 if x % 1. else colors.dark_grey
             r.setup_line(l, props={"NDC": False, "LineWidth": 1, "LineColor": c, "LineStyle": 3})
             draw_objs.append(l)
 

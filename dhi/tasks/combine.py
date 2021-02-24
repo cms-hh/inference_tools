@@ -753,9 +753,10 @@ class ParameterScanTask(AnalysisTask):
     def joined_scan_points(self):
         return ",".join(str(points) for _, _, _, points in self.scan_parameters)
 
-    def get_scan_linspace(self, step_size=None):
+    @classmethod
+    def _get_scan_linspace(cls, scan_parameters, step_size=None):
         if isinstance(step_size, six.integer_types + (float,)):
-            step_size = [step_size] * self.n_scan_parameters
+            step_size = len(scan_parameters) * [step_size]
 
         def get_points(i, start, stop, points):
             # when step_size is set, use this value to define the resolution between points
@@ -776,10 +777,13 @@ class ParameterScanTask(AnalysisTask):
             itertools.product(
                 *[
                     linspace(start, stop, get_points(i, start, stop, points))
-                    for i, (_, start, stop, points) in enumerate(self.scan_parameters)
+                    for i, (_, start, stop, points) in enumerate(scan_parameters)
                 ]
             )
         )
+
+    def get_scan_linspace(self, step_size=None):
+        return self._get_scan_linspace(self.scan_parameters, step_size=step_size)
 
     def htcondor_output_postfix(self):
         return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())

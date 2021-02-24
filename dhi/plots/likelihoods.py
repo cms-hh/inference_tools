@@ -35,7 +35,6 @@ def plot_likelihood_scan_1d(
     y_min=None,
     y_max=None,
     y_log=False,
-    measurement_label=None,
     model_parameters=None,
     campaign=None,
 ):
@@ -49,10 +48,8 @@ def plot_likelihood_scan_1d(
 
     *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
     the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
-    When *measurement_label* is set, it should be a string that is drawn as the first legend entry
-    to denote the type of the measurement (e.g. observed or expected). *model_parameters* can be a
-    dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
-    campaign label defined in *dhi.config.campaign_labels*.
+    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d
     """
@@ -154,8 +151,6 @@ def plot_likelihood_scan_1d(
                 y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
-    if measurement_label:
-        legend_entries.insert(0, (h_dummy, measurement_label, "l"))
     legend = r.routines.create_legend(pad=pad, width=230, n=len(legend_entries))
     r.setup_legend(legend)
     for tpl in legend_entries:
@@ -192,7 +187,6 @@ def plot_likelihood_scans_1d(
     y_max=None,
     y_log=False,
     model_parameters=None,
-    measurement_label=None,
     campaign=None,
 ):
     """
@@ -211,10 +205,8 @@ def plot_likelihood_scans_1d(
 
     *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
     the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. When
-    *measurement_label* is set, it should be a string that is drawn as the first legend entry to
-    denote the type of the measurement (e.g. observed or expected) *model_parameters* can be a
-    dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
-    campaign label defined in *dhi.config.campaign_labels*.
+    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d_1
     """
@@ -328,8 +320,6 @@ def plot_likelihood_scans_1d(
                 y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
-    if measurement_label:
-        legend_entries.insert(0, (h_dummy, measurement_label, "l"))
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
     legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
     legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
@@ -373,7 +363,6 @@ def plot_likelihood_scan_2d(
     z_min=None,
     z_max=None,
     fill_nans=True,
-    measurement_label=None,
     model_parameters=None,
     campaign=None,
 ):
@@ -387,10 +376,9 @@ def plot_likelihood_scan_2d(
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
     and default to the ranges of the poi values. *z_min* and *z_max* limit the range of the z-axis.
     When *fill_nans* is *True*, points with failed fits, denoted by nan values, are filled with the
-    averages of neighboring fits. When *measurement_label* is set, it should be a string that is
-    drawn to denote the type of the measurement (e.g. observed or expected). *model_parameters* can
-    be a dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
-    campaign label defined in *dhi.config.campaign_labels*.
+    averages of neighboring fits. *model_parameters* can be a dictionary of key-value pairs of model
+    parameters. *campaign* should refer to the name of a campaign label defined in
+    *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d
     """
@@ -497,11 +485,8 @@ def plot_likelihood_scan_2d(
     fit_label2 = "{} = {}".format(to_root_latex(poi_data[poi2].label),
         scan.num2_min.str(format="%.2f", style="root"))
     labels = [fit_label1, fit_label2]
-    if measurement_label:
-        labels.insert(0, (measurement_label))
     for i, l in enumerate(labels):
-        dy = 25 if measurement_label and i == 1 else 30
-        l = r.routines.create_top_right_label(l, pad=pad, x_offset=160, y_offset=30 + i * dy,
+        l = r.routines.create_top_right_label(l, pad=pad, x_offset=160, y_offset=30 + i * 30,
             props={"TextAlign": 13})
         draw_objs.append(l)
 
@@ -541,7 +526,6 @@ def plot_likelihood_scans_2d(
     y_min=None,
     y_max=None,
     fill_nans=True,
-    measurement_label=None,
     model_parameters=None,
     campaign=None,
 ):
@@ -559,12 +543,8 @@ def plot_likelihood_scans_2d(
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
     and default to the ranges of the poi values. When *fill_nans* is *True*, points with failed
     fits, denoted by nan values, are filled with the averages of neighboring fits. When
-    *measurement_label* is set, it should be a string that is drawn to denote the type of the
-    measurement (e.g. observed or expected). *model_parameters* can be a dictionary of key-value
-    pairs of model parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*.
-
-    TODO: The *measurement_label* is not yet shown.
+    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
     Example: Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d_1
     """

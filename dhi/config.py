@@ -54,6 +54,11 @@ br_hh = DotDict(
     zzzz=br_h.zz ** 2.0,
     wwzz=2.0 * br_h.ww * br_h.zz,
 )
+# aliases
+br_hh["bbwwdl"] = br_hh.bbwwlvlv
+br_hh["bbwwllvv"] = br_hh.bbwwlvlv
+br_hh["bbwwsl"] = br_hh.bbwwqqlv
+br_hh["bbzz4l"] = br_hh.bbzzllll
 
 # HH branching names (TODO: find prettier abbreviations)
 br_hh_names = DotDict(
@@ -74,6 +79,11 @@ br_hh_names = DotDict(
     zzzz=r"ZZZZ",
     wwzz=r"WWZZ",
 )
+# aliases
+br_hh_names["bbwwdl"] = br_hh_names.bbwwlvlv
+br_hh_names["bbwwllvv"] = br_hh_names.bbwwlvlv
+br_hh_names["bbwwsl"] = br_hh_names.bbwwqqlv
+br_hh_names["bbzz4l"] = br_hh_names.bbzzllll
 
 # campaign labels, extended by HH branching names
 campaign_labels = DotDict(
@@ -112,9 +122,11 @@ colors = DotDict(
         white_trans_70=(10, 0.7),
         grey=921,
         light_grey=920,
-        light_grey_trans=(920, 0.5),
+        light_grey_trans_50=(920, 0.5),
         dark_grey=13,
-        dark_grey_trans=(13, 0.33),
+        dark_grey_trans_70=(13, 0.7),
+        dark_grey_trans_50=(13, 0.5),
+        dark_grey_trans_30=(13, 0.3),
         red=628,
         blue=214,
         green=418,
