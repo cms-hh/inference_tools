@@ -227,8 +227,8 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
     @classmethod
     def modify_param_values(cls, params):
-        params = PlotLikelihoodScan.modify_param_values(params)
-        params = MultiDatacardTask.modify_param_values(params)
+        params = PlotLikelihoodScan.modify_param_values.__func__.__get__(cls)(params)
+        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
         return params
 
     def requires(self):

@@ -608,7 +608,7 @@ class ParameterValuesTask(AnalysisTask):
 
     @classmethod
     def modify_param_values(cls, params):
-        params = AnalysisTask.modify_param_values(params)
+        params = super(ParameterValuesTask, cls).modify_param_values(params)
 
         # sort parameters
         if "parameter_values" in params:
@@ -666,7 +666,7 @@ class ParameterScanTask(AnalysisTask):
 
     @classmethod
     def modify_param_values(cls, params):
-        params = AnalysisTask.modify_param_values(params)
+        params = super(ParameterScanTask, cls).modify_param_values(params)
 
         # set default range and points
         if "scan_parameters" in params:
@@ -839,7 +839,7 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     @classmethod
     def modify_param_values(cls, params):
-        params = DatacardTask.modify_param_values(params)
+        params = DatacardTask.modify_param_values.__func__.__get__(cls)(params)
         # no call to ParameterValuesTask.modify_param_values as its functionality is replaced below
 
         # sort pois
@@ -907,6 +907,9 @@ class POITask(DatacardTask, ParameterValuesTask):
         parts["poi"] = "poi_{}".format("_".join(self.pois))
         return parts
 
+    def get_output_postfix_pois(self):
+        return self.all_pois if self.allow_parameter_values_in_pois else self.other_pois
+
     def get_output_postfix(self, join=True, exclude_params=None, include_params=None):
         parts = []
 
@@ -918,10 +921,7 @@ class POITask(DatacardTask, ParameterValuesTask):
         parts.append(["poi"] + list(self.pois))
 
         # add parameters, taking into account excluded and included ones
-        params = OrderedDict(
-            (p, 1.0)
-            for p in (self.all_pois if self.allow_parameter_values_in_pois else self.other_pois)
-        )
+        params = OrderedDict((p, 1.0) for p in self.get_output_postfix_pois())
         params.update(self.parameter_values_dict)
         if exclude_params:
             params = OrderedDict((p, v) for p, v in params.items() if p not in exclude_params)
@@ -951,12 +951,12 @@ class POITask(DatacardTask, ParameterValuesTask):
     def other_pois(self):
         return [p for p in self.all_pois if p not in self.pois]
 
+    def _joined_parameter_values_pois(self):
+        return self.all_pois if self.allow_parameter_values_in_pois else self.other_pois
+
     def _joined_parameter_values(self, join=True):
         # all unused pois with a value of one
-        values = OrderedDict(
-            (p, 1.0)
-            for p in (self.all_pois if self.allow_parameter_values_in_pois else self.other_pois)
-        )
+        values = OrderedDict((p, 1.0) for p in self._joined_parameter_values_pois())
 
         # manually set parameters
         values.update(self.parameter_values_dict)
@@ -996,8 +996,8 @@ class POIScanTask(POITask, ParameterScanTask):
 
     @classmethod
     def modify_param_values(cls, params):
-        params = POITask.modify_param_values(params)
-        params = ParameterScanTask.modify_param_values(params)
+        params = POITask.modify_param_values.__func__.__get__(cls)(params)
+        params = ParameterScanTask.modify_param_values.__func__.__get__(cls)(params)
         return params
 
     def __init__(self, *args, **kwargs):
@@ -1038,6 +1038,10 @@ class POIScanTask(POITask, ParameterScanTask):
                         "but found '{}'".format(p)
                     )
 
+    def get_output_postfix_pois(self):
+        use_all_pois = self.allow_parameter_values_in_pois or self.force_scan_parameters_equal_pois
+        return self.all_pois if use_all_pois else self.other_pois
+
     def get_output_postfix(self, join=True):
         if isinstance(self, law.BaseWorkflow) and self.is_branch():
             # include scan values
@@ -1056,13 +1060,13 @@ class POIScanTask(POITask, ParameterScanTask):
 
         return self.join_postfix(parts) if join else parts
 
-    def _joined_parameter_values(self, join=True):
-        # skip scan parameters
-        values = POITask._joined_parameter_values(self, join=False)
-        for p in self.scan_parameter_names:
-            values.pop(p, None)
+    def _joined_parameter_values_pois(self):
+        pois = super(POIScanTask, self)._joined_parameter_values_pois()
 
-        return ",".join("{}={}".format(*tpl) for tpl in values.items()) if join else values
+        # skip scan parameters
+        pois = [p for p in pois if p not in self.scan_parameter_names]
+
+        return pois
 
 
 class POIPlotTask(PlotTask, POITask):
