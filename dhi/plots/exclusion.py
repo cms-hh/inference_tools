@@ -13,7 +13,9 @@ import numpy as np
 import scipy.interpolate
 
 from dhi.config import poi_data, campaign_labels, colors, br_hh_names
-from dhi.util import import_ROOT, DotDict, to_root_latex, create_tgraph, minimize_1d, try_int
+from dhi.util import (
+    import_ROOT, DotDict, to_root_latex, create_tgraph, minimize_1d, try_int, temporary_canvas,
+)
 from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
 from dhi.plots.styles import use_style
 
@@ -714,20 +716,17 @@ def _get_contour(hist, level):
     h.SetContour(1, array.array("d", [level]))
 
     # extract contour graphs after drawing into a temporary pad (see LIST option docs)
-    c = ROOT.TCanvas("tmp", "tmp")
-    pad = c.cd()
-    pad.SetLogz(True)
-    h.Draw("CONT,Z,LIST")
-    pad.Update()
-    graphs = ROOT.gROOT.GetListOfSpecials().FindObject("contours")
+    with temporary_canvas() as c:
+        pad = c.cd()
+        pad.SetLogz(True)
+        h.Draw("CONT,Z,LIST")
+        pad.Update()
+        graphs = ROOT.gROOT.GetListOfSpecials().FindObject("contours")
 
-    # convert from nested TList to python list of graphs for that contour level
-    contours = []
-    if graphs or not graphs.GetSize():
-        contours = [graphs.At(0).At(j).Clone() for j in range(graphs.At(0).GetSize())]
-
-    # finally, close the canvas
-    c.Close()
+        # convert from nested TList to python list of graphs for that contour level
+        contours = []
+        if graphs or not graphs.GetSize():
+            contours = [graphs.At(0).At(j).Clone() for j in range(graphs.At(0).GetSize())]
 
     return contours
 
@@ -778,3 +777,22 @@ def invert_graph(g, x_min=None, x_max=None, y_min=None, y_max=None, padding=0.):
         g_inv.SetPoint(i + 5, x, y)
 
     return g_inv
+
+
+def get_text_width(t):
+    ROOT = import_ROOT()
+
+    # only available when the font precision is 3
+    assert(t.GetTextFont() % 10 == 3)
+
+    # create a temporary canvas and draw the text
+    with temporary_canvas() as c:
+        c.cd()
+        t.Draw()
+
+        # extract the bounding box dimensions
+        w = array.array("I", [0])
+        h = array.array("I", [0])
+        t.GetBoundingBox(w, h)
+
+    return int(w[0]), int(h[0])

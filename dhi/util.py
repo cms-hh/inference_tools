@@ -523,8 +523,6 @@ class ROOTColorGetter(object):
         self.cache = cache or {}
 
     def _get_color(self, attr):
-        ROOT = import_ROOT()
-
         if attr not in self.cache:
             self.cache[attr] = self.create_color(attr)
         elif not isinstance(self.cache[attr], int):
@@ -548,11 +546,26 @@ class ROOTColorGetter(object):
         if isinstance(obj, int):
             return obj
         elif isinstance(obj, str):
-            return getattr(ROOT, "k" + obj.capitalize())
+            c = getattr(ROOT, "k" + obj.capitalize(), None)
+            if c is not None:
+                return c
         elif isinstance(obj, tuple) and len(obj) in [2, 3, 4]:
             c = ROOT.TColor.GetColor(*obj[:3]) if len(obj) >= 3 else obj[0]
             if len(obj) in [2, 4]:
                 c = ROOT.TColor.GetColorTransparent(c, obj[-1])
             return c
-        else:
-            raise AttributeError("cannot interpret '{}' as color".format(obj))
+
+        raise AttributeError("cannot interpret '{}' as color".format(obj))
+
+
+@contextlib.contextmanager
+def temporary_canvas(*args, **kwargs):
+    ROOT = import_ROOT()
+
+    c = ROOT.TCanvas(*args, **kwargs)
+
+    try:
+        yield c
+    finally:
+        if c and not c.IsZombie():
+            c.Close()
