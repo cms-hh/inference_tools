@@ -136,7 +136,6 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
     def htcondor_output_postfix(self):
         postfix = super(PullsAndImpacts, self).htcondor_output_postfix()
 
-        parts = []
         if self.mc_stats:
             postfix += "_mcstats"
         if self.skip_parameters:

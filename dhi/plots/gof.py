@@ -9,7 +9,7 @@ import math
 import numpy as np
 
 from dhi.config import poi_data, campaign_labels, colors, br_hh_names
-from dhi.util import import_ROOT, to_root_latex, try_int, linspace, create_tgraph
+from dhi.util import import_ROOT, to_root_latex, try_int, create_tgraph
 from dhi.plots.styles import use_style
 
 
