@@ -139,6 +139,12 @@ class MergeGoodnessOfFit(GoodnessOfFitBase):
 
 class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
 
+    n_bins = luigi.IntParameter(
+        default=32,
+        significant=False,
+        description="number of bins in toy histograms; default: 32",
+    )
+
     z_min = None
     z_max = None
 
@@ -170,6 +176,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
             data=gof_data["data"],
             toys=gof_data["toys"],
             algorithm=self.algorithm,
+            n_bins=self.n_bins,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
@@ -266,6 +273,7 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
             path=output.path,
             data=data,
             algorithm=self.algorithm,
+            n_bins=self.n_bins,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             model_parameters=self.get_shown_parameters(),

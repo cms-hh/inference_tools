@@ -22,6 +22,7 @@ def plot_gof_distribution(
     data,
     toys,
     algorithm,
+    n_bins=32,
     x_min=None,
     x_max=None,
     y_min=None,
@@ -34,9 +35,10 @@ def plot_gof_distribution(
     alognside those values computed for *toys* and saves it at *path*. The name of the *algorithm*
     used for the test is shown in the legend.
 
-    *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
-    given values. *model_parameters* can be a dictionary of key-value pairs of model parameters.
-    *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    The toy histogram is drawn with *n_bins* bins. *x_min*, *x_max*, *y_min* and *y_max* define the
+    axis ranges and default to the range of the given values. *model_parameters* can be a dictionary
+    of key-value pairs of model parameters. *campaign* should refer to the name of a campaign label
+    defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/gof.html#testing-a-datacard
     """
@@ -67,7 +69,7 @@ def plot_gof_distribution(
     draw_objs.append((h_dummy, "HIST"))
 
     # create the toy histogram
-    h_toys = ROOT.TH1F("h_toys", "", 32, x_min, x_max)
+    h_toys = ROOT.TH1F("h_toys", "", n_bins, x_min, x_max)
     r.setup_hist(h_toys, props={"LineWidth": 2})
     for v in toys:
         h_toys.Fill(v)
@@ -76,7 +78,7 @@ def plot_gof_distribution(
     legend_entries.append((h_toys, "{} toys ({})".format(len(toys), algorithm)))
 
     # make a simple gaus fit
-    toy_mean, toy_stddev = fit_toys_gaus(toys, x_min=x_min, x_max=x_max, n_bins=32)
+    toy_mean, toy_stddev = fit_toys_gaus(toys, x_min=x_min, x_max=x_max, n_bins=n_bins)
     toy_ampl = fit_amplitude_gaus(h_toys, toy_mean, toy_stddev)
     data_pull = abs(data - toy_mean) / toy_stddev
 
@@ -97,7 +99,7 @@ def plot_gof_distribution(
 
     # vertical data line
     line_data = ROOT.TLine(data, y_min, data, y_max_line)
-    r.setup_line(line_data, props={"NDC": False, "LineWidth": 2, "LineStyle": 7},
+    r.setup_line(line_data, props={"NDC": False, "LineWidth": 2, "LineStyle": 2},
         color=colors.blue_signal)
     draw_objs.append(line_data)
     legend_entries.append((line_data, "Data (#Delta = {:.2f} #sigma)".format(data_pull), "L"))
@@ -140,6 +142,7 @@ def plot_gofs(
     path,
     data,
     algorithm,
+    n_bins=32,
     x_min=-3.,
     x_max=3.,
     model_parameters=None,
@@ -152,9 +155,10 @@ def plot_gofs(
     the *algorithm* used for the test is shown in the legend. Per entry, a gaussion fit is drawn
     to visualize the distribution of toys.
 
-    *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
-    given values. *model_parameters* can be a dictionary of key-value pairs of model parameters.
-    *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    The toy histograms are drawn with *n_bins* bins. *x_min*, *x_max*, *y_min* and *y_max* define
+    the axis ranges and default to the range of the given values. *model_parameters* can be a
+    dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
+    campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/gof.html#testing-multiple-datacards
     """
@@ -179,7 +183,7 @@ def plot_gofs(
     bottom_margin = 70  # pixels
     left_margin = 150  # pixels
     entry_height = 90  # pixels
-    head_space = 130  # pixels
+    head_space = 100  # pixels
 
     # get the canvas height
     canvas_height = n * entry_height + head_space + top_margin + bottom_margin
@@ -206,7 +210,7 @@ def plot_gofs(
     fit_data = []
     for i, d in enumerate(data):
         # make a simple gaus fit and determine how many stddevs the data point is off
-        mean, stddev = fit_toys_gaus(d["toys"])
+        mean, stddev = fit_toys_gaus(d["toys"], n_bins=n_bins)
         fd = {}
         fd["mean"] = mean
         fd["stddev"] = stddev
@@ -260,7 +264,7 @@ def plot_gofs(
         draw_objs.append(fit_label)
 
         # stylized histograms
-        h_toys = ROOT.TH1F("h_toys_{}".format(i), "", 32, x_min, x_max)
+        h_toys = ROOT.TH1F("h_toys_{}".format(i), "", n_bins, x_min, x_max)
         r.setup_hist(h_toys)
         for v in d["toys"]:
             h_toys.Fill((v - fd["mean"]) / fd["stddev"])
@@ -282,11 +286,10 @@ def plot_gofs(
 
         # data lines as graphs
         g_data = create_tgraph(1, (d["data"] - fd["mean"]) / fd["stddev"], y_offset, 0, 0, 0, 1)
-        r.setup_graph(g_data, props={"LineWidth": 2, "LineStyle": 7, "MarkerStyle": 20,
-            "MarkerSize": 0}, color=colors.blue_signal)
+        r.setup_graph(g_data, props={"LineWidth": 2, "LineStyle": 2}, color=colors.blue_signal)
         draw_objs.append((g_data, "SAME,EZ"))
         if i == 0:
-            legend_entries.append((g_data, "Data"))
+            legend_entries.append((g_data, "Data", "L"))
 
         # name labels on the y-axis
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
