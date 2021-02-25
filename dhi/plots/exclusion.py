@@ -7,6 +7,7 @@ Exclusion result plots using ROOT.
 import math
 import array
 import uuid
+import six
 import itertools
 
 import numpy as np
@@ -779,8 +780,20 @@ def invert_graph(g, x_min=None, x_max=None, y_min=None, y_max=None, padding=0.):
     return g_inv
 
 
-def get_text_width(t):
+def get_text_width(t, text_size=None, text_font=None):
     ROOT = import_ROOT()
+
+    # convert to a tlatex if t is a string, otherwise clone
+    if isinstance(t, six.string_types):
+        t = ROOT.TLatex(0., 0., t)
+    else:
+        t = t.Clone()
+
+    # set size and font when set
+    if text_size is not None:
+        t.SetTextSize(text_size)
+    if text_font is not None:
+        t.SetTextFont(text_font)
 
     # only available when the font precision is 3
     assert(t.GetTextFont() % 10 == 3)
