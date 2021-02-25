@@ -22,7 +22,7 @@ law.contrib.load(
 
 class LocalTarget(law.LocalTarget):
     def __init__(self, *args, **kwargs):
-        self._repr_path = kwargs.pop("repr_path")
+        self._repr_path = kwargs.pop("repr_path", None)
         super(LocalTarget, self).__init__(*args, **kwargs)
 
     def _repr_pairs(self, *args, **kwargs):
@@ -31,13 +31,39 @@ class LocalTarget(law.LocalTarget):
             pairs = [(key, self._repr_path if key == "path" else value) for key, value in pairs]
         return pairs
 
+    def _parent_args(self):
+        args, kwargs = super(LocalTarget, self)._parent_args()
+        if self._repr_path:
+            kwargs["repr_path"] = os.path.dirname(self._repr_path)
+        return args, kwargs
+
 
 class LocalFileTarget(LocalTarget, law.LocalFileTarget):
     pass
 
 
 class LocalDirectoryTarget(LocalTarget, law.LocalDirectoryTarget):
-    pass
+
+    def _child_args(self, path):
+        args, kwargs = law.LocalDirectoryTarget._child_args(self, path)
+        if self._repr_path:
+            basename = os.path.relpath(path, self.path)
+            if os.sep not in basename:
+                kwargs["repr_path"] = os.path.join(self._repr_path, basename)
+        return args, kwargs
+
+
+LocalTarget.file_class = LocalFileTarget
+LocalTarget.directory_class = LocalDirectoryTarget
+
+
+class SiblingFileCollection(law.SiblingFileCollection):
+
+    def _repr_pairs(self, *args, **kwargs):
+        pairs = super(SiblingFileCollection, self)._repr_pairs(*args, **kwargs)
+        if pairs[-1][0] == "dir" and getattr(self.dir, "_repr_path", None):
+            pairs[-1] = ("dir", self.dir._repr_path)
+        return pairs
 
 
 class BaseTask(law.Task):
@@ -91,9 +117,9 @@ class BaseTask(law.Task):
 
 class AnalysisTask(BaseTask):
 
-    version = luigi.Parameter(description="task version")
+    version = luigi.Parameter(description="mandatory version that is encoded into output paths")
 
-    output_collection_cls = law.SiblingFileCollection
+    output_collection_cls = SiblingFileCollection
     default_store = "$DHI_STORE"
     store_by_family = False
 
@@ -198,8 +224,8 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         return reqs
 
     def htcondor_output_directory(self):
-        # the directory where submission meta data should be stored
-        return self.local_target(store="$DHI_STORE_REPO", dir=True)
+        # the directory where submission meta data and logs should be stored
+        return self.local_target(dir=True)
 
     def htcondor_bootstrap_file(self):
         # each job can define a bootstrap file that is executed prior to the actual job
@@ -257,7 +283,7 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
 
     replicas = luigi.IntParameter(
         default=10,
-        description="number of replicas to generate, default: 10",
+        description="number of replicas to generate; default: 10",
     )
 
     exclude_files = ["docs", "githooks", "data", ".law", ".setups", "datacards_run2/*"]
@@ -302,7 +328,7 @@ class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile):
 
     replicas = luigi.IntParameter(
         default=10,
-        description="number of replicas to generate, default: 10",
+        description="number of replicas to generate; default: 10",
     )
 
     version = None
