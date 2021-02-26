@@ -826,17 +826,23 @@ def locate_xsec_labels(graphs, level, label_width, pad_width, pad_height, x_min,
     positions = []
     other_positions = other_positions or []
 
-    # conversions from values in x or y values (depending on the axis range) to pixels
+    # conversions from values in x or y (depending on the axis range) to values in pixels
     x_width = x_max - x_min
     y_width = y_max - y_min
     x_to_px = lambda x: x * pad_width / x_width
     y_to_px = lambda y: y * pad_height / y_width
 
     # define visible ranges
-    x_min_vis = x_min + 0.05 * x_width
-    x_max_vis = x_max - 0.05 * x_width
-    y_min_vis = y_min + 0.05 * y_width
-    y_max_vis = y_max - 0.05 * y_width
+    x_min_vis = x_min + 0.02 * x_width
+    x_max_vis = x_max - 0.02 * x_width
+    y_min_vis = y_min + 0.02 * y_width
+    y_max_vis = y_max - 0.02 * y_width
+
+    # helper to get the ellipse-transformed distance between two points, normalized to pad dimension
+    pad_dist = lambda x, y, x0, y0: (((x - x0) / pad_width)**2 + ((y - y0) / pad_height)**2)**0.5
+
+    # helper to check if two points are too close in terms of the label width
+    too_close = lambda x, y, x0, y0: pad_dist(x, y, x0, y0) < 1.1 * (label_width / pad_width)
 
     for g in graphs:
         # get graph points
@@ -869,20 +875,25 @@ def locate_xsec_labels(graphs, level, label_width, pad_width, pad_height, x_min,
         hb_size = block_size // 2
         adist = np.argsort(distances)
 
-        # if all candidates are to close to existing labels, or too close to the edges, go back to the
-        # straightest part adist[0]
-        for idx in np.append(adist, adist[0]):
-            x, y = xx[idx, hb_size], yy[idx, hb_size]
+        # get the best position without checking how close other labels are
+        for idx1 in np.append(adist, adist[0]):
+            x, y = xx[idx1, hb_size], yy[idx1, hb_size]
+            if (x_min_vis <= x <= x_max_vis) and (y_min_vis <= y <= y_max_vis):
+                break
+        else:
+            idx1 = 0
+
+        # if all candidates are to close to existing labels, go back to idx1
+        for idx2 in np.append(adist, idx1):
+            x, y = xx[idx2, hb_size], yy[idx2, hb_size]
             if not (x_min_vis <= x <= x_max_vis) or not (y_min_vis <= y <= y_max_vis):
                 continue
-            elif any(abs(x - x_) < 0.05 * x_width for x_, _, _ in positions + other_positions):
-                continue
-            elif any(abs(y - y_) < 0.05 * y_width for _, y_, _ in positions + other_positions):
+            elif any(too_close(x, y, x0, y0) for x0, y0, _ in positions + other_positions):
                 continue
             break
 
         # rotation
-        ind = (idx * block_size + hb_size) % n_points
+        ind = (idx2 * block_size + hb_size) % n_points
         dx, dy = np.gradient(line_contour, axis=0)[ind]
         dx = x_to_px(dx)
         dy = y_to_px(dy)

@@ -102,7 +102,8 @@ def plot_gof_distribution(
     r.setup_line(line_data, props={"NDC": False, "LineWidth": 2, "LineStyle": 2},
         color=colors.blue_signal)
     draw_objs.append(line_data)
-    legend_entries.append((line_data, "Data (#Delta = {:.2f} #sigma)".format(data_pull), "L"))
+    delta_label = "< 0.01" if data_pull < 0.005 else "= {:.2f}".format(data_pull)
+    legend_entries.append((line_data, "Data (#Delta {} #sigma)".format(delta_label), "L"))
 
     # model parameter labels
     if model_parameters:
@@ -233,6 +234,7 @@ def plot_gofs(
     h_dummy.GetYaxis().SetBinLabel(1, "")
     draw_objs.append((h_dummy, "HIST"))
     y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{#Delta = %.2f #sigma}}"
+    y_label_tmpl_zero = "#splitline{#bf{%s}}{#scale[0.75]{#Delta < 0.01 #sigma}}"
     fit_label_tmpl = "#splitline{#mu = %.1f}{#sigma = %.1f}"
     if not n_toys_even:
         fit_label_tmpl = "#splitline{{N = %d}}{{{}}}".format(fit_label_tmpl)
@@ -293,7 +295,10 @@ def plot_gofs(
 
         # name labels on the y-axis
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
-        label = y_label_tmpl % (label, abs(fd["data_pull"]))
+        if abs(fd["data_pull"]) < 0.005:
+            label = y_label_tmpl_zero % (label,)
+        else:
+            label = y_label_tmpl % (label, abs(fd["data_pull"]))
         label_x = r.get_x(10, canvas)
         label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
         label = ROOT.TLatex(label_x, label_y, label)
