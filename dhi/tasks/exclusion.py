@@ -121,6 +121,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
     xsec_contours = law.CSVParameter(
         default=("auto",),
         significant=False,
+        unique=True,
         description="draw cross section contours at these values; only supported for r POIs; the "
         "unit is defined by --xsec; when 'auto', default contours are drawn without labels; can "
         "also be a file with contours defined line-by-line in the format "
@@ -221,39 +222,11 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
             )
 
             # configure contours
-            if len(self.xsec_contours) == 1 and isinstance(self.xsec_contours[0], six.string_types):
-                if self.xsec_contours[0] == "auto":
-                    # automatic contours without labels
-                    xsec_levels = "auto"
-                else:
-                    # interpret as path
-                    path = os.path.expandvars(os.path.expanduser(self.xsec_contours[0]))
-                    if not os.path.exists(path):
-                        raise Exception(
-                            "invalid cross section contour value '{}'".format(self.xsec_contours[0])
-                        )
-
-                    xsec_levels = []
-                    xsec_label_positions = []
-                    with open(path, "r") as f:
-                        for line in f.readlines():
-                            parts = [p.strip() for p in line.strip().split(",")]
-                            if not parts or parts[0].startswith(("#", "//")):
-                                continue
-
-                            # get the level
-                            xsec_levels.append(float(parts.pop(0)))
-
-                            # get label positions, remaining length must be 0, 3, 6, ...
-                            if len(parts) % 3 != 0:
-                                raise Exception("invalid xsec contour definition '{}'".format(line))
-                            positions = [
-                                tuple(float(p) for p in parts[3 * i:3 * (i + 1)])
-                                for i in range(len(parts) / 3)
-                            ]
-                            xsec_label_positions.append(positions)
+            if self.xsec_contours[0] and self.xsec_contours[0] == "auto":
+                # automatic contours without labels
+                xsec_levels = "auto"
             else:
-                xsec_levels = self.xsec_contours or None
+                xsec_levels = [float(l) for l in self.xsec_contours]
 
         # load likelihood scan data
         ll_data = inputs["likelihoods"].load(formatter="numpy")
@@ -274,7 +247,6 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
             xsec_values=xsec_values,
             xsec_levels=xsec_levels,
             xsec_unit=self.xsec,
-            xsec_label_positions=xsec_label_positions,
             nll_values=nll_values,
             scan_minima=scan_mins,
             x_min=self.get_axis_limit("x_min"),
