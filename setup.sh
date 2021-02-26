@@ -9,6 +9,8 @@ setup() {
     local this_dir="$( cd "$( dirname "$this_file" )" && pwd )"
     local orig="$PWD"
     local setup_name="${1:-default}"
+    local setup_is_default="false"
+    [ "$setup_name" = "default" ] && setup_is_default="true"
 
 
     #
@@ -117,6 +119,7 @@ setup() {
     ulimit -s unlimited
 
     # local stack
+    local sw_version="1"
     local flag_file_sw="$DHI_SOFTWARE/.sw_good"
     [ "$DHI_REINSTALL_SOFTWARE" = "1" ] && rm -f "$flag_file_sw"
     if [ ! -f "$flag_file_sw" ]; then
@@ -125,7 +128,8 @@ setup() {
         mkdir -p "$DHI_SOFTWARE"
 
         # python packages
-        dhi_pip_install luigi==2.8.2 || return "$?"
+        dhi_pip_install six==1.15.0 || return "$?"
+        dhi_pip_install luigi==2.8.13 || return "$?"
         dhi_pip_install --no-deps git+https://github.com/riga/scinum.git || return "$?"
         dhi_pip_install tabulate==0.8.7 || return "$?"
 
@@ -133,8 +137,17 @@ setup() {
         # dhi_pip_install python-telegram-bot==12.3.0
 
         date "+%s" > "$flag_file_sw"
+        echo "version $sw_version" >> "$flag_file_sw"
     fi
     export DHI_SOFTWARE_FLAG_FILES="$DHI_SOFTWARE_FLAG_FILES $flag_file_sw"
+
+    # check the version in the sw flag file and show a warning when there was an update
+    if [ "$( cat "$flag_file_sw" | grep -Po "version \K\d+.*" )" != "$sw_version" ]; then
+        2>&1 echo ""
+        2>&1 echo "WARNING: your local software stack is not up to date, please consider updating it in a new shell with"
+        2>&1 echo "         > DHI_REINSTALL_SOFTWARE=1 source setup.sh $( $setup_is_default || echo "$setup_name" )"
+        2>&1 echo ""
+    fi
 
     # gfal2 bindings (optional)
     local lcg_dir="/cvmfs/grid.cern.ch/centos7-ui-4.0.3-1_umd4v3/usr"
