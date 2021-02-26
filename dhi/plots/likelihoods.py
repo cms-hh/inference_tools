@@ -294,7 +294,7 @@ def plot_likelihood_scans_1d(
         legend_entries.append((g_thy, "Theory prediction"))
 
     # perform scans and draw nll curves
-    for d, col in zip(data, color_sequence[:len(data)]):
+    for d, col in zip(data, color_sequence[1:len(data) + 1]):
         # evaluate the scan, run interpolation and error estimation
         scan = evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"],
             poi_min=d["poi_min"])
@@ -590,11 +590,11 @@ def plot_likelihood_scans_2d(
     x_title = to_root_latex(poi_data[poi1].label)
     y_title = to_root_latex(poi_data[poi2].label)
     h_dummy = ROOT.TH2F("h", ";{};{};".format(x_title, y_title), 1, x_min, x_max, 1, y_min, y_max)
-    r.setup_hist(h_dummy, pad=pad)
+    r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
     # loop through data entries
-    for d, col in zip(data, color_sequence[:len(data)]):
+    for d, col in zip(data, color_sequence[1:len(data) + 1]):
         # evaluate the scan
         scan = evaluate_likelihood_scan_2d(
             d["values"][poi1], d["values"][poi2], d["values"]["dnll2"],
@@ -652,9 +652,37 @@ def plot_likelihood_scans_2d(
         draw_objs.append((h1, "SAME,CONT3"))
         draw_objs.append((h2, "SAME,CONT3"))
         name = to_root_latex(br_hh_names.get(d["name"], d["name"]))
-        legend_entries.append((g_fit, "{} (best fit)".format(name), "P"))
-        legend_entries.append((h1, "#pm 1 #sigma", "l"))
-        legend_entries.append((h2, "#pm 2 #sigma", "l"))
+        legend_entries.append((h1, name, "L"))
+
+    # append legend entries to show styles
+    g_fit_style = g_fit.Clone()
+    h1_style = h1.Clone()
+    h2_style = h2.Clone()
+    r.apply_properties(g_fit_style, {"MarkerColor": colors.black})
+    r.apply_properties(h1_style, {"LineColor": colors.black})
+    r.apply_properties(h2_style, {"LineColor": colors.black})
+    legend_entries.extend([
+        (g_fit_style, "Best fit value", "P"),
+        (h1_style, "#pm 1 #sigma", "L"),
+        (h2_style, "#pm 2 #sigma", "L"),
+    ])
+
+    # prepend empty values
+    n_empty = 3 - (len(legend_entries) % 3)
+    if n_empty not in (0, 3):
+        for _ in range(n_empty):
+            legend_entries.insert(3 - n_empty, (h_dummy, " ", "L"))
+
+    # legend with actual entries in different colors
+    legend_cols = int(math.ceil(len(legend_entries) / 3.))
+    legend_rows = min(len(legend_entries), 3)
+    legend = r.routines.create_legend(pad=pad, width=legend_cols * 150, height=legend_rows * 30,
+        props={"NColumns": legend_cols})
+    r.fill_legend(legend, legend_entries)
+    draw_objs.append(legend)
+    legend_box = r.routines.create_legend_box(legend, pad, "trl",
+        props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+    draw_objs.insert(-1, legend_box)
 
     # model parameter labels
     if model_parameters:
@@ -662,14 +690,6 @@ def plot_likelihood_scans_2d(
             text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
             draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
                 y_offset=40 + i * 24, props={"TextSize": 20}))
-
-    # legend
-    legend_cols = len(data)
-    legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
-    legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, height=legend_rows * 30,
-        props={"NColumns": legend_cols})
-    r.fill_legend(legend, legend_entries)
-    draw_objs.append(legend)
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
