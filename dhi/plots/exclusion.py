@@ -424,21 +424,51 @@ def plot_exclusion_and_bestfit_2d(
                     "LineWidth": 1})
                 draw_objs.append((g, "L,SAME"))
 
+        # automatically determine labels as good as possible
+        if not xsec_label_positions:
+            xsec_label_positions, label_cache = [], []
+            for graphs, level in zip(xsec_contours, xsec_levels):
+                graph_label_positions = []
+                for g in graphs:
+                    # get graph points
+                    x_values, y_values = [], []
+                    x, y = ROOT.Double(), ROOT.Double()
+                    for i in range(g.GetN()):
+                        g.GetPoint(i, x, y)
+                        x_values.append(float(x))
+                        y_values.append(float(y))
+                    linecontour = np.array([x_values, y_values]).T
+                    text = str(try_int(level))
+                    if xsec_unit:
+                        text = "{} {}".format(text, xsec_unit)
+                    labelwidth, _ = get_text_width(text, 20, 43)
+                    # convert to x-axis
+                    labelwidth *= (x_max - x_min) / (canvas.GetWindowWidth() * (1. - pad.GetLeftMargin() - pad.GetRightMargin()))
+                    label_pos = locate_label(linecontour, labelwidth, label_cache)
+                    label_cache.append(label_pos)
+                    graph_label_positions.append(label_pos)
+                xsec_label_positions.append(graph_label_positions)
+
+        # approx. width
+        def w(a):
+            return np.percentile(np.unique(a), 5), np.percentile(np.unique(a), 95)
+
         # add labels
-        if xsec_label_positions:
-            for level, positions in zip(xsec_levels, xsec_label_positions):
-                text = str(try_int(level))
-                if xsec_unit:
-                    text = "{} {}".format(text, xsec_unit)
-                for x, y, rot in positions:
-                    if not (x_min <= x <= x_max) or not (y_min <= y <= y_max):
-                        continue
-                    xsec_label = ROOT.TLatex(0., 0., text)
-                    r.setup_latex(xsec_label, props={"NDC": False, "TextSize": 12, "TextAlign": 22,
-                        "TextColor": colors.dark_grey_trans_70, "TextAngle": rot})
-                    xsec_label.SetX(x)
-                    xsec_label.SetY(y)
-                    draw_objs.append((xsec_label, "SAME"))
+        for level, positions in zip(xsec_levels, xsec_label_positions):
+            text = str(try_int(level))
+            if xsec_unit:
+                text = "{} {}".format(text, xsec_unit)
+            wx5, wx95 = w(expected_limits[scan_parameter1])
+            wy5, wy95 = w(expected_limits[scan_parameter2])
+            for x, y, rot in positions:
+                if not (x_min + abs(x_min - wx5) <= x <= x_max - abs(x_max - wx95)) or not (y_min + abs(y_min - wy5) <= y <= y_max - abs(y_max - wy95)):
+                    continue
+                xsec_label = ROOT.TLatex(0., 0., text)
+                r.setup_latex(xsec_label, props={"NDC": False, "TextSize": 12, "TextAlign": 22,
+                    "TextColor": colors.dark_grey_trans_70, "TextAngle": rot})
+                xsec_label.SetX(x)
+                xsec_label.SetY(y)
+                draw_objs.append((xsec_label, "SAME"))
 
     # nominal exclusion
     for g in contours["limit"]:
@@ -809,3 +839,49 @@ def get_text_width(t, text_size=None, text_font=None):
         t.GetBoundingBox(w, h)
 
     return int(w[0]), int(h[0])
+
+
+def too_close(x, y, lw, labelXYs):
+    """Return whether a label is already near this location."""
+    thresh = (1.2 * lw) ** 2
+    return any((x - loc[0]) ** 2 + (y - loc[1]) ** 2 < thresh for loc in labelXYs)
+
+
+def locate_label(linecontour, labelwidth, labelXYs):
+    """
+    Find good place to draw a label (relatively flat part of the contour).
+    """
+    ctr_size = len(linecontour)
+    n_blocks = int(np.ceil(ctr_size / labelwidth)) if labelwidth > 1 else 1
+    block_size = ctr_size if n_blocks == 1 else int(round(labelwidth))
+    # Split contour into blocks of length ``block_size``, filling the last
+    # block by cycling the contour start (per `np.resize` semantics).  (Due
+    # to cycling, the index returned is taken modulo ctr_size.)
+    xx = np.resize(linecontour[:, 0], (n_blocks, block_size))
+    yy = np.resize(linecontour[:, 1], (n_blocks, block_size))
+    yfirst = yy[:, :1]
+    ylast = yy[:, -1:]
+    xfirst = xx[:, :1]
+    xlast = xx[:, -1:]
+    s = (yfirst - yy) * (xlast - xfirst) - (xfirst - xx) * (ylast - yfirst)
+    l = np.hypot(xlast - xfirst, ylast - yfirst)
+    # Ignore warning that divide by zero throws, as this is a valid option
+    with np.errstate(divide='ignore', invalid='ignore'):
+        distances = (abs(s) / l).sum(axis=-1)
+    # Labels are drawn in the middle of the block (``hbsize``) where the
+    # contour is the closest (per ``distances``) to a straight line, but
+    # not `too_close()` to a preexisting label.
+    hbsize = block_size // 2
+    adist = np.argsort(distances)
+    # If all candidates are `too_close()`, go back to the straightest part
+    # (``adist[0]``).
+    for idx in np.append(adist, adist[0]):
+        x, y = xx[idx, hbsize], yy[idx, hbsize]
+        if not too_close(x, y, labelwidth, labelXYs):
+            break
+    # rotation
+    ind = (idx * block_size + hbsize) % ctr_size
+    dx, dy = np.gradient(linecontour, axis=0)[ind]
+    rotation = np.rad2deg(np.arctan2(dy, dx))
+    rotation = (rotation + 90) % 180 - 90
+    return x, y, rotation
