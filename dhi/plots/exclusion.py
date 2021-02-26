@@ -871,7 +871,6 @@ def locate_xsec_labels(graphs, level, label_width, pad_width, pad_height, x_min,
 
         # if all candidates are to close to existing labels, or too close to the edges, go back to the
         # straightest part adist[0]
-        thresh2 = (1000 * label_width)**2
         for idx in np.append(adist, adist[0]):
             x, y = xx[idx, hb_size], yy[idx, hb_size]
             if not (x_min_vis <= x <= x_max_vis) or not (y_min_vis <= y <= y_max_vis):
@@ -895,7 +894,5 @@ def locate_xsec_labels(graphs, level, label_width, pad_width, pad_height, x_min,
 
         # store it
         positions.append((x, y, rot))
-
-        print level, x, y, rot
 
     return positions
