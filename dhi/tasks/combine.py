@@ -811,7 +811,6 @@ class POITask(DatacardTask, ParameterValuesTask):
     pois = law.CSVParameter(
         default=("r",),
         unique=True,
-        sort=True,
         choices=all_pois,
         description="names of POIs; choices: {}; default: (r,)".format(",".join(all_pois)),
     )

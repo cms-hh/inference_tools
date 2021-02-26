@@ -225,7 +225,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 
     def htcondor_output_directory(self):
         # the directory where submission meta data and logs should be stored
-        return self.local_target(dir=True)
+        return self.local_target(store="$DHI_STORE_REPO", dir=True)
 
     def htcondor_bootstrap_file(self):
         # each job can define a bootstrap file that is executed prior to the actual job

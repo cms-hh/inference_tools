@@ -8,7 +8,6 @@ import os
 import shutil
 import contextlib
 import logging
-import tempfile
 import copy
 from optparse import OptionParser
 from collections import OrderedDict, defaultdict
@@ -180,8 +179,6 @@ class DatacardRenamer(object):
 
     @contextlib.contextmanager
     def start(self):
-        ROOT = import_ROOT()
-
         # clear all caches
         self._clear_caches()
 
@@ -192,7 +189,6 @@ class DatacardRenamer(object):
                     yield content
 
                 # add all output objects to the tfile cache for writing
-                n_tobjs = sum(len(v) for v in self._tobj_output_cache.values())
                 for f in self._tobj_output_cache:
                     for tobj in self._tobj_output_cache[f].values():
                         self._tfile_cache.write_tobj(f, tobj)
@@ -333,7 +329,7 @@ def read_datacard_blocks(datacard):
         next_line = lines[obs_offset + 1]
         if next_line.startswith("observation "):
             blocks["observations"].extend([line, next_line])
-            del lines[obs_offset : obs_offset + 2]
+            del lines[obs_offset:obs_offset + 2]
             break
 
     # trace interdependent lines describing process rates
@@ -341,14 +337,11 @@ def read_datacard_blocks(datacard):
         line = lines[rate_offset]
         if not line.startswith("bin "):
             continue
-        next_lines = lines[rate_offset + 1 : rate_offset + 4]
-        if (
-            next_lines[0].startswith("process ")
-            and next_lines[1].startswith("process ")
-            and next_lines[2].startswith("rate ")
-        ):
+        next_lines = lines[rate_offset + 1:rate_offset + 4]
+        if next_lines[0].startswith("process ") and next_lines[1].startswith("process ") and \
+                next_lines[2].startswith("rate "):
             blocks["rates"].extend([line] + next_lines)
-            del lines[rate_offset : rate_offset + 4]
+            del lines[rate_offset:rate_offset + 4]
             break
 
     # go through lines one by one and assign to blocks based on directive names
@@ -539,7 +532,7 @@ def write_datacard_pretty(f, blocks, skip_fields=False):
     # align lines and split into rate and parameters again
     aligned_lines = align(rate_lines + columnar_parameter_lines)
     rate_lines = aligned_lines[: len(rate_lines)]
-    columnar_parameter_lines = aligned_lines[len(rate_lines) :]
+    columnar_parameter_lines = aligned_lines[len(rate_lines):]
 
     # write rates
     if rate_lines:

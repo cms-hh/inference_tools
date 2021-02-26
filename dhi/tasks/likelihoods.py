@@ -19,6 +19,7 @@ from dhi.tasks.combine import (
     CreateWorkspace,
 )
 
+
 class LikelihoodBase(POIScanTask):
 
     pois = copy.copy(POIScanTask.pois)

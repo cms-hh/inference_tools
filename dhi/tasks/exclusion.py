@@ -59,7 +59,6 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
     @law.decorator.safe_output
     def run(self):
         import numpy as np
-        import numpy.lib.recfunctions as rec
 
         # prepare the output
         output = self.output()
@@ -249,7 +248,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
                             if len(parts) % 3 != 0:
                                 raise Exception("invalid xsec contour definition '{}'".format(line))
                             positions = [
-                                tuple(float(p) for p in parts[3 * i : 3 * (i + 1)])
+                                tuple(float(p) for p in parts[3 * i:3 * (i + 1)])
                                 for i in range(len(parts) / 3)
                             ]
                             xsec_label_positions.append(positions)

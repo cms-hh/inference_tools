@@ -16,6 +16,7 @@ from dhi.tasks.combine import (
     CreateWorkspace,
 )
 
+
 class GoodnessOfFitBase(POITask):
 
     toys = luigi.IntParameter(
@@ -216,13 +217,13 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
         elif len(self.toys) != n_seqs:
             raise ValueError("the number of --toys values must either be one or match the amount "
                 "of datacard sequences in --multi-datacards ({}), but got {}".format(
-                n_seqs, len(self.toys)))
+                    n_seqs, len(self.toys)))
         if len(self.toys_per_task) == 1:
             self.toys_per_task *= n_seqs
         elif len(self.toys_per_task) != n_seqs:
             raise ValueError("the number of --toys-per-task values must either be one or match the "
                 "amount of datacard sequences in --multi-datacards ({}), but got {}".format(
-                n_seqs, len(self.toys_per_task)))
+                    n_seqs, len(self.toys_per_task)))
 
     @property
     def toys_postfix(self):
