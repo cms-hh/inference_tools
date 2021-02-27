@@ -13,7 +13,7 @@ import six
 
 from dhi.config import poi_data, campaign_labels, colors
 from dhi.util import import_ROOT, multi_match, to_root_latex, linspace, colored
-from dhi.plots.styles import use_style
+from dhi.plots.util import use_style
 
 
 colors = colors.root
@@ -294,11 +294,11 @@ def plot_pulls_impacts(
         # legend
         legend = r.routines.create_legend(pad=pad, width=170, n=3)
         r.setup_legend(legend)
-        legend.AddEntry(g_pull, "Pull")
+        legend.AddEntry(g_pull, "Pull", "LP")
         legend.AddEntry(g_impact_hi, "Impact +1 #sigma", "F")
         legend.AddEntry(g_impact_lo, "Impact -1 #sigma", "F")
         draw_objs.append(legend)
-        legend_box = r.routines.create_legend_box(legend, pad, "tlr",
+        legend_box = r.routines.create_legend_box(legend, pad, "tlr", y1_padding=-10,
             props={"LineWidth": 0, "FillColor": colors.white_trans_70})
         draw_objs.insert(-1, legend_box)
 

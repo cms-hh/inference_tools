@@ -7,10 +7,11 @@ Goodness-of-fit plots using ROOT.
 import math
 
 import numpy as np
+import scipy.stats
 
 from dhi.config import poi_data, campaign_labels, colors, br_hh_names
 from dhi.util import import_ROOT, to_root_latex, try_int, create_tgraph
-from dhi.plots.styles import use_style
+from dhi.plots.util import use_style, draw_model_parameters
 
 
 colors = colors.root
@@ -46,7 +47,7 @@ def plot_gof_distribution(
     ROOT = import_ROOT()
 
     # check values
-    toys = remove_nans_and_outliers(list(toys))
+    toys, n_valid_toys = remove_nans_and_outliers(list(toys))
 
     # set default ranges
     x_min_value = min([data] + toys)
@@ -75,10 +76,10 @@ def plot_gof_distribution(
         h_toys.Fill(v)
     y_max_value = h_toys.GetMaximum()
     draw_objs.append((h_toys, "SAME,HIST"))
-    legend_entries.append((h_toys, "{} toys ({})".format(len(toys), algorithm)))
+    legend_entries.append((h_toys, "{} toys ({})".format(n_valid_toys, algorithm), "L"))
 
     # make a simple gaus fit
-    toy_mean, toy_stddev = fit_toys_gaus(toys, x_min=x_min, x_max=x_max, n_bins=n_bins)
+    toy_mean, toy_stddev = scipy.stats.norm.fit(toys)
     toy_ampl = fit_amplitude_gaus(h_toys, toy_mean, toy_stddev)
     data_pull = abs(data - toy_mean) / toy_stddev
 
@@ -93,7 +94,7 @@ def plot_gof_distribution(
         y_min = 0.
     if y_max is None:
         y_max = 1.35 * (y_max_value - y_min)
-    y_max_line = y_max / 1.35 + y_min
+    y_max_line = y_max / 1.4 + y_min
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
@@ -105,13 +106,6 @@ def plot_gof_distribution(
     delta_label = "< 0.01" if data_pull < 0.005 else "= {:.2f}".format(data_pull)
     legend_entries.append((line_data, "Data (#Delta {} #sigma)".format(delta_label), "L"))
 
-    # model parameter labels
-    if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
-                y_offset=40 + i * 24, props={"TextSize": 20}))
-
     # legend
     legend = r.routines.create_legend(pad=pad, width=250, n=2)
     r.fill_legend(legend, legend_entries)
@@ -119,6 +113,10 @@ def plot_gof_distribution(
     legend_box = r.routines.create_legend_box(legend, pad, "tr",
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
+
+    # model parameter labels
+    if model_parameters:
+        draw_objs.extend(draw_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -172,11 +170,7 @@ def plot_gofs(
         assert("name" in d)
         assert("data" in d)
         assert("toys" in d)
-        d["toys"] = remove_nans_and_outliers(list(d["toys"]))
-
-    # get the number of toys per entry
-    n_toys = [len(d["toys"]) for d in data]
-    n_toys_even = len(set(n_toys)) == 1
+        d["toys"], d["n_valid_toys"] = remove_nans_and_outliers(list(d["toys"]))
 
     # some constants for plotting
     canvas_width = 800  # pixels
@@ -211,7 +205,7 @@ def plot_gofs(
     fit_data = []
     for i, d in enumerate(data):
         # make a simple gaus fit and determine how many stddevs the data point is off
-        mean, stddev = fit_toys_gaus(d["toys"], n_bins=n_bins)
+        mean, stddev = scipy.stats.norm.fit(d["toys"])
         fd = {}
         fd["mean"] = mean
         fd["stddev"] = stddev
@@ -235,9 +229,7 @@ def plot_gofs(
     draw_objs.append((h_dummy, "HIST"))
     y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{#Delta = %.2f #sigma}}"
     y_label_tmpl_zero = "#splitline{#bf{%s}}{#scale[0.75]{#Delta < 0.01 #sigma}}"
-    fit_label_tmpl = "#splitline{#mu = %.1f}{#sigma = %.1f}"
-    if not n_toys_even:
-        fit_label_tmpl = "#splitline{{N = %d}}{{{}}}".format(fit_label_tmpl)
+    fit_label_tmpl = "#splitline{#splitline{N = %d}{#mu = %.1f}}{#sigma = %.1f}"
 
     # vertical line at 1
     v_line = ROOT.TLine(0, 0, 0, n)
@@ -257,10 +249,7 @@ def plot_gofs(
         # fit stats label
         fit_label_x = r.get_x(84, pad, anchor="right")
         fit_label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
-        fit_label_data = (fd["mean"], fd["stddev"])
-        if not n_toys_even:
-            fit_label_data = (len(d["toys"]),) + fit_label_data
-        fit_label = fit_label_tmpl % fit_label_data
+        fit_label = fit_label_tmpl % (d["n_valid_toys"], fd["mean"], fd["stddev"])
         fit_label = ROOT.TLatex(fit_label_x, fit_label_y, fit_label)
         r.setup_latex(fit_label, props={"NDC": True, "TextAlign": 12, "TextSize": 16})
         draw_objs.append(fit_label)
@@ -283,8 +272,7 @@ def plot_gofs(
         r.setup_func(f_fit)
         draw_objs.append((f_fit, "SAME"))
         if i == 0:
-            toy_label = "{} toys".format(len(d["toys"])) if n_toys_even else "Toys"
-            legend_entries.append((f_fit, "{} ({})".format(toy_label, algorithm), "L"))
+            legend_entries.append((f_fit, "Toys ({})".format(algorithm), "L"))
 
         # data lines as graphs
         g_data = create_tgraph(1, (d["data"] - fd["mean"]) / fd["stddev"], y_offset, 0, 0, 0, 1)
@@ -313,13 +301,6 @@ def plot_gofs(
         r.setup_line(tr, props={"NDC": False, "LineWidth": 1})
         draw_objs.extend([tl, tr])
 
-    # model parameter labels
-    if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
-                y_offset=40 + i * 24, props={"TextSize": 20}))
-
     # legend
     legend = r.routines.create_legend(pad=pad, width=250, n=len(legend_entries))
     r.fill_legend(legend, legend_entries)
@@ -327,6 +308,10 @@ def plot_gofs(
     legend_box = r.routines.create_legend_box(legend, pad, "tlr",
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
+
+    # model parameter labels
+    if model_parameters:
+        draw_objs.extend(draw_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -353,50 +338,19 @@ def remove_nans_and_outliers(toys, sigma_outlier=10.):
         print("\nWARNING: found {} nan's in toy values\n".format(len(toys) - len(valid_toys)))
         toys = valid_toys
 
+    # store the number of valid toys
+    n_valid = len(toys)
+
     # remove outliers using distances from normalized medians
     median = np.median(toys)
     diffs = [abs(t - median) for t in toys]
     norm = np.median(diffs)
-    valid_toys = [t for t, diff in zip(toys, diffs) if diff / norm < sigma_outlier]
-    if len(valid_toys) != len(toys):
-        print("\nWARNING: found {} outliers in toy values\n".format(len(toys) - len(valid_toys)))
-        toys = valid_toys
+    central_toys = [t for t, diff in zip(toys, diffs) if diff / norm < sigma_outlier]
+    if len(central_toys) != len(toys):
+        print("\nWARNING: found {} outliers in toy values\n".format(len(toys) - len(central_toys)))
+        toys = central_toys
 
-    return toys
-
-
-def fit_toys_gaus(toys, x_min=None, x_max=None, n_bins=32):
-    from plotlib.util import create_random_name
-    ROOT = import_ROOT()
-
-    # compute the initial range
-    x_min_value = min(toys)
-    x_max_value = max(toys)
-    if x_min is None:
-        x_min = x_min_value - 0.2 * (x_max_value - x_min_value)
-    if x_max is None:
-        x_max = x_max_value + 0.2 * (x_max_value - x_min_value)
-
-    # create a first histogram and perform a fit
-    h1 = ROOT.TH1F(create_random_name(), "", n_bins, x_min, x_max)
-    for t in toys:
-        h1.Fill(t)
-    fit1 = h1.Fit("gaus", "QEMNS").Get()
-    if not fit1:
-        raise Exception("initial toy fit failed")
-
-    # compute the range again to cover 3 sigma of the initial fit and repeat
-    mean = fit1.Parameter(1)
-    stddev = fit1.Parameter(2)
-    x_min2 = mean - 3 * stddev
-    x_max2 = mean + 3 * stddev
-    h2 = ROOT.TH1F(create_random_name(), "", n_bins, x_min2, x_max2)
-    for t in toys:
-        h2.Fill(t)
-    fit2 = h2.Fit("gaus", "QEMNS").Get()
-
-    # return mean and stddev
-    return fit2.Parameter(1), fit2.Parameter(2)
+    return toys, n_valid
 
 
 def fit_amplitude_gaus(hist, mean, stddev):

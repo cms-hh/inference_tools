@@ -12,7 +12,7 @@ import uproot
 
 from dhi.config import poi_data, campaign_labels, colors
 from dhi.util import import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors
-from dhi.plots.styles import use_style
+from dhi.plots.util import use_style, draw_model_parameters
 
 
 colors = colors.root
@@ -92,17 +92,17 @@ def plot_s_over_b(
     # postfit signal histogram at the top
     hist_s_post1 = ROOT.TH1F("s_post1", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_s_post1, props={"FillColor": colors.blue_signal})
-    draw_objs1.append((hist_s_post1, "HIST,SAME"))
+    draw_objs1.append((hist_s_post1, "SAME,HIST"))
     scale_text = "" if signal_scale == 1 else " x {}".format(try_int(signal_scale))
     signal_label = "Signal ({} = {:.2f}){}".format(to_root_latex(poi_data[poi].label),
         signal_strength, scale_text)
-    legend_entries.append((hist_s_post1, signal_label, "af"))
+    legend_entries.append((hist_s_post1, signal_label, "AF"))
 
     # postfit background histogram at the top
     hist_b_post1 = ROOT.TH1F("b_post1", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_b_post1, props={"FillColor": colors.white})
-    draw_objs1.append((hist_b_post1, "HIST,SAME"))
-    legend_entries.insert(0, (hist_b_post1, "Background (postfit)", "l"))
+    draw_objs1.append((hist_b_post1, "SAME,HIST"))
+    legend_entries.insert(0, (hist_b_post1, "Background (postfit)", "L"))
 
     # dummy data histogram to handle binning
     hist_d1 = ROOT.TH1F("d1", "", len(bins) - 1, array.array("f", bins))
@@ -111,17 +111,17 @@ def plot_s_over_b(
     graph_d1 = ROOT.TGraphAsymmErrors(len(bins) - 1)
     r.setup_hist(graph_d1, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 1}, color=1)
     draw_objs1.append((graph_d1, "PEZ,SAME"))
-    legend_entries.insert(0, (graph_d1, "Data", "lp"))
+    legend_entries.insert(0, (graph_d1, "Data", "LP"))
 
     # postfit signal histogram in the ratio
     hist_s_post2 = ROOT.TH1F("s_post2", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_s_post2, props={"FillColor": colors.blue_signal})
-    draw_objs2.append((hist_s_post2, "HIST,SAME"))
+    draw_objs2.append((hist_s_post2, "SAME,HIST"))
 
     # postfit background histogram in the ratio (all ones)
     hist_b_post2 = ROOT.TH1F("b_post2", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_b_post2, props={"FillColor": colors.white})
-    draw_objs2.append((hist_b_post2, "HIST,SAME"))
+    draw_objs2.append((hist_b_post2, "SAME,HIST"))
 
     # dummy histograms to handle binning of background uncertainties
     hist_b_err_up1 = ROOT.TH1F("b_err_up1", "", len(bins) - 1, array.array("f", bins))
@@ -129,15 +129,14 @@ def plot_s_over_b(
 
     # postfit background uncertainty in the ratio
     graph_b_err2 = ROOT.TGraphAsymmErrors(len(bins) - 1)
-    r.setup_hist(graph_b_err2, props={"LineWidth": 0, "MarkerStyle": 20, "MarkerSize": 0,
-        "FillColor": colors.black, "FillStyle": 3345})
-    draw_objs2.append((graph_b_err2, "2,SAME"))
-    legend_entries.insert(-1, (graph_b_err2, "Uncertainty (postfit)", "f"))
+    r.setup_hist(graph_b_err2, props={"FillColor": colors.black, "FillStyle": 3345, "LineWidth": 0})
+    draw_objs2.append((graph_b_err2, "SAME,2"))
+    legend_entries.insert(-1, (graph_b_err2, "Uncertainty (postfit)", "F"))
 
     # data graph in the ratio
     graph_d2 = ROOT.TGraphAsymmErrors(len(bins) - 1)
     r.setup_hist(graph_d2, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 1}, color=1)
-    draw_objs2.append((graph_d2, "PEZ,SAME"))
+    draw_objs2.append((graph_d2, "SAME,PEZ"))
 
     # fill histograms by traversing bin data
     for b in bin_data:
@@ -189,13 +188,6 @@ def plot_s_over_b(
     h_dummy2.SetMinimum(y2_min)
     h_dummy2.SetMaximum(y2_max)
 
-    # model parameter labels
-    if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs1.append(r.routines.create_top_left_label(text, pad=pad1, x_offset=25,
-                y_offset=40 + i * 24, props={"TextSize": 20}))
-
     # legend
     legend = r.routines.create_legend(pad=pad1, width=250, n=len(legend_entries))
     r.fill_legend(legend, legend_entries)
@@ -203,6 +195,10 @@ def plot_s_over_b(
     legend_box = r.routines.create_legend_box(legend, pad1, "tr",
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs1.insert(-1, legend_box)
+
+    # model parameter labels
+    if model_parameters:
+        draw_objs1.extend(draw_model_parameters(model_parameters, pad1))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad1)

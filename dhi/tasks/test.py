@@ -98,6 +98,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacards=ggf_cards,
                 pois=("r",),
                 scan_parameters=(("kl", -5., 5.),),
+                show_parameters=("kt",),
             )
 
         if self.check_enabled("multiple_upper_limits"):
@@ -106,6 +107,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacard_names=multi_cards_names,
                 pois=("r",),
                 scan_parameters=(("kl", -5., 5.),),
+                show_parameters=("kt",),
             )
 
         if self.check_enabled("multiple_upper_limits_by_model"):
@@ -114,6 +116,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 hh_models=test_models,
                 pois=("r",),
                 scan_parameters=(("kl", -5., 5.),),
+                show_parameters=("kt",),
             )
 
         if self.check_enabled("upper_limits_at_point"):
@@ -122,6 +125,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacard_names=multi_cards_names,
                 pois=("r",),
                 parameter_values=("kl=1", "kt=1"),
+                show_parameters=("kl", "kt"),
             )
 
         if self.check_enabled("likelihood_scan"):
@@ -129,6 +133,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacards=ggf_cards,
                 pois=("kl",),
                 scan_parameters=(("kl", -5., 5.),),
+                show_parameters=("kt",),
             )
 
         if self.check_enabled("likelihood_scan_2d"):
@@ -144,6 +149,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacard_names=multi_cards_names,
                 pois=("kl",),
                 scan_parameters=(("kl", -5., 5.),),
+                show_parameters=("kt",),
             )
 
         if self.check_enabled("multiple_likelihood_scans_2d"):
@@ -161,6 +167,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 hh_models=test_models,
                 pois=("kl",),
                 scan_parameters=(("kl", -5., 5.),),
+                show_parameters=("kt",),
             )
 
         if self.check_enabled("multiple_likelihood_scans_by_model_2d"):
@@ -177,6 +184,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacards=ggf_cards,
                 pois=("r",),
                 scan_parameters=(("kl", -5., 5.),),
+                show_parameters=("kt",),
             )
 
         if self.check_enabled("multiple_significance_scans"):
@@ -185,6 +193,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacard_names=multi_cards_names,
                 pois=("r",),
                 scan_parameters=(("kl", -5., 5.),),
+                show_parameters=("kt",),
             )
 
         if self.check_enabled("pulls_and_impacts"):
@@ -200,6 +209,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacard_names=multi_cards_names,
                 pois=("r",),
                 scan_parameters=(("kl", -30., 30., 61),),
+                show_parameters=("kt",),
             )
 
         if self.check_enabled("exclusion_and_bestfit_2d"):
@@ -213,6 +223,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
             reqs["postfit_s_over_b"] = PlotPostfitSOverB.req(self,
                 datacards=ggf_cards,
                 pois=("r",),
+                show_parameters=("kl", "kt"),
             )
 
         if self.check_enabled("goodness_of_fit"):
@@ -221,6 +232,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("r",),
                 toys=300,
                 toys_per_task=15,
+                show_parameters=("kt", "kt"),
             )
 
         if self.check_enabled("multiple_goodness_of_fits"):
@@ -230,6 +242,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("r",),
                 toys=(300,),
                 toys_per_task=(15,),
+                show_parameters=("kt", "kt"),
             )
 
         if self.check_enabled("morphing_scales"):

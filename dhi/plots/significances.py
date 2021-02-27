@@ -10,7 +10,7 @@ import numpy as np
 
 from dhi.config import poi_data, br_hh_names, campaign_labels, colors, color_sequence
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int
-from dhi.plots.styles import use_style
+from dhi.plots.util import use_style, draw_model_parameters
 
 
 colors = colors.root
@@ -92,7 +92,7 @@ def plot_significance_scan(
     r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
         "MarkerSize": 0.7})
     draw_objs.append((g_exp, "SAME,PL"))
-    legend_entries.append((g_exp, "Expected"))
+    legend_entries.append((g_exp, "Expected", "PL"))
     y_max_value = max(y_max_value, max(expected_values["significance"]))
     y_min_value = min(y_min_value, min(expected_values["significance"]))
 
@@ -102,7 +102,7 @@ def plot_significance_scan(
         r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
             "MarkerSize": 0.7}, color=colors.red)
         draw_objs.append((g_obs, "SAME,PL"))
-        legend_entries.append((g_obs, "Observed"))
+        legend_entries.append((g_obs, "Observed", "PL"))
         y_max_value = max(y_max_value, max(observed_values["significance"]))
         y_min_value = min(y_min_value, min(observed_values["significance"]))
 
@@ -112,13 +112,13 @@ def plot_significance_scan(
             y_min = 1e-2
         if y_max is None:
             y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
-        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.35)
+        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.4)
     else:
         if y_min is None:
             y_min = 0.
         if y_max is None:
             y_max = 1.35 * (y_max_value - y_min)
-        y_max_line = y_max / 1.35 + y_min
+        y_max_line = y_max / 1.4 + y_min
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
@@ -130,13 +130,6 @@ def plot_significance_scan(
         r.setup_line(line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
         draw_objs.insert(1, line)
 
-    # model parameter labels
-    if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
-                y_offset=40 + i * 24, props={"TextSize": 20}))
-
     # legend
     legend = r.routines.create_legend(pad=pad, width=160, y2=-20, n=len(legend_entries))
     r.setup_legend(legend)
@@ -145,6 +138,10 @@ def plot_significance_scan(
     legend_box = r.routines.create_legend_box(legend, pad, "tr",
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
+
+    # model parameter labels
+    if model_parameters:
+        draw_objs.extend(draw_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -242,7 +239,7 @@ def plot_significance_scans(
             "MarkerSize": 0.7}, color=colors[col])
         draw_objs.append((g_exp, "SAME,PL"))
         name = names[n_graphs - i - 1]
-        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name))))
+        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)), "PL"))
         y_max_value = max(y_max_value, max(ev["significance"]))
         y_min_value = min(y_min_value, min(ev["significance"]))
 
@@ -252,13 +249,13 @@ def plot_significance_scans(
             y_min = 1e-2
         if y_max is None:
             y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
-        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.35)
+        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.4)
     else:
         if y_min is None:
             y_min = 0.
         if y_max is None:
             y_max = 1.35 * (y_max_value - y_min)
-        y_max_line = y_max / 1.35 + y_min
+        y_max_line = y_max / 1.4 + y_min
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
@@ -269,13 +266,6 @@ def plot_significance_scans(
         line = ROOT.TLine(x_min, y, x_max, y)
         r.setup_line(line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
         draw_objs.insert(1, line)
-
-    # model parameter labels
-    if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
-                y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
     legend_cols = int(math.ceil(len(legend_entries) / 4.))
@@ -288,6 +278,10 @@ def plot_significance_scans(
     legend_box = r.routines.create_legend_box(legend, pad, "tr",
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
+
+    # model parameter labels
+    if model_parameters:
+        draw_objs.extend(draw_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)

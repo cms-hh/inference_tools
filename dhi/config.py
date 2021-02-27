@@ -141,7 +141,7 @@ colors = DotDict(
         blue_signal_trans=(67, 118, 201, 0.5),
     ),
 )
-color_sequence = ["black", "blue", "red", "green", "grey", "pink", "cyan", "orange", "light_green"]
+color_sequence = ["blue", "red", "green", "grey", "pink", "cyan", "orange", "light_green", "yellow"]
 # add black a few times, needs to be updated in case we need more than 9 colors
 color_sequence += 10 * ["black"]
 

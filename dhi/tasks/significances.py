@@ -199,8 +199,8 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
 
     @classmethod
     def modify_param_values(cls, params):
-        params = PlotSignificanceScan.modify_param_values.__func__.get__(cls)(params)
-        params = MultiDatacardTask.modify_param_values.__func__.get__(cls)(params)
+        params = PlotSignificanceScan.modify_param_values.__func__.__get__(cls)(params)
+        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
         return params
 
     def requires(self):

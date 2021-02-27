@@ -17,7 +17,7 @@ from dhi.util import (
     import_ROOT, to_root_latex, get_neighbor_coordinates, create_tgraph, DotDict, minimize_1d,
     try_int,
 )
-from dhi.plots.styles import use_style
+from dhi.plots.util import use_style, draw_model_parameters
 
 
 colors = colors.root
@@ -78,13 +78,13 @@ def plot_likelihood_scan_1d(
             y_min = 1e-2
         if y_max is None:
             y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
-        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.35)
+        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.4)
     else:
         if y_min is None:
             y_min = 0.
         if y_max is None:
             y_max = 1.35 * (y_max_value - y_min)
-        y_max_line = y_max / 1.35 + y_min
+        y_max_line = y_max / 1.4 + y_min
 
     # evaluate the scan, run interpolation and error estimation
     scan = evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min)
@@ -107,28 +107,32 @@ def plot_likelihood_scan_1d(
     for value in [scan.poi_p1, scan.poi_m1, scan.poi_p2, scan.poi_m2]:
         if value is not None:
             line = ROOT.TLine(value, y_min, value, scan.interp(value))
-            r.setup_line(line, props={"LineColor": colors.red, "LineStyle": 2, "NDC": False})
+            r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
             draw_objs.append(line)
 
     # lines at chi2_1 intervals
     for n in [chi2_levels[1][1], chi2_levels[1][2]]:
         if n < y_max_line:
             line = ROOT.TLine(x_min, n, x_max, n)
-            r.setup_line(line, props={"LineColor": colors.red, "LineStyle": 2, "NDC": False})
+            r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
             draw_objs.append(line)
 
     # theory prediction with uncertainties
     if theory_value:
-        # theory graph and line
-        g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1], y_min,
-            y_max_line)
-        r.setup_graph(g_thy, props={"FillStyle": 3244, "MarkerStyle": 20, "MarkerSize": 0},
-            color=colors.red, color_flags="lfm")
+        has_thy_err = len(theory_value) == 3
+        if has_thy_err:
+            # theory graph
+            g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1],
+                0, y_max_line)
+            r.setup_graph(g_thy, props={"FillStyle": 3244}, color=colors.red, color_flags="lf")
+            draw_objs.append((g_thy, "SAME,02"))
+            legend_entries.append((g_thy, "Theory prediction", "LF"))
+        # theory line
         line_thy = ROOT.TLine(theory_value[0], y_min, theory_value[0], y_max_line)
         r.setup_line(line_thy, props={"NDC": False}, color=colors.red)
-        draw_objs.append((g_thy, "SAME,2"))
         draw_objs.append(line_thy)
-        legend_entries.append((g_thy, "Theory prediction"))
+        if not has_thy_err:
+            legend_entries.append((line_thy, "Theory prediction", "L"))
 
     # line for best fit value
     line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
@@ -136,19 +140,12 @@ def plot_likelihood_scan_1d(
     fit_label = "{} = {}".format(to_root_latex(poi_data[poi].label),
         scan.num_min.str(format="%.2f", style="root"))
     draw_objs.append(line_fit)
-    legend_entries.insert(0, (line_fit, fit_label, "l"))
+    legend_entries.insert(0, (line_fit, fit_label, "L"))
 
     # nll curve
     g_nll = create_tgraph(len(poi_values), poi_values, dnll2_values)
     r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75})
     draw_objs.append((g_nll, "SAME,CP"))
-
-    # model parameter labels
-    if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
-                y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=230, n=len(legend_entries))
@@ -156,6 +153,10 @@ def plot_likelihood_scan_1d(
     for tpl in legend_entries:
         legend.AddEntry(*tpl)
     draw_objs.append(legend)
+
+    # model parameter labels
+    if model_parameters:
+        draw_objs.extend(draw_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -251,13 +252,13 @@ def plot_likelihood_scans_1d(
             y_min = 1e-2
         if y_max is None:
             y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
-        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.35)
+        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.4)
     else:
         if y_min is None:
             y_min = 0.
         if y_max is None:
             y_max = 1.35 * (y_max_value - y_min)
-        y_max_line = y_max / 1.35 + y_min
+        y_max_line = y_max / 1.4 + y_min
 
     # start plotting
     r.setup_style()
@@ -282,19 +283,23 @@ def plot_likelihood_scans_1d(
 
     # theory prediction with uncertainties
     if theory_value:
-        # theory graph and line
-        g_thy = create_tgraph(1, theory_value[0], 0, theory_value[2], theory_value[1], 0,
-            y_max_line)
-        r.setup_graph(g_thy, props={"FillStyle": 3244, "MarkerStyle": 20, "MarkerSize": 0},
-            color=colors.red, color_flags="lfm")
-        line_thy = ROOT.TLine(theory_value[0], 0., theory_value[0], y_max_line)
+        has_thy_err = len(theory_value) == 3
+        if has_thy_err:
+            # theory graph
+            g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1],
+                0, y_max_line)
+            r.setup_graph(g_thy, props={"FillStyle": 3244}, color=colors.red, color_flags="lf")
+            draw_objs.append((g_thy, "SAME,02"))
+            legend_entries.append((g_thy, "Theory prediction", "LF"))
+        # theory line
+        line_thy = ROOT.TLine(theory_value[0], y_min, theory_value[0], y_max_line)
         r.setup_line(line_thy, props={"NDC": False}, color=colors.red)
-        draw_objs.append((g_thy, "SAME,2"))
         draw_objs.append(line_thy)
-        legend_entries.append((g_thy, "Theory prediction"))
+        if not has_thy_err:
+            legend_entries.append((line_thy, "Theory prediction", "L"))
 
     # perform scans and draw nll curves
-    for d, col in zip(data, color_sequence[1:len(data) + 1]):
+    for d, col in zip(data, color_sequence[:len(data)]):
         # evaluate the scan, run interpolation and error estimation
         scan = evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"],
             poi_min=d["poi_min"])
@@ -305,19 +310,12 @@ def plot_likelihood_scans_1d(
         r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75},
             color=colors[col])
         draw_objs.append((g_nll, "SAME,CP"))
-        legend_entries.append((g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"]))))
+        legend_entries.append((g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])), "LP"))
 
         # line for best fit value
         line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
         r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors[col])
         draw_objs.append(line_fit)
-
-    # model parameter labels
-    if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
-                y_offset=40 + i * 24, props={"TextSize": 20}))
 
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
@@ -326,9 +324,13 @@ def plot_likelihood_scans_1d(
         props={"NColumns": legend_cols})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
-    legend_box = r.routines.create_legend_box(legend, pad, "tr",
+    legend_box = r.routines.create_legend_box(legend, pad, "trl",
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
+
+    # model parameter labels
+    if model_parameters:
+        draw_objs.extend(draw_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -492,10 +494,7 @@ def plot_likelihood_scan_2d(
 
     # model parameter labels
     if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
-                y_offset=40 + i * 24, props={"TextSize": 20}))
+        draw_objs.extend(draw_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -594,7 +593,7 @@ def plot_likelihood_scans_2d(
     draw_objs.append((h_dummy, "HIST"))
 
     # loop through data entries
-    for d, col in zip(data, color_sequence[1:len(data) + 1]):
+    for d, col in zip(data, color_sequence[:len(data)]):
         # evaluate the scan
         scan = evaluate_likelihood_scan_2d(
             d["values"][poi1], d["values"][poi2], d["values"]["dnll2"],
@@ -686,10 +685,7 @@ def plot_likelihood_scans_2d(
 
     # model parameter labels
     if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
-                y_offset=40 + i * 24, props={"TextSize": 20}))
+        draw_objs.extend(draw_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)

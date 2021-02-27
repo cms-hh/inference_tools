@@ -18,7 +18,7 @@ from dhi.util import (
     import_ROOT, DotDict, to_root_latex, create_tgraph, minimize_1d, try_int, temporary_canvas,
 )
 from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
-from dhi.plots.styles import use_style
+from dhi.plots.util import use_style, draw_model_parameters
 
 
 colors = colors.root
@@ -211,18 +211,15 @@ def plot_exclusion_and_bestfit_1d(
         r.setup_line(tr, props={"NDC": False, "LineWidth": 1})
         draw_objs.extend([tl, tr])
 
-    # model parameter labels
-    if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
-                y_offset=40 + i * 24, props={"TextSize": 20}))
-
     # legend
     legend = r.routines.create_legend(pad=pad, width=480, n=2)
     r.setup_legend(legend, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
+
+    # model parameter labels
+    if model_parameters:
+        draw_objs.extend(draw_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -509,10 +506,7 @@ def plot_exclusion_and_bestfit_2d(
 
     # model parameter labels
     if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
-                y_offset=48 + i * 24, props={"TextSize": 20}))
+        draw_objs.extend(draw_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
