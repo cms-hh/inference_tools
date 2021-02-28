@@ -115,6 +115,9 @@ def create_postfit_plots(
     else :
         header_legend = header_legend+", #mu(t#bar{t}H)=#hat{#mu}"
 
+    # list of folders to read from
+    catcats =     bin["align_cats"]
+
     dprocs=bin["procs_plot_options_bkg"]
     # add stack of single H as second
     singleH = [
@@ -127,21 +130,26 @@ def create_postfit_plots(
         "tHq_hbb", "tHq_hgg", "tHq_hmm", "tHq_htt", "tHq_hww", "tHq_hzz",
         "tHW_hbb", "tHW_hgg", "tHW_hmm", "tHW_htt", "tHW_hww", "tHW_hzz",
         "VH_hww", "VH_hgg", "VH_hmm", "VH_htt", "VH_hww", "VH_hzz",
-        "TH", "VH", "TTH"
+        "TH", "VH", "TTH", "ttVH"
         ]
     ## make a list without the major
+    countOnce = 0
     for sh in singleH :
-        print (sh)
-        label_singleH = "none"
-        if sh == bin["single_H_major"]:
-            continue
-        ordered_dict_prepend(dprocs, sh, {"color" : 226, "fillStype"   : 1001, "label" : "none"          , "make border" : False})
-    ordered_dict_prepend(dprocs, bin["single_H_major"], {"color" : 226, "fillStype"   : 1001, "label" : "single H"          , "make border" : False})
+        if countOnce == 0 :
+            hist = fin.Get(folder + "/" + catcats[0] + "/" + sh )
+            try :
+                hist.Integral()
+            except :
+                continue
+            countOnce = 1
+            label_singleH = "single H"
+            print("Add single H legend (proc %s)" % sh)
+        else :
+            label_singleH = "none"
+        ordered_dict_prepend(dprocs, sh, {"color" : 226, "fillStype"   : 1001, "label" : label_singleH          , "make border" : False})
 
 
     print ("will draw processes", list(dprocs.keys()))
-
-    catcats =     bin["align_cats"]
 
     if normalize_X_original :
         fileorriginal = ROOT.TFile(fileOrig, "READ")
@@ -373,11 +381,21 @@ def create_postfit_plots(
     ## draw signal
     hist_sig = [ROOT.TH1F() for _ in range(len(procs_plot_options_sig.keys()))]
     for kk, key in  enumerate(procs_plot_options_sig.keys()) :
-        #hist_sig = ROOT.TH1F()
         hist_sig_part = template.Clone()
-        lastbin = 0
         for cc, catcat in enumerate(catcats) :
-            for sig in procs_plot_options_sig[key]["processes"] :
+            ### make the single H stack entry
+            sigs_to_stack = []
+            fin.cd(folder + "/" + catcat )
+            for key0 in ROOT.gDirectory.GetListOfKeys() :
+                obj_name = key0.GetName()
+                if key in obj_name :
+                    sigs_to_stack += [obj_name]
+            print(catcat, key,  "sigs_to_stack ", sigs_to_stack)
+
+
+        for sig in sigs_to_stack : #procs_plot_options_sig[key]["processes"] :
+            lastbin = 0
+            for cc, catcat in enumerate(catcats) :
                 readFrom = folder + "/" + catcat
                 lastbin += process_total_histo(
                     hist_sig_part,
@@ -396,7 +414,7 @@ def create_postfit_plots(
                     hist_sig[kk] = hist_sig_part.Clone()
                 else :
                     hist_sig[kk].Add(hist_sig_part)
-                print(sig, hist_sig_part.Integral(), hist_sig[kk].Integral())
+                #print(catcat, key,  sig, lastbin, hist_sig_part.Integral(), hist_sig[kk].Integral())
                 hist_sig[kk].Scale(procs_plot_options_sig[key]["scaleBy"])
 
     for kk, key in  enumerate(procs_plot_options_sig.keys()) :

@@ -37,7 +37,6 @@ This is an example of dictionary booking one plot:
       "align_cats_labels" : [["ch1 bla", "ch1 more details"], ["ch2 bla", "ch2 more details"]],
       "align_cats_labelsX" : [3, 13],
       "cats_labels_height" : 1000000.,
-      "single_H_major" : "ttH_hww",
       "procs_plot_options_bkg" : OrderedDict(
           [
           ("Other_bbWW",       {"color" : 205, "fillStype"   : 1001, "label" : "others"           , "make border" : True}),
@@ -49,28 +48,14 @@ This is an example of dictionary booking one plot:
           ("TT",          {"color" : 17, "fillStype"  : 1001, "label" : 't#bar{t} + jets'   , "make border" : True})
           ]
       ),
-      "procs_plot_options_sig" : OrderedDict(
-          [
-          ( "GGF_SM",
-            {
-            "processes" : ["ggHH_kl_1_kt_1_hbbhww", "ggHH_kl_1_kt_1_hbbhtt"],
-            "color" : 5, "fillStype"  : 3351, "label" : 'GGF HH SM', "scaleBy" : 1.
-            }
-          ),
-          ( "GGF_kl5",
-            {
-            "processes" : ["ggHH_kl_5_kt_1_hbbhww", "ggHH_kl_5_kt_1_hbbhtt"],
-            "color" : 221, "fillStype"  : 3351, "label" : 'GGF HH #kappa#lambda = 5', "scaleBy" : 1.
-            }
-          ),
-          ( "VBF_SM",
-            {
-            "processes" : ["qqHH_CV_1_C2V_1_kl_1_hbbhtt", "qqHH_CV_1_C2V_1_kl_1_hbbhww"],
-            "color" : 8, "fillStype"  : 3351, "label" : 'VBF HH SM', "scaleBy" : 1.
-            }
-          )
-          ]
-      ),
+      'procs_plot_options_sig' : OrderedDict(
+       [
+       ('ggHH_kl_1_kt_1' ,      {'color' : 5, 'fillStype'  : 3351, 'label' : 'GGF HH SM', 'scaleBy' : 1.}),
+       ('ggHH_kl_5_kt_1',       {'color' : 221, 'fillStype'  : 3351, 'label' : 'GGF HH #kappa#lambda = 5', 'scaleBy' : 1.}),
+       ('ggHH_kl_2p45_kt_1',    {'color' : 2, 'fillStype'  : 3351, 'label' : 'GGF HH #kappa#lambda = 2.45', 'scaleBy' : 1.}),
+       ('qqHH_CV_1_C2V_1_kl_1', {'color' : 8, 'fillStype'  : 3351, 'label' : 'VBF HH SM', 'scaleBy' : 1.}),
+       ]
+       ),
   },
 }
 ```
@@ -97,7 +82,6 @@ The keys of the dictionary are the names of the bins to plot distributions for (
 -   "align_cats_labels" are the labels for "align_cats"
 -  "align_cats_labelsX" : the X positions for the labels "align_cats_labels"
 -   "cats_labels_height" : the Y positions for the labels "align_cats_labels"
--  "single_H_major" is the name of one single H process that is really in the card, all the possible others will be searched and stack this one.
 
 
 - TODO: make the dictionary example on datacards_run2 repo, and make the path to the original datacard.root or relative to the datacards_run2 when I do the example with cards from datacards_run2 repo
