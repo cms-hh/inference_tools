@@ -238,10 +238,62 @@ optional arguments:
 ```
 
 
+### Split
+
+```shell hl_lines="1"
+> split_parameter.py --help
+
+usage: split_parameter.py [-h] [--directory [DIRECTORY]] [--no-shapes]
+                          [--log-level LOG_LEVEL] [--log-name LOG_NAME]
+                          DATACARD PARAM_NAME NEW_NAME,BIN,PROCESS
+                          [NEW_NAME,BIN,PROCESS ...]
+
+Script to split a "lnN" or "lnU" (nuisance) parameter into several ones,
+depending on expressions matching relevant bin and process names. Example usage:
+
+# split the "lumi" parameter depending on the year, encoded in the bin names
+# (note the quotes)
+> split_parameter.py datacard.txt lumi 'lumi_2017,*2017*,*' 'lumi_2018,*2018*,*'
+
+# split the "pdf" parameter depending on the process name (note the quotes)
+> split_parameter.py datacard.txt pdf 'pdf_ttbar,*,TT' 'pdf_st,*,ST'
+
+# split the "pdf" parameter depending on the process name with pattern negation
+# (note the quotes)
+> split_parameter.py datacard.txt pdf 'pdf_ttbar,*,TT' 'pdf_rest,*,!TT'
+
+Note 1: The use of an output directory is recommended to keep input files
+        unchanged.
+
+positional arguments:
+  DATACARD              the datacard to read and possibly update (see
+                        --directory)
+  PARAM_NAME            name of the parameter to split
+  NEW_NAME,BIN,PROCESS  specifiction of new parameters, each in the format
+                        'NEW_NAME,BIN,PROCESS'; supports patterns; prepending
+                        '!' to a pattern negates its meaning
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --unique, -u          when set, a check is performed to ensure that each
+                        value is assigned to not more than one new parameter
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --no-shapes, -n       do not copy shape files to the output directory when
+                        --directory is set
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        split_parameter
+```
+
+
 ### Flip
 
 ```shell hl_lines="1"
-> flip_parameters.py --hep
+> flip_parameters.py --help
 
 usage: flip_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                           [--mass MASS] [--log-level LOG_LEVEL]
