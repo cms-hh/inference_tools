@@ -31,6 +31,7 @@ deploy_docs:
     - docker
   image: ${CI_REGISTRY_IMAGE}:latest
   script:
+    - [ ! -z "${PAGE_ROOT}" ]
     - cd docs
     - mkdocs build --strict
     - cd site

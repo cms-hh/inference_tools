@@ -236,15 +236,15 @@ def plot_gofs(
     r.setup_line(v_line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
     draw_objs.append(v_line)
 
+    # horizontal lines
+    for i in range(n):
+        h_line = ROOT.TLine(x_min, i + 1, x_max, i + 1)
+        r.setup_line(h_line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
+        draw_objs.append(h_line)
+
     # draw curves and data lines
     for i, (d, fd) in enumerate(zip(data, fit_data)):
         y_offset = n - 1 - i
-
-        # underlying horizontal line
-        if i < n:
-            h_line = ROOT.TLine(x_min, i + 1, x_max, i + 1)
-            r.setup_line(h_line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
-            draw_objs.append(h_line)
 
         # fit stats label
         fit_label_x = r.get_x(84, pad, anchor="right")

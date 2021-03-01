@@ -5,6 +5,7 @@ Different helpers and ROOT style configurations to be used with plotlib.
 """
 
 import functools
+import collections
 
 from dhi.config import poi_data, br_hh_names
 from dhi.util import try_int, to_root_latex
@@ -45,7 +46,8 @@ def use_style(style_name):
     return decorator
 
 
-def draw_model_parameters(model_parameters, pad, x_offset=25, y_offset=40, dy=24, props=None):
+def draw_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_offset=40, dy=24,
+        props=None):
     import plotlib.root as r
     from plotlib.util import merge_dicts
 
@@ -53,11 +55,29 @@ def draw_model_parameters(model_parameters, pad, x_offset=25, y_offset=40, dy=24
     props = merge_dicts({"TextSize": 20}, props)
 
     labels = []
-    for i, (p, v) in enumerate(model_parameters.items()):
-        label = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-        label = r.routines.create_top_left_label(label, pad=pad, props=props, x_offset=x_offset,
-            y_offset=y_offset + i * dy)
-        labels.append(label)
+
+    if grouped:
+        # group parameters by value
+        groups = collections.OrderedDict()
+        for p, v in model_parameters.items():
+            p_label = poi_data.get(p, {}).get("label", p)
+            groups.setdefault(v, []).append(p_label)
+
+        # create labels
+        for i, (v, ps) in enumerate(groups.items()):
+            label = "{} = {}".format(" = ".join(map(str, ps)), try_int(v))
+            label = r.routines.create_top_left_label(label, pad=pad, props=props, x_offset=x_offset,
+                y_offset=y_offset + i * dy)
+            labels.append(label)
+
+    else:
+        # create one label per parameter
+        for i, (p, v) in enumerate(model_parameters.items()):
+            p_label = poi_data.get(p, {}).get("label", p)
+            label = "{} = {}".format(p_label, try_int(v))
+            label = r.routines.create_top_left_label(label, pad=pad, props=props, x_offset=x_offset,
+                y_offset=y_offset + i * dy)
+            labels.append(label)
 
     return labels
 

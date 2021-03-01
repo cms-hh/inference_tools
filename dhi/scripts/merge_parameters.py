@@ -101,9 +101,9 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
         logger.info("bundle datacard files into directory {}".format(directory))
         datacard = bundle_datacard(datacard, directory, skip_shapes=skip_shapes)
 
-    # start removing
+    # start merging
     with manipulate_datacard(datacard) as content:
-        # keep track of the filll lines of parameters to be merged as well as their type
+        # keep track of the full lines of parameters to be merged as well as their type
         removed_param_lines = []
         new_type = None
 
