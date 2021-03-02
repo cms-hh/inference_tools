@@ -143,7 +143,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
     n_bins = luigi.IntParameter(
         default=32,
         significant=False,
-        description="number of bins in toy histograms; default: 32",
+        description="number of bins in toy histograms for plotting; default: 32",
     )
 
     z_min = None

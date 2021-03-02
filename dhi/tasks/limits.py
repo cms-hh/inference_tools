@@ -47,7 +47,7 @@ class UpperLimits(UpperLimitsBase, CombineCommandTask, law.LocalWorkflow, HTCond
         if self.unblinded:
             return "--seed {self.branch}".format(self=self)
         else:
-            return "--toys {self.toys} --seed {self.branch} --run expected --noFitAsimov".format(
+            return "--seed {self.branch} --toys {self.toys} --run expected --noFitAsimov".format(
                 self=self)
 
     def build_command(self):

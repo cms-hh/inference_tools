@@ -51,7 +51,7 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
         if self.unblinded:
             return "--seed {self.branch}".format(self=self)
         else:
-            return "--toys {self.toys} --seed {self.branch}".format(self=self)
+            return "--seed {self.branch} --toys {self.toys}".format(self=self)
 
     def build_command(self):
         return (

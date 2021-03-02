@@ -150,7 +150,7 @@ More detailed information on the different scans & fits can be found in the foll
   <a href="tasks/gof.html#testing-a-datacard">
     <div class="dhi_image_box">
       <div>
-        <img src="images/gofs__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0.png" />
+        <img src="images/gofs__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0__t300_pt15.png" />
       </div>
       <div>
         Goodness-of-fit test
@@ -161,7 +161,7 @@ More detailed information on the different scans & fits can be found in the foll
   <a href="tasks/gof.html#testing-multiple-datacards">
     <div class="dhi_image_box">
       <div>
-        <img src="images/multigofs__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0__t1000_pt20.png" />
+        <img src="images/multigofs__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0__t300_300_300_pt15_15_15.png" />
       </div>
       <div>
         Multiple goodness-of-fit tests
