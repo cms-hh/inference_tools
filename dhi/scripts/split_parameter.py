@@ -16,8 +16,8 @@ depending on expressions matching relevant bin and process names. Example usage:
 # (note the quotes)
 > split_parameter.py datacard.txt pdf 'pdf_ttbar,*,TT' 'pdf_rest,*,!TT'
 
-Note 1: The use of an output directory is recommended to keep input files
-        unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 """
 
 import os
@@ -35,14 +35,17 @@ from dhi.util import (
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
-def split_parameter(datacard, param_name, specs, unique=False, directory=None, skip_shapes=False):
+def split_parameter(datacard, param_name, specs, ensure_unique=False, ensure_all=False,
+        directory=None, skip_shapes=False):
     """
     Reads a *datacard* and splits a "lnN" or "lnU" parameter *param_name* into multiple new
     parameters of the same type configured by *specs*. A spec is a 3-tuple or a string in the format
     "NEW_NAME,BIN,PROCESS". Bin and process names can be patterns which, when matching, control if
     a parameter value should be assigned to the corresponding new parameter for that bin and
-    process. Patterns starting with "!" negative their meaning. When *unique* is *True*, a check is
-    performed ensuring that each parameter value is assigned to not more than one new parameter.
+    process. Patterns starting with "!" negative their meaning. When *ensure_unique* is *True*, a
+    check is performed ensuring that each parameter value is assigned to not more than one new
+    parameter. Similarly, when *ensure_all* is *True*, a check is performed ensuring that each
+    parameter value is assigned to at least one new parameter, in order to avoid loosing values.
 
     When *directory* is *None*, the input *datacard* is updated in-place. Otherwise, both the
     changed datacard and all the shape files it refers to are stored in the specified directory. For
@@ -143,8 +146,8 @@ def split_parameter(datacard, param_name, specs, unique=False, directory=None, s
             spec_lines.append([new_name, param_type] + spec_values)
 
         # uniqueness check
-        if unique:
-            groups = list(zip(*(spec_line[2:] for spec_line in spec_lines)))
+        groups = list(zip(*(spec_line[2:] for spec_line in spec_lines)))
+        if ensure_unique:
             failed_idxs = [
                 i for i, group in enumerate(groups)
                 if group.count("-") < len(group) - 1
@@ -158,6 +161,19 @@ def split_parameter(datacard, param_name, specs, unique=False, directory=None, s
                 ).format(len(failed_idxs), bin_names[f], process_names[f], len(g) - g.count("-"))
                 for i, v in enumerate(groups[f]):
                     msg += "  {}: {}\n".format(spec_lines[i][0], v)
+                raise Exception(msg)
+
+        # all check
+        if ensure_all:
+            failed_idxs = [
+                i for i, group in enumerate(groups)
+                if group.count("-") == len(group) and param_values[i] != "-"
+            ]
+            if failed_idxs:
+                msg = ("check ensuring that all values were assigned failed in {} bin-process "
+                    "pairs:\n".format(len(failed_idxs)))
+                for f in failed_idxs:
+                    msg += "  bin {}, process {}\n".format(bin_names[f], process_names[f])
                 raise Exception(msg)
 
         # remove the old line
@@ -187,11 +203,13 @@ if __name__ == "__main__":
     parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
         "update (see --directory)")
     parser.add_argument("param", metavar="PARAM_NAME", help="name of the parameter to split")
-    parser.add_argument("specs", nargs="+", metavar="NEW_NAME,BIN,PROCESS", help="specifiction of "
+    parser.add_argument("specs", nargs="+", metavar="NEW_NAME,BIN,PROCESS", help="specification of "
         "new parameters, each in the format 'NEW_NAME,BIN,PROCESS'; supports patterns; prepending "
         "'!' to a pattern negates its meaning")
-    parser.add_argument("--unique", "-u", action="store_true", help="when set, a check is "
+    parser.add_argument("--ensure-unique", "-u", action="store_true", help="when set, a check is "
         "performed to ensure that each value is assigned to not more than one new parameter")
+    parser.add_argument("--ensure-all", "-a", action="store_true", help="when set, a check is "
+        "performed to ensure that each value is assigned to at least one new parameter")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
@@ -206,5 +224,5 @@ if __name__ == "__main__":
 
     # run the splitting
     with patch_object(logger, "name", args.log_name):
-        split_parameter(args.input, args.param, args.specs, unique=args.unique,
-            directory=args.directory, skip_shapes=args.no_shapes)
+        split_parameter(args.input, args.param, args.specs, ensure_unique=args.ensure_unique,
+            ensure_all=args.ensure_all, directory=args.directory, skip_shapes=args.no_shapes)

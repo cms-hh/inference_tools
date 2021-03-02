@@ -53,6 +53,7 @@ br_hh = DotDict(
     wwww=br_h.ww ** 2.0,
     zzzz=br_h.zz ** 2.0,
     wwzz=2.0 * br_h.ww * br_h.zz,
+    wwgg=2.0 * br_h.ww * br_h.gg,
 )
 # aliases
 br_hh["bbwwdl"] = br_hh.bbwwlvlv
@@ -78,6 +79,7 @@ br_hh_names = DotDict(
     wwww=r"WWWW",
     zzzz=r"ZZZZ",
     wwzz=r"WWZZ",
+    wwgg=r"WW$\gamma\gamma$",
 )
 # aliases
 br_hh_names["bbwwdl"] = br_hh_names.bbwwlvlv

@@ -262,21 +262,23 @@ depending on expressions matching relevant bin and process names. Example usage:
 # (note the quotes)
 > split_parameter.py datacard.txt pdf 'pdf_ttbar,*,TT' 'pdf_rest,*,!TT'
 
-Note 1: The use of an output directory is recommended to keep input files
-        unchanged.
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
 
 positional arguments:
   DATACARD              the datacard to read and possibly update (see
                         --directory)
   PARAM_NAME            name of the parameter to split
-  NEW_NAME,BIN,PROCESS  specifiction of new parameters, each in the format
+  NEW_NAME,BIN,PROCESS  specification of new parameters, each in the format
                         'NEW_NAME,BIN,PROCESS'; supports patterns; prepending
                         '!' to a pattern negates its meaning
 
 optional arguments:
   -h, --help            show this help message and exit
-  --unique, -u          when set, a check is performed to ensure that each
+  --ensure-unique, -u   when set, a check is performed to ensure that each
                         value is assigned to not more than one new parameter
+  --ensure-all, -a      when set, a check is performed to ensure that each
+                        value is assigned to at least one new parameter
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
                         files are stored; when not set, the input files are
@@ -341,6 +343,59 @@ optional arguments:
                         python log level; default: INFO
   --log-name LOG_NAME   name of the logger on the command line; default:
                         flip_parameters
+```
+
+
+## Adjusting bin process pairs
+
+### Remove
+
+```shell hl_lines="1"
+> remove_bin_process_pairs.py --help
+
+usage: remove_bin_process_pairs.py [-h] [--directory [DIRECTORY]]
+                                   [--no-shapes] [--log-level LOG_LEVEL]
+                                   DATACARD BIN_NAME,PROCESS_NAME
+                                   [BIN_NAME,PROCESS_NAME ...]
+
+Script to remove one or multiple bin process pairs from a datacard.
+Example usage:
+
+# remove a certain bin process pair
+> remove_bin_process_pairs.py datacard.txt ch1,ttZ -d output_directory
+
+# remove all processes for a specific bin via wildcards (note the quotes)
+> remove_bin_process_pairs.py datacard.txt 'ch1,*' -d output_directory
+
+# remove all bins for a specific process via wildcards (note the quotes)
+> remove_bin_process_pairs.py datacard.txt '*,ttZ' -d output_directory
+
+# remove bin process pairs listed in a file
+> remove_bin_process_pairs.py datacard.txt pairs.txt -d output_directory
+
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
+
+positional arguments:
+  DATACARD              the datacard to read and possibly update (see
+                        --directory)
+  BIN_NAME,PROCESS_NAME
+                        names of bin process pairs to remove in the format
+                        'bin_name,process_name' or files containing these
+                        pairs line by line; supports patterns
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --no-shapes, -n       do not copy shape files to the output directory when
+                        --directory is set
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        remove_bin_process_pairs
 ```
 
 
@@ -431,58 +486,6 @@ optional arguments:
                         python log level; default: INFO
   --log-name LOG_NAME   name of the logger on the command line; default:
                         rename_processes
-```
-
-## Adjusting bin process pairs
-
-### Remove
-
-```shell hl_lines="1"
-> remove_bin_process_pairs.py --help
-
-usage: remove_bin_process_pairs.py [-h] [--directory [DIRECTORY]]
-                                   [--no-shapes] [--log-level LOG_LEVEL]
-                                   DATACARD BIN_NAME,PROCESS_NAME
-                                   [BIN_NAME,PROCESS_NAME ...]
-
-Script to remove one or multiple bin process pairs from a datacard.
-Example usage:
-
-# remove a certain bin process pair
-> remove_bin_process_pairs.py datacard.txt ch1,ttZ -d output_directory
-
-# remove all processes for a specific bin via wildcards (note the quotes)
-> remove_bin_process_pairs.py datacard.txt 'ch1,*' -d output_directory
-
-# remove all bins for a specific process via wildcards (note the quotes)
-> remove_bin_process_pairs.py datacard.txt '*,ttZ' -d output_directory
-
-# remove bin process pairs listed in a file
-> remove_bin_process_pairs.py datacard.txt pairs.txt -d output_directory
-
-Note: The use of an output directory is recommended to keep input files
-      unchanged.
-
-positional arguments:
-  DATACARD              the datacard to read and possibly update (see
-                        --directory)
-  BIN_NAME,PROCESS_NAME
-                        names of bin process pairs to remove in the format
-                        'bin_name,process_name' or files containing these
-                        pairs line by line; supports patterns
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --directory [DIRECTORY], -d [DIRECTORY]
-                        directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
-  --no-shapes, -n       do not copy shape files to the output directory when
-                        --directory is set
-  --log-level LOG_LEVEL, -l LOG_LEVEL
-                        python log level; default: INFO
-  --log-name LOG_NAME   name of the logger on the command line; default:
-                        remove_bin_process_pairs
 ```
 
 

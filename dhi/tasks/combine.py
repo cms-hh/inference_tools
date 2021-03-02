@@ -1203,7 +1203,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         to_remove = all_hh_processes - model_hh_processes
         if to_remove:
             self.logger.info(
-                "trying to remove processe(s) {} from the combined datacard as they "
+                "trying to remove processe(s) '{}' from the combined datacard as they "
                 "are not part of the phyics model {}".format(",".join(to_remove), self.hh_model)
             )
             remove_processes_script(output_card.path, map("{}*".format, to_remove))
