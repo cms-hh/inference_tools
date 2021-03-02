@@ -84,7 +84,7 @@ def plot_gof_distribution(
         y_min = 0.
     if y_max is None:
         y_max = 1.35 * (y_max_value - y_min)
-    y_max_line = y_max / 1.4 + y_min
+    y_max_line = y_max / 1.35 + y_min
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
@@ -93,11 +93,17 @@ def plot_gof_distribution(
     r.setup_line(line_data, props={"NDC": False, "LineWidth": 3, "LineStyle": 2},
         color=colors.blue_signal)
     draw_objs.append(line_data)
+    legend_entries.append((line_data, "Data", "L"))
+
+    # integration graph
+    g_int = create_integration_graph(h_toys, data)
     prob = (np.array(toys) >= data).mean()
-    legend_entries.append((line_data, "Data, p = {:.1f} %".format(prob * 100), "L"))
+    r.setup_graph(g_int, props={"FillStyle": 3345, "FillColor": colors.blue_signal, "LineWidth": 0})
+    draw_objs.insert(-1, (g_int, "SAME,02"))
+    legend_entries.append((g_int, "p = {:.1f} %".format(prob * 100), "F"))
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=250, n=2)
+    legend = r.routines.create_legend(pad=pad, width=250, n=len(legend_entries))
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
     legend_box = r.routines.create_legend_box(legend, pad, "tr",
@@ -218,7 +224,7 @@ def plot_gofs(
         r.setup_line(h_line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
         draw_objs.append(h_line)
 
-    # draw hsitograms and data lines
+    # draw histograms and data lines
     for i, d in enumerate(data):
         y_offset = n - 1 - i
 
@@ -234,6 +240,12 @@ def plot_gofs(
         draw_objs.append((h_toys, "SAME,HIST"))
         if i == 0:
             legend_entries.append((h_toys, "Toys ({})".format(algorithm), "L"))
+
+        # integration graph
+        g_int = create_integration_graph(h_toys, (d["data"] - mean) / stddev, y_offset=y_offset)
+        r.setup_graph(g_int, props={"FillStyle": 3345, "FillColor": colors.blue_signal,
+            "LineWidth": 0})
+        draw_objs.insert(-1, (g_int, "SAME,02"))
 
         # data lines as graphs
         g_data = create_tgraph(1, (d["data"] - mean) / stddev, y_offset, 0, 0, 0, 1)
@@ -310,3 +322,30 @@ def remove_outliers(toys, sigma_outlier=10.):
         toys = central_toys
 
     return central_toys
+
+
+def create_integration_graph(hist, data, y_offset=0):
+    # get the index of the bin in hist that contains the data point
+    x_axis = hist.GetXaxis()
+    for b_data in range(1, x_axis.GetNbins() + 1):
+        if x_axis.GetBinLowEdge(b_data) <= data < x_axis.GetBinLowEdge(b_data + 1):
+            break
+    else:
+        return create_tgraph(1, -1e6, 0)
+
+    # create a graph with errors that mimics the area under the histogram
+    x_values, x_widths, y_heights = [], [], []
+    # add the bin that was hit by the data point
+    x_values.append(data)
+    x_widths.append(x_axis.GetBinLowEdge(b_data + 1) - data)
+    y_heights.append(hist.GetBinContent(b_data) - y_offset)
+    # fill the remaining bins
+    for b in range(b_data + 1, x_axis.GetNbins() + 1):
+        x_values.append(x_axis.GetBinLowEdge(b))
+        x_widths.append(x_axis.GetBinWidth(b))
+        y_heights.append(hist.GetBinContent(b) - y_offset)
+
+    # create the actual graph
+    g = create_tgraph(len(x_values), x_values, y_offset, 0, x_widths, 0, y_heights)
+
+    return g

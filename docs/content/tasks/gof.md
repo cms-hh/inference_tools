@@ -2,7 +2,7 @@
 
 The `PlotGoodnessOfFit` task shows the test statistic value of a goodness-of-fit test between data and simulation as well as for a configurable number of toys.
 The fit model is extracted from a single set of datacards.
-The p-value of the test is obtained by integrating the normalzed toy distribution starting from the value of the test statistic of data.
+The p-value of the test is obtained by integrating the normalized toy distribution starting from the value of the test statistic of data.
 More information can be found in the [combine documentation](http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/commonstatsmethods/#goodness-of-fit-tests).
 
 - [Quick example](#quick-example)
