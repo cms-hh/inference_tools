@@ -2,7 +2,8 @@
 
 The `PlotGoodnessOfFit` task shows the test statistic value of a goodness-of-fit test between data and simulation as well as for a configurable number of toys.
 The fit model is extracted from a single set of datacards.
-A gaussian fit is performed to model the toy distribution and to infer a distance to the data test statistic in units of standard deviations.
+The p-value of the test is obtained by integrating the normalzed toy distribution starting from the value of the test statistic of data.
+More information can be found in the [combine documentation](http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/commonstatsmethods/#goodness-of-fit-tests).
 
 - [Quick example](#quick-example)
 - [Dependencies](#dependencies)
