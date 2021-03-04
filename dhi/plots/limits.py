@@ -71,7 +71,6 @@ def plot_limit_scan(
         return values
 
     expected_values = check_values(expected_values, ["limit"])
-    scan_values = expected_values[scan_parameter]
     if observed_values is not None:
         observed_values = check_values(observed_values, ["limit"])
     has_thy = theory_values is not None
@@ -82,9 +81,9 @@ def plot_limit_scan(
 
     # set default ranges
     if x_min is None:
-        x_min = min(scan_values)
+        x_min = min(expected_values[scan_parameter])
     if x_max is None:
-        x_max = max(scan_values)
+        x_max = max(expected_values[scan_parameter])
 
     # start plotting
     r.setup_style()
@@ -109,7 +108,7 @@ def plot_limit_scan(
     def create_graph(values=expected_values, key="limit", sigma=None, insert=None):
         return create_tgraph(
             len(values[key]),
-            scan_values,
+            values[scan_parameter],
             values[key],
             0,
             0,
@@ -140,7 +139,7 @@ def plot_limit_scan(
     # central values
     g_exp = create_graph()
     r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 2})
-    draw_objs.append((g_exp, "SAME,L"))
+    draw_objs.append((g_exp, "SAME,LP"))
     legend_entries[3] = (g_exp, "Median expected", "L")
     y_max_value = max(y_max_value, max(expected_values["limit"]))
     y_min_value = min(y_min_value, min(expected_values["limit"]))

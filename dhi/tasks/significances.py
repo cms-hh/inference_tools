@@ -15,6 +15,7 @@ from dhi.tasks.combine import (
     POIPlotTask,
     CreateWorkspace,
 )
+from dhi.util import unique_recarray
 
 
 class SignificanceBase(POIScanTask):
@@ -26,7 +27,7 @@ class SignificanceBase(POIScanTask):
         default=False,
         description="when set, create frequentist postfit toys, producing a-posteriori expected "
         "significances, which depend on observed data; has no effect when --unblinded is used as "
-        "well; default: False"
+        "well; default: False",
     )
 
     def __init__(self, *args, **kwargs):
@@ -134,15 +135,21 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
 
     force_n_scan_parameters = 1
     sort_pois = False
+    allow_multiple_scan_ranges = True
 
     def requires(self):
+        def merge_tasks(**kwargs):
+            return [
+                MergeSignificanceScan.req(self, scan_parameters=scan_parameters, **kwargs)
+                for scan_parameters in self.get_scan_parameters_product()
+            ]
+
         reqs = {}
         if self.unblinded:
-            reqs["expected"] = MergeSignificanceScan.req(self, unblinded=False)
-            reqs["observed"] = MergeSignificanceScan.req(self, unblinded=True,
-                frequentist_toys=False)
+            reqs["expected"] = merge_tasks(unblinded=False)
+            reqs["observed"] = merge_tasks(unblinded=True, frequentist_toys=False)
         else:
-            reqs["expected"] = MergeSignificanceScan.req(self, unblinded=False)
+            reqs["expected"] = merge_tasks(unblinded=False)
         return reqs
 
     def output(self):
@@ -166,8 +173,8 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
         # load significances
         inputs = self.input()
         scan_parameter = self.scan_parameter_names[0]
-        exp_values = inputs["expected"].load(formatter="numpy")["data"]
-        obs_values = inputs["observed"].load(formatter="numpy")["data"] if self.unblinded else None
+        exp_values = self.load_scan_data(inputs["expected"])
+        obs_values = self.load_scan_data(inputs["observed"]) if self.unblinded else None
 
         # some printing
         for v in range(-2, 4 + 1):
@@ -194,6 +201,27 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
 
+    def load_scan_data(self, inputs):
+        return self._load_scan_data(inputs, self.scan_parameter_names)
+
+    @classmethod
+    def _load_scan_data(cls, inputs, scan_parameter_names):
+        import numpy as np
+
+        # load values of each input
+        all_values = []
+        for inp in inputs:
+            data = inp.load(formatter="numpy")
+            all_values.append(data["data"])
+
+        # concatenate values and safely remove duplicates
+        values = np.concatenate(all_values, axis=0)
+        test_fn = lambda kept, removed: kept < 1e-7 or abs((kept - removed) / kept) < 0.001
+        values = unique_recarray(values, cols=scan_parameter_names,
+            test_metric=("significance", test_fn))
+
+        return values
+
 
 class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
 
@@ -207,7 +235,10 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
 
     def requires(self):
         return [
-            MergeSignificanceScan.req(self, datacards=datacards)
+            [
+                MergeSignificanceScan.req(self, datacards=datacards, scan_parameters=scan_parameters)
+                for scan_parameters in self.get_scan_parameters_product()
+            ]
             for datacards in self.multi_datacards
         ]
 
@@ -232,8 +263,8 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
         # load significances
         exp_values = []
         names = []
-        for i, inp in enumerate(self.input()):
-            exp_values.append(inp.load(formatter="numpy")["data"])
+        for i, inps in enumerate(self.input()):
+            exp_values.append(self.load_scan_data(inps))
             names.append("datacards {}".format(i + 1))
 
         # set names if requested

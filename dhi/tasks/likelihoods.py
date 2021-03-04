@@ -18,6 +18,7 @@ from dhi.tasks.combine import (
     POIPlotTask,
     CreateWorkspace,
 )
+from dhi.util import unique_recarray
 
 
 class LikelihoodBase(POIScanTask):
@@ -133,9 +134,13 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
     force_n_scan_parameters = (1, 2)
     sort_pois = False
     sort_scan_parameters = False
+    allow_multiple_scan_ranges = True
 
     def requires(self):
-        return MergeLikelihoodScan.req(self)
+        return [
+            MergeLikelihoodScan.req(self, scan_parameters=scan_parameters)
+            for scan_parameters in self.get_scan_parameters_product()
+        ]
 
     def output(self):
         # additional postfix
@@ -153,20 +158,12 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
     @view_output_plots
     @law.decorator.safe_output
     def run(self):
-        import numpy as np
-
         # prepare the output
         output = self.output()
         output.parent.touch()
 
         # load scan data
-        data = self.input().load(formatter="numpy")
-        values = data["data"]
-        # poi minima
-        poi_mins = [
-            (None if np.isnan(data["poi_mins"][i]) else float(data["poi_mins"][i]))
-            for i in range(self.n_pois)
-        ]
+        values, poi_mins = self.load_scan_data(self.input())
 
         # call the plot function
         if self.n_pois == 1:
@@ -219,6 +216,56 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )
 
+    def load_scan_data(self, inputs):
+        return self._load_scan_data(inputs, self.scan_parameter_names,
+            self.get_scan_parameters_product())
+
+    @classmethod
+    def _load_scan_data(cls, inputs, scan_parameter_names, scan_parameter_combinations):
+        import numpy as np
+
+        # load values of each input
+        all_values = []
+        all_poi_mins = []
+        for inp in inputs:
+            data = inp.load(formatter="numpy")
+            all_values.append(data["data"])
+            all_poi_mins.append([
+                (None if np.isnan(data["poi_mins"][i]) else float(data["poi_mins"][i]))
+                for i in range(len(scan_parameter_names))
+            ])
+
+        # concatenate values and safely remove duplicates
+        values = np.concatenate(all_values, axis=0)
+        test_fn = lambda kept, removed: kept < 1e-7 or abs((kept - removed) / kept) < 0.001
+        values = unique_recarray(values, cols=scan_parameter_names,
+            test_metric=("dnll2", test_fn))
+
+        # pick the most appropriate poi mins
+        poi_mins = cls._select_poi_mins(all_poi_mins, scan_parameter_combinations)
+
+        return values, poi_mins
+
+    @classmethod
+    def _select_poi_mins(cls, poi_mins, scan_parameter_combinations):
+        # pick the poi mins for the scan range that has the lowest step size around the mins
+        # the combined step size of multiple dims is simply defined by their sum
+        min_step_size = 1e5
+        best_poi_mins = poi_mins[0]
+        for _poi_mins, scan_parameters in zip(poi_mins, scan_parameter_combinations):
+            if None in _poi_mins:
+                continue
+            # each min is required to be in the corresponding scan range
+            if not all((a <= v <= b) for v, (_, a, b, _) in zip(_poi_mins, scan_parameters)):
+                continue
+            # compute the merged step size
+            step_size = sum((b - a) / (n - 1.) for (_, a, b, n) in scan_parameters)
+            # store
+            if step_size < min_step_size:
+                min_step_size = step_size
+                best_poi_mins = _poi_mins
+        return best_poi_mins
+
 
 class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
@@ -234,7 +281,11 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
     def requires(self):
         return [
-            MergeLikelihoodScan.req(self, datacards=datacards) for datacards in self.multi_datacards
+            [
+                MergeLikelihoodScan.req(self, datacards=datacards, scan_parameters=scan_parameters)
+                for scan_parameters in self.get_scan_parameters_product()
+            ]
+            for datacards in self.multi_datacards
         ]
 
     def output(self):
@@ -253,25 +304,14 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
     @view_output_plots
     @law.decorator.safe_output
     def run(self):
-        import numpy as np
-
         # prepare the output
         output = self.output()
         output.parent.touch()
 
         # load scan data
         data = []
-        for i, inp in enumerate(self.input()):
-            _data = inp.load(formatter="numpy")
-
-            # likelihood values
-            values = _data["data"]
-
-            # poi minima
-            poi_mins = [
-                (None if np.isnan(_data["poi_mins"][j]) else float(_data["poi_mins"][j]))
-                for j in range(self.n_pois)
-            ]
+        for i, inps in enumerate(self.input()):
+            values, poi_mins = self.load_scan_data(inps)
 
             # store a data entry
             data.append(dict([
@@ -343,7 +383,13 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
     z_log = None
 
     def requires(self):
-        return [MergeLikelihoodScan.req(self, hh_model=hh_model) for hh_model in self.hh_models]
+        return [
+            [
+                MergeLikelihoodScan.req(self, hh_model=hh_model, scan_parameters=scan_parameters)
+                for scan_parameters in self.get_scan_parameters_product()
+            ]
+            for hh_model in self.hh_models
+        ]
 
     def output(self):
         # additional postfix
@@ -361,25 +407,14 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
     @view_output_plots
     @law.decorator.safe_output
     def run(self):
-        import numpy as np
-
         # prepare the output
         output = self.output()
         output.parent.touch()
 
         # load scan data
         data = []
-        for hh_model, inp in zip(self.hh_models, self.input()):
-            _data = inp.load(formatter="numpy")
-
-            # likelihood values
-            values = _data["data"]
-
-            # poi minima
-            poi_mins = [
-                (None if np.isnan(_data["poi_mins"][j]) else float(_data["poi_mins"][j]))
-                for j in range(self.n_pois)
-            ]
+        for hh_model, inps in zip(self.hh_models, self.input()):
+            values, poi_mins = self.load_scan_data(inps)
 
             # prepare the name
             name = hh_model.rsplit(".", 1)[-1].replace("_", " ")

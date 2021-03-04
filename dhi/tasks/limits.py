@@ -16,6 +16,7 @@ from dhi.tasks.combine import (
     POIPlotTask,
     CreateWorkspace,
 )
+from dhi.util import unique_recarray
 from dhi.config import br_hh
 
 
@@ -158,6 +159,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
 
     restrict_n_pois = 1
     restrict_n_scan_parameters = 1
+    allow_multiple_scan_ranges = True
 
     def __init__(self, *args, **kwargs):
         super(PlotUpperLimits, self).__init__(*args, **kwargs)
@@ -167,10 +169,13 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
 
         # scaling to xsec is only supported for r pois
         if self.xsec not in ("", law.NO_STR) and self.poi not in self.r_pois:
-            raise Exception("xsec conversion is only supported for r POIs")
+            raise Exception("{!r}: xsec conversion is only supported for r POIs".format(self))
 
     def requires(self):
-        return MergeUpperLimits.req(self)
+        return [
+            MergeUpperLimits.req(self, scan_parameters=scan_parameters)
+            for scan_parameters in self.get_scan_parameters_product()
+        ]
 
     def output(self):
         # additional postfix
@@ -190,17 +195,21 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
     @view_output_plots
     @law.decorator.safe_output
     def run(self):
+        import numpy as np
+
         # prepare the output
         output = self.output()
         output.parent.touch()
 
         # load limit values
-        limit_values = self.input().load(formatter="numpy")["data"]
+        limit_values = self.load_scan_data(self.input())
 
         # rescale from limit on r to limit on xsec when requested, depending on the poi
         thy_values = None
         xsec_unit = None
         if self.poi in self.r_pois:
+            thy_linspace = np.linspace(limit_values[self.scan_parameter].min(),
+                limit_values[self.scan_parameter].max(), num=100)
             if self.xsec in ["pb", "fb"]:
                 limit_values = self.convert_to_xsecs(
                     self.poi,
@@ -213,7 +222,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
                 thy_values = self.get_theory_xsecs(
                     self.poi,
                     [self.scan_parameter],
-                    limit_values[self.scan_parameter],
+                    thy_linspace,
                     self.xsec,
                     self.br,
                     xsec_kwargs=self.parameter_values_dict,
@@ -224,7 +233,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
                 thy_values = self.get_theory_xsecs(
                     self.poi,
                     [self.scan_parameter],
-                    limit_values[self.scan_parameter],
+                    thy_linspace,
                     normalize=True,
                     xsec_kwargs=self.parameter_values_dict,
                 )
@@ -233,14 +242,8 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         for v in range(-2, 4 + 1):
             if v in limit_values[self.scan_parameter]:
                 record = limit_values[limit_values[self.scan_parameter] == v][0]
-                self.publish_message(
-                    "{} = {} -> {} {}".format(
-                        self.scan_parameter,
-                        v,
-                        record["limit"],
-                        xsec_unit or "({})".format(self.poi),
-                    )
-                )
+                self.publish_message("{} = {} -> {} {}".format(self.scan_parameter, v,
+                    record["limit"], xsec_unit or "({})".format(self.poi)))
 
         # prepare observed values
         obs_values = None
@@ -270,6 +273,26 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
 
+    def load_scan_data(self, inputs):
+        return self._load_scan_data(inputs, self.scan_parameter_names)
+
+    @classmethod
+    def _load_scan_data(cls, inputs, scan_parameter_names):
+        import numpy as np
+
+        # load values of each input
+        all_values = []
+        for inp in inputs:
+            data = inp.load(formatter="numpy")
+            all_values.append(data["data"])
+
+        # concatenate values and safely remove duplicates
+        values = np.concatenate(all_values, axis=0)
+        test_fn = lambda kept, removed: kept < 1e-7 or abs((kept - removed) / kept) < 0.001
+        values = unique_recarray(values, cols=scan_parameter_names, test_metric=("limit", test_fn))
+
+        return values
+
 
 class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
 
@@ -283,7 +306,11 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
 
     def requires(self):
         return [
-            MergeUpperLimits.req(self, datacards=datacards) for datacards in self.multi_datacards
+            [
+                MergeUpperLimits.req(self, datacards=datacards, scan_parameters=scan_parameters)
+                for scan_parameters in self.get_scan_parameters_product()
+            ]
+            for datacards in self.multi_datacards
         ]
 
     def output(self):
@@ -304,6 +331,8 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
     @view_output_plots
     @law.decorator.safe_output
     def run(self):
+        import numpy as np
+
         # prepare the output
         output = self.output()
         output.parent.touch()
@@ -313,11 +342,13 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         names = []
         thy_values = None
         xsec_unit = None
-        for i, inp in enumerate(self.input()):
-            _limit_values = inp.load(formatter="numpy")["data"]
+        for i, inps in enumerate(self.input()):
+            _limit_values = self.load_scan_data(inps)
 
             # rescale from limit on r to limit on xsec when requested, depending on the poi
             if self.poi in self.r_pois:
+                thy_linspace = np.linspace(_limit_values[self.scan_parameter].min(),
+                    _limit_values[self.scan_parameter].max(), num=100)
                 if self.xsec in ["pb", "fb"]:
                     _limit_values = self.convert_to_xsecs(
                         self.poi,
@@ -332,7 +363,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
                         thy_values = self.get_theory_xsecs(
                             self.poi,
                             [self.scan_parameter],
-                            _limit_values[self.scan_parameter],
+                            thy_linspace,
                             self.xsec,
                             self.br,
                             xsec_kwargs=self.parameter_values_dict,
@@ -342,7 +373,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
                     thy_values = self.get_theory_xsecs(
                         self.poi,
                         [self.scan_parameter],
-                        _limit_values[self.scan_parameter],
+                        thy_linspace,
                         normalize=True,
                         xsec_kwargs=self.parameter_values_dict,
                     )
@@ -385,7 +416,13 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
     unblinded = None
 
     def requires(self):
-        return [MergeUpperLimits.req(self, hh_model=hh_model) for hh_model in self.hh_models]
+        return [
+            [
+                MergeUpperLimits.req(self, hh_model=hh_model, scan_parameters=scan_parameters)
+                for scan_parameters in self.get_scan_parameters_product()
+            ]
+            for hh_model in self.hh_models
+        ]
 
     def output(self):
         # additional postfix
@@ -405,6 +442,8 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
     @view_output_plots
     @law.decorator.safe_output
     def run(self):
+        import numpy as np
+
         # prepare the output
         output = self.output()
         output.parent.touch()
@@ -414,11 +453,13 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         names = []
         thy_values = None
         xsec_unit = None
-        for i, (hh_model, inp) in enumerate(zip(self.hh_models, self.input())):
-            _limit_values = inp.load(formatter="numpy")["data"]
+        for i, (hh_model, inps) in enumerate(zip(self.hh_models, self.input())):
+            _limit_values = self.load_scan_data(inps)
 
             # rescale from limit on r to limit on xsec when requested, depending on the poi
             if self.poi in self.r_pois:
+                thy_linspace = np.linspace(_limit_values[self.scan_parameter].min(),
+                    _limit_values[self.scan_parameter].max(), num=100)
                 if self.xsec in ["pb", "fb"]:
                     _limit_values = self._convert_to_xsecs(
                         hh_model,
@@ -435,7 +476,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
                             hh_model,
                             self.poi,
                             [self.scan_parameter],
-                            _limit_values[self.scan_parameter],
+                            thy_linspace,
                             self.xsec,
                             self.br,
                             xsec_kwargs=self.parameter_values_dict,
@@ -446,7 +487,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
                         hh_model,
                         self.poi,
                         [self.scan_parameter],
-                        _limit_values[self.scan_parameter],
+                        thy_linspace,
                         normalize=True,
                         xsec_kwargs=self.parameter_values_dict,
                     )

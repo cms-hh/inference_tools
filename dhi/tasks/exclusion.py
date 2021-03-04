@@ -4,16 +4,13 @@
 Tasks for obtaining exclusion plots.
 """
 
-import os
-
 import law
 import luigi
-import six
 
 from dhi.tasks.base import view_output_plots
 from dhi.tasks.combine import MultiDatacardTask, POIScanTask, POIPlotTask
-from dhi.tasks.limits import MergeUpperLimits
-from dhi.tasks.likelihoods import MergeLikelihoodScan
+from dhi.tasks.limits import MergeUpperLimits, PlotUpperLimits
+from dhi.tasks.likelihoods import MergeLikelihoodScan, PlotLikelihoodScan
 from dhi.config import br_hh
 
 
@@ -34,17 +31,20 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
     force_n_pois = 1
     force_n_scan_parameters = 1
     force_scan_parameters_unequal_pois = True
+    allow_multiple_scan_ranges = True
 
     def requires(self):
+        def merge_tasks(cls, **kwargs):
+            return [
+                cls.req(self, scan_parameters=scan_parameters, **kwargs)
+                for scan_parameters in self.get_scan_parameters_product()
+            ]
+
         return [
             {
-                "limits": MergeUpperLimits.req(self, datacards=datacards),
-                "likelihoods": MergeLikelihoodScan.req(
-                    self,
-                    pois=tuple(self.scan_parameter_names),
-                    datacards=datacards,
-                    _prefer_cli=["scan_parameters"],
-                ),
+                "limits": merge_tasks(MergeUpperLimits, datacards=datacards),
+                "likelihoods": merge_tasks(MergeLikelihoodScan, datacards=datacards,
+                    pois=tuple(self.scan_parameter_names)),
             }
             for datacards in self.multi_datacards
         ]
@@ -68,15 +68,12 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
         data = []
         for i, inp in enumerate(self.input()):
             # load limits
-            limit_data = inp["limits"].load(formatter="numpy")
-            limits = limit_data["data"]
+            limits = PlotUpperLimits._load_scan_data(inp["limits"], self.scan_parameter_names)
 
             # load likelihoods
-            ll_data = inp["likelihoods"].load(formatter="numpy")
-            nll_values = ll_data["data"]
-            # scan parameter mininum
-            scan_min = ll_data["poi_mins"][0]
-            scan_min = None if np.isnan(scan_min) else float(scan_min)
+            nll_values, scan_min = PlotLikelihoodScan._load_scan_data(inp["likelihoods"],
+                self.scan_parameter_names, self.get_scan_parameters_product())
+            scan_min = None if np.isnan(scan_min[0]) else float(scan_min[0])
 
             # store data
             entry = dict(
@@ -149,22 +146,26 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
     force_n_scan_parameters = 2
     force_scan_parameters_unequal_pois = True
     sort_scan_parameters = False
+    allow_multiple_scan_ranges = True
 
     def __init__(self, *args, **kwargs):
         super(PlotExclusionAndBestFit2D, self).__init__(*args, **kwargs)
 
         if self.pois[0] not in self.r_pois and self.xsec_contours:
-            self.logger.warning(
-                "cross section contours not supported for POI {}".format(self.pois[0])
-            )
+            self.logger.warning("cross section contours not supported for POI {}".format(
+                self.pois[0]))
             self.xsec_contours = tuple()
 
     def requires(self):
+        def merge_tasks(cls, **kwargs):
+            return [
+                cls.req(self, scan_parameters=scan_parameters, **kwargs)
+                for scan_parameters in self.get_scan_parameters_product()
+            ]
+
         return {
-            "limits": MergeUpperLimits.req(self),
-            "likelihoods": MergeLikelihoodScan.req(
-                self, pois=tuple(self.scan_parameter_names), _prefer_cli=["scan_parameters"]
-            ),
+            "limits": merge_tasks(MergeUpperLimits),
+            "likelihoods": merge_tasks(MergeLikelihoodScan, pois=tuple(self.scan_parameter_names)),
         }
 
     def output(self):
@@ -184,7 +185,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
 
         # load limit scan data
         inputs = self.input()
-        limits = inputs["limits"].load(formatter="numpy")["data"]
+        limits = PlotUpperLimits._load_scan_data(inputs["limits"], self.scan_parameter_names)
 
         # prepare observed limits
         obs_limits = None
@@ -198,24 +199,23 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         # also compute limit values in a specified unit when requested
         xsec_values = None
         xsec_levels = None
-        xsec_label_positions = None
         if self.pois[0] in self.r_pois and self.xsec_contours:
             # obtain xsec values for the visible range
             def visible_border(i, j, axis_param):
-                axis_limt = self.get_axis_limit(axis_param)
-                if axis_limt is None:
-                    return self.scan_parameters[i][j]
-                else:
-                    comp = min if axis_param.endswith("_min") else max
-                    return comp(axis_limt, self.scan_parameters[i][j])
+                comp = min if axis_param.endswith("_min") else max
+                axis_limit = self.get_axis_limit(axis_param)
+                ranges = self.scan_parameters_dict[self.scan_parameter_names[i]]
+                border = comp([r[j] for r in ranges])
+                return border if axis_limit is None else comp(axis_limit, border)
+
             linspace_parameters = [
-                (None, visible_border(0, 1, "x_min"), visible_border(0, 2, "x_max"), None),
-                (None, visible_border(1, 1, "y_min"), visible_border(1, 2, "y_max"), None),
+                (visible_border(0, 0, "x_min"), visible_border(0, 1, "x_max")),
+                (visible_border(1, 0, "y_min"), visible_border(1, 1, "y_max")),
             ]
             xsec_values = self.get_theory_xsecs(
                 self.pois[0],
                 self.scan_parameter_names,
-                self._get_scan_linspace(linspace_parameters, step_size=0.1),
+                self._get_scan_linspace(linspace_parameters, step_sizes=0.1),
                 self.xsec,
                 self.br,
                 xsec_kwargs=self.parameter_values_dict,
@@ -229,10 +229,8 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
                 xsec_levels = [float(l) for l in self.xsec_contours]
 
         # load likelihood scan data
-        ll_data = inputs["likelihoods"].load(formatter="numpy")
-        nll_values = ll_data["data"]
-        # scan parameter minima
-        scan_mins = [ll_data["poi_mins"][i] for i in range(self.n_scan_parameters)]
+        nll_values, scan_mins = PlotLikelihoodScan._load_scan_data(inputs["likelihoods"],
+            self.scan_parameter_names, self.get_scan_parameters_product())
         scan_mins = [(None if np.isnan(v) else float(v)) for v in scan_mins]
 
         # call the plot function

@@ -56,7 +56,7 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
 
         # check that the number of toys is positive
         if self.toys <= 0:
-            raise ValueError("the number of toys must be positive for goodness-of-fit tests")
+            raise ValueError("{!r}: number of toys must be positive for GOF tests".format(self))
 
     def create_branch_map(self):
         # the branch map refers to indices of toys in that branch, with 0 meaning the test on data
@@ -215,15 +215,15 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
         if len(self.toys) == 1:
             self.toys *= n_seqs
         elif len(self.toys) != n_seqs:
-            raise ValueError("the number of --toys values must either be one or match the amount "
+            raise ValueError("{!r}: number of toy values must either be one or match the amount "
                 "of datacard sequences in --multi-datacards ({}), but got {}".format(
-                    n_seqs, len(self.toys)))
+                    self, n_seqs, len(self.toys)))
         if len(self.toys_per_task) == 1:
             self.toys_per_task *= n_seqs
         elif len(self.toys_per_task) != n_seqs:
-            raise ValueError("the number of --toys-per-task values must either be one or match the "
+            raise ValueError("{!r}: number of toys_per_task values must either be one or match the "
                 "amount of datacard sequences in --multi-datacards ({}), but got {}".format(
-                    n_seqs, len(self.toys_per_task)))
+                    self, n_seqs, len(self.toys_per_task)))
 
     @property
     def toys_postfix(self):

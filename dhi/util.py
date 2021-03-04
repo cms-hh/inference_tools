@@ -13,8 +13,10 @@ import itertools
 import array
 import contextlib
 import tempfile
+import operator
 import logging
 
+import six
 
 # modules and objects from lazy imports
 _plt = None
@@ -389,6 +391,50 @@ def poisson_asym_errors(v):
     return err_up, err_down
 
 
+def unique_recarray(a, cols=None, sort=True, test_metric=None):
+    import numpy as np
+
+    metric, test_fn = test_metric or (None, None)
+
+    # use all columns by default, except for the optional test metric
+    if not cols:
+        cols = list(a.dtype.names)
+        if metric and metric in cols:
+            cols.remove(metric)
+    else:
+        cols = list(cols)
+
+    # get the indices of unique entries and sort them
+    indices = np.unique(a[cols], return_index=True)[1]
+
+    # by default, indices are ordered such that the columns used to identify duplicates are sorted
+    # so when sort is True, keep it that way, and otherwise sort indices to preserve the old order
+    if not sort:
+        indices = sorted(indices)
+
+    # create the unique array
+    b = np.array(a[indices])
+
+    # perform a check to see if removed values differ in a certain metric
+    if metric:
+        removed_indices = set(range(a.shape[0])) - set(indices)
+        for i in removed_indices:
+            # get the removed metric value
+            removed_metric = float(a[i][metric])
+            # get the kept metric value
+            j = six.moves.reduce(operator.and_, [b[c] == v for c, v in zip(cols, a[i][cols])])
+            j = np.argwhere(j).flatten()[0]
+            kept_metric = float(b[j][metric])
+            # call test_fn except when both values are nan
+            both_nan = np.isnan(removed_metric) and np.isnan(kept_metric)
+            if not both_nan and not test_fn(kept_metric, removed_metric):
+                raise Exception("duplicate entries identified by columns {} with '{}' values of {} "
+                    "(kept) and {} (removed at row {}) differ".format(
+                        cols, metric, kept_metric, removed_metric, i))
+
+    return b
+
+
 class TFileCache(object):
     def __init__(self, logger=None):
         super(TFileCache, self).__init__()
@@ -556,16 +602,3 @@ class ROOTColorGetter(object):
             return c
 
         raise AttributeError("cannot interpret '{}' as color".format(obj))
-
-
-@contextlib.contextmanager
-def temporary_canvas(*args, **kwargs):
-    ROOT = import_ROOT()
-
-    c = ROOT.TCanvas(*args, **kwargs)
-
-    try:
-        yield c
-    finally:
-        if c and not c.IsZombie():
-            c.Close()

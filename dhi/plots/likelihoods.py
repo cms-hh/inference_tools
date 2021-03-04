@@ -5,7 +5,6 @@ Likelihood plots using ROOT.
 """
 
 import math
-import array
 
 import numpy as np
 import scipy.interpolate
@@ -13,11 +12,10 @@ import scipy.optimize
 from scinum import Number
 
 from dhi.config import poi_data, br_hh_names, campaign_labels, chi2_levels, colors, color_sequence
-from dhi.util import (
-    import_ROOT, to_root_latex, get_neighbor_coordinates, create_tgraph, DotDict, minimize_1d,
-    try_int,
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d
+from dhi.plots.util import (
+    use_style, draw_model_parameters, fill_hist_from_points, create_random_name, get_contours,
 )
-from dhi.plots.util import use_style, draw_model_parameters
 
 
 colors = colors.root
@@ -75,7 +73,7 @@ def plot_likelihood_scan_1d(
     y_max_value = max(dnll2_values[(poi_values >= x_min) & (poi_values <= x_min)])
     if y_log:
         if y_min is None:
-            y_min = 1e-2
+            y_min = 1e-3
         if y_max is None:
             y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
         y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.4)
@@ -249,7 +247,7 @@ def plot_likelihood_scans_1d(
     ])
     if y_log:
         if y_min is None:
-            y_min = 1e-2
+            y_min = 1e-3
         if y_max is None:
             y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
         y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.4)
@@ -364,7 +362,6 @@ def plot_likelihood_scan_2d(
     y_max=None,
     z_min=None,
     z_max=None,
-    fill_nans=True,
     model_parameters=None,
     campaign=None,
 ):
@@ -377,10 +374,8 @@ def plot_likelihood_scan_2d(
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
     and default to the ranges of the poi values. *z_min* and *z_max* limit the range of the z-axis.
-    When *fill_nans* is *True*, points with failed fits, denoted by nan values, are filled with the
-    averages of neighboring fits. *model_parameters* can be a dictionary of key-value pairs of model
-    parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*.
+    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d
     """
@@ -397,47 +392,14 @@ def plot_likelihood_scan_2d(
         poi1_values, poi2_values, dnll2_values, poi1_min=poi1_min, poi2_min=poi2_min,
     )
 
-    # transform the poi coordinates and dnll2 values into a 2d array
-    # where the inner (outer) dimension refers to poi1 (poi2)
-    e1 = np.unique(poi1_values)
-    e2 = np.unique(poi2_values)
-    i1 = np.searchsorted(e1, poi1_values, side="right") - 1
-    i2 = np.searchsorted(e2, poi2_values, side="right") - 1
-    data = np.zeros((e2.size, e1.size), dtype=np.float32)
-    data[i2, i1] = dnll2_values
-
-    # optionally fill nans with averages over neighboring points
-    if fill_nans:
-        nans = np.argwhere(np.isnan(data))
-        npoints = {tuple(p): get_neighbor_coordinates(data.shape, *p) for p in nans}
-        nvals = {p: data[[c[0] for c in cs], [c[1] for c in cs]] for p, cs in npoints.items()}
-        nmeans = {p: vals[~np.isnan(vals)].mean() for p, vals in nvals.items()}
-        data[[p[0] for p in nmeans], [p[1] for p in nmeans]] = nmeans.values()
-
-    # change non-positive numbers to the next smallest number below a threshold
-    mask = data <= 0
-    pos_min = min(data[~mask].min(), z_min or 1e-3)
-    data[mask] = pos_min
-
-    # set ranges
-    bin_width1 = (max(poi1_values) - min(poi1_values)) / (len(e1) - 1)
-    bin_width2 = (max(poi2_values) - min(poi2_values)) / (len(e2) - 1)
-    x_min_default = min(poi1_values) - 0.5 * bin_width1
-    x_max_default = max(poi1_values) + 0.5 * bin_width1
-    y_min_default = min(poi2_values) - 0.5 * bin_width2
-    y_max_default = max(poi2_values) + 0.5 * bin_width2
-    if x_min is None:
-        x_min = x_min_default
-    if x_max is None:
-        x_max = x_max_default
-    if y_min is None:
-        y_min = y_min_default
-    if y_max is None:
-        y_max = y_max_default
-    if z_min is None:
-        z_min = data.min()
-    if z_max is None:
-        z_max = data.max()
+    # determine contours independent of plotting
+    contours = get_contours(
+        poi1_values,
+        poi2_values,
+        dnll2_values,
+        levels=[chi2_levels[2][1], chi2_levels[2][2]],
+        frame_kwargs=[{"mode": "edge"}],
+    )
 
     # start plotting
     r.setup_style()
@@ -445,19 +407,37 @@ def plot_likelihood_scan_2d(
     pad.cd()
     draw_objs = []
 
-    # 2d histogram
+    # create the 2D histogram from values
+    h_nll = create_dnll2_hist(poi1_values, poi2_values, dnll2_values, x_min=x_min, x_max=x_max,
+        y_min=y_min, y_max=y_max, z_min=z_min, z_max=z_max)
+    x_min = h_nll.GetXaxis().GetXmin()
+    x_max = h_nll.GetXaxis().GetXmax()
+    y_min = h_nll.GetYaxis().GetXmin()
+    y_max = h_nll.GetYaxis().GetXmax()
+    z_min = h_nll.GetMinimum()
+    z_max = h_nll.GetMaximum()
+
+    # dummy histogram to control axes
     x_title = to_root_latex(poi_data[poi1].label)
     y_title = to_root_latex(poi_data[poi2].label)
     z_title = "-2 #Delta log(L)"
-    h_nll = ROOT.TH2F("h_nll", ";{};{};{}".format(x_title, y_title, z_title),
-        data.shape[1], x_min_default, x_max_default, data.shape[0], y_min_default, y_max_default)
-    r.setup_hist(h_nll, pad=pad, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
-    r.setup_z_axis(h_nll.GetZaxis(), pad=pad, props={"TitleOffset": 1.3})
-    h_nll.GetXaxis().SetRangeUser(x_min, x_max)
-    h_nll.GetYaxis().SetRangeUser(y_min, y_max)
-    draw_objs.append((h_nll, "COLZ"))
-    for i, j in np.ndindex(data.shape):
-        h_nll.SetBinContent(j + 1, i + 1, data[i, j])
+    h_dummy = ROOT.TH2F("h_nll", ";{};{};{}".format(x_title, y_title, z_title),
+        1, x_min, x_max, 1, y_min, y_max)
+    r.setup_hist(h_dummy, pad=pad, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
+    r.setup_z_axis(h_dummy.GetZaxis(), pad=pad, props={"TitleOffset": 1.3})
+    draw_objs.append((h_dummy, "COLZ"))
+
+    # setup the nll hist
+    r.setup_hist(h_nll, props={"ContourXX": 100, "Minimum": z_min, "Maximum": z_max})
+    draw_objs.append((h_nll, "SAME,COLZ"))
+
+    # 1 and 2 sigma contours
+    for g in contours[0]:
+        r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.green})
+        draw_objs.append((g, "SAME,C"))
+    for g in contours[1]:
+        r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.yellow})
+        draw_objs.append((g, "SAME,C"))
 
     # best fit point
     g_fit = ROOT.TGraphAsymmErrors(1)
@@ -470,16 +450,6 @@ def plot_likelihood_scan_2d(
         g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
     r.setup_graph(g_fit, color=colors.red)
     draw_objs.append((g_fit, "PEZ"))
-
-    # 1 and 2 sigma contours
-    h1 = ROOT.TH2F(h_nll)
-    h2 = ROOT.TH2F(h_nll)
-    r.setup_hist(h1, props={"LineWidth": 2, "LineColor": colors.green,
-        "Contour": (1, array.array("d", [chi2_levels[2][1]]))})
-    r.setup_hist(h2, props={"LineWidth": 2, "LineColor": colors.yellow,
-        "Contour": (1, array.array("d", [chi2_levels[2][2]]))})
-    draw_objs.append((h1, "SAME,CONT3"))
-    draw_objs.append((h2, "SAME,CONT3"))
 
     # measurement and best fit value labels
     fit_label1 = "{} = {}".format(to_root_latex(poi_data[poi1].label),
@@ -568,6 +538,25 @@ def plot_likelihood_scans_2d(
         # default name
         d.setdefault("name", str(i + 1))
 
+    # determine contours independent of plotting
+    contours = [
+        get_contours(
+            d["values"][poi1],
+            d["values"][poi2],
+            d["values"]["dnll2"],
+            levels=[chi2_levels[2][1], chi2_levels[2][2]],
+            frame_kwargs=[{"mode": "edge"}],
+        )
+        for d in data
+    ]
+
+    # start plotting
+    r.setup_style()
+    canvas, (pad,) = r.routines.create_canvas(pad_props={"Logz": True})
+    pad.cd()
+    legend_entries = []
+    draw_objs = []
+
     # set ranges
     if x_min is None:
         x_min = min([min(d["values"][poi1]) for d in data])
@@ -578,13 +567,6 @@ def plot_likelihood_scans_2d(
     if y_max is None:
         y_max = max([max(d["values"][poi2]) for d in data])
 
-    # start plotting
-    r.setup_style()
-    canvas, (pad,) = r.routines.create_canvas(pad_props={"Logz": True})
-    pad.cd()
-    legend_entries = []
-    draw_objs = []
-
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[poi1].label)
     y_title = to_root_latex(poi_data[poi2].label)
@@ -593,77 +575,39 @@ def plot_likelihood_scans_2d(
     draw_objs.append((h_dummy, "HIST"))
 
     # loop through data entries
-    for d, col in zip(data, color_sequence[:len(data)]):
+    for d, (cont1, cont2), col in zip(data, contours, color_sequence[:len(data)]):
         # evaluate the scan
         scan = evaluate_likelihood_scan_2d(
             d["values"][poi1], d["values"][poi2], d["values"]["dnll2"],
             poi1_min=d["poi_mins"][0], poi2_min=d["poi_mins"][1],
         )
 
-        # for each set of expected values, transform the poi coordinates and dnll2 values into a 2d
-        # array where the inner (outer) dimension refers to poi1 (poi2)
-        e1 = np.unique(d["values"][poi1])
-        e2 = np.unique(d["values"][poi2])
-        i1 = np.searchsorted(e1, d["values"][poi1], side="right") - 1
-        i2 = np.searchsorted(e2, d["values"][poi2], side="right") - 1
-        exp = np.zeros((e2.size, e1.size), dtype=np.float32)
-        exp[i2, i1] = d["values"]["dnll2"]
-
-        # optionally fill nans with averages over neighboring points
-        if fill_nans:
-            nans = np.argwhere(np.isnan(exp))
-            npoints = {tuple(p): get_neighbor_coordinates(exp.shape, *p) for p in nans}
-            nvals = {p: exp[[c[0] for c in cs], [c[1] for c in cs]] for p, cs in npoints.items()}
-            nmeans = {p: vals[~np.isnan(vals)].mean() for p, vals in nvals.items()}
-            exp[[p[0] for p in nmeans], [p[1] for p in nmeans]] = nmeans.values()
-
-        # infer the binning
-        _x_min = min(d["values"][poi1])
-        _x_max = max(d["values"][poi1])
-        _y_min = min(d["values"][poi2])
-        _y_max = max(d["values"][poi2])
-        bin_width1 = (_x_max - _x_min) / (len(e1) - 1)
-        bin_width2 = (_y_max - _y_min) / (len(e2) - 1)
-        binning = (
-            exp.shape[1], _x_min - 0.5 * bin_width1, _x_max + 0.5 * bin_width1,
-            exp.shape[0], _y_min - 0.5 * bin_width2, _y_max + 0.5 * bin_width2,
-        )
-
-        # create two histograms for plotting 1 and 2 sigma contours
-        h1 = ROOT.TH2F("h1_{}".format(i), "", *binning)
-        h2 = ROOT.TH2F("h2_{}".format(i), "", *binning)
-        r.setup_hist(h1, props={"LineWidth": 2, "LineStyle": 1,
-            "Contour": (1, array.array("d", [chi2_levels[2][1]]))}, color=colors[col])
-        r.setup_hist(h2, props={"LineWidth": 2, "LineStyle": 2,
-           "Contour": (1, array.array("d", [chi2_levels[2][2]]))}, color=colors[col])
-
-        # fill them
-        for x, y in np.ndindex(exp.shape):
-            h1.SetBinContent(y + 1, x + 1, exp[x, y])
-            h2.SetBinContent(y + 1, x + 1, exp[x, y])
+        # plot 1 and 2 sigma contours
+        for g1 in cont1:
+            r.setup_graph(g1, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors[col]})
+            draw_objs.append((g1, "SAME,C"))
+        for g2 in cont2:
+            r.setup_graph(g2, props={"LineWidth": 2, "LineStyle": 2, "LineColor": colors[col]})
+            draw_objs.append((g2, "SAME,C"))
+        name = to_root_latex(br_hh_names.get(d["name"], d["name"]))
+        legend_entries.append((g1, name, "L"))
 
         # best fit point
         g_fit = create_tgraph(1, scan.num1_min(), scan.num2_min())
         r.setup_graph(g_fit, props={"MarkerStyle": 33, "MarkerSize": 2}, color=colors[col])
-
-        # add to draw objects and legend
-        draw_objs.append((g_fit, "PEZ"))
-        draw_objs.append((h1, "SAME,CONT3"))
-        draw_objs.append((h2, "SAME,CONT3"))
-        name = to_root_latex(br_hh_names.get(d["name"], d["name"]))
-        legend_entries.append((h1, name, "L"))
+        draw_objs.append((g_fit, "SAME,PEZ"))
 
     # append legend entries to show styles
     g_fit_style = g_fit.Clone()
-    h1_style = h1.Clone()
-    h2_style = h2.Clone()
+    g1_style = g1.Clone()
+    g2_style = g2.Clone()
     r.apply_properties(g_fit_style, {"MarkerColor": colors.black})
-    r.apply_properties(h1_style, {"LineColor": colors.black})
-    r.apply_properties(h2_style, {"LineColor": colors.black})
+    r.apply_properties(g1_style, {"LineColor": colors.black})
+    r.apply_properties(g2_style, {"LineColor": colors.black})
     legend_entries.extend([
         (g_fit_style, "Best fit value", "P"),
-        (h1_style, "#pm 1 #sigma", "L"),
-        (h2_style, "#pm 2 #sigma", "L"),
+        (g1_style, "#pm 1 #sigma", "L"),
+        (g2_style, "#pm 2 #sigma", "L"),
     ])
 
     # prepend empty values
@@ -733,7 +677,7 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     poi_values_min = poi_values.min()
     poi_values_max = poi_values.max()
 
-    # remove values where dnnl2 is nan
+    # remove values where dnll2 is nan
     mask = ~np.isnan(dnll2_values)
     poi_values = poi_values[mask]
     dnll2_values = dnll2_values[mask]
@@ -830,7 +774,7 @@ def evaluate_likelihood_scan_2d(
     poi2_values_min = poi2_values.min()
     poi2_values_max = poi2_values.max()
 
-    # remove values where dnnl2 is nan
+    # remove values where dnll2 is nan
     mask = ~np.isnan(dnll2_values)
     poi1_values = poi1_values[mask]
     poi2_values = poi2_values[mask]
@@ -906,3 +850,63 @@ def evaluate_likelihood_scan_2d(
         num1_min=num1_min,
         num2_min=num2_min,
     )
+
+
+def create_dnll2_hist(poi1_values, poi2_values, dnll2_values, x_min=None, x_max=None, y_min=None,
+        y_max=None, z_min=None, z_max=None):
+    ROOT = import_ROOT()
+
+    # make sure to work with numpy arrays
+    poi1_values = np.array(poi1_values, dtype=np.float32)
+    poi2_values = np.array(poi2_values, dtype=np.float32)
+    dnll2_values = np.array(dnll2_values, dtype=np.float32)
+
+    # change non-positive numbers and nans to the next smallest number below a threshold
+    mask = (dnll2_values <= 0) & np.isnan(dnll2_values)
+    dnll2_values[mask] = min(dnll2_values[~mask].min(), z_min or 1e-3)
+
+    # get the smallest difference between two points in each direction and call it bin width
+    ex = np.unique(poi1_values)
+    ey = np.unique(poi2_values)
+    x_width = min(ex[1:] - ex[:-1])
+    y_width = min(ey[1:] - ey[:-1])
+
+    # get axis limits
+    if x_min is None:
+        x_min = min(poi1_values) - 0.5 * x_width
+    if x_max is None:
+        x_max = max(poi1_values) + 0.5 * x_width
+    if y_min is None:
+        y_min = min(poi2_values) - 0.5 * y_width
+    if y_max is None:
+        y_max = max(poi2_values) + 0.5 * y_width
+    if z_min is None:
+        z_min = dnll2_values[~np.isnan(dnll2_values)].min()
+    if z_max is None:
+        z_max = dnll2_values[~np.isnan(dnll2_values)].max()
+
+    # infer number of bins
+    x_bins = (x_max - x_min) / x_width
+    y_bins = (y_max - y_min) / y_width
+    if round(x_bins, 3) != int(x_bins):
+        raise Exception("x axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
+            x_min, x_max, x_width))
+    if round(y_bins, 3) != int(y_bins):
+        raise Exception("y axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
+            y_min, y_max, y_width))
+    x_bins = int(x_bins)
+    y_bins = int(y_bins)
+
+    # 2D histogram
+    h_nll = ROOT.TH2F(create_random_name(), "", x_bins, x_min, x_max, y_bins, y_min, y_max)
+    h_nll.SetMinimum(z_min)
+    h_nll.SetMaximum(z_max)
+
+    # fill it and lift values to the z_min to avoid drawing white bins
+    fill_hist_from_points(h_nll, poi1_values, poi2_values, dnll2_values)
+    for bx in range(1, h_nll.GetNbinsX() + 1):
+        for by in range(1, h_nll.GetNbinsY() + 1):
+            if h_nll.GetBinContent(bx, by) < z_min:
+                h_nll.SetBinContent(bx, by, z_min)
+
+    return h_nll

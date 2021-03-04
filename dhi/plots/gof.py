@@ -9,8 +9,8 @@ import math
 import numpy as np
 import scipy.stats
 
-from dhi.config import poi_data, campaign_labels, colors, br_hh_names
-from dhi.util import import_ROOT, to_root_latex, try_int, create_tgraph
+from dhi.config import campaign_labels, colors, br_hh_names
+from dhi.util import import_ROOT, to_root_latex, create_tgraph
 from dhi.plots.util import use_style, draw_model_parameters
 
 
@@ -212,6 +212,7 @@ def plot_gofs(
     h_dummy.GetYaxis().SetBinLabel(1, "")
     draw_objs.append((h_dummy, "HIST"))
     y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{p = %.1f %%}}"
+    stats_label_tmpl = "#splitline{#splitline{N = %d}{#mu = %.1f}}{#sigma = %.1f}"
 
     # vertical line at 1
     v_line = ROOT.TLine(0, 0, 0, n)
@@ -228,8 +229,16 @@ def plot_gofs(
     for i, d in enumerate(data):
         y_offset = n - 1 - i
 
-        # stylized histograms
+        # stats label
         mean, stddev = scipy.stats.norm.fit(d["toys"])
+        stats_label_x = r.get_x(84, pad, anchor="right")
+        stats_label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
+        stats_label = stats_label_tmpl % (len(d["toys"]), mean, stddev)
+        stats_label = ROOT.TLatex(stats_label_x, stats_label_y, stats_label)
+        r.setup_latex(stats_label, props={"NDC": True, "TextAlign": 12, "TextSize": 16})
+        draw_objs.append(stats_label)
+
+        # stylized histograms
         h_toys = ROOT.TH1F("h_toys_{}".format(i), "", n_bins, x_min, x_max)
         r.setup_hist(h_toys)
         for v in d["toys"]:
@@ -249,7 +258,7 @@ def plot_gofs(
 
         # data lines as graphs
         g_data = create_tgraph(1, (d["data"] - mean) / stddev, y_offset, 0, 0, 0, 1)
-        r.setup_graph(g_data, props={"LineWidth": 2, "LineStyle": 2}, color=colors.blue_signal)
+        r.setup_graph(g_data, props={"LineWidth": 3, "LineStyle": 2}, color=colors.blue_signal)
         draw_objs.append((g_data, "SAME,EZ"))
         if i == 0:
             legend_entries.append((g_data, "Data", "L"))

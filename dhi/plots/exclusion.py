@@ -5,20 +5,18 @@ Exclusion result plots using ROOT.
 """
 
 import math
-import array
-import uuid
-import six
-import itertools
 
 import numpy as np
 import scipy.interpolate
 
 from dhi.config import poi_data, campaign_labels, colors, br_hh_names
 from dhi.util import (
-    import_ROOT, DotDict, to_root_latex, create_tgraph, minimize_1d, try_int, temporary_canvas,
+    import_ROOT, DotDict, to_root_latex, create_tgraph, minimize_1d, try_int,
 )
 from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
-from dhi.plots.util import use_style, draw_model_parameters
+from dhi.plots.util import (
+    use_style, draw_model_parameters, get_graph_points, get_contours, get_text_extent,
+)
 
 
 colors = colors.root
@@ -377,26 +375,26 @@ def plot_exclusion_and_bestfit_2d(
     if has_unc2:
         for g in contours["limit_p2"]:
             r.setup_graph(g, props={"LineStyle": 2, "FillColor": colors.light_grey})
-            draw_objs.append((g, "F,SAME"))
+            draw_objs.append((g, "SAME,F"))
         legend_entries.append((g, "#pm 2 #sigma expected", "LF"))
 
     # -1 and +1 sigma exclusion
     if has_unc1:
         for g in contours["limit_p1"]:
             r.setup_graph(g, props={"LineStyle": 2, "FillColor": colors.grey})
-            draw_objs.append((g, "F,SAME"))
+            draw_objs.append((g, "SAME,F"))
         legend_entries.insert(0, (g, "#pm 1 #sigma expected", "LF"))
 
         p1_col = colors.light_grey if has_unc2 else colors.white
         for g in contours["limit_m1"]:
             r.setup_graph(g, props={"FillColor": p1_col})
-            draw_objs.append((g, "F,SAME"))
+            draw_objs.append((g, "SAME,F"))
 
     # -2 sigma exclusion
     if has_unc2:
         for g in contours["limit_m2"]:
             r.setup_graph(g, props={"FillColor": colors.white})
-            draw_objs.append((g, "F,SAME"))
+            draw_objs.append((g, "SAME,F"))
 
     # cross section contours
     if xsec_values:
@@ -416,7 +414,7 @@ def plot_exclusion_and_bestfit_2d(
             for g in graphs:
                 r.setup_graph(g, props={"LineColor": colors.dark_grey_trans_70, "LineStyle": 3,
                     "LineWidth": 1})
-                draw_objs.append((g, "L,SAME"))
+                draw_objs.append((g, "SAME,L"))
 
         # draw labels at automatic positions
         all_positions = []
@@ -442,7 +440,7 @@ def plot_exclusion_and_bestfit_2d(
     # nominal exclusion
     for g in contours["limit"]:
         r.setup_graph(g, props={"LineStyle": 2})
-        draw_objs.append((g, "L,SAME"))
+        draw_objs.append((g, "SAME,L"))
     legend_entries.insert(0, (g, "Excluded (expected)", "L"))
 
     # observed exclusion
@@ -468,8 +466,8 @@ def plot_exclusion_and_bestfit_2d(
             g_inv = invert_graph(g, padding=1000.)
             r.setup_graph(g, props={"LineStyle": 1})
             r.setup_graph(g_inv, props={"LineStyle": 1, "FillColor": colors.blue_signal_trans})
-            draw_objs.append((g, "L,SAME"))
-            draw_objs.append((g_inv, "F,SAME"))
+            draw_objs.append((g, "SAME,L"))
+            draw_objs.append((g_inv, "SAME,F"))
         legend_entries.append((g_inv, "Excluded (observed)", "AF"))
 
     # best fit point
@@ -584,150 +582,6 @@ def evaluate_limit_scan_1d(scan_values, limit_values):
     )
 
 
-def frame_histogram(hist, x_width, y_width, mode="edge", frame_value=None, contour_level=None):
-    # when the mode is "contour-", edge values below the level are set to a higher value which
-    # effectively closes contour areas that are below (thus the "-") the contour level
-    # when the mode is "contour++", the opposite happens to close contour areas above the level
-    assert(mode in ["edge", "constant", "contour+", "contour-"])
-    if mode == "constant":
-        assert(frame_value is not None)
-    elif mode in ["contour+", "contour-"]:
-        assert(contour_level is not None)
-
-    # first, extract histogram data into a 2D array (x-axis is inner dimension 1)
-    data = np.array([
-        [
-            hist.GetBinContent(bx, by)
-            for bx in range(1, hist.GetNbinsX() + 1)
-        ]
-        for by in range(1, hist.GetNbinsY() + 1)
-    ])
-
-    # pad the data
-    if mode == "constant":
-        pad_kwargs = {"mode": "constant", "constant_values": frame_value}
-    else:
-        pad_kwargs = {"mode": "edge"}
-    data = np.pad(data, pad_width=[1, 1], **pad_kwargs)
-
-    # update frame values
-    if mode in ["contour+", "contour-"]:
-        # close contours depending on the mode
-        idxs = list(itertools.product((0, data.shape[0] - 1), range(0, data.shape[1])))
-        idxs += list(itertools.product(range(1, data.shape[0] - 1), (0, data.shape[1] - 1)))
-        for i, j in idxs:
-            if mode == "contour-":
-                if data[i, j] < contour_level:
-                    data[i, j] = contour_level + 10 * abs(contour_level)
-            elif mode == "contour+":
-                if data[i, j] > contour_level:
-                    data[i, j] = contour_level - 10 * abs(contour_level)
-
-    # amend bin edges
-    x_edges = [hist.GetXaxis().GetBinLowEdge(bx) for bx in range(1, hist.GetNbinsX() + 2)]
-    y_edges = [hist.GetYaxis().GetBinLowEdge(by) for by in range(1, hist.GetNbinsY() + 2)]
-    x_edges = [x_edges[0] - x_width] + x_edges + [x_edges[-1] + x_width]
-    y_edges = [y_edges[0] - y_width] + y_edges + [y_edges[-1] + y_width]
-
-    # combine data and edges into a new histogram and fill it
-    hist_padded = hist.__class__(str(uuid.uuid4()), "", len(x_edges) - 1, array.array("d", x_edges),
-        len(y_edges) - 1, array.array("d", y_edges))
-    hist_padded.SetDirectory(0)
-    for by, _data in enumerate(data):
-        for bx, z in enumerate(_data):
-            hist_padded.SetBinContent(bx + 1, by + 1, z)
-
-    return hist_padded
-
-
-# helper to fill histograms
-def fill_hist(h, x_values, y_values, z_values):
-    ROOT = import_ROOT()
-
-    # first, fill a graph to use ROOT's interpolation for missing vlaues
-    g = ROOT.TGraph2D(len(z_values))
-    for i, (x, y, z) in enumerate(zip(x_values, y_values, z_values)):
-        if not np.isnan(z):
-            g.SetPoint(i, x, y, z)
-
-    # then, fill histogram bins
-    for bx in range(1, h.GetNbinsX() + 1):
-        for by in range(1, h.GetNbinsY() + 1):
-            x = h.GetXaxis().GetBinCenter(bx)
-            y = h.GetYaxis().GetBinCenter(by)
-            z = g.Interpolate(x, y)
-            h.SetBinContent(bx, by, z)
-
-
-# helper to extract contours
-def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_points=5):
-    ROOT = import_ROOT()
-
-    # to extract contours, we need a 2D histogram with optimized bin widths, edges and padding
-    def get_min_diff(values):
-        values = sorted(set(values))
-        diffs = [(values[i + 1] - values[i]) for i in range(len(values) - 1)]
-        return min(diffs)
-
-    # x axis
-    x_min = min(x_values)
-    x_max = max(x_values)
-    x_width = get_min_diff(x_values)
-    x_n = (x_max - x_min) / x_width
-    x_n = int(x_n + 1) if try_int(x_n) else int(math.ceil(x_n))
-
-    # y axis
-    y_min = min(y_values)
-    y_max = max(y_values)
-    y_width = get_min_diff(y_values)
-    y_n = (y_max - y_min) / y_width
-    y_n = int(y_n + 1) if try_int(y_n) else int(math.ceil(y_n))
-
-    # create and fill a hist
-    h = ROOT.TH2F(str(uuid.uuid4()), "", x_n, x_min, x_max, y_n, y_min, y_max)
-    fill_hist(h, x_values, y_values, z_values)
-
-    # get contours in a nested list of graphs
-    contours = []
-    frame_kwargs = frame_kwargs if isinstance(frame_kwargs, (list, tuple)) else [frame_kwargs]
-    for l in levels:
-        # frame the histogram
-        _h = h
-        for fk in filter(bool, frame_kwargs):
-            w = fk.pop("width", 0.01)
-            _h = frame_histogram(_h, x_width * w, y_width * w, contour_level=l, **fk)
-
-        # get the contour graphs and filter by the number of points
-        graphs = _get_contour(_h, l)
-        graphs = [g for g in graphs if g.GetN() >= min_points]
-        contours.append(graphs)
-
-    return contours
-
-
-def _get_contour(hist, level):
-    ROOT = import_ROOT()
-
-    # make a clone to set contour levels
-    h = hist.Clone(str(uuid.uuid4()))
-    h.SetContour(1, array.array("d", [level]))
-
-    # extract contour graphs after drawing into a temporary pad (see LIST option docs)
-    with temporary_canvas() as c:
-        pad = c.cd()
-        pad.SetLogz(True)
-        h.Draw("CONT,Z,LIST")
-        pad.Update()
-        graphs = ROOT.gROOT.GetListOfSpecials().FindObject("contours")
-
-        # convert from nested TList to python list of graphs for that contour level
-        contours = []
-        if graphs or not graphs.GetSize():
-            contours = [graphs.At(0).At(j).Clone() for j in range(graphs.At(0).GetSize())]
-
-    return contours
-
-
 def get_auto_contour_levels(values, steps=(1,)):
     min_value = min(values)
     max_value = max(values)
@@ -742,19 +596,6 @@ def get_auto_contour_levels(values, steps=(1,)):
                 levels.append(l)
 
     return levels
-
-
-def get_graph_points(g):
-    ROOT = import_ROOT()
-
-    x_values, y_values = [], []
-    x, y = ROOT.Double(), ROOT.Double()
-    for i in range(g.GetN()):
-        g.GetPoint(i, x, y)
-        x_values.append(float(x))
-        y_values.append(float(y))
-
-    return x_values, y_values
 
 
 def invert_graph(g, x_min=None, x_max=None, y_min=None, y_max=None, padding=0.):
@@ -782,37 +623,6 @@ def invert_graph(g, x_min=None, x_max=None, y_min=None, y_max=None, padding=0.):
         g_inv.SetPoint(i + 5, x, y)
 
     return g_inv
-
-
-def get_text_extent(t, text_size=None, text_font=None):
-    ROOT = import_ROOT()
-
-    # convert to a tlatex if t is a string, otherwise clone
-    if isinstance(t, six.string_types):
-        t = ROOT.TLatex(0., 0., t)
-    else:
-        t = t.Clone()
-
-    # set size and font when set
-    if text_size is not None:
-        t.SetTextSize(text_size)
-    if text_font is not None:
-        t.SetTextFont(text_font)
-
-    # only available when the font precision is 3
-    assert(t.GetTextFont() % 10 == 3)
-
-    # create a temporary canvas and draw the text
-    with temporary_canvas() as c:
-        c.cd()
-        t.Draw()
-
-        # extract the bounding box dimensions
-        w = array.array("I", [0])
-        h = array.array("I", [0])
-        t.GetBoundingBox(w, h)
-
-    return int(w[0]), int(h[0])
 
 
 def locate_xsec_labels(graphs, level, label_width, pad_width, pad_height, x_min, x_max, y_min,
@@ -869,7 +679,7 @@ def locate_xsec_labels(graphs, level, label_width, pad_width, pad_height, x_min,
         hb_size = block_size // 2
         adist = np.argsort(distances)
 
-        # get the best position without checking how close other labels are
+        # get the best initial position by only checking if were close to the visible window
         for idx1 in np.append(adist, adist[0]):
             x, y = xx[idx1, hb_size], yy[idx1, hb_size]
             if (x_min_vis <= x <= x_max_vis) and (y_min_vis <= y <= y_max_vis):
@@ -877,25 +687,32 @@ def locate_xsec_labels(graphs, level, label_width, pad_width, pad_height, x_min,
         else:
             idx1 = 0
 
-        # if all candidates are to close to existing labels, go back to idx1
+        # get the best position by checking the distance to other labels and the roration
+        # use idx1 when no position was found
         for idx2 in np.append(adist, idx1):
             x, y = xx[idx2, hb_size], yy[idx2, hb_size]
             if not (x_min_vis <= x <= x_max_vis) or not (y_min_vis <= y <= y_max_vis):
                 continue
             elif any(too_close(x, y, x0, y0) for x0, y0, _ in positions + other_positions):
                 continue
-            break
 
-        # rotation
-        ind = (idx2 * block_size + hb_size) % n_points
-        dx, dy = np.gradient(line_contour, axis=0)[ind]
-        dx = x_to_px(dx)
-        dy = y_to_px(dy)
-        if dx or dy:
-            rot = np.rad2deg(np.arctan2(dy, dx))
-            rot = (rot + 90) % 180 - 90
-        else:
-            rot = 0.
+            # rotation
+            ind = (idx2 * block_size + hb_size) % n_points
+            dx, dy = np.gradient(line_contour, axis=0)[ind]
+            dx = x_to_px(dx)
+            dy = y_to_px(dy)
+            if dx or dy:
+                rot = np.rad2deg(np.arctan2(dy, dx))
+                rot = (rot + 90) % 180 - 90
+            else:
+                rot = 0.
+
+            # avoid large rotations
+            if abs(rot) > 70:
+                continue
+
+            # at this point, a good position was found
+            break
 
         # store it
         positions.append((x, y, rot))

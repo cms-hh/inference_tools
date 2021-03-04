@@ -56,7 +56,7 @@ class HHModelTask(AnalysisTask):
         super(HHModelTask, self).__init__(*args, **kwargs)
 
         if self.hh_model_empty and not self.allow_empty_hh_model:
-            raise Exception("hh_model is not allowed to be empty")
+            raise Exception("{!r}: hh_model is not allowed to be empty".format(self))
 
     @property
     def hh_model_empty(self):
@@ -303,15 +303,11 @@ class MultiHHModelTask(HHModelTask):
 
         # the lengths of names and order indices must match hh_models when given
         if len(self.hh_model_names) not in (0, len(self.hh_models)):
-            raise Exception(
-                "when hh_model_names is set, its length ({}) must match that of "
-                "hh_models ({})".format(len(self.hh_model_names), len(self.hh_models))
-            )
+            raise Exception("{!r}: when hh_model_names is set, its length ({}) must match that of "
+                "hh_models ({})".format(self, len(self.hh_model_names), len(self.hh_models)))
         if len(self.hh_model_order) not in (0, len(self.hh_models)):
-            raise Exception(
-                "when hh_model_order is set, its length ({}) must match that of "
-                "hh_models ({})".format(len(self.hh_model_order), len(self.hh_models))
-            )
+            raise Exception("{!r}: when hh_model_order is set, its length ({}) must match that of "
+                "hh_models ({})".format(self, len(self.hh_model_order), len(self.hh_models)))
 
     def store_parts(self):
         parts = AnalysisTask.store_parts(self)
@@ -573,15 +569,13 @@ class MultiDatacardTask(DatacardTask):
 
         # the lengths of names and order indices must match multi_datacards when given
         if len(self.datacard_names) not in (0, len(self.multi_datacards)):
-            raise Exception(
-                "when datacard_names is set, its length ({}) must match that of "
-                "multi_datacards ({})".format(len(self.datacard_names), len(self.multi_datacards))
-            )
+            raise Exception("{!r}: when datacard_names is set, its length ({}) must match that of "
+                "multi_datacards ({})".format(
+                    self, len(self.datacard_names), len(self.multi_datacards)))
         if len(self.datacard_order) not in (0, len(self.multi_datacards)):
-            raise Exception(
-                "when datacard_order is set, its length ({}) must match that of "
-                "multi_datacards ({})".format(len(self.datacard_order), len(self.multi_datacards))
-            )
+            raise Exception("{!r}: when datacard_order is set, its length ({}) must match that of "
+                "multi_datacards ({})".format(
+                    self, len(self.datacard_order), len(self.multi_datacards)))
 
     @classmethod
     def _repr_param(cls, name, value, **kwargs):
@@ -630,7 +624,7 @@ class ParameterValuesTask(AnalysisTask):
         for p in self.parameter_values:
             name, value = p.split("=", 1)
             if name in self.parameter_values_dict:
-                raise ValueError("duplicate parameter value '{}'".format(name))
+                raise ValueError("{!r}: duplicate parameter value '{}'".format(self, name))
             self.parameter_values_dict[name] = float(value)
 
     def get_output_postfix(self, join=True):
@@ -656,13 +650,16 @@ class ParameterScanTask(AnalysisTask):
     scan_parameters = law.MultiCSVParameter(
         default=(("kl",),),
         description="colon-separated parameters to scan, each in the format "
-        "'name[,start,stop][,points]'; defaults for start and stop values are taken from the used "
+        "'name[,start,stop[,points]]'; defaults for start and stop values are taken from the used "
         "physics model; the default number of points is inferred from that range so that there is "
-        "one measurement per integer step; default: (kl,)",
+        "one measurement per integer step; when the same scan parameter name is used multiple "
+        "times, the corresponding scan ranges are joined and the order of first occurrence is "
+        "preserved; default: (kl,)",
     )
 
     force_n_scan_parameters = None
     sort_scan_parameters = True
+    allow_multiple_scan_ranges = False
 
     @classmethod
     def modify_param_values(cls, params):
@@ -671,12 +668,11 @@ class ParameterScanTask(AnalysisTask):
         # set default range and points
         if "scan_parameters" in params:
             _scan_parameters = []
+            names = []
             for p in params["scan_parameters"]:
                 name, start, stop, points = None, None, None, None
                 if len(p) == 1:
                     name = p[0]
-                elif len(p) == 2:
-                    name, points = p[0], int(p[1])
                 elif len(p) == 3:
                     name, start, stop = p[0], float(p[1]), float(p[2])
                 elif len(p) == 4:
@@ -684,12 +680,15 @@ class ParameterScanTask(AnalysisTask):
                 else:
                     raise ValueError("invalid scan parameter format '{}'".format(",".join(p)))
 
+                # check if the parameter name was already used
+                if name in names and not cls.allow_multiple_scan_ranges:
+                    raise Exception("scan parameter {} configured more than once".format(name))
+
                 # get range defaults
                 if start is None or stop is None:
                     if name not in poi_data:
-                        raise Exception(
-                            "cannot infer default range of scan parameter {}".format(name)
-                        )
+                        raise Exception("cannot infer default range of scan parameter {}".format(
+                            name))
                     start, stop = poi_data[name].range
 
                 # get default points
@@ -697,6 +696,7 @@ class ParameterScanTask(AnalysisTask):
                     points = int(stop - start + 1)
 
                 _scan_parameters.append((name, start, stop, points))
+                names.append(name)
 
             if cls.sort_scan_parameters:
                 _scan_parameters = sorted(_scan_parameters, key=lambda tpl: tpl[0])
@@ -708,35 +708,48 @@ class ParameterScanTask(AnalysisTask):
     def __init__(self, *args, **kwargs):
         super(ParameterScanTask, self).__init__(*args, **kwargs)
 
+        # store scan parameters and ranges as a dict
+        self.scan_parameters_dict = OrderedDict()
+        for p in self.scan_parameters:
+            if len(p) < 4:
+                raise Exception("{!r}: invalid scan parameter size '{}'".format(self, p))
+            self.scan_parameters_dict.setdefault(p[0], []).append(p[1:])
+
         # check the number of scan parameters if restricted
         n = self.force_n_scan_parameters
         if isinstance(n, six.integer_types):
             if self.n_scan_parameters != n:
-                raise Exception(
-                    "{} requires exactly {} scan parameters but got '{}'".format(
-                        self.__class__.__name__, n, self.joined_scan_parameter_names
-                    )
-                )
+                raise Exception("{!r}: exactly {} scan parameters required but got '{}'".format(
+                    self, n, self.joined_scan_parameter_names))
         elif isinstance(n, tuple) and len(n) == 2:
             if not (n[0] <= self.n_scan_parameters <= n[1]):
-                raise Exception(
-                    "{} requires between {} and {} scan parameters but got '{}'".format(
-                        self.__class__.__name__, n[0], n[1], self.joined_scan_parameter_names
-                    )
-                )
+                raise Exception("{!r}: between {} and {} scan parameters required but got "
+                    "'{}'".format(self, n[0], n[1], self.joined_scan_parameter_names))
+
+    def has_multiple_scan_ranges(self):
+        return any(len(ranges) > 1 for ranges in self.scan_parameters_dict.values())
+
+    def _assert_single_scan_range(self, attr):
+        for name, ranges in self.scan_parameters_dict.items():
+            if len(ranges) > 1:
+                raise Exception("{!r}: {} is only available for scan parameters with one range, "
+                    "but {} has {} ranges".format(self, attr, name, len(ranges)))
 
     def get_output_postfix(self, join=True):
-        parts = [["scan"] + ["{}_{}_{}_n{}".format(*tpl) for tpl in self.scan_parameters]]
+        parts = [["scan"] + [
+            "_".join([name] + ["{}_{}_n{}".format(*r) for r in ranges])
+            for name, ranges in self.scan_parameters_dict.items()
+        ]]
 
         return self.join_postfix(parts) if join else parts
 
     @property
     def n_scan_parameters(self):
-        return len(self.scan_parameters)
+        return len(self.scan_parameters_dict)
 
     @property
     def scan_parameter_names(self):
-        return [p for p, _, _, _ in self.scan_parameters]
+        return list(self.scan_parameters_dict)
 
     @property
     def joined_scan_parameter_names(self):
@@ -746,11 +759,8 @@ class ParameterScanTask(AnalysisTask):
     def joined_scan_values(self):
         # only valid when this is a workflow branch
         if not isinstance(self, law.BaseWorkflow) or self.is_workflow():
-            return AttributeError(
-                "{} has no attribute '{}' when not a workflow branch".format(
-                    self.__class__.__name__, "joined_scan_values"
-                )
-            )
+            raise AttributeError("{!r}: has no attribute '{}' when not a workflow branch".format(
+                self, "joined_scan_values"))
 
         return ",".join(
             "{}={}".format(*tpl) for tpl in zip(self.scan_parameter_names, self.branch_data)
@@ -758,45 +768,60 @@ class ParameterScanTask(AnalysisTask):
 
     @property
     def joined_scan_ranges(self):
+        self._assert_single_scan_range("joined_scan_ranges")
         return ":".join(
-            "{}={},{}".format(p, start, stop) for p, start, stop, _ in self.scan_parameters
+            "{}={},{}".format(name, ranges[0][0], ranges[0][1])
+            for name, ranges in self.scan_parameters_dict.items()
         )
 
     @property
     def joined_scan_points(self):
-        return ",".join(str(points) for _, _, _, points in self.scan_parameters)
+        self._assert_single_scan_range("joined_scan_points")
+        return ",".join(str(ranges[0][2]) for ranges in self.scan_parameters_dict.values())
 
     @classmethod
-    def _get_scan_linspace(cls, scan_parameters, step_size=None):
-        if isinstance(step_size, six.integer_types + (float,)):
-            step_size = len(scan_parameters) * [step_size]
+    def _get_scan_linspace(cls, ranges, step_sizes=None):
+        if not isinstance(step_sizes, (list, tuple)):
+            step_sizes = len(ranges) * [step_sizes]
+        elif len(step_sizes) != len(ranges):
+            raise Exception("number of step_sizes {} must match number of ranges {}".format(
+                len(step_sizes), len(ranges)))
 
-        def get_points(i, start, stop, points):
+        def get_points(r, step_size):
             # when step_size is set, use this value to define the resolution between points
-            # otherwise, use the number of points given in scan parameters (the default)
-            if not step_size:
-                return points
-            else:
-                points = (stop - start) / float(step_size[i]) + 1
+            # otherwise, use the number of points given by the range
+            start, stop = r[:2]
+            if step_size:
+                points = (stop - start) / float(step_size) + 1
                 if points % 1 != 0:
-                    raise Exception(
-                        "step size {} does not equally divide range [{}, {}]".format(
-                            step_size[i], start, stop
-                        )
-                    )
+                    raise Exception("step size {} does not equally divide range [{}, {}]".format(
+                        step_size, start, stop))
                 return points
+            elif len(r) < 3:
+                return int(stop - start + 1)
+            else:
+                return r[2]
 
         return list(
             itertools.product(
                 *[
-                    linspace(start, stop, get_points(i, start, stop, points))
-                    for i, (_, start, stop, points) in enumerate(scan_parameters)
+                    linspace(r[0], r[1], get_points(r, step_size))
+                    for r, step_size in zip(ranges, step_sizes)
                 ]
             )
         )
 
-    def get_scan_linspace(self, step_size=None):
-        return self._get_scan_linspace(self.scan_parameters, step_size=step_size)
+    def get_scan_linspace(self, step_sizes=None):
+        self._assert_single_scan_range("get_scan_linspace")
+        return self._get_scan_linspace([ranges[0] for ranges in self.scan_parameters_dict.values()],
+            step_sizes=step_sizes)
+
+    def get_scan_parameters_product(self):
+        names = self.scan_parameter_names
+        return [
+            tuple((name,) + _values for name, _values in zip(names, values))
+            for values in itertools.product(*self.scan_parameters_dict.values())
+        ]
 
     def htcondor_output_postfix(self):
         return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
@@ -879,27 +904,19 @@ class POITask(DatacardTask, ParameterValuesTask):
         n = self.force_n_pois
         if isinstance(n, six.integer_types):
             if self.n_pois != n:
-                raise Exception(
-                    "{} requires exactly {} POIs but got '{}'".format(
-                        self.__class__.__name__, n, self.joined_pois
-                    )
-                )
+                raise Exception("{!r}: exactly {} POIs required but got '{}'".format(
+                    self, n, self.joined_pois))
         elif isinstance(n, tuple) and len(n) == 2:
             if not (n[0] <= self.n_pois <= n[1]):
-                raise Exception(
-                    "{} requires between {} and {} POIs but got '{}'".format(
-                        self.__class__.__name__, n[0], n[1], self.joined_pois
-                    )
-                )
+                raise Exception("{!r}: between {} and {} POIs required but got '{}'".format(
+                    self, n[0], n[1], self.joined_pois))
 
         # check if parameter values are allowed in pois
         if not self.allow_parameter_values_in_pois:
             for p in self.parameter_values_dict:
                 if p in self.pois:
-                    raise Exception(
-                        "parameter values are not allowed to be in POIs, but found "
-                        "'{}'".format(p)
-                    )
+                    raise Exception("{!r}: parameter values are not allowed to be in POIs, but "
+                        "found '{}'".format(self, p))
 
     def store_parts(self):
         parts = super(POITask, self).store_parts()
@@ -1006,36 +1023,25 @@ class POIScanTask(POITask, ParameterScanTask):
         if self.force_scan_parameters_equal_pois:
             missing = set(self.pois) - set(self.scan_parameter_names)
             if missing:
-                raise Exception(
-                    "scan parameter(s) '{}' must match POI(s) '{}' or vice versa".format(
-                        self.joined_scan_parameter_names, self.joined_pois
-                    )
-                )
+                raise Exception("{!r}: scan parameters {} must match POIs {} or vice versa".format(
+                    self, self.joined_scan_parameter_names, self.joined_pois))
             unknown = set(self.scan_parameter_names) - set(self.pois)
             if unknown:
-                raise Exception(
-                    "scan parameter(s) '{}' must match POI(s) '{}' or vice versa".format(
-                        self.joined_scan_parameter_names, self.joined_pois
-                    )
-                )
+                raise Exception("{!r}: scan parameters {} must match POIs {} or vice versa".format(
+                    self, self.joined_scan_parameter_names, self.joined_pois))
 
         # check if scan parameters and pois diverge
         if self.force_scan_parameters_unequal_pois:
             if set(self.pois).intersection(set(self.scan_parameter_names)):
-                raise Exception(
-                    "scan parameter(s) '{}' and POI(s) '{}' must not overlap".format(
-                        self.joined_scan_parameter_names, self.joined_pois
-                    )
-                )
+                raise Exception("{!r}: scan parameters {} and POIs {} must not overlap".format(
+                    self, self.joined_scan_parameter_names, self.joined_pois))
 
         # check if parameter values are in scan parameters
         if not self.allow_parameter_values_in_scan_parameters:
             for p in self.parameter_values_dict:
                 if p in self.scan_parameter_names:
-                    raise Exception(
-                        "parameter values are not allowed to be in scan parameters, "
-                        "but found '{}'".format(p)
-                    )
+                    raise Exception("{!r}: parameter values are not allowed to be in scan "
+                        "parameters, but found {}".format(self, p))
 
     def get_output_postfix_pois(self):
         use_all_pois = self.allow_parameter_values_in_pois or self.force_scan_parameters_equal_pois
@@ -1142,10 +1148,8 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 
         # complain when no datacard paths are given but the store path does not exist yet
         if not self.datacards and not self.local_target(dir=True).exists():
-            raise Exception(
-                "store directory {} does not exist which is required when no datacard "
-                "paths are provided".format(self.local_target(dir=True).path)
-            )
+            raise Exception("{!r}: store directory {} does not exist which is required when no "
+                "datacard paths are provided".format(self, self.local_target(dir=True).path))
 
     def requires(self):
         return InputDatacards.req(self)
@@ -1170,7 +1174,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
     def run(self):
         # immediately complain when no datacard paths were set but just a store directory
         if not self.datacards:
-            raise Exception("{} task requires datacard paths to be set".format(self.task_family))
+            raise Exception("{!r}: datacard paths required".format(self))
 
         # before running the actual card combination command, copy shape files and handle collisions
         # first, create a tmp dir to work in
