@@ -56,7 +56,7 @@ class PostfitShapes(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWork
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
-            " --saveShapes"
+            " --saveShapes  --skipBOnlyFit"
             " --saveWithUncertainties"
             " --saveNormalizations"
             " {self.combine_optimization_args}"
