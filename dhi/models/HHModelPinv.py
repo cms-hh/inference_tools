@@ -185,12 +185,13 @@ class HHModel(PhysicsModel):
     def __init__(self, ggf_sample_list, vbf_sample_list, name):
         PhysicsModel.__init__(self)
 
-        self.doNNLOscaling    = True
-        self.doBRscaling      = True
-        self.doHscaling       = True
-        self.doklDependentUnc = True
-        self.klUncName        = "THU_HH"
-        self.name             = name
+        self.doNNLOscaling     = True
+        self.doBRscaling       = True
+        self.doHscaling        = True
+        self.doklDependentUnc  = True
+        self.doConstrainKappas = False
+        self.klUncName         = "THU_HH"
+        self.name              = name
 
         self.check_validity_ggf(ggf_sample_list)
         self.check_validity_vbf(vbf_sample_list)
@@ -204,7 +205,9 @@ class HHModel(PhysicsModel):
 
     def setPhysicsOptions(self, physOptions):
         opts = [opt.split("=", 1) for opt in physOptions if "=" in opt]
-        known_flags = ["doNNLOscaling", "doBRscaling", "doHscaling", "doklDependentUnc"]
+        known_flags = [
+            "doNNLOscaling", "doBRscaling", "doHscaling", "doklDependentUnc", "doConstrainKappas",
+        ]
         for key, value in opts:
             if key in known_flags:
                 flag = value.lower() in ["yes", "true", "1"]
@@ -289,24 +292,43 @@ class HHModel(PhysicsModel):
         ## GGF = r_GGF x [sum samples(kl, kt)]
         ## VBF = r_VBF x [sum samples(kl, CV, C2V)]
 
-        POIs = "r,r_gghh,r_qqhh,CV,C2V,kl,kt"
-
+        # add rate POIs and freeze r_* by default
         self.modelBuilder.doVar("r[1,-20,20]")
         self.modelBuilder.doVar("r_gghh[1,-20,20]")
         self.modelBuilder.doVar("r_qqhh[1,-20,20]")
-        self.modelBuilder.doVar("CV[1,-10,10]")
-        self.modelBuilder.doVar("C2V[1,-10,10]")
-        self.modelBuilder.doVar("kl[1,-30,30]")
-        self.modelBuilder.doVar("kt[1,-10,10]")
+        self.modelBuilder.out.var("r_gghh").setConstant(True)
+        self.modelBuilder.out.var("r_qqhh").setConstant(True)
 
-        self.modelBuilder.doSet("POI",POIs)
+        # define kappa parameters and their uniform ranges
+        kappas = OrderedDict([
+            ("CV", (-10, 10)),
+            ("C2V", (-10, 10)),
+            ("kl", (-30, 30)),
+            ("kt", (-10, 10)),
+        ])
 
-        self.modelBuilder.out.var("r_gghh") .setConstant(True)
-        self.modelBuilder.out.var("r_qqhh") .setConstant(True)
-        self.modelBuilder.out.var("CV")     .setConstant(True)
-        self.modelBuilder.out.var("C2V")    .setConstant(True)
-        self.modelBuilder.out.var("kl")     .setConstant(True)
-        self.modelBuilder.out.var("kt")     .setConstant(True)
+        # add them
+        for name, (start, stop) in kappas.items():
+            self.modelBuilder.doVar("{}[1,{},{}]".format(name, start, stop))
+            self.modelBuilder.out.var(name).setConstant(True)
+
+        # optionally, add constraints
+        if self.doConstrainKappas:
+            # names of additional objects (for the example of kt):
+            # - gaussian width: kt_width
+            # - constained pdf: kt_pdf
+            for name in kappas:
+                # use an initially large width (should be changed anyway)
+                self.modelBuilder.doVar("{}_width[10]".format(name))
+                self.modelBuilder.out.var("{}_width[10]".format(name)).setConstant(True)
+                # add the constraint
+                # TODO: is the workspace syntax correct?
+                # same as https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/blob/e7accd874d0cef2af06ae26fcd2b3028535e4371/python/ModelTools.py#L322
+                self.modelBuilder.doObj("{}_pdf".format(name), "SimpleGaussianConstraint", "{0}, {0}_In[0,-{0}_width,{0}_width], 1.0".format(name))
+
+        # define a POI group
+        pois = ["r", "r_gghh", "r_qqhh"] + list(kappas.keys())
+        self.modelBuilder.doSet("POI", ",".join(pois))
 
         #I need to build MH variables because the BR are tabulated as a function of MH
         # the mass setting must be provided as input, i.e. '-m 125'

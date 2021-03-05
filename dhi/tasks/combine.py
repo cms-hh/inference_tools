@@ -40,7 +40,9 @@ class HHModelTask(AnalysisTask):
     provides a few convenience functions for working with it.
     """
 
-    valid_hh_model_options = {"noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc"}
+    valid_hh_model_options = {
+        "noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc", "doConstrainKappas",
+    }
 
     hh_model = luigi.Parameter(
         default="HHModelPinv.model_default",
@@ -117,6 +119,7 @@ class HHModelTask(AnalysisTask):
         model.doBRscaling = "noBRscaling" not in options
         model.doHscaling = "noHscaling" not in options
         model.doklDependentUnc = "noklDependentUnc" not in options
+        model.doConstrainKappas = "doConstrainKappas" in options
 
         return mod, model
 
@@ -1242,6 +1245,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
                 " --PO doBRscaling={model.doBRscaling}"
                 " --PO doHscaling={model.doHscaling}"
                 " --PO doklDependentUnc={model.doklDependentUnc}"
+                " --PO doConstrainKappas={model.doConstrainKappas}"
             ).format(model=self.load_hh_model()[1])
 
         return (
