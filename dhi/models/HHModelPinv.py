@@ -320,7 +320,7 @@ class HHModel(PhysicsModel):
             for name in kappas:
                 # use an initially large width (should be changed anyway)
                 self.modelBuilder.doVar("{}_width[10]".format(name))
-                self.modelBuilder.out.var("{}_width[10]".format(name)).setConstant(True)
+                self.modelBuilder.out.var("{}_width".format(name)).setConstant(True)
                 # add the constraint
                 # TODO: is the workspace syntax correct?
                 # same as https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/blob/e7accd874d0cef2af06ae26fcd2b3028535e4371/python/ModelTools.py#L322
