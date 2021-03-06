@@ -19,7 +19,7 @@ Please note that, when no output directory is given, ==the content of datacards 
 > remove_parameters.py --help
 
 usage: remove_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
-                            [--log-level LOG_LEVEL]
+                            [--log-level LOG_LEVEL] [--log-name LOG_NAME]
                             DATACARD NAME [NAME ...]
 
 Script to remove one or multiple (nuisance) parameters from a datacard.
@@ -65,6 +65,7 @@ optional arguments:
 
 usage: rename_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--mass MASS] [--log-level LOG_LEVEL]
+                            [--log-name LOG_NAME]
                             DATACARD OLD_NAME=NEW_NAME [OLD_NAME=NEW_NAME ...]
 
 Script to rename one or multiple (nuisance) parameters in a datacard.
@@ -169,6 +170,7 @@ usage: merge_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                            [--auto-rate-envelope] [--auto-shape-average]
                            [--auto-shape-envelope] [--digits DIGITS]
                            [--mass MASS] [--log-level LOG_LEVEL]
+                           [--log-name LOG_NAME]
                            DATACARD MERGED_NAME names [names ...]
 
 Script to merge multiple (nuisance) parameters of the same type into a new,
@@ -221,7 +223,7 @@ optional arguments:
                         parameter is constructed as the envelope of effects of
                         parameters to merge
   --auto-shape-average  only for shape; when set and shapes to merge contain
-                        both positive and negative effects in the same bin,
+                        both positive abd negative effects in the same bin,
                         propagate errors separately and then use their
                         average; otherwise, an error is raised
   --auto-shape-envelope
@@ -243,7 +245,8 @@ optional arguments:
 ```shell hl_lines="1"
 > split_parameter.py --help
 
-usage: split_parameter.py [-h] [--directory [DIRECTORY]] [--no-shapes]
+usage: split_parameter.py [-h] [--ensure-unique] [--ensure-all]
+                          [--directory [DIRECTORY]] [--no-shapes]
                           [--log-level LOG_LEVEL] [--log-name LOG_NAME]
                           DATACARD PARAM_NAME NEW_NAME,BIN,PROCESS
                           [NEW_NAME,BIN,PROCESS ...]
@@ -355,6 +358,7 @@ optional arguments:
 
 usage: remove_bin_process_pairs.py [-h] [--directory [DIRECTORY]]
                                    [--no-shapes] [--log-level LOG_LEVEL]
+                                   [--log-name LOG_NAME]
                                    DATACARD BIN_NAME,PROCESS_NAME
                                    [BIN_NAME,PROCESS_NAME ...]
 
@@ -382,7 +386,8 @@ positional arguments:
   BIN_NAME,PROCESS_NAME
                         names of bin process pairs to remove in the format
                         'bin_name,process_name' or files containing these
-                        pairs line by line; supports patterns
+                        pairs line by line; supports patterns; prepending '!'
+                        to a pattern negates its meaning
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -407,7 +412,7 @@ optional arguments:
 > remove_processes.py --help
 
 usage: remove_processes.py [-h] [--directory [DIRECTORY]] [--no-shapes]
-                           [--log-level LOG_LEVEL]
+                           [--log-level LOG_LEVEL] [--log-name LOG_NAME]
                            DATACARD NAME [NAME ...]
 
 Script to remove one or multiple processes from a datacard.
@@ -429,7 +434,8 @@ positional arguments:
   DATACARD              the datacard to read and possibly update (see
                         --directory)
   NAME                  names of processes or files containing process names
-                        to remove line by line; supports patterns
+                        to remove line by line; supports patterns; prepending
+                        '!' to a pattern negates its meaning
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -453,6 +459,7 @@ optional arguments:
 
 usage: rename_processes.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                            [--mass MASS] [--log-level LOG_LEVEL]
+                           [--log-name LOG_NAME]
                            DATACARD OLD_NAME=NEW_NAME [OLD_NAME=NEW_NAME ...]
 
 Script to rename one or multiple processes in a datacard.
@@ -497,7 +504,7 @@ optional arguments:
 > remove_bins.py --help
 
 usage: remove_bins.py [-h] [--directory [DIRECTORY]] [--no-shapes]
-                      [--log-level LOG_LEVEL]
+                      [--log-level LOG_LEVEL] [--log-name LOG_NAME]
                       DATACARD NAME [NAME ...]
 
 Script to remove one or multiple bins from a datacard.
@@ -519,7 +526,8 @@ positional arguments:
   DATACARD              the datacard to read and possibly update (see
                         --directory)
   NAME                  names of bins or files containing bin names to remove
-                        line by line; supports patterns
+                        line by line; supports patterns; prepending '!' to a
+                        pattern negates its meaning
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -537,6 +545,50 @@ optional arguments:
 
 
 ## Miscellaneous
+
+### Split a datacard by bins
+
+```shell hl_lines="1"
+> split_datacard_by_bins.py --help
+
+usage: split_datacard_by_bins.py [-h] [--pattern PATTERN]
+                                 [--save-bin-names SAVE_BIN_NAMES]
+                                 [--directory [DIRECTORY]] [--no-shapes]
+                                 [--log-level LOG_LEVEL] [--log-name LOG_NAME]
+                                 DATACARD
+
+Script to split a datacard into all its bins with one output datacard per bin.
+Example usage:
+
+# split a datacard into bins, place new datacards in the same directory
+> split_datacard_by_bins.py datacard.txt
+
+# split a datacard into bins, placing new datacards in a new directory
+> split_datacard_by_bins.py datacard.txt -d output_directory
+
+positional arguments:
+  DATACARD              the datacard to read and split
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --pattern PATTERN, -p PATTERN
+                        pattern of names of created datacards where '{}' is
+                        replaced with the bin name; default: DATACARD_{}.txt
+  --save-bin-names SAVE_BIN_NAMES, -s SAVE_BIN_NAMES
+                        location of a json file where the original bin names
+                        are stored
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the datacard and its shape files
+                        are first bundled into, and where split datacards are
+                        saved
+  --no-shapes, -n       do not copy shape files to the output directory when
+                        --directory is set
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        split_datacard_by_bins
+```
+
 
 ### Bundle a datacard
 
@@ -583,6 +635,7 @@ optional arguments:
 
 usage: prettify_datacard.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--no-preamble] [--log-level LOG_LEVEL]
+                            [--log-name LOG_NAME]
                             DATACARD
 
 Script to prettify a datacard.

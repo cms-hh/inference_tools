@@ -87,12 +87,19 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
 
             # go through bin and process names and compare with patterns
             for i, (bin_name, process_name) in enumerate(zip(bin_names, process_names)):
-                for b, p in patterns:
-                    if multi_match(bin_name, b) and multi_match(process_name, p):
-                        logger.info("remove process {} from rates in bin {}".format(
-                            process_name, bin_name))
-                        removed_columns.append(i)
-                        break
+                for bin_pattern, process_pattern in patterns:
+                    neg = bin_pattern.startswith("!")
+                    if multi_match(bin_name, bin_pattern[int(neg):]) == neg:
+                        continue
+
+                    neg = process_pattern.startswith("!")
+                    if multi_match(process_name, process_pattern[int(neg):]) == neg:
+                        continue
+
+                    logger.debug("remove process {} from rates in bin {}".format(
+                        process_name, bin_name))
+                    removed_columns.append(i)
+                    break
 
             # remove hits
             mask = lambda l: [elem for j, elem in enumerate(l) if j not in removed_columns]
@@ -141,12 +148,34 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
             shape_lines = [ShapeLine(line, j) for j, line in enumerate(content["shapes"])]
             to_remove = []
             for shape_line in shape_lines:
-                for b, p in patterns:
-                    if multi_match(shape_line.bin, b) and multi_match(shape_line.process, p):
-                        logger.info("remove shape line for process {} and bin {}".format(
-                            shape_line.process, shape_line.bin))
-                        to_remove.append((shape_line.i))
-                        break
+                # when both bin and process are wildcards, the shape line is not removed
+                if shape_line.bin == "*" and shape_line.process == "*":
+                    continue
+
+                # when only the bin is a wildcard, the shape line is not removed when the process is
+                # not fully removed
+                if shape_line.bin == "*" and shape_line.process not in fully_removed_process_names:
+                    continue
+
+                # when only the process is a wildcard, the shape line is not removed when the bin is
+                # not fully removed
+                if shape_line.process == "*" and shape_line.bin not in fully_removed_bin_names:
+                    continue
+
+                # in any other case, compare with patterns
+                for bin_pattern, process_pattern in patterns:
+                    neg = bin_pattern.startswith("!")
+                    if multi_match(shape_line.bin, bin_pattern[int(neg):]) == neg:
+                        continue
+
+                    neg = process_pattern.startswith("!")
+                    if multi_match(shape_line.process, process_pattern[int(neg):]) == neg:
+                        continue
+
+                    logger.debug("remove shape line for process {} and bin {}".format(
+                        shape_line.process, shape_line.bin))
+                    to_remove.append((shape_line.i))
+                    break
 
             # change lines in-place
             lines = [line for j, line in enumerate(content["shapes"]) if j not in to_remove]
@@ -170,7 +199,7 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
                         "in rates".format(i, param_name, param_name))
 
                 # remove columns and update the line
-                logger.info("remove {} column(s) from parameter {}".format(
+                logger.debug("remove {} column(s) from parameter {}".format(
                     len(removed_columns), param_name))
                 columns = [c for j, c in enumerate(columns) if j not in removed_columns]
                 content["parameters"][i] = " ".join([param_name, param_type] + columns)
@@ -201,7 +230,7 @@ if __name__ == "__main__":
         "update (see --directory)")
     parser.add_argument("names", nargs="+", metavar="BIN_NAME,PROCESS_NAME", help="names of bin "
         "process pairs to remove in the format 'bin_name,process_name' or files containing these "
-        "pairs line by line; supports patterns")
+        "pairs line by line; supports patterns; prepending '!' to a pattern negates its meaning")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "

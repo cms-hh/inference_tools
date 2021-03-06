@@ -61,7 +61,8 @@ if __name__ == "__main__":
     parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
         "update (see --directory)")
     parser.add_argument("names", nargs="+", metavar="NAME", help="names of bins or files "
-        "containing bin names to remove line by line; supports patterns")
+        "containing bin names to remove line by line; supports patterns; prepending '!' to a "
+        "pattern negates its meaning")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
