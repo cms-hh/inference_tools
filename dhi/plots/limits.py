@@ -178,13 +178,13 @@ def plot_limit_scan(
             # first point correctly, so insert two values that are so off that it does not matter
             insert = [(0, -1e7, 0, 0, 0, 0, 0)] if max(theory_values["xsec"]) > y_max else None
             g_thy = create_graph(values=theory_values, key="xsec", sigma=1, insert=insert)
-            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "FillStyle": 3244},
-                color=colors.red, color_flags="lf")
+            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors.red,
+                "FillStyle": 1001, "FillColor": colors.red_trans_50})
             draw_objs.append((g_thy, "SAME,C3"))
             legend_entries[0 if observed_values is None else 1] = (g_thy, "Theory prediction", "LF")
         else:
             g_thy = create_graph(values=theory_values, key="xsec")
-            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1}, color=colors.red)
+            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors.red})
             draw_objs.append((g_thy, "SAME,L"))
             legend_entries[0 if observed_values is None else 1] = (g_thy, "Theory prediction", "L")
 
@@ -347,8 +347,8 @@ def plot_limit_scans(
             g_thy = create_tgraph(len(scan_values_thy), scan_values_thy, theory_values["xsec"],
                 0, 0, theory_values["xsec"] - theory_values["xsec_m1"],
                 theory_values["xsec_p1"] - theory_values["xsec"], pad=True, insert=insert)
-            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "FillStyle": 3244},
-                color=colors.red, color_flags="lf")
+            r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors.red,
+                "FillStyle": 1001, "FillColor": colors.red_trans_50})
             draw_objs.insert(1, (g_thy, "SAME,C3"))
             legend_entries.append((g_thy, "Theory prediction", "LF"))
         else:
@@ -586,8 +586,8 @@ def plot_limit_points(
         # uncertainty area
         if has_thy_err:
             g_thy_area = create_graph(key="theory", sigma=1)
-            r.setup_graph(g_thy_area, props={"LineWidth": 2, "LineStyle": 1, "FillStyle": 3244},
-                color=colors.red, color_flags="lf")
+            r.setup_graph(g_thy_area, props={"LineWidth": 2, "LineStyle": 1,
+                "LineColor": colors.red, "FillStyle": 1001, "FillColor": colors.red_trans_50})
             draw_objs.append((g_thy_area, "SAME,2"))
             legend_entry = (g_thy_area, "Theory prediction", "LF")
         legend_entries[1 if has_obs else 0] = legend_entry

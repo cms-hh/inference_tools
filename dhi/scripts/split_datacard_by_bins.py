@@ -86,10 +86,10 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument("input", metavar="DATACARD", help="the datacard to read and split")
-    parser.add_argument("--pattern", "-p", default=None, help="pattern of names of "
+    parser.add_argument("--pattern", "-p", default=None, help="pattern defining the names of "
         "created datacards where '{}' is replaced with the bin name; default: DATACARD_{}.txt")
-    parser.add_argument("--save-bin-names", "-s", help="location of a json file where the "
-        "original bin names are stored")
+    parser.add_argument("--save-bin-names", "-s", metavar="PATH", help="location of a json file "
+        "in which original bin names are stored")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the datacard and "
         "its shape files are first bundled into, and where split datacards are saved")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
