@@ -122,7 +122,8 @@ def plot_likelihood_scan_1d(
             # theory graph
             g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1],
                 0, y_max_line)
-            r.setup_graph(g_thy, props={"FillStyle": 3244}, color=colors.red, color_flags="lf")
+            r.setup_graph(g_thy, props={"LineColor": colors.red, "FillStyle": 1001,
+                "FillColor": colors.red_trans_50})
             draw_objs.append((g_thy, "SAME,02"))
             legend_entries.append((g_thy, "Theory prediction", "LF"))
         # theory line
@@ -286,7 +287,8 @@ def plot_likelihood_scans_1d(
             # theory graph
             g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1],
                 0, y_max_line)
-            r.setup_graph(g_thy, props={"FillStyle": 3244}, color=colors.red, color_flags="lf")
+            r.setup_graph(g_thy, props={"LineColor": colors.red, "FillStyle": 1001,
+                "FillColor": colors.red_trans_50})
             draw_objs.append((g_thy, "SAME,02"))
             legend_entries.append((g_thy, "Theory prediction", "LF"))
         # theory line

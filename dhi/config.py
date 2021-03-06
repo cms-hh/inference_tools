@@ -130,6 +130,7 @@ colors = DotDict(
         dark_grey_trans_50=(13, 0.5),
         dark_grey_trans_30=(13, 0.3),
         red=628,
+        red_trans_50=(628, 0.5),
         blue=214,
         green=418,
         light_green=413,
