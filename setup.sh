@@ -54,6 +54,7 @@ setup() {
     # combine setup
     #
 
+    local combine_version="1"
     local flag_file_combine="$DHI_SOFTWARE/.combine_good"
     [ "$DHI_REINSTALL_COMBINE" = "1" ] && rm -f "$flag_file_combine"
     if [ ! -f "$flag_file_combine" ]; then
@@ -63,20 +64,27 @@ setup() {
         (
             cd "$DHI_SOFTWARE"
             rm -rf HiggsAnalysis/CombinedLimit
-            # TODO: the following branch is based on v8.1.0 and adds the --gridPoints parameter to
-            # likelihood scans to improve control over the scan grid, so switch back again to the
-            # original repo once merged, https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/pull/623
-            git clone --depth 1 --branch feature/control_2d_grid https://github.com/riga/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit || return "$?"
-            cd HiggsAnalysis/CombinedLimit || return "$?"
-            source env_standalone.sh "" || return "$?"
-            make -j
-            make || return "$?"
-        )
+            git clone --depth 1 --branch 102x https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
+            cd HiggsAnalysis/CombinedLimit && \
+            source env_standalone.sh "" && \
+            make -j && \
+            make
+        ) || return "$?"
 
         date "+%s" > "$flag_file_combine"
+        echo "version $combine_version" >> "$flag_file_combine"
     fi
     export DHI_SOFTWARE_FLAG_FILES="$flag_file_combine"
 
+    # check the version in the combine flag file and show a warning when there was an update
+    if [ "$( cat "$flag_file_combine" | grep -Po "version \K\d+.*" )" != "$combine_version" ]; then
+        2>&1 echo ""
+        2>&1 echo "WARNING: your local combine installation is not up to date, please consider updating it in a new shell with"
+        2>&1 echo "         > DHI_REINSTALL_COMBINE=1 source setup.sh $( $setup_is_default || echo "$setup_name" )"
+        2>&1 echo ""
+    fi
+
+    # source it
     cd "$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
     source env_standalone.sh "" || return "$?"
     # the setup script appends to PATH, but we need to prepend since some htcondor nodes seem to
