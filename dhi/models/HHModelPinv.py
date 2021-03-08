@@ -183,12 +183,12 @@ class HHModel(PhysicsModel):
     The following physics options are supported:
 
     - doNNLOscaling (bool)   : Convert ggF HH yields (that are given in NLO by convention) to NNLO.
-    - doBRscaling (bool)     : Enable scaling of Higgs branching ratios with model parameters.
-    - doHscaling (bool)      : Enablescaling of single Higgs cross sections with model parameters.
+    - doBRscaling (bool)     : Enable scaling Higgs branching ratios with model parameters.
+    - doHscaling (bool)      : Enable scaling single Higgs cross sections with model parameters.
     - doklDependentUnc (bool): Add a theory uncertainty on ggF HH production that depends on model
                                parameters.
     - doProfilekt (string)   : Either "flat" to enable the profiling of kt with a flat prior, or
-                               "gauss=FLOAT" (or "gauss=-FLOAT/+FLOAT") to use a gaussian
+                               "gauss,FLOAT" (or "gauss,-FLOAT/+FLOAT") to use a gaussian
                                (asymmetric) prior. In any case, kt is removed from the list of POIs.
     - doProfileCV (string)   : Either "flat" to enable the profiling of CV with a flat prior, or
                                "gauss,FLOAT" (or "gauss,-FLOAT/+FLOAT") to use a gaussian
