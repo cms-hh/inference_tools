@@ -510,14 +510,16 @@ def write_datacard_pretty(f, blocks, skip_fields=False):
 
     # align process rates and columnar parameters combined
     parameter_lines = blocks.get("parameters") if "parameters" not in skip_fields else []
-    columnar_parameter_lines, other_parameter_lines = [], []
+    columnar_parameter_lines = []
+    other_parameter_lines = defaultdict(list)
     if parameter_lines:
         for line in parameter_lines:
             parts = line.strip().split()
-            if len(parts) >= 2 and multi_match(parts[1], columnar_parameter_directives):
+            param_type = "missing" if len(parts) < 2 else parts[1]
+            if multi_match(param_type, columnar_parameter_directives):
                 columnar_parameter_lines.append(parts)
             else:
-                other_parameter_lines.append(parts)
+                other_parameter_lines[param_type].append(parts)
 
     rate_lines = []
     if "rates" not in skip_fields:
@@ -534,19 +536,20 @@ def write_datacard_pretty(f, blocks, skip_fields=False):
     rate_lines = aligned_lines[: len(rate_lines)]
     columnar_parameter_lines = aligned_lines[len(rate_lines):]
 
-    # write rates
+    # write rates, already aligned
     if rate_lines:
         for line in rate_lines:
             write(line)
         write(sep)
 
-    # write columnar parameters
+    # write columnar parameters, already aligned
     for line in columnar_parameter_lines:
         write(line)
 
-    # write non-columnar parameters
-    for line in other_parameter_lines:
-        write(line)
+    # write non-columnar parameters, sorted and aligned per directive
+    for lines in other_parameter_lines.values():
+        for line in align(lines):
+            write(line)
 
     # write groups and auto mc stats aligned
     for field in ["groups", "auto_mc_stats"]:
