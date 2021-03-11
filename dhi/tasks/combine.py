@@ -41,8 +41,8 @@ class HHModelTask(AnalysisTask):
     """
 
     valid_hh_model_options = {
-        "noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc", "doProfilekt",
-        "doProfileCV",
+        "noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc", "doProfilekl",
+        "doProfilekt", "doProfileCV", "doProfileC2V",
     }
 
     hh_model = luigi.Parameter(
@@ -61,11 +61,12 @@ class HHModelTask(AnalysisTask):
         if self.hh_model_empty and not self.allow_empty_hh_model:
             raise Exception("{!r}: hh_model is not allowed to be empty".format(self))
 
-        # store whether kt or CV are profiled when a model is set
+        # store whether certain kappas are profiled when a model is set
         if not self.hh_model_empty:
             options = self.split_hh_model()[2]
-            self.profile_kt = options.get("doProfilekt", "").lower() not in ("", "none")
-            self.profile_cv = options.get("doProfileCV", "").lower() not in ("", "none")
+            for k in ["kl", "kt", "CV", "C2V"]:
+                flag = options.get("doProfile{}".format(k), "").lower() not in ("", "none")
+                setattr(self, "profile_{}".format(k), flag)
 
     @property
     def hh_model_empty(self):
@@ -121,8 +122,10 @@ class HHModelTask(AnalysisTask):
         model.doBRscaling = not options.get("noBRscaling", False)
         model.doHscaling = not options.get("noHscaling", False)
         model.doklDependentUnc = not options.get("noklDependentUnc", False)
+        model.doProfilekl = options.get("doProfilekl")
         model.doProfilekt = options.get("doProfilekt")
         model.doProfileCV = options.get("doProfileCV")
+        model.doProfileC2V = options.get("doProfileC2V")
 
         return mod, model
 
@@ -901,10 +904,9 @@ class POITask(DatacardTask, ParameterValuesTask):
         r_pois = list(self.r_pois)
         k_pois = list(self.k_pois)
         if not self.hh_model_empty:
-            if self.profile_kt and "kt" in k_pois:
-                k_pois.remove("kt")
-            if self.profile_cv and "CV" in k_pois:
-                k_pois.remove("CV")
+            for k in self.k_pois:
+                if getattr(self, "profile_{}".format(k)) and k in k_pois:
+                    k_pois.remove(k)
         self.r_pois = tuple(r_pois)
         self.k_pois = tuple(k_pois)
         self.all_pois = self.r_pois + self.k_pois
@@ -1256,8 +1258,10 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
                 " --physics-option doBRscaling={model.doBRscaling}"
                 " --physics-option doHscaling={model.doHscaling}"
                 " --physics-option doklDependentUnc={model.doklDependentUnc}"
-                " --physics-option doProfilekt={model.doProfilekt}"
+                " --physics-option doProfilekt={model.doProfilekl}"
+                " --physics-option doProfilekl={model.doProfilekt}"
                 " --physics-option doProfileCV={model.doProfileCV}"
+                " --physics-option doProfileC2V={model.doProfileC2V}"
             ).format(model=self.load_hh_model()[1])
 
         return (

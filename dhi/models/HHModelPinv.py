@@ -187,12 +187,10 @@ class HHModel(PhysicsModel):
     - doHscaling (bool)      : Enable scaling single Higgs cross sections with model parameters.
     - doklDependentUnc (bool): Add a theory uncertainty on ggF HH production that depends on model
                                parameters.
-    - doProfilekt (string)   : Either "flat" to enable the profiling of kt with a flat prior, or
-                               "gauss,FLOAT" (or "gauss,-FLOAT/+FLOAT") to use a gaussian
-                               (asymmetric) prior. In any case, kt is removed from the list of POIs.
-    - doProfileCV (string)   : Either "flat" to enable the profiling of CV with a flat prior, or
-                               "gauss,FLOAT" (or "gauss,-FLOAT/+FLOAT") to use a gaussian
-                               (asymmetric) prior. In any case, CV is removed from the list of POIs.
+    - doProfileX (string)    : Either "flat" to enable the profiling of kappa parameter X with a
+      X in {kl,kt,CV,C2V}      flat prior, or "gauss,FLOAT" (or "gauss,-FLOAT/+FLOAT") to use a
+                               gaussian (asymmetric) prior. In any case, X will be profiled and is
+                               hence removed from the list of POIs.
 
     A string encoded boolean flag is interpreted as *True* when it is either ``"yes"``, ``"true"``
     or ``1`` (case-insensitive).
@@ -205,8 +203,10 @@ class HHModel(PhysicsModel):
         self.doBRscaling      = True
         self.doHscaling       = True
         self.doklDependentUnc = True
+        self.doProfilekl      = None
         self.doProfilekt      = None
         self.doProfileCV      = None
+        self.doProfileC2V     = None
         self.klUncName        = "THU_HH"
         self.name             = name
 
@@ -223,7 +223,7 @@ class HHModel(PhysicsModel):
     def setPhysicsOptions(self, physOptions):
         opts = [opt.split("=", 1) for opt in physOptions if "=" in opt]
         known_flags = ["doNNLOscaling", "doBRscaling", "doHscaling", "doklDependentUnc"]
-        known_params = ["doProfilekt", "doProfileCV"]
+        known_params = ["doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V"]
 
         for key, value in opts:
             # identify boolean flags
@@ -285,10 +285,10 @@ class HHModel(PhysicsModel):
 
         # define kappa parameters and their uniform ranges
         kappas = OrderedDict([
-            ("CV", (-10, 10)),
-            ("C2V", (-10, 10)),
             ("kl", (-30, 30)),
             ("kt", (-10, 10)),
+            ("CV", (-10, 10)),
+            ("C2V", (-10, 10)),
         ])
 
         # add them
@@ -297,14 +297,17 @@ class HHModel(PhysicsModel):
             self.modelBuilder.doVar("{}[1,{},{}]".format(name, start, stop))
 
             # only make it a POI when it is not profile
-            do_profile = name == "CV" and bool(self.doProfileCV)
+            do_profile = name == "kl" and bool(self.doProfilekl)
             do_profile |= name == "kt" and bool(self.doProfilekt)
+            do_profile |= name == "CV" and bool(self.doProfileCV)
+            do_profile |= name == "C2V" and bool(self.doProfileC2V)
             if not do_profile:
                 self.modelBuilder.out.var(name).setConstant(True)
                 pois.append(name)
 
         # define the POI group
         self.modelBuilder.doSet("POI", ",".join(pois))
+        print("using POIs {}".format(",".join(pois)))
 
         # set or redefine the MH variable on which some of the BRs depend
         if not self.options.mass:
@@ -328,8 +331,8 @@ class HHModel(PhysicsModel):
         if self.doklDependentUnc:
             nuisances.append((self.klUncName, False, "param", ["0", "1"], []))
 
-        # enable profiling of kt or CV with a configurable prior
-        for name in ["kt", "CV"]:
+        # enable profiling of kappas with a configurable prior
+        for name in ["kl", "kt", "CV", "C2V"]:
             value = getattr(self, "doProfile" + name)
             if not value:
                 continue
