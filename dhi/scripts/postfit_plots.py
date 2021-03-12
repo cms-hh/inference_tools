@@ -96,13 +96,13 @@ def create_postfit_plots(
 
     if normalize_X_original:
         fileOrig = datacard_original
-        print ("template on ", fileOrig)
+        print("template on ", fileOrig)
     else:
         fileOrig = fit_diagnostics_path
 
-    print ("reading shapes from: ", fit_diagnostics_path)
+    print("reading shapes from: ", fit_diagnostics_path)
     fin = ROOT.TFile(fit_diagnostics_path, "READ")
-    print ("read shapes from: ")
+    print("read shapes from: ")
 
     labelY = "Events"
     if divideByBinWidth:
@@ -143,7 +143,7 @@ def create_postfit_plots(
                 continue
             countOnce = 1
             label_singleH = "single H"
-            print ("Add single H legend (proc %s)" % sh)
+            print("Add single H legend (proc %s)" % sh)
         else:
             label_singleH = "none"
         ordered_dict_prepend(
@@ -152,7 +152,7 @@ def create_postfit_plots(
             {"color": 226, "fillStype": 1001, "label": label_singleH, "make border": False},
         )
 
-    print ("will draw processes", list(dprocs.keys()))
+    print("will draw processes", list(dprocs.keys()))
 
     if normalize_X_original:
         fileorriginal = ROOT.TFile(fileOrig, "READ")
@@ -160,27 +160,27 @@ def create_postfit_plots(
         readFromOriginal = (
             "%s/%s" % (bin_name_original, histRead) if not bin_name_original == "none" else histRead
         )
-        print ("original readFrom ", readFromOriginal)
+        print("original readFrom ", readFromOriginal)
         template = fileorriginal.Get(readFromOriginal)
         template.GetYaxis().SetTitle(labelY)
         template.SetTitle(" ")
         nbinscatlist = [template.GetNbinsX()]
     else:
-        print ("Drawing: ", catcats)
+        print("Drawing: ", catcats)
         nbinstotal = 0
         nbinscatlist = []
         for catcat in catcats:
             readFrom = folder + "/" + catcat
             hist = fin.Get(readFrom + "/" + name_total)
-            print ("reading shapes", readFrom + "/" + name_total)
-            print (hist.Integral())
+            print("reading shapes", readFrom + "/" + name_total)
+            print(hist.Integral())
             nbinscat = GetNonZeroBins(hist)
             nbinscatlist += [nbinscat]
-            print (readFrom, nbinscat)
+            print(readFrom, nbinscat)
             nbinstotal += nbinscat
         template = ROOT.TH1F("my_hist", "", nbinstotal, 0 - 0.5, nbinstotal - 0.5)
         template.GetYaxis().SetTitle(labelY)
-        print (nbinscatlist)
+        print(nbinscatlist)
 
     legend1 = ROOT.TLegend(0.2400, 0.645, 0.9450, 0.910)
     legend1.SetNColumns(number_columns_legend)
@@ -200,7 +200,7 @@ def create_postfit_plots(
         lastbin = 0
         for cc, catcat in enumerate(catcats):
             readFrom = folder + "/" + catcat
-            print (" histtotal ", readFrom + "/" + name_total)
+            print(" histtotal ", readFrom + "/" + name_total)
             histtotal = fin.Get(readFrom + "/" + name_total)
             lastbin += process_data_histo(
                 template,
@@ -221,7 +221,7 @@ def create_postfit_plots(
     hist_total = template.Clone()
     for cc, catcat in enumerate(catcats):
         readFrom = folder + "/" + catcat
-        print ("read the hist with total uncertainties", readFrom, catcat)
+        print("read the hist with total uncertainties", readFrom, catcat)
         lastbin += process_total_histo(
             hist_total,
             readFrom,
@@ -236,7 +236,7 @@ def create_postfit_plots(
             maxY,
             totalBand=True,
         )
-    print ("hist_total", hist_total.Integral())
+    print("hist_total", hist_total.Integral())
 
     ## declare canvases sizes accordingly
     WW = 600
@@ -303,7 +303,7 @@ def create_postfit_plots(
     dumb = hist_total.Draw()
     del dumb
     histogramStack_mc = ROOT.THStack()
-    print ("list of processes considered and their integrals")
+    print("list of processes considered and their integrals")
     linebin = []
     linebinW = []
     poslinebinW_X = []
@@ -336,8 +336,8 @@ def create_postfit_plots(
             )
             lastbin += info_hist["lastbin"]
             if kk == 0:
-                print (info_hist)
-                print ("info_hist[binEdge]", info_hist["binEdge"])
+                print(info_hist)
+                print("info_hist[binEdge]", info_hist["binEdge"])
                 if info_hist["binEdge"] > 0:
                     linebin += [
                         ROOT.TLine(info_hist["binEdge"], 0.0, info_hist["binEdge"], y0 * 1.1)
@@ -360,8 +360,8 @@ def create_postfit_plots(
             or (info_hist["labelPos"] == 0 and not normalize_X_original)
         ):
             continue
-        print (key, 0 if hist_rebin == 0 else hist_rebin.Integral())
-        print ("Stacking proocess %s, with yield %s " % (key, str(round(hist_rebin.Integral(), 2))))
+        print(key, 0 if hist_rebin == 0 else hist_rebin.Integral())
+        print("Stacking proocess %s, with yield %s " % (key, str(round(hist_rebin.Integral(), 2))))
         dumb = histogramStack_mc.Add(hist_rebin)
         del dumb
 
@@ -377,7 +377,7 @@ def create_postfit_plots(
         line1.Draw()
 
     for cc, cat in enumerate(bin["align_cats_labels"]):
-        print ("Draw label cat", cat, cc)
+        print("Draw label cat", cat, cc)
         sumBottom = 0
         for ccf, cf in enumerate(cat):
             linebinW = ROOT.TLatex()
@@ -403,7 +403,7 @@ def create_postfit_plots(
                 obj_name = key0.GetName()
                 if key in obj_name:
                     sigs_to_stack += [obj_name]
-            print (catcat, key, "sigs_to_stack ", sigs_to_stack)
+            print(catcat, key, "sigs_to_stack ", sigs_to_stack)
 
         for sig in sigs_to_stack:  # procs_plot_options_sig[key]["processes"] :
             lastbin = 0
@@ -434,7 +434,7 @@ def create_postfit_plots(
         try:
             hist_sig[kk].Integral()
         except:
-            print ("A full signal list doesn't exist for %s" % key)
+            print("A full signal list doesn't exist for %s" % key)
             continue
         hist_sig[kk].SetMarkerSize(0)
         hist_sig[kk].SetLineColor(procs_plot_options_sig[key]["color"])
@@ -466,14 +466,14 @@ def create_postfit_plots(
     #################################
     if do_bottom:
         bottomPad.cd()
-        print ("doing bottom pad")
+        print("doing bottom pad")
         hist_total_err = template.Clone()
         lastbin = 0
         for cc, catcat in enumerate(catcats):
             readFrom = folder + "/" + catcat
             histtotal = hist_total
             lastbin += do_hist_total_err(hist_total_err, labelX, histtotal, minYerr, maxYerr, era)
-            print (readFrom, lastbin)
+            print(readFrom, lastbin)
         dumb = hist_total_err.Draw("e2")
         del dumb
         if unblind:
@@ -501,7 +501,7 @@ def create_postfit_plots(
         line.SetLineColor(1)
         dumb = line.Draw("same")
         del dumb
-        print ("done bottom pad")
+        print("done bottom pad")
     ##################################
 
     optbin = "plain"
@@ -511,18 +511,18 @@ def create_postfit_plots(
     savepdf = path + "_%s_%s_unblind%s" % (typeFit, oplin, unblind)
     if not do_bottom:
         savepdf = savepdf + "_noBottom"
-    print ("saving...", savepdf)
+    print("saving...", savepdf)
     dumb = canvas.SaveAs(savepdf + ".pdf")
-    print ("saved", savepdf + ".pdf")
+    print("saved", savepdf + ".pdf")
     del dumb
     dumb = canvas.SaveAs(savepdf + ".png")
-    print ("saved", savepdf + ".png")
+    print("saved", savepdf + ".png")
     del dumb
     canvas.IsA().Destructor(canvas)
 
 
 def test_print():
-    print ("it works!")
+    print("it works!")
 
 
 def ordered_dict_prepend(dct, key, value, dict_setitem=dict.__setitem__):
@@ -555,7 +555,7 @@ def process_data_histo(
     template, dataTGraph1, folder, fin, lastbin, histtotal, catbin, minY, maxY, divideByBinWidth
 ):
     dataTGraph = fin.Get(folder + "/data")
-    print ("adding", folder + "/data")
+    print("adding", folder + "/data")
     allbins = catbin
     for ii in xrange(0, allbins):
         bin_width = 1.0
@@ -601,7 +601,7 @@ def process_total_histo(
     try:
         total_hist.Integral()
     except:
-        print ("Doesn't exist %s" % total_hist_name)
+        print("Doesn't exist %s" % total_hist_name)
         return allbins
 
     hist.SetMarkerSize(0)
@@ -609,7 +609,7 @@ def process_total_histo(
     hist.SetFillColorAlpha(12, 0.40)
     hist.SetLineWidth(0)
     if totalBand:
-        print ("Total band taken from %s" % total_hist_name)
+        print("Total band taken from %s" % total_hist_name)
         hist.SetMinimum(minY)
         hist.SetMaximum(maxY)
     for ii in xrange(1, allbins + 1):
@@ -702,13 +702,13 @@ def stack_histo(
     legend,
 ):
     histo_name = folder + "/" + name
-    print ("try find %s" % histo_name)
+    print("try find %s" % histo_name)
     hist = fin.Get(histo_name)
     allbins = catbin
     try:
         hist.Integral()
     except:
-        print ("Doesn't exist %s" % histo_name)
+        print("Doesn't exist %s" % histo_name)
         return {
             "lastbin": allbins,
             "binEdge": lastbin - 0.5,
@@ -739,15 +739,15 @@ def stack_histo(
         binError2_original = hist.GetBinError(ii) ** 2
         if binContent_original < 0.0:
             binContent_modified = 0.0
-            print ("bin with negative entry: ", ii, "\t", binContent_original)
+            print("bin with negative entry: ", ii, "\t", binContent_original)
             binError2_modified = binError2_original + math.pow(
                 (binContent_original - binContent_modified), 2
             )
             if not binError2_modified >= 0.0:
-                print "Bin error negative!"
+                print"Bin error negative!"
             hist_rebin_local.SetBinError(ii + lastbin, math.sqrt(binError2_modified) / bin_width)
             hist_rebin_local.SetBinContent(ii + lastbin, 0.0)
-            print "binerror_original= ", binError2_original, "\t", "bincontent_original", "\t", binContent_original, "\t", "bincontent_modified", "\t", binContent_modified, "\t", "binerror= ", hist_rebin.GetBinError(
+            print"binerror_original= ", binError2_original, "\t", "bincontent_original", "\t", binContent_original, "\t", "bincontent_modified", "\t", binContent_modified, "\t", "binerror= ", hist_rebin.GetBinError(
                 ii
             )
         else:
@@ -794,9 +794,9 @@ def do_hist_total_err(hist_total_err, labelX, total_hist, minBottom, maxBottom, 
 
 
 def err_data(dataTGraph1, template, dataTGraph, histtotal, folder, fin, divideByBinWidth, lastbin):
-    print (" do unblided bottom pad")
+    print(" do unblided bottom pad")
     allbins = histtotal.GetXaxis().GetNbins()  # GetNonZeroBins(histtotal)
-    print ("allbins", allbins)
+    print("allbins", allbins)
     for ii in xrange(0, allbins):
         bin_width = 1.0
         if divideByBinWidth:
@@ -868,7 +868,7 @@ if __name__ == "__main__":
     output_folder = args.output_folder
 
     options_dat = args.plot_options_dict
-    print ("Reading plot options from %s" % options_dat)
+    print("Reading plot options from %s" % options_dat)
     info_bin = eval(open(options_dat, "r").read())
 
     for key, bin in info_bin.iteritems():
@@ -878,7 +878,7 @@ if __name__ == "__main__":
             normalize_X_original = False
 
         data_dir = bin["fitdiagnosis"]
-        print ("Drawing %s" % key)
+        print("Drawing %s" % key)
         create_postfit_plots(
             path="%s/plot_%s" % (output_folder, key),
             fit_diagnostics_path=data_dir,
