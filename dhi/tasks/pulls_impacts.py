@@ -196,8 +196,8 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             msg += " You can try to remove the corresponding output files via\n\n"
             for _, _, path in fail_info:
                 msg += "       rm {}\n".format(path)
-            msg += "\n     and then add different fit stability options such as\n\n"
-            msg += c("       --PullsAndImpacts-custom-args='--X-rtd MINIMIZER_analytic'\n",
+            msg += "\n     and then add different options such as\n\n"
+            msg += c("       --PullsAndImpacts-custom-args='--X-rtd MINIMIZER_no_analytic'\n",
                 style="bright")
             msg += "\n     to your 'law run ...' command.\n\n"
             msg += "  " + c("2.", "magenta")

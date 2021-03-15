@@ -54,7 +54,7 @@ setup() {
     # combine setup
     #
 
-    local combine_version="1"
+    local combine_version="2"
     local flag_file_combine="$DHI_SOFTWARE/.combine_good"
     [ "$DHI_REINSTALL_COMBINE" = "1" ] && rm -f "$flag_file_combine"
     if [ ! -f "$flag_file_combine" ]; then
@@ -64,8 +64,10 @@ setup() {
         (
             cd "$DHI_SOFTWARE"
             rm -rf HiggsAnalysis/CombinedLimit
-            git clone --depth 1 --branch 102x https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
+            git clone --depth 1 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
             cd HiggsAnalysis/CombinedLimit && \
+            git fetch --tags && \
+            git checkout tags/v8.2.0 && \
             source env_standalone.sh "" && \
             make -j && \
             make
@@ -190,11 +192,17 @@ setup() {
     if [ -d "$DHI_BASE/.git" ]; then
         for m in law plotlib; do
             local mpath="$DHI_BASE/modules/$m"
-            # update and potentially initialize the submodule when the directory is either empty
-            # or there are no changes
+            # initialize the submodule when the directory is empty
             local mfiles=( "$mpath"/* )
-            if [ "${#mfiles}" = "0" ] || [ "$( cd "$mpath"; git status --porcelain=v1 2>/dev/null | wc -l )" = "0" ]; then
+            if [ "${#mfiles}" = "0" ]; then
                 git submodule update --init --recursive "$mpath"
+            else
+                # update when not on a working branch and there are no changes
+                local detached_head="$( ( cd "$mpath"; git symbolic-ref -q HEAD &> /dev/null ) && echo true || echo false )"
+                local changed_files="$( cd "$mpath"; git status --porcelain=v1 2> /dev/null | wc -l )"
+                if ! $detached_head && [ "$changed_files" = "0" ]; then
+                    git submodule update --init --recursive "$mpath"
+                fi
             fi
         done
     fi

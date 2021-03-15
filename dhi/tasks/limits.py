@@ -543,6 +543,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         significant=False,
         description="comma-separated vertical positions of horizontal lines; default: empty",
     )
+
     y_min = None
     y_max = None
     z_min = None
@@ -558,7 +559,8 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         # this task depends on the UpperLimits task which does a scan over several parameters, but
         # we rather require a single point, so define a pseudo scan parameter for easier handling
         pois_with_values = [p for p in self.parameter_values_dict if p in self.all_pois]
-        self.pseudo_scan_parameter = (pois_with_values + ["kl"])[0]
+        other_pois = [p for p in (self.k_pois + self.r_pois) if p != self.pois[0]]
+        self.pseudo_scan_parameter = (pois_with_values + other_pois)[0]
 
     def requires(self):
         scan_parameter_value = self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.0)

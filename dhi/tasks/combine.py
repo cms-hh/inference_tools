@@ -1258,8 +1258,8 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
                 " --physics-option doBRscaling={model.doBRscaling}"
                 " --physics-option doHscaling={model.doHscaling}"
                 " --physics-option doklDependentUnc={model.doklDependentUnc}"
-                " --physics-option doProfilekt={model.doProfilekl}"
-                " --physics-option doProfilekl={model.doProfilekt}"
+                " --physics-option doProfilekl={model.doProfilekl}"
+                " --physics-option doProfilekt={model.doProfilekt}"
                 " --physics-option doProfileCV={model.doProfileCV}"
                 " --physics-option doProfileC2V={model.doProfileC2V}"
             ).format(model=self.load_hh_model()[1])
