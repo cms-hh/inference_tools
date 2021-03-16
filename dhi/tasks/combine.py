@@ -11,6 +11,7 @@ import glob
 import importlib
 import itertools
 import functools
+import inspect
 from collections import defaultdict, OrderedDict
 
 import law
@@ -130,7 +131,7 @@ class HHModelTask(AnalysisTask):
         return mod, model
 
     @classmethod
-    def _create_xsec_func(cls, hh_model, r_poi, unit, br=None, safe_signature=False):
+    def _create_xsec_func(cls, hh_model, r_poi, unit, br=None, safe_signature=True):
         if r_poi not in cls.r_pois:
             raise ValueError("cross section conversion not supported for POI {}".format(r_poi))
         if unit not in ["fb", "pb"]:
@@ -144,15 +145,15 @@ class HHModelTask(AnalysisTask):
         # get the proper xsec getter, based on poi
         if r_poi == "r_gghh":
             get_ggf_xsec = module.create_ggf_xsec_func(model.ggf_formula)
+            signature_kwargs = set(inspect.getargspec(get_ggf_xsec).args) - {"nnlo"}
             get_xsec = functools.partial(get_ggf_xsec, nnlo=model.doNNLOscaling)
-            signature_kwargs = {"kl", "kt", "unc"}
         elif r_poi == "r_qqhh":
             get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
-            signature_kwargs = {"C2V", "CV"}
+            signature_kwargs = set(inspect.getargspec(get_xsec).args)
         else:  # r
             get_hh_xsec = module.create_hh_xsec_func(model.ggf_formula, model.vbf_formula)
+            signature_kwargs = set(inspect.getargspec(get_hh_xsec).args) - {"nnlo"}
             get_xsec = functools.partial(get_hh_xsec, nnlo=model.doNNLOscaling)
-            signature_kwargs = {"kl", "kt", "C2V", "CV", "unc"}
 
         # compute the scale conversion
         scale = {"pb": 1.0, "fb": 1000.0}[unit]
