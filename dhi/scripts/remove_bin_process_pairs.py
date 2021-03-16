@@ -109,22 +109,27 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
             new_rates = mask(rates)
 
             # check if certain bins or processes were removed entirely
-            fully_removed_bin_names |= set(bin_names) - set(new_bin_names)
-            fully_removed_process_names |= set(process_names) - set(new_process_names)
+            fully_removed_bin_names = set(bin_names) - set(new_bin_names)
+            fully_removed_process_names = set(process_names) - set(new_process_names)
 
             # add back reduced lines
             content["rates"][0] = "bin " + " ".join(new_bin_names)
             content["rates"][1] = "process " + " ".join(new_process_names)
             content["rates"][2] = "process " + " ".join(new_process_ids)
             content["rates"][3] = "rate " + " ".join(new_rates)
+            logger.info("removed {} entries from process rates".format(len(removed_columns)))
 
         # decrease imax in counts
         if fully_removed_bin_names:
+            logger.info("removed all occurrences of bin(s) {}".format(
+                ", ".join(fully_removed_bin_names)))
             update_datacard_count(content, "imax", -len(fully_removed_bin_names), diff=True,
                 logger=logger)
 
         # decrease jmax in counts
         if fully_removed_process_names:
+            logger.info("removed all occurrences of processes(s) {}".format(
+                ", ".join(fully_removed_process_names)))
             update_datacard_count(content, "jmax", -len(fully_removed_process_names), diff=True,
                 logger=logger)
 
