@@ -58,7 +58,7 @@ setup() {
     local flag_file_combine="$DHI_SOFTWARE/.combine_good"
     [ "$DHI_REINSTALL_COMBINE" = "1" ] && rm -f "$flag_file_combine"
     if [ ! -f "$flag_file_combine" ]; then
-        echo "installing combine into $DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
+        echo "installing combine at $DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
         mkdir -p "$DHI_SOFTWARE"
 
         (
@@ -133,7 +133,7 @@ setup() {
     local flag_file_sw="$DHI_SOFTWARE/.sw_good"
     [ "$DHI_REINSTALL_SOFTWARE" = "1" ] && rm -f "$flag_file_sw"
     if [ ! -f "$flag_file_sw" ]; then
-        echo "installing software stack into $DHI_SOFTWARE"
+        echo "installing software stack at $DHI_SOFTWARE"
         rm -rf "$DHI_SOFTWARE/lib"
         mkdir -p "$DHI_SOFTWARE"
 
@@ -215,8 +215,13 @@ setup() {
     export LAW_HOME="$DHI_BASE/.law"
     export LAW_CONFIG_FILE="$DHI_BASE/law.cfg"
 
-    # source law's bash completion scipt
-    which law &> /dev/null && source "$( law completion )" ""
+    if which law &> /dev/null; then
+        # source law's bash completion scipt
+        source "$( law completion )" ""
+
+        # silently index
+        law index -q
+    fi
 }
 
 interactive_setup() {

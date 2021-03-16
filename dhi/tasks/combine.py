@@ -263,7 +263,10 @@ class HHModelTask(AnalysisTask):
             module_id, model_name, options = self.split_hh_model()
             part = "{}__{}".format(module_id.replace(".", "_"), model_name)
             if options:
-                fmt = lambda k, v: (k, v.replace("=", "").replace("/", "").replace(",", ""))
+                def fmt(k, v):
+                    if isinstance(v, six.string_types):
+                        return (k, v.replace("=", "").replace("/", "").replace(",", ""))
+                    return (k, v)
                 part += "__" + "_".join("{}{}".format(*fmt(k, v)) for k, v in options.items())
             parts["hh_model"] = part
 
