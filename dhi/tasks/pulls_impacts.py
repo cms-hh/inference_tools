@@ -31,6 +31,7 @@ class PullsAndImpactsBase(POITask):
     mc_stats_patterns = ["prop_bin*"]
 
     force_n_pois = 1
+    allow_parameter_values_in_pois = True
 
 
 class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
