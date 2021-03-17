@@ -18,7 +18,7 @@ import law
 import luigi
 import six
 
-from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask
+from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, LocalFileTarget
 from dhi.config import poi_data, br_hh
 from dhi.util import linspace, try_int
 from dhi.datacard_tools import bundle_datacard
@@ -332,9 +332,10 @@ class DatacardTask(HHModelTask):
     """
 
     datacards = law.CSVParameter(
-        description="paths to input datacards separated by comma; supported formats are "
-        "'[bin=]path', '[bin=]paths@store_directory for the last datacard in the sequence, and "
-        "'@store_directory' for easier configuration; supports globbing and brace expansion",
+        description="paths to input datacards separated by comma or to a single workspace; "
+        "datacard paths support formats '[bin=]path', '[bin=]paths@store_directory for the last "
+        "datacard in the sequence, and '@store_directory' for easier configuration; supports "
+        "globbing and brace expansion",
         brace_expand=True,
     )
     mass = luigi.FloatParameter(
@@ -348,8 +349,18 @@ class DatacardTask(HHModelTask):
 
     hash_datacards_in_repr = True
 
+    allow_workspace_input = True
+
     exclude_params_index = {"datacards_store_dir"}
     exclude_params_repr = {"datacards_store_dir"}
+
+    def __init__(self, *args, **kwargs):
+        super(DatacardTask, self).__init__(*args, **kwargs)
+
+        # complain when the input is a workspace and it's not allowed
+        if not self.allow_workspace_input and self.input_is_workspace:
+            raise Exception("{!r}: input {} is a workspace which is now allowed".format(
+                self, self.datacards[0]))
 
     @classmethod
     def modify_param_values(cls, params):
@@ -373,6 +384,15 @@ class DatacardTask(HHModelTask):
 
         return params
 
+    @classmethod
+    def file_is_workspace(cls, path):
+        return os.path.expandvars(path).endswith(".root")
+
+    @property
+    def input_is_workspace(self):
+        return self.datacards and len(self.datacards) == 1 \
+            and self.file_is_workspace(self.datacards[0])
+
     def _repr_params(self, *args, **kwargs):
         params = super(DatacardTask, self)._repr_params(*args, **kwargs)
 
@@ -395,16 +415,21 @@ class DatacardTask(HHModelTask):
     def split_datacard_path(cls, path):
         """
         Splits a datacard *path* into a maximum of three components: the path itself, leading bin
-        name, and a training storage directory. Missing components are returned as *None*.
+        name, and a training storage directory. Missing components are returned as *None*. When the
+        *path* refers to a workspace, do not apply any splitting.
         """
-        m = re.match(r"^(([^\/]+)=)?([^@]*)(@(.+))?$", path)
-        path, bin_name, store_dir = None, None, None
-        if m:
-            path = m.group(3) or path
-            bin_name = m.group(2) or bin_name
-            store_dir = m.group(5) or store_dir
+        _path, bin_name, store_dir = None, None, None
 
-        return path, bin_name, store_dir
+        if cls.file_is_workspace(path):
+            _path = path
+        else:
+            m = re.match(r"^(([^\/]+)=)?([^@]*)(@(.+))?$", path)
+            if m:
+                _path = m.group(3) or path
+                bin_name = m.group(2) or bin_name
+                store_dir = m.group(5) or store_dir
+
+        return _path, bin_name, store_dir
 
     @classmethod
     def resolve_datacards(cls, patterns):
@@ -506,11 +531,15 @@ class DatacardTask(HHModelTask):
 
     def store_parts(self):
         parts = super(DatacardTask, self).store_parts()
+
         if self.datacards_store_dir != law.NO_STR:
-            parts["datacards"] = self.datacards_store_dir
+            parts["inputs"] = self.datacards_store_dir
         else:
-            parts["datacards"] = "datacards_{}".format(law.util.create_hash(self.datacards))
+            prefix = "workspace" if self.input_is_workspace else "datacards"
+            parts["inputs"] = "{}_{}".format(prefix, law.util.create_hash(self.datacards))
+
         parts["mass"] = "m{}".format(self.mass)
+
         return parts
 
     @property
@@ -590,7 +619,7 @@ class MultiDatacardTask(DatacardTask):
 
     def store_parts(self):
         parts = super(MultiDatacardTask, self).store_parts()
-        parts["datacards"] = "multidatacards_{}".format(law.util.create_hash(self.multi_datacards))
+        parts["inputs"] = "multidatacards_{}".format(law.util.create_hash(self.multi_datacards))
         return parts
 
 
@@ -1165,6 +1194,8 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 
     priority = 100
 
+    allow_workspace_input = False
+
     def __init__(self, *args, **kwargs):
         super(DatacardTask, self).__init__(*args, **kwargs)
 
@@ -1247,12 +1278,21 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
     run_command_in_tmp = True
 
     def requires(self):
-        return CombineDatacards.req(self)
+        if self.input_is_workspace:
+            return []
+        else:
+            return CombineDatacards.req(self)
 
     def output(self):
-        return self.local_target("workspace.root")
+        if self.input_is_workspace:
+            return LocalFileTarget(self.datacards[0])
+        else:
+            return self.local_target("workspace.root")
 
     def build_command(self):
+        if self.input_is_workspace:
+            return None
+
         # build physics model arguments when not empty
         model_args = ""
         if not self.hh_model_empty:
@@ -1282,3 +1322,13 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
             workspace=self.output().path,
             model_args=model_args,
         )
+
+    @law.decorator.log
+    @law.decorator.notify
+    @law.decorator.safe_output
+    def run(self):
+        if self.input_is_workspace:
+            raise Exception("{!r}: the input is a workspace which should already exist before this "
+                "task is executed")
+
+        return super(CreateWorkspace, self).run()
