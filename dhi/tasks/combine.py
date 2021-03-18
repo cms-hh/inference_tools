@@ -1285,7 +1285,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
 
     def output(self):
         if self.input_is_workspace:
-            return LocalFileTarget(self.datacards[0])
+            return LocalFileTarget(self.datacards[0], external=True)
         else:
             return self.local_target("workspace.root")
 
