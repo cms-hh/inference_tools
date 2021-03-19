@@ -366,8 +366,120 @@ def read_datacard_blocks(datacard):
     return blocks
 
 
+def read_datacard_structured(datacard):
+    """
+    Reads a *datacard* and returns a structured, nested object with its content.
+    """
+    # prepare the datacard path
+    datacard = real_path(datacard)
+
+    # prepare the output data
+    data = OrderedDict()
+    data["bins"] = []  # {name: string}
+    data["processes"] = []  # {name: string, id: int}
+    data["rates"] = OrderedDict()  # {bin: {process: float}
+    data["observations"] = OrderedDict()  # {bin: float}
+    data["shapes"] = []  # {bin: string, bin_pattern: string process: string, process_pattern: string, path: string, nom_pattern: string, syst_pattern: string}
+    data["parameters"] = []  # {name: string, type: string, columnar: bool, data: ...}
+
+    # read the content
+    content = read_datacard_blocks(datacard)
+
+    # get bin and process name pairs
+    bin_names = content["rates"][0].split()[1:]
+    process_names = content["rates"][1].split()[1:]
+    process_ids = content["rates"][2].split()[1:]
+    rates = content["rates"][3].split()[1:]
+
+    # check if all lists have the same lengths
+    if not (len(bin_names) == len(process_names) == len(process_ids) == len(rates)):
+        raise Exception("the number of bin names ({}), process names ({}), process ids "
+            "({}) and rates ({}) does not match".format(len(bin_names), len(process_names),
+            len(process_ids), len(rates)))
+
+    # store data
+    for bin_name, process_name, process_id, rate in zip(bin_names, process_names, process_ids,
+            rates):
+        if not any(d["name"] == bin_name for d in data["bins"]):
+            data["bins"].append({"name": bin_name})
+
+        if not any(d["name"] == process_name for d in data["processes"]):
+            data["processes"].append(OrderedDict([("name", process_name), ("id", int(process_id))]))
+
+        data["rates"].setdefault(bin_name, OrderedDict())[process_name] = float(rate)
+
+    # get observations
+    bin_names_obs = content["observations"][0].split()[1:]
+    observations = content["observations"][1].split()[1:]
+
+    # check if the bin names are the same
+    if set(bin_names) != set(bin_names_obs):
+        raise Exception("the bins defined in observations and rates do not match")
+
+    # store data
+    for bin_name, obs in zip(bin_names_obs, observations):
+        if bin_name not in data["observations"]:
+            data["observations"][bin_name] = float(obs)
+
+    # read shape file data
+    # sort them so that most specific ones (i.e. without wildcards) come first
+    shape_lines = [ShapeLine(line, j) for j, line in enumerate(content.get("shapes", []))]
+    shape_lines.sort(key=lambda shape_line: shape_line.sorting_weight)
+    for bin_name, process_name in zip(bin_names, process_names):
+        # get the shape line that applies
+        for sl in shape_lines:
+            if multi_match(bin_name, sl.bin) and multi_match(process_name, sl.process):
+                # store the entry
+                data["shapes"].append(OrderedDict([
+                    ("bin", bin_name),
+                    ("bin_pattern", sl.bin),
+                    ("process", process_name),
+                    ("process_pattern", sl.process),
+                    ("path", sl.file),
+                    ("nom_pattern", sl.nom_pattern),
+                    ("syst_pattern", sl.syst_pattern),
+                ]))
+                break
+
+    # get parameters
+    for line in content.get("parameters", []):
+        parts = line.split()
+
+        # skip certain lines
+        if len(parts) < 3 or parts[0] == "nuisance":
+            continue
+
+        (param_name, param_type), param_spec = parts[:2], parts[2:]
+
+        if not multi_match(param_type, columnar_parameter_directives):
+            # when the type is not columnar, store the param_spec as is
+            data["parameters"].append(OrderedDict([
+                ("name", param_name),
+                ("type", param_type),
+                ("columnar", False),
+                ("spec", param_spec),
+            ]))
+        else:
+            # when it is columnar, store effects per bin and process pair
+            if len(param_spec) != len(bin_names):
+                raise Exception("numbef of columns of parameter {} ({}) does not match number of "
+                    "bin-process pairs ({})".format(param_name, len(param_spec), len(bin_names)))
+            _param_spec = OrderedDict()
+            for bin_name, process_name, spec in zip(bin_names, process_names, param_spec):
+                _param_spec.setdefault(bin_name, OrderedDict())[process_name] = spec
+            data["parameters"].append(OrderedDict([
+                ("name", param_name),
+                ("type", param_type),
+                ("columnar", True),
+                ("spec", _param_spec),
+            ]))
+
+    return data
+
+
 @contextlib.contextmanager
-def manipulate_datacard(datacard, target_datacard=None, read_only=False, writer="pretty"):
+def manipulate_datacard(datacard, target_datacard=None, read_only=False, read_structured=False,
+        writer="pretty"):
     """
     Context manager that opens a *datacard* and yields its contents as a dictionary of specific
     content blocks as returned by :py:func:`read_datacard_blocks`. Each block is a list of lines
@@ -375,7 +487,10 @@ def manipulate_datacard(datacard, target_datacard=None, read_only=False, writer=
     defined, the changes are saved in a new datacard at this location and the original datacard
     remains unchanged. When no changes are to be made to the datacard, you may set *read_only* to
     *True* to disable the tracking of changes. However, please note that the *target_datacard* is
-    still written when given. Example:
+    still written when given. When *read_structured* is *True*, the context yields not only the
+    blocks of lines, but also a structured, nexted object, obtained from
+    :py:func:`read_datacard_structured`. However, changes to this object are not propagated to the
+    manipulated datacard. Example:
 
     .. code-block:: python
 
@@ -383,6 +498,10 @@ def manipulate_datacard(datacard, target_datacard=None, read_only=False, writer=
         with manipulate_datacard("datacard.txt") as content:
             content["parameters"].append("beta rateParam B bkg 50")
             del content["auto_mc_stats"][:]
+
+        # also yield a structured object with its content
+        with manipulate_datacard("datacard.txt", read_structured=True) as (content, struct):
+            ...
 
     *writer* should be a function receiving a file object and the changed datacard blocks to write
     the contents of the new datacard. When its value is ``"simple"`` or ``"pretty"`` (strings),
@@ -392,9 +511,15 @@ def manipulate_datacard(datacard, target_datacard=None, read_only=False, writer=
     datacard = real_path(datacard)
     blocks = read_datacard_blocks(datacard)
 
+    # define the object to yield, and potentially extract stuctured data
+    yield_obj = blocks
+    if read_structured:
+        struct = read_datacard_structured(datacard)
+        yield_obj = (blocks, struct)
+
     # yield blocks and keep track of changes via hashes
     hash_before = None if read_only else law.util.create_hash(blocks)
-    yield blocks
+    yield yield_obj
     hash_after = None if read_only else law.util.create_hash(blocks)
     has_changes = hash_after != hash_before
 

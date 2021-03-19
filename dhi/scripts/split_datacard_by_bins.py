@@ -17,7 +17,7 @@ import shutil
 import json
 
 from dhi.scripts import remove_bins
-from dhi.datacard_tools import read_datacard_blocks, bundle_datacard
+from dhi.datacard_tools import read_datacard_structured, bundle_datacard
 from dhi.util import real_path, create_console_logger, patch_object
 
 
@@ -54,8 +54,8 @@ def split_datacard_by_bins(datacard, pattern=None, store_file=None, directory=No
         pattern = "{}_{{}}.{}".format(*parts[:2])
 
     # get bin names
-    content = read_datacard_blocks(datacard)
-    bin_names = list(set(content["rates"][0].split()[1:]))
+    struct = read_datacard_structured(datacard)
+    bin_names = [b["name"] for b in struct["bins"]]
 
     # remove bins one by one
     for bin_name in bin_names:

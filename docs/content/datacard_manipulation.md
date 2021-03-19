@@ -546,6 +546,45 @@ optional arguments:
 
 ## Miscellaneous
 
+### Extract datacard content as json
+
+```shell hl_lines="1"
+> extract_datacard_content.py --help
+
+usage: extract_datacard_content.py [-h] [--output OUTPUT] [--log-level LOG_LEVEL]
+                                [--log-name LOG_NAME]
+                                DATACARD
+
+Script to extract datacard content into a json file in the structure:
+
+{
+    "bins": [{"name": bin_name}],
+    "processes": [{"name": process_name, "id": process_id}],
+    "rates": {bin_name: {process_name: float}},
+    "observations": {bin_name: float},
+    "parameters": [{"name": string, "type": string, "columnar": bool, "spec": object}],
+}
+
+Example usage:
+
+# extract content and save to a certain file
+> extract_datacard_content.py datacard.txt -o data.json
+
+positional arguments:
+  DATACARD              the datacard to read
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --output OUTPUT, -o OUTPUT
+                        location of the json output file; default:
+                        DATACARD.json
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        extract_datacard_content
+```
+
+
 ### Split a datacard by bins
 
 ```shell hl_lines="1"
