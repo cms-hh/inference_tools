@@ -203,6 +203,12 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
         "define the amount of toys to generate per task; when one value is given, it is used for "
         "all datacard sequences; default: (1,)",
     )
+    left_margin = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="the left margin of the pad in pixels; uses the default of the plot when "
+        "empty; no default"
+    )
 
     y_min = None
     y_max = None
@@ -277,6 +283,7 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
             n_bins=self.n_bins,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
+            left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )

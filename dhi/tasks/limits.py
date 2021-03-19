@@ -543,6 +543,12 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         significant=False,
         description="comma-separated vertical positions of horizontal lines; default: empty",
     )
+    left_margin = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="the left margin of the pad in pixels; uses the default of the plot when "
+        "empty; no default"
+    )
 
     y_min = None
     y_max = None
@@ -675,6 +681,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
             x_log=self.x_log,
             xsec_unit=xsec_unit,
             hh_process=None if self.br in (None, law.NO_STR) else self.br,
+            left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
             model_parameters=self.get_shown_parameters(),
             h_lines=self.h_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,

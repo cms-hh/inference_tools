@@ -406,6 +406,7 @@ def plot_limit_points(
     x_max=None,
     xsec_unit=None,
     hh_process=None,
+    left_margin=None,
     model_parameters=None,
     h_lines=None,
     campaign=None,
@@ -446,11 +447,12 @@ def plot_limit_points(
     this unit or, when *None*, as a ratio over the theory prediction. *hh_process* can be the name
     of a HH subprocess configured in *dhi.config.br_hh_names* and is inserted to the process name in
     the title of the x-axis and indicates that the plotted cross section data was (e.g.) scaled by a
-    branching ratio. *model_parameters* can be a dictionary of key-value pairs of model parameters.
-    *h_lines* can be a list of integers denoting positions where additional horizontal lines are
-    drawn for visual guidance. *campaign* should refer to the name of a campaign label defined in
-    dhi.config.campaign_labels. *digits* controls the number of digits of the limit values shown for
-    each entry. When *None*, a number based on the lowest limit values is determined automatically.
+    branching ratio. *left_margin* controls the left margin of the pad in pixels. *model_parameters*
+    can be a dictionary of key-value pairs of model parameters. *h_lines* can be a list of integers
+    denoting positions where additional horizontal lines are drawn for visual guidance. *campaign*
+    should refer to the name of a campaign label defined in dhi.config.campaign_labels. *digits*
+    controls the number of digits of the limit values shown for each entry. When *None*, a number
+    based on the lowest limit values is determined automatically.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-at-a-certain-point-of-parameters
     """
@@ -500,7 +502,7 @@ def plot_limit_points(
     canvas_width = 800  # pixels
     top_margin = 35  # pixels
     bottom_margin = 70  # pixels
-    left_margin = 150  # pixels
+    left_margin = left_margin or 150  # pixels
     entry_height = 90  # pixels
     head_space = 130  # pixels
 

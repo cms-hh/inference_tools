@@ -140,6 +140,7 @@ def plot_gofs(
     n_bins=30,
     x_min=-3.,
     x_max=3.,
+    left_margin=None,
     model_parameters=None,
     campaign=None,
 ):
@@ -150,9 +151,10 @@ def plot_gofs(
     the *algorithm* used for the test is shown in the legend.
 
     The toy histograms are drawn with *n_bins* bins. *x_min*, *x_max*, *y_min* and *y_max* define
-    the axis ranges and default to the range of the given values. *model_parameters* can be a
-    dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
-    campaign label defined in *dhi.config.campaign_labels*.
+    the axis ranges and default to the range of the given values. *left_margin* controls the left
+    margin of the pad in pixels. *model_parameters* can be a dictionary of key-value pairs of model
+    parameters. *campaign* should refer to the name of a campaign label defined in
+    *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/gof.html#testing-multiple-datacards
     """
@@ -172,7 +174,7 @@ def plot_gofs(
     canvas_width = 800  # pixels
     top_margin = 35  # pixels
     bottom_margin = 70  # pixels
-    left_margin = 150  # pixels
+    left_margin = left_margin or 150  # pixels
     entry_height = 90  # pixels
     head_space = 100  # pixels
 

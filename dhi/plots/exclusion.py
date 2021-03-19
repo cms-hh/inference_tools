@@ -30,6 +30,7 @@ def plot_exclusion_and_bestfit_1d(
     scan_parameter,
     x_min=None,
     x_max=None,
+    left_margin=None,
     model_parameters=None,
     h_lines=None,
     campaign=None,
@@ -62,10 +63,11 @@ def plot_exclusion_and_bestfit_1d(
         )
 
     *x_min* and *x_max* define the range of the x-axis and default to the maximum range of poi
-    values passed in data. *model_parameters* can be a dictionary of key-value pairs of model
-    parameters. *h_lines* can be a list of integers denoting positions where additional horizontal
-    lines are drawn for visual guidance. *campaign* should refer to the name of a campaign label
-    defined in *dhi.config.campaign_labels*.
+    values passed in data. *left_margin* controls the left margin of the pad in pixels.
+    *model_parameters* can be a dictionary of key-value pairs of model parameters. *h_lines* can be
+    a list of integers denoting positions where additional horizontal lines are drawn for visual
+    guidance. *campaign* should refer to the name of a campaign label defined in
+    *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/exclusion.html#comparison-of-exclusion-performance
     """
@@ -90,7 +92,7 @@ def plot_exclusion_and_bestfit_1d(
     canvas_width = 800  # pixels
     top_margin = 35  # pixels
     bottom_margin = 70  # pixels
-    left_margin = 150  # pixels
+    left_margin = left_margin or 150  # pixels
     entry_height = 90  # pixels
     head_space = 130  # pixels
 
