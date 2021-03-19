@@ -8,8 +8,10 @@ import math
 
 import numpy as np
 
-from dhi.config import poi_data, br_hh_names, campaign_labels, colors, color_sequence
-from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int
+from dhi.config import (
+    poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence,
+)
+from dhi.util import import_ROOT, to_root_latex, create_tgraph
 from dhi.plots.util import use_style, draw_model_parameters
 
 
@@ -233,10 +235,11 @@ def plot_significance_scans(
     draw_objs.append((h_dummy, "HIST"))
 
     # expected values
-    for i, (ev, col) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1])):
+    for i, (ev, col, ms) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1],
+            marker_sequence[:n_graphs][::-1])):
         g_exp = create_tgraph(n_points, scan_values, ev["significance"])
-        r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-            "MarkerSize": 0.7}, color=colors[col])
+        r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": ms,
+            "MarkerSize": 1.2}, color=colors[col])
         draw_objs.append((g_exp, "SAME,PL"))
         name = names[n_graphs - i - 1]
         legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)), "PL"))

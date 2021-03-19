@@ -144,9 +144,14 @@ colors = DotDict(
         blue_signal_trans=(67, 118, 201, 0.5),
     ),
 )
+
+# color sequence for plots with multiple elements
 color_sequence = ["blue", "red", "green", "grey", "pink", "cyan", "orange", "light_green", "yellow"]
-# add black a few times, needs to be updated in case we need more than 9 colors
 color_sequence += 10 * ["black"]
+
+# marker sequence for plots with multiple elements
+marker_sequence = [21, 22, 23, 24, 25, 26, 32, 27, 33, 28, 34, 29, 30]
+marker_sequence += 10 * [20]
 
 # cumulative, inverse chi2 values in a mapping "n_dof -> n_sigma -> level"
 # for the geometrical determination of errors of nll curves

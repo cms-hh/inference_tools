@@ -11,7 +11,9 @@ import scipy.interpolate
 import scipy.optimize
 from scinum import Number
 
-from dhi.config import poi_data, br_hh_names, campaign_labels, chi2_levels, colors, color_sequence
+from dhi.config import (
+    poi_data, br_hh_names, campaign_labels, chi2_levels, colors, color_sequence, marker_sequence,
+)
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d
 from dhi.plots.util import (
     use_style, draw_model_parameters, fill_hist_from_points, create_random_name, get_contours,
@@ -299,7 +301,7 @@ def plot_likelihood_scans_1d(
             legend_entries.append((line_thy, "Theory prediction", "L"))
 
     # perform scans and draw nll curves
-    for d, col in zip(data, color_sequence[:len(data)]):
+    for d, col, ms in zip(data, color_sequence[:len(data)], marker_sequence[:len(data)]):
         # evaluate the scan, run interpolation and error estimation
         scan = evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"],
             poi_min=d["poi_min"])
@@ -307,7 +309,7 @@ def plot_likelihood_scans_1d(
         # draw the curve
         g_nll = create_tgraph(len(d["values"][poi]), d["values"][poi],
             d["values"]["dnll2"])
-        r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75},
+        r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
         draw_objs.append((g_nll, "SAME,CP"))
         legend_entries.append((g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])), "LP"))
