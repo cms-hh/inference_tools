@@ -892,6 +892,7 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     force_n_pois = None
     allow_parameter_values_in_pois = False
+    freeze_pois_with_parameter_values = False
     sort_pois = True
 
     @classmethod
@@ -1034,8 +1035,14 @@ class POITask(DatacardTask, ParameterValuesTask):
         return self._joined_parameter_values()
 
     def _joined_frozen_parameters(self, join=True):
+        params = tuple()
+
+        # optionally add pois whose value is set explicitly in parameter_values
+        if self.freeze_pois_with_parameter_values:
+            params += tuple(p for p in self.pois if p in self.parameter_values_dict)
+
         # unused pois
-        params = tuple(self.other_pois)
+        params += tuple(self.other_pois)
 
         # manually frozen parameters
         params += tuple(self.frozen_parameters)

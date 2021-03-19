@@ -36,6 +36,8 @@ class GoodnessOfFitBase(POITask):
     )
 
     unblinded = None
+    allow_parameter_values_in_pois = True
+    freeze_pois_with_parameter_values = True
 
     def store_parts(self):
         parts = super(GoodnessOfFitBase, self).store_parts()
