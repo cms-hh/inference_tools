@@ -25,11 +25,8 @@ from collections import OrderedDict
 
 from dhi.datacard_tools import (
     columnar_parameter_directives, bundle_datacard, manipulate_datacard, update_datacard_count,
-    expand_variables, expand_file_lines, ShapeLine,
 )
-from dhi.util import (
-    import_ROOT, TFileCache, real_path, multi_match, create_console_logger, patch_object,
-)
+from dhi.util import real_path, multi_match, create_console_logger, patch_object
 
 
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
@@ -77,12 +74,12 @@ def split_parameter(datacard, param_name, specs, ensure_unique=False, ensure_all
         datacard = bundle_datacard(datacard, directory, skip_shapes=skip_shapes)
 
     # start splitting
-    with manipulate_datacard(datacard) as content:
-        if not content.get("parameters"):
+    with manipulate_datacard(datacard) as blocks:
+        if not blocks.get("parameters"):
             return
 
         # lookup the parameter line to split
-        for line_idx, param_line in enumerate(content["parameters"]):
+        for line_idx, param_line in enumerate(blocks["parameters"]):
             param_line = param_line.split()
 
             # none of the new names should exist already
@@ -96,7 +93,7 @@ def split_parameter(datacard, param_name, specs, ensure_unique=False, ensure_all
 
             # cannot process with less than two line elements
             if len(param_line) < 2:
-                raise Exception("invalid parameter line: ".format(content["parameters"][i]))
+                raise Exception("invalid parameter line: " + blocks["parameters"][line_idx])
 
             # check the type
             param_type = param_line[1]
@@ -177,20 +174,20 @@ def split_parameter(datacard, param_name, specs, ensure_unique=False, ensure_all
                 raise Exception(msg)
 
         # remove the old line
-        lines = [line for i, line in enumerate(content["parameters"]) if i != line_idx]
-        del content["parameters"][:]
-        content["parameters"].extend(lines)
+        lines = [line for i, line in enumerate(blocks["parameters"]) if i != line_idx]
+        del blocks["parameters"][:]
+        blocks["parameters"].extend(lines)
         logger.info("removed parameter {} with type {} and {} values".format(
             param_name, param_type, len(param_values) - param_values.count("-")))
 
         # add the new lines
         for new_name, spec_line in zip(specs, spec_lines):
-            content["parameters"].append(" ".join(spec_line))
+            blocks["parameters"].append(" ".join(spec_line))
             logger.info("added new parameter {} with type {} and {} values".format(
                 new_name, param_type, len(spec_line) - spec_line.count("-") - 2))
 
         # update kmax in counts
-        update_datacard_count(content, "kmax", len(spec_lines) - 1, diff=True, logger=logger)
+        update_datacard_count(blocks, "kmax", len(spec_lines) - 1, diff=True, logger=logger)
 
 
 if __name__ == "__main__":

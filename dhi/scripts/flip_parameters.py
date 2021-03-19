@@ -65,16 +65,16 @@ def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass=
     renamer = DatacardRenamer(datacard, directory=directory, skip_shapes=skip_shapes, logger=logger)
 
     # start renaming
-    with renamer.start() as content:
+    with renamer.start() as blocks:
         # get the lists of bin and process names from the "rates" block
-        bin_names = content["rates"][0].split()[1:]
-        process_names = content["rates"][1].split()[1:]
+        bin_names = blocks["rates"][0].split()[1:]
+        process_names = blocks["rates"][1].split()[1:]
         if len(bin_names) != len(process_names):
             raise Exception("number of bins ({}) and processes ({}) not matching in datacard "
                 "rates".format(len(bin_names), len(process_names)))
 
         # iterate through lines in the "parameters" block
-        for i, param_line in enumerate(content.get("parameters", [])):
+        for i, param_line in enumerate(blocks.get("parameters", [])):
             param_line = param_line.split()
             if len(param_line) < 2:
                 continue
@@ -117,12 +117,12 @@ def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass=
                             "to {}".format(param_type, param_name, bin_name, process_name, f))
 
                     elif multi_match(param_type, "shape*"):
-                        if f == "-" or skip_shapes or not content.get("shapes"):
+                        if f == "-" or skip_shapes or not blocks.get("shapes"):
                             continue
 
                         # extract shape lines that have a systematic pattern and sort them so
                         # that most specific ones (i.e. without wildcards) come first
-                        shape_lines = [ShapeLine(l, k) for k, l in enumerate(content["shapes"])]
+                        shape_lines = [ShapeLine(l, k) for k, l in enumerate(blocks["shapes"])]
                         shape_lines = [sl for sl in shape_lines if sl.syst_pattern]
                         shape_lines.sort(key=lambda sl: sl.sorting_weight)
 
@@ -173,7 +173,7 @@ def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass=
             # replace the line
             param_line = " ".join([param_name, param_type] + new_effects)
             logger.info("adding new parameter line '{}'".format(param_line))
-            content["parameters"][i] = param_line
+            blocks["parameters"][i] = param_line
 
 
 if __name__ == "__main__":

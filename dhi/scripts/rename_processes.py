@@ -82,18 +82,18 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
         return old_name, new_name, new_pattern, towner
 
     # start renaming
-    with renamer.start() as content:
+    with renamer.start() as blocks:
         # rename names in process rates
-        if content.get("rates"):
-            line = content["rates"][1] + " "
+        if blocks.get("rates"):
+            line = blocks["rates"][1] + " "
             for old_name, new_name in renamer.rules.items():
                 if (" " + old_name + " ") in line[len("process"):]:
                     logger.info("rename process {} to {}".format(old_name, new_name))
                     line = line.replace(" " + old_name + " ", " " + new_name + " ")
-            content["rates"][1] = line.strip()
+            blocks["rates"][1] = line.strip()
 
         # rename shapes
-        if content.get("shapes"):
+        if blocks.get("shapes"):
             # determine shape systematic names per (bin, process) pair
             shape_syst_names = renamer.get_bin_process_to_systs_mapping()
 
@@ -105,7 +105,7 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
 
             # extract shape lines and sort them so that most specific ones
             # (i.e. without wildcards) come first
-            shape_lines = [ShapeLine(line, j) for j, line in enumerate(content["shapes"])]
+            shape_lines = [ShapeLine(line, j) for j, line in enumerate(blocks["shapes"])]
             shape_lines.sort(key=lambda shape_line: shape_line.sorting_weight)
 
             # go through shape lines and do the renaming
@@ -161,8 +161,8 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                     if not process_is_wildcard:
                         new_shape_line.process = renamer.translate(process_name)
 
-                # add the new line back to content
-                content["shapes"][new_shape_line.i] = str(new_shape_line)
+                # add the new line back to blocks
+                blocks["shapes"][new_shape_line.i] = str(new_shape_line)
 
 
 if __name__ == "__main__":

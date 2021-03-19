@@ -55,14 +55,14 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
         datacard = bundle_datacard(datacard, directory, skip_shapes=skip_shapes)
 
     # start removing
-    with manipulate_datacard(datacard) as content:
+    with manipulate_datacard(datacard) as blocks:
         # keep track of which exact parameters were removed that describe nuisances
         removed_nuisance_names = []
 
         # remove from parameters
-        if content.get("parameters"):
+        if blocks.get("parameters"):
             to_remove = []
-            for i, param_line in enumerate(content["parameters"]):
+            for i, param_line in enumerate(blocks["parameters"]):
                 param_line = param_line.split()
                 if len(param_line) < 2:
                     continue
@@ -74,13 +74,13 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                         removed_nuisance_names.append(param_name)
 
             # change lines in-place
-            lines = [line for i, line in enumerate(content["parameters"]) if i not in to_remove]
-            del content["parameters"][:]
-            content["parameters"].extend(lines)
+            lines = [line for i, line in enumerate(blocks["parameters"]) if i not in to_remove]
+            del blocks["parameters"][:]
+            blocks["parameters"].extend(lines)
 
         # remove from group listings
-        if content.get("groups"):
-            for i, group_line in enumerate(list(content["groups"])):
+        if blocks.get("groups"):
+            for i, group_line in enumerate(list(blocks["groups"])):
                 m = re.match(r"^([^\s]+)\s+group\s+\=\s+(.+)$", group_line.strip())
                 if not m:
                     logger.error("invalid group line format: {}".format(group_line))
@@ -93,26 +93,26 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                             param_name, group_name))
                         param_names.remove(param_name)
                 group_line = "{} group = {}".format(group_name, " ".join(param_names))
-                content["groups"][i] = group_line
+                blocks["groups"][i] = group_line
 
         # remove groups themselves
-        if content.get("groups"):
+        if blocks.get("groups"):
             to_remove = []
-            for i, group_line in enumerate(content["groups"]):
+            for i, group_line in enumerate(blocks["groups"]):
                 group_name = group_line.split()[0]
                 if multi_match(group_name, patterns):
                     logger.info("remove group {}".format(group_name))
                     to_remove.append(i)
 
             # change lines in-place
-            lines = [line for j, line in enumerate(content["groups"]) if j not in to_remove]
-            del content["groups"][:]
-            content["groups"].extend(lines)
+            lines = [line for j, line in enumerate(blocks["groups"]) if j not in to_remove]
+            del blocks["groups"][:]
+            blocks["groups"].extend(lines)
 
         # remove auto mc stats
-        if content.get("auto_mc_stats"):
+        if blocks.get("auto_mc_stats"):
             new_lines = []
-            for line in content["auto_mc_stats"]:
+            for line in blocks["auto_mc_stats"]:
                 bin_name = line.strip().split()[0]
                 if bin_name != "*" and multi_match(bin_name, patterns):
                     logger.info("remove autoMCStats for bin {}".format(bin_name))
@@ -120,12 +120,12 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                     new_lines.append(line)
 
             # change lines in-place
-            del content["auto_mc_stats"][:]
-            content["auto_mc_stats"].extend(new_lines)
+            del blocks["auto_mc_stats"][:]
+            blocks["auto_mc_stats"].extend(new_lines)
 
         # decrease kmax in counts
         if removed_nuisance_names:
-            update_datacard_count(content, "kmax", -len(removed_nuisance_names), diff=True,
+            update_datacard_count(blocks, "kmax", -len(removed_nuisance_names), diff=True,
                 logger=logger)
 
 

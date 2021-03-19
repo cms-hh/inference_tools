@@ -71,24 +71,24 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
         return old_name, new_name, towner
 
     # start renaming
-    with renamer.start() as content:
+    with renamer.start() as blocks:
         # rename parameter names in the "parameters" block itself
-        if content.get("parameters"):
+        if blocks.get("parameters"):
             def sub_fn(match):
                 old_name, rest = match.groups()
                 new_name = renamer.translate(old_name)
                 logger.info("rename parameter {} to {}".format(old_name, new_name))
                 return " ".join([new_name, rest])
 
-            for i, param_line in enumerate(list(content["parameters"])):
+            for i, param_line in enumerate(list(blocks["parameters"])):
                 old_name = param_line.split()[0]
                 if renamer.has_rule(old_name):
                     expr = r"^({})\s(.*)$".format(old_name)
                     param_line = re.sub(expr, sub_fn, param_line)
-                    content["parameters"][i] = param_line
+                    blocks["parameters"][i] = param_line
 
         # update them in group listings
-        if content.get("groups"):
+        if blocks.get("groups"):
             def sub_fn(match):
                 start, old_name, end = match.groups()
                 new_name = renamer.translate(old_name)
@@ -96,29 +96,29 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
                     start.split()[0], new_name))
                 return " ".join([start, new_name, end]).strip()
 
-            for i, group_line in enumerate(list(content["groups"])):
+            for i, group_line in enumerate(list(blocks["groups"])):
                 for old_name in renamer.rules:
                     expr = r"^(.+\s+group\s+=.*)\s({})\s(.*)$".format(old_name)
                     group_line = re.sub(expr, sub_fn, group_line + " ")
-                content["groups"][i] = group_line
+                blocks["groups"][i] = group_line
 
         # update group names themselves
-        if content.get("groups"):
+        if blocks.get("groups"):
             def sub_fn(match):
                 old_name, rest = match.groups()
                 new_name = renamer.translate(old_name)
                 logger.info("rename group {} to {}".format(old_name, new_name))
                 return " ".join([new_name, rest])
 
-            for i, group_line in enumerate(list(content["groups"])):
+            for i, group_line in enumerate(list(blocks["groups"])):
                 group_name = group_line.split()[0]
                 if renamer.has_rule(group_name):
                     expr = r"^({})\s(.*)$".format(group_name)
                     group_line = re.sub(expr, sub_fn, group_line)
-                    content["groups"][i] = group_line
+                    blocks["groups"][i] = group_line
 
         # rename shapes
-        if not skip_shapes and content.get("shapes"):
+        if not skip_shapes and blocks.get("shapes"):
             # determine shape systematic names per (bin, process) pair
             shape_syst_names = renamer.get_bin_process_to_systs_mapping()
 
@@ -127,7 +127,7 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
 
             # extract shape lines that have a systematic pattern and sort them so that most specific
             # ones (i.e. without wildcards) come first
-            shape_lines = [ShapeLine(line, j) for j, line in enumerate(content["shapes"])]
+            shape_lines = [ShapeLine(line, j) for j, line in enumerate(blocks["shapes"])]
             shape_lines = [shape_line for shape_line in shape_lines if shape_line.syst_pattern]
             shape_lines.sort(key=lambda shape_line: shape_line.sorting_weight)
 

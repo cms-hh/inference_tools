@@ -78,11 +78,11 @@ def add_parameter(datacard, param_name, param_type, param_spec=None, directory=N
         datacard = bundle_datacard(datacard, directory, skip_shapes=skip_shapes)
 
     # start adding
-    with manipulate_datacard(datacard) as content:
+    with manipulate_datacard(datacard) as blocks:
         # check if no parameter with that name already exists
         existing_names = []
         for key in ["parameters", "groups", "auto_mc_stats"]:
-            for line in content.get(key):
+            for line in blocks.get(key):
                 parts = line.strip().split()
                 if len(parts) >= 2:
                     existing_names.append(parts[1])
@@ -99,16 +99,16 @@ def add_parameter(datacard, param_name, param_type, param_spec=None, directory=N
             else:
                 key = "parameters"
             logger.info("adding new {} parameter line '{}'".format(key, param_line))
-            content[key].append(param_line)
+            blocks[key].append(param_line)
 
         else:
             # the parameter is columnar, so get a list of bins and processs in order of appearance
-            if not content.get("rates"):
+            if not blocks.get("rates"):
                 raise Exception("adding a columnar parameter requires the datacard to have "
                     "process rates")
 
-            bin_names = content["rates"][0].split()[1:]
-            process_names = content["rates"][1].split()[1:]
+            bin_names = blocks["rates"][0].split()[1:]
+            process_names = blocks["rates"][1].split()[1:]
             if len(bin_names) != len(process_names):
                 raise Exception("number of bins ({}) and processes ({}) not matching in datacard "
                     "rates".format(len(bin_names), len(process_names)))
@@ -138,11 +138,11 @@ def add_parameter(datacard, param_name, param_type, param_spec=None, directory=N
             # add the new line
             param_line = " ".join([param_name, param_type] + parts)
             logger.info("adding new parameter line '{}'".format(param_line))
-            content["parameters"].append(param_line)
+            blocks["parameters"].append(param_line)
 
         # increase kmax in counts
         if is_columnar:
-            update_datacard_count(content, "kmax", 1, diff=True, logger=logger)
+            update_datacard_count(blocks, "kmax", 1, diff=True, logger=logger)
 
 
 if __name__ == "__main__":

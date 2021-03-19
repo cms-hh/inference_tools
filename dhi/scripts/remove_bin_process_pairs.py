@@ -66,18 +66,18 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
         datacard = bundle_datacard(datacard, directory, skip_shapes=skip_shapes)
 
     # start removing
-    with manipulate_datacard(datacard) as content:
+    with manipulate_datacard(datacard) as blocks:
         # keep track of which bins and processes were fully removed
         fully_removed_bin_names = set()
         fully_removed_process_names = set()
 
         # remove from process rates and remember column indices for removal in parameters
         removed_columns = []
-        if content.get("rates"):
-            bin_names = content["rates"][0].split()[1:]
-            process_names = content["rates"][1].split()[1:]
-            process_ids = content["rates"][2].split()[1:]
-            rates = content["rates"][3].split()[1:]
+        if blocks.get("rates"):
+            bin_names = blocks["rates"][0].split()[1:]
+            process_names = blocks["rates"][1].split()[1:]
+            process_ids = blocks["rates"][2].split()[1:]
+            rates = blocks["rates"][3].split()[1:]
 
             # quick check if all lists have the same lengths
             if not (len(bin_names) == len(process_names) == len(process_ids) == len(rates)):
@@ -113,30 +113,30 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
             fully_removed_process_names = set(process_names) - set(new_process_names)
 
             # add back reduced lines
-            content["rates"][0] = "bin " + " ".join(new_bin_names)
-            content["rates"][1] = "process " + " ".join(new_process_names)
-            content["rates"][2] = "process " + " ".join(new_process_ids)
-            content["rates"][3] = "rate " + " ".join(new_rates)
+            blocks["rates"][0] = "bin " + " ".join(new_bin_names)
+            blocks["rates"][1] = "process " + " ".join(new_process_names)
+            blocks["rates"][2] = "process " + " ".join(new_process_ids)
+            blocks["rates"][3] = "rate " + " ".join(new_rates)
             logger.info("removed {} entries from process rates".format(len(removed_columns)))
 
         # decrease imax in counts
         if fully_removed_bin_names:
             logger.info("removed all occurrences of bin(s) {}".format(
                 ", ".join(fully_removed_bin_names)))
-            update_datacard_count(content, "imax", -len(fully_removed_bin_names), diff=True,
+            update_datacard_count(blocks, "imax", -len(fully_removed_bin_names), diff=True,
                 logger=logger)
 
         # decrease jmax in counts
         if fully_removed_process_names:
             logger.info("removed all occurrences of processes(s) {}".format(
                 ", ".join(fully_removed_process_names)))
-            update_datacard_count(content, "jmax", -len(fully_removed_process_names), diff=True,
+            update_datacard_count(blocks, "jmax", -len(fully_removed_process_names), diff=True,
                 logger=logger)
 
         # remove fully removed bins from observations
-        if content.get("observations") and fully_removed_bin_names:
-            bin_names = content["observations"][0].split()[1:]
-            observations = content["observations"][1].split()[1:]
+        if blocks.get("observations") and fully_removed_bin_names:
+            bin_names = blocks["observations"][0].split()[1:]
+            observations = blocks["observations"][1].split()[1:]
 
             removed_obs_columns = []
             for i, bin_name in enumerate(bin_names):
@@ -145,12 +145,12 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
                     removed_obs_columns.append(i)
 
             mask = lambda l: [elem for j, elem in enumerate(l) if j not in removed_obs_columns]
-            content["observations"][0] = "bin " + " ".join(mask(bin_names))
-            content["observations"][1] = "observation " + " ".join(mask(observations))
+            blocks["observations"][0] = "bin " + " ".join(mask(bin_names))
+            blocks["observations"][1] = "observation " + " ".join(mask(observations))
 
         # remove from shape lines
-        if content.get("shapes"):
-            shape_lines = [ShapeLine(line, j) for j, line in enumerate(content["shapes"])]
+        if blocks.get("shapes"):
+            shape_lines = [ShapeLine(line, j) for j, line in enumerate(blocks["shapes"])]
             to_remove = []
             for shape_line in shape_lines:
                 # when both bin and process are wildcards, the shape line is not removed
@@ -183,14 +183,14 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
                     break
 
             # change lines in-place
-            lines = [line for j, line in enumerate(content["shapes"]) if j not in to_remove]
-            del content["shapes"][:]
-            content["shapes"].extend(lines)
+            lines = [line for j, line in enumerate(blocks["shapes"]) if j not in to_remove]
+            del blocks["shapes"][:]
+            blocks["shapes"].extend(lines)
 
         # remove columns from certain parameters
-        if content.get("parameters") and removed_columns:
+        if blocks.get("parameters") and removed_columns:
             expr = r"^([^\s]+)\s+({})\s+(.+)$".format("|".join(columnar_parameter_directives))
-            for i, param_line in enumerate(list(content["parameters"])):
+            for i, param_line in enumerate(list(blocks["parameters"])):
                 m = re.match(expr, param_line.strip())
                 if not m:
                     continue
@@ -207,12 +207,12 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
                 logger.debug("remove {} column(s) from parameter {}".format(
                     len(removed_columns), param_name))
                 columns = [c for j, c in enumerate(columns) if j not in removed_columns]
-                content["parameters"][i] = " ".join([param_name, param_type] + columns)
+                blocks["parameters"][i] = " ".join([param_name, param_type] + columns)
 
         # remove fully removed bins from auto mc stats
-        if content.get("auto_mc_stats") and fully_removed_bin_names:
+        if blocks.get("auto_mc_stats") and fully_removed_bin_names:
             new_lines = []
-            for line in content["auto_mc_stats"]:
+            for line in blocks["auto_mc_stats"]:
                 bin_name = line.strip().split()[0]
                 if bin_name not in fully_removed_bin_names:
                     new_lines.append(line)
@@ -220,8 +220,8 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
                     logger.info("remove autoMCStats for bin {}".format(bin_name))
 
             # change lines in place
-            del content["auto_mc_stats"][:]
-            content["auto_mc_stats"].extend(new_lines)
+            del blocks["auto_mc_stats"][:]
+            blocks["auto_mc_stats"].extend(new_lines)
 
 
 if __name__ == "__main__":

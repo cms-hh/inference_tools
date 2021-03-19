@@ -102,15 +102,15 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
         datacard = bundle_datacard(datacard, directory, skip_shapes=skip_shapes)
 
     # start merging
-    with manipulate_datacard(datacard) as content:
+    with manipulate_datacard(datacard) as blocks:
         # keep track of the full lines of parameters to be merged as well as their type
         removed_param_lines = []
         new_type = None
 
         # find parameters to be merged
-        if content.get("parameters"):
+        if blocks.get("parameters"):
             to_remove = []
-            for i, param_line in enumerate(content["parameters"]):
+            for i, param_line in enumerate(blocks["parameters"]):
                 param_line = param_line.split()
 
                 # the name must not exist yet
@@ -141,9 +141,9 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                     to_remove.append(i)
 
             # change lines in-place
-            lines = [line for i, line in enumerate(content["parameters"]) if i not in to_remove]
-            del content["parameters"][:]
-            content["parameters"].extend(lines)
+            lines = [line for i, line in enumerate(blocks["parameters"]) if i not in to_remove]
+            del blocks["parameters"][:]
+            blocks["parameters"].extend(lines)
 
         # nothing to do when no parameter was found, this is likely is misconfiguration
         if not removed_param_lines:
@@ -154,10 +154,10 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
         # when the new type is "shape", verify that shape lines are given and sort them
         shape_lines = None
         if new_type == "shape":
-            if content.get("shapes"):
+            if blocks.get("shapes"):
                 # prepare shape lines that have a systematic pattern and sort them so that most
                 # specific ones (i.e. without wildcards) come first
-                shape_lines = [ShapeLine(line, j) for j, line in enumerate(content["shapes"])]
+                shape_lines = [ShapeLine(line, j) for j, line in enumerate(blocks["shapes"])]
                 shape_lines = [shape_line for shape_line in shape_lines if shape_line.syst_pattern]
                 shape_lines.sort(key=lambda shape_line: shape_line.sorting_weight)
 
@@ -173,8 +173,8 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
         n_cols = list(unique_lengths)[0] - 2
 
         # get all bins and processes
-        bin_names = content["rates"][0].split()[1:]
-        process_names = content["rates"][1].split()[1:]
+        bin_names = blocks["rates"][0].split()[1:]
+        process_names = blocks["rates"][1].split()[1:]
 
         # quick check if all lists have the same lengths
         if not (len(bin_names) == len(process_names) == n_cols):
@@ -459,14 +459,14 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                     bin_name, process_name, merged_effect))
 
         # add the merged line
-        content["parameters"].append(" ".join([new_name, new_type] + merged_effects))
+        blocks["parameters"].append(" ".join([new_name, new_type] + merged_effects))
         logger.debug("added merged parameter line for bin {} and process {}".format(bin_name,
             process_name))
 
         # decrease kmax in counts
         if removed_param_lines:
             # decrement kmax
-            update_datacard_count(content, "kmax", 1 - len(removed_param_lines), diff=True,
+            update_datacard_count(blocks, "kmax", 1 - len(removed_param_lines), diff=True,
                 logger=logger)
 
 

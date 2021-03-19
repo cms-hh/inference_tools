@@ -185,8 +185,8 @@ class DatacardRenamer(object):
         # yield the context and handle errors
         try:
             with self._tfile_cache:
-                with manipulate_datacard(self.datacard) as content:
-                    yield content
+                with manipulate_datacard(self.datacard) as blocks:
+                    yield blocks
 
                 # add all output objects to the tfile cache for writing
                 for f in self._tobj_output_cache:
@@ -206,6 +206,7 @@ class DatacardRenamer(object):
 
 
 class ShapeLine(object):
+
     @classmethod
     def parse(cls, line):
         parts = line.strip().split()
