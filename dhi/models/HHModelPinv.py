@@ -749,18 +749,18 @@ def create_ggf_xsec_func(formula=None):
 
     .. code-block:: python
 
-        get_ggf_xec = create_ggf_xsec_func()
+        get_ggf_xsec = create_ggf_xsec_func()
 
-        print(get_ggf_xec(kl=2.))
+        print(get_ggf_xsec(kl=2.))
         # -> 0.013803...
 
-        print(get_ggf_xec(kl=2., nnlo=False))
+        print(get_ggf_xsec(kl=2., nnlo=False))
         # -> 0.013852...
 
-        print(get_ggf_xec(kl=2., unc="up"))
+        print(get_ggf_xsec(kl=2., unc="up"))
         # -> 0.014305...
 
-    Formulas are taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=63.
+    Formulas are taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=65.
     """
     if formula is None:
         formula = model_default.ggf_formula
@@ -833,7 +833,9 @@ def create_vbf_xsec_func(formula=None):
     """
     Creates and returns a function that can be used to calculate numeric VBF cross section values in
     pb given an appropriate *formula*, which defaults to *model_default.vbf_formula*. The returned
-    function has the signature ``(C2V=1.0, CV=1.0, kl=1.0)``.
+    function has the signature ``(C2V=1.0, CV=1.0, kl=1.0, unc=None)``. *unc* can be set to eiher
+    "up" or "down" to return the up / down varied cross section instead where the uncertainty is
+    composed of scale variations and pdf+alpha_s.
 
     Example:
 
@@ -843,6 +845,8 @@ def create_vbf_xsec_func(formula=None):
 
         print(get_vbf_xsec(C2V=2.))
         # -> 0.013916... (or similar)
+
+    Uncertainties taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=65.
     """
     if formula is None:
         formula = model_default.vbf_formula
@@ -853,8 +857,18 @@ def create_vbf_xsec_func(formula=None):
     xsec_func = lambdify(symbols(symbol_names), formula.sigma)
 
     # wrap into another function to apply defaults
-    def wrapper(C2V=1., CV=1., kl=1.):
+    def wrapper(C2V=1., CV=1., kl=1., unc=None):
         xsec = xsec_func(C2V, CV, kl, *(sample.val_xs for sample in formula.sample_list))[0, 0]
+
+        # apply uncertainties?
+        if unc:
+            if unc.lower() not in ("up", "down"):
+                raise ValueError("unc must be 'up' or 'down', got '{}'".format(unc))
+            scale_rel = {"up": 0.0003, "down": 0.0004}[unc.lower()]
+            pdf_rel = 0.021
+            unc_rel = (1 if unc.lower() == "up" else -1) * (scale_rel**2. + pdf_rel**2.)**0.5
+            xsec *= 1 + unc_rel
+
         return xsec
 
     return wrapper
@@ -867,36 +881,49 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None):
     *model_default.ggf_formula* and *model_default.vbf_formula*, respectively. The returned
     function has the signature ``(kl=1.0, kt=1.0, C2V=1.0, CV=1.0, nnlo=True, unc=None)``.
 
-    The *nnlo* and *unc* settings only affect the ggF component of the cross section. When *nnlo* is
-    *False*, the constant k-factor of the ggf calculation is still applied. Otherwise, the returned
-    value is in full next-to-next-to-leading order for ggf. In this case, *unc* can be set to eiher
-    "up" or "down" to return the up / down varied cross section instead where the uncertainty is
-    composed of a *kl* dependent scale uncertainty and an independent PDF uncertainty of 3%.
+    The *nnlo* setting only affects the ggF component of the cross section. When *nnlo* is *False*,
+    the constant k-factor of the ggf calculation is still applied. Otherwise, the returned value is
+    in full next-to-next-to-leading order for ggf. *unc* can be set to eiher "up" or "down" to
+    return the up / down varied cross section instead where the uncertainty is composed of a *kl*
+    dependent scale uncertainty and an independent PDF uncertainty of 3% for ggF, and a scale and
+    pdf+alpha_s uncertainty for VBF. The uncertainties of the two processes are treated as
+    uncorrelated.
 
     Example:
 
     .. code-block:: python
 
-        get_hh_xec = create_hh_xsec_func()
+        get_hh_xsec = create_hh_xsec_func()
 
-        print(get_ggf_xec(kl=2.))
+        print(get_ggf_xsec(kl=2.))
         # -> 0.013803...
 
-        print(get_ggf_xec(kl=2., nnlo=False))
+        print(get_ggf_xsec(kl=2., nnlo=False))
         # -> 0.013852...
 
-        print(get_ggf_xec(kl=2., unc="up"))
-        # -> 0.014305...
+        print(get_ggf_xsec(kl=2., unc="up"))
+        # -> 0.014278...
     """
     # get the particular wrappers of the components
-    get_ggf_xec = create_ggf_xsec_func(ggf_formula)
-    get_vbf_xec = create_vbf_xsec_func(vbf_formula)
+    get_ggf_xsec = create_ggf_xsec_func(ggf_formula)
+    get_vbf_xsec = create_vbf_xsec_func(vbf_formula)
 
     # create a combined wrapper with the merged signature
     def wrapper(kl=1., kt=1., C2V=1., CV=1., nnlo=True, unc=None):
-        ggf_xsec = get_ggf_xec(kl=kl, kt=kt, nnlo=nnlo, unc=unc)
+        ggf_xsec = get_ggf_xsec(kl=kl, kt=kt, nnlo=nnlo)
         vbf_xsec = get_vbf_xsec(C2V=C2V, CV=CV, kl=kl)
-        return ggf_xsec + vbf_xsec
+        xsec = ggf_xsec + vbf_xsec
+
+        # apply uncertainties?
+        if unc:
+            if unc.lower() not in ("up", "down"):
+                raise ValueError("unc must be 'up' or 'down', got '{}'".format(unc))
+            ggf_unc = get_ggf_xsec(kl=kl, kt=kt, nnlo=nnlo, unc=unc) - ggf_xsec
+            vbf_unc = get_vbf_xsec(C2V=C2V, CV=CV, kl=kl, unc=unc) - vbf_xsec
+            unc = (1 if unc.lower() == "up" else -1) * (ggf_unc**2. + vbf_unc**2.)**0.5
+            xsec += unc
+
+        return xsec
 
     return wrapper
 

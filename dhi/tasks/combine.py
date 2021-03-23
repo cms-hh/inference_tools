@@ -145,15 +145,15 @@ class HHModelTask(AnalysisTask):
         # get the proper xsec getter, based on poi
         if r_poi == "r_gghh":
             get_ggf_xsec = module.create_ggf_xsec_func(model.ggf_formula)
-            signature_kwargs = set(inspect.getargspec(get_ggf_xsec).args) - {"nnlo"}
             get_xsec = functools.partial(get_ggf_xsec, nnlo=model.doNNLOscaling)
+            signature_kwargs = set(inspect.getargspec(get_ggf_xsec).args) - {"nnlo"}
         elif r_poi == "r_qqhh":
             get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
             signature_kwargs = set(inspect.getargspec(get_xsec).args)
         else:  # r
             get_hh_xsec = module.create_hh_xsec_func(model.ggf_formula, model.vbf_formula)
-            signature_kwargs = set(inspect.getargspec(get_hh_xsec).args) - {"nnlo"}
             get_xsec = functools.partial(get_hh_xsec, nnlo=model.doNNLOscaling)
+            signature_kwargs = set(inspect.getargspec(get_hh_xsec).args) - {"nnlo"}
 
         # compute the scale conversion
         scale = {"pb": 1.0, "fb": 1000.0}[unit]
@@ -210,7 +210,7 @@ class HHModelTask(AnalysisTask):
         get_xsec = cls._create_xsec_func(hh_model, r_poi, unit, br=br)
 
         # for certain cases, also obtain errors
-        has_unc = r_poi in ("r", "r_gghh") and cls._load_hh_model(hh_model)[1].doNNLOscaling
+        has_unc = r_poi == "r_qqhh" or cls._load_hh_model(hh_model)[1].doNNLOscaling
 
         # store as records
         records = []
@@ -521,11 +521,17 @@ class DatacardTask(HHModelTask):
         # when all matched datacards were found in the dc path and no store dir is set,
         # set it to a readable value
         if not store_dir and single_dc_matched and all(single_dc_matched):
-            parts = [
-                os.path.relpath(os.path.dirname(p), dc_path).replace(os.sep, "_")
-                for p in sorted(paths)
-            ]
-            store_dir = "__".join(parts)
+            parts = []
+            for p in sorted(paths):
+                p = os.path.relpath(p, dc_path)
+                if os.path.basename(p) == "datacard.txt":
+                    # when p refers to the default "datacard.txt", only use the dir name
+                    p = os.path.dirname(p)
+                else:
+                    # remove the file extension
+                    p = os.path.splitext(p)[0]
+                parts.append(p)
+            store_dir = "__".join(p.replace(os.sep, "_") for p in parts)
 
         return datacards, store_dir
 
