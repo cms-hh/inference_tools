@@ -576,24 +576,30 @@ class HHModel(PhysicsModel):
     def done(self):
         super(HHModel, self).done()
 
-        # get the number of matched ggF and VBF samples
-        isamples_ggf = set()
-        isamples_vbf = set()
-        for isample, hh_name in sum((self.scalingMap.values()), []):
-            if hh_name == "GGF":
-                isamples_ggf.add(isample)
-            elif hh_name == "VBF":
-                isamples_vbf.add(isample)
+        # get the labels of ggF and VBF samples and store a flag to check if they were matched
+        matches = OrderedDict(
+            (s.label, [])
+            for s in self.ggf_formula.sample_list + self.vbf_formula.sample_list
+        )
 
-        # complain when the number of seen samples does not match the amount of model samples
-        if len(isamples_ggf) not in (0, len(self.ggf_formula.sample_list)):
-            raise Exception("the number of seen ggF samples ({}) does not match the number of "
-                "samples expected by the HH physics model ({})".format(
-                    len(isamples_ggf), len(self.ggf_formula.sample_list)))
-        if len(isamples_vbf) not in (0, len(self.vbf_formula.sample_list)):
-            raise Exception("the number of seen VBF samples ({}) does not match the number of "
-                "samples expected by the HH physics model ({})".format(
-                    len(isamples_vbf), len(self.vbf_formula.sample_list)))
+        # go through the scaling map and match to samples
+        for sample_name in self.scalingMap:
+            for sample_label in matches:
+                if sample_name.startswith(sample_label):
+                    matches[sample_label].append(sample_name)
+                    break
+
+        # print matches
+        max_len = max(len(label) for label in matches)
+        print("Matching signal samples:")
+        for label, names in matches.items():
+            print("  {}{} -> {}".format(label, " " * (max_len - len(label)), ", ".join(names)))
+
+        # complain about samples that were not matched by any process
+        unmatched_samples = [label for label, names in matches.items() if not names]
+        if unmatched_samples:
+            raise Exception("{} HH signal samples were not matched by any process: {}".format(
+                len(unmatched_samples), ", ".join(unmatched_samples)))
 
 
 # ggf samples with keys (kl, kt), ordered by kl
