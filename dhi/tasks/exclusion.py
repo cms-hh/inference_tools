@@ -16,6 +16,11 @@ from dhi.config import br_hh
 
 class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
 
+    best_fit = luigi.BoolParameter(
+        default=True,
+        description="when True, the POI's best fit value from likelihood profiling is computed and "
+        "shown as well; default: True",
+    )
     h_lines = law.CSVParameter(
         cls=luigi.IntParameter,
         default=tuple(),
@@ -46,14 +51,15 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
                 for scan_parameters in self.get_scan_parameters_product()
             ]
 
-        return [
-            {
-                "limits": merge_tasks(MergeUpperLimits, datacards=datacards),
-                "likelihoods": merge_tasks(MergeLikelihoodScan, datacards=datacards,
-                    pois=tuple(self.scan_parameter_names)),
-            }
-            for datacards in self.multi_datacards
-        ]
+        reqs = []
+        for datacards in self.multi_datacards:
+            req = {"limits": merge_tasks(MergeUpperLimits, datacards=datacards)}
+            if self.best_fit:
+                req["likelihoods"] = merge_tasks(MergeLikelihoodScan, datacards=datacards,
+                    pois=tuple(self.scan_parameter_names))
+            reqs.append(req)
+
+        return reqs
 
     def output(self):
         name = self.create_plot_name(["exclusionbestfit", self.get_output_postfix()])
@@ -77,9 +83,11 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
             limits = PlotUpperLimits._load_scan_data(inp["limits"], self.scan_parameter_names)
 
             # load likelihoods
-            nll_values, scan_min = PlotLikelihoodScan._load_scan_data(inp["likelihoods"],
-                self.scan_parameter_names, self.get_scan_parameters_product())
-            scan_min = None if np.isnan(scan_min[0]) else float(scan_min[0])
+            nll_values, scan_min = None, None
+            if "likelihoods" in inp:
+                nll_values, scan_min = PlotLikelihoodScan._load_scan_data(inp["likelihoods"],
+                    self.scan_parameter_names, self.get_scan_parameters_product())
+                scan_min = None if np.isnan(scan_min[0]) else float(scan_min[0])
 
             # store data
             entry = dict(
@@ -122,6 +130,7 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
 
 class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
 
+    best_fit = PlotExclusionAndBestFit.best_fit
     xsec_contours = law.CSVParameter(
         default=("auto",),
         significant=False,
@@ -170,10 +179,12 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
                 for scan_parameters in self.get_scan_parameters_product()
             ]
 
-        return {
-            "limits": merge_tasks(MergeUpperLimits),
-            "likelihoods": merge_tasks(MergeLikelihoodScan, pois=tuple(self.scan_parameter_names)),
-        }
+        reqs = {"limits": merge_tasks(MergeUpperLimits)}
+        if self.best_fit:
+            reqs["likelihoods"] = merge_tasks(MergeLikelihoodScan,
+                pois=tuple(self.scan_parameter_names))
+
+        return reqs
 
     def output(self):
         name = self.create_plot_name(["exclusionbestfit2d", self.get_output_postfix()])
@@ -236,9 +247,11 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
                 xsec_levels = [float(l) for l in self.xsec_contours]
 
         # load likelihood scan data
-        nll_values, scan_mins = PlotLikelihoodScan._load_scan_data(inputs["likelihoods"],
-            self.scan_parameter_names, self.get_scan_parameters_product())
-        scan_mins = [(None if np.isnan(v) else float(v)) for v in scan_mins]
+        nll_values, scan_mins = None, None
+        if "likelihoods" in inputs:
+            nll_values, scan_mins = PlotLikelihoodScan._load_scan_data(inputs["likelihoods"],
+                self.scan_parameter_names, self.get_scan_parameters_product())
+            scan_mins = [(None if np.isnan(v) else float(v)) for v in scan_mins]
 
         # call the plot function
         self.call_plot_func(

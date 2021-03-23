@@ -159,22 +159,28 @@ def plot_exclusion_and_bestfit_1d(
         legend_entries.append((h_dummy, " ", ""))
 
     # best fit values
-    scans = [
-        evaluate_likelihood_scan_1d(d["nll_values"][scan_parameter], d["nll_values"]["dnll2"],
-            poi_min=d.get("scan_min"))
-        for d in data
-    ]
-    g_bestfit = create_tgraph(n,
-        [scan.num_min() for scan in scans],
-        [n - i - 0.5 for i in range(n)],
-        [scan.num_min.u(direction="down", default=0.) for scan in scans],
-        [scan.num_min.u(direction="up", default=0.,) for scan in scans],
-        0,
-        0,
-    )
-    r.setup_graph(g_bestfit, props={"MarkerStyle": 20, "MarkerSize": 1.2, "LineWidth": 1})
-    draw_objs.append((g_bestfit, "PEZ"))
-    legend_entries.append((g_bestfit, "Best fit value"))
+    scans = []
+    for d in data:
+        scan = None
+        if "nll_values" in d:
+            scan = evaluate_likelihood_scan_1d(
+                d["nll_values"][scan_parameter],
+                d["nll_values"]["dnll2"],
+                poi_min=d.get("scan_min"),
+            )
+        scans.append(scan)
+    if any(scans):
+        g_bestfit = create_tgraph(n,
+            [(scan.num_min() if scan else -1e5) for scan in scans],
+            [n - i - 0.5 for i in range(n)],
+            [(scan.num_min.u(direction="down", default=0.) if scan else 0) for scan in scans],
+            [(scan.num_min.u(direction="up", default=0.,) if scan else 0) for scan in scans],
+            0,
+            0,
+        )
+        r.setup_graph(g_bestfit, props={"MarkerStyle": 20, "MarkerSize": 1.2, "LineWidth": 1})
+        draw_objs.append((g_bestfit, "PEZ"))
+        legend_entries.append((g_bestfit, "Best fit value"))
 
     # theory prediction
     if x_min < 1:

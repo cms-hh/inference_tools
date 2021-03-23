@@ -232,7 +232,7 @@ def plot_gofs(
         y_offset = n - 1 - i
 
         # stats label
-        mean, stddev = scipy.stats.norm.fit(d["toys"])
+        mean, stddev = scipy.stats.norm.fit(d["central_toys"])
         stats_label_x = r.get_x(84, pad, anchor="right")
         stats_label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
         stats_label = stats_label_tmpl % (len(d["toys"]), mean, stddev)
