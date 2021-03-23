@@ -25,7 +25,7 @@ Output:
 
 ```mermaid
     graph LR;
-    A(PlotPostfitSOverB) --> B([PostfitShapes]);
+    A(PlotPostfitSOverB) --> B([FitDiagnostics]);
     B --> C(CreateWorkspace);
     C --> D(CombineDatacards);
 ```
@@ -39,9 +39,9 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
     --8<-- "content/snippets/plotpostfitsoverb_param_tab.md"
 
-=== "PostfitShapes"
+=== "FitDiagnostics"
 
-    --8<-- "content/snippets/postfitshapes_param_tab.md"
+    --8<-- "content/snippets/fitdiagnostics_param_tab.md"
 
 === "CreateWorkspace"
 

@@ -23,7 +23,7 @@ from dhi.tasks.likelihoods import (
 from dhi.tasks.significances import PlotSignificanceScan, PlotMultipleSignificanceScans
 from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
 from dhi.tasks.exclusion import PlotExclusionAndBestFit, PlotExclusionAndBestFit2D
-from dhi.tasks.postfit_shapes import PlotPostfitSOverB
+from dhi.tasks.postfit import PlotPostfitSOverB
 from dhi.tasks.gof import PlotGoodnessOfFit, PlotMultipleGoodnessOfFits
 from dhi.tasks.studies.model_selection import (
     PlotMorphingScales, PlotMorphedDiscriminant, PlotStatErrorScan,
