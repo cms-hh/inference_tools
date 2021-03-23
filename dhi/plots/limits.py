@@ -141,7 +141,7 @@ def plot_limit_scan(
     # central values
     g_exp = create_graph()
     r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 2})
-    draw_objs.append((g_exp, "SAME,LP"))
+    draw_objs.append((g_exp, "SAME,CP"))
     legend_entries[3] = (g_exp, "Median expected", "L")
     y_max_value = max(y_max_value, max(expected_values["limit"]))
     y_min_value = min(y_min_value, min(expected_values["limit"]))
@@ -150,7 +150,7 @@ def plot_limit_scan(
     if observed_values is not None:
         g_inj = create_graph(values=observed_values)
         r.setup_graph(g_inj, props={"LineWidth": 2, "LineStyle": 1})
-        draw_objs.append((g_inj, "SAME,L"))
+        draw_objs.append((g_inj, "SAME,C"))
         legend_entries[0] = (g_inj, "Observed", "L")
         y_max_value = max(y_max_value, max(observed_values["limit"]))
         y_min_value = min(y_min_value, min(observed_values["limit"]))
@@ -194,7 +194,7 @@ def plot_limit_scan(
     legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
-    legend_box = r.routines.create_legend_box(legend, pad, "tr",
+    legend_box = r.routines.create_legend_box(legend, pad, "trl",
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
@@ -316,7 +316,7 @@ def plot_limit_scans(
         g_exp = create_tgraph(mask.sum(), scan_values[mask], ev["limit"][mask])
         r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
-        draw_objs.append((g_exp, "SAME,PL"))
+        draw_objs.append((g_exp, "SAME,CP"))
         name = names[n_graphs - i - 1]
         legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)), "LP"))
         y_max_value = max(y_max_value, max(ev["limit"]))
@@ -357,7 +357,7 @@ def plot_limit_scans(
         else:
             g_thy = create_tgraph(len(scan_values_thy), scan_values_thy, theory_values["xsec"])
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1}, color=colors.red)
-            draw_objs.insert(1, (g_thy, "SAME,L"))
+            draw_objs.insert(1, (g_thy, "SAME,C"))
             legend_entries.append((g_thy, "Theory prediction", "L"))
 
     # legend

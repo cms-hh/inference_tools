@@ -69,7 +69,8 @@ def split_datacard_by_bins(datacard, pattern=None, store_file=None, directory=No
 
         # actual removal
         with patch_object(remove_bins, "logger", logger):
-            remove_bins.remove_bins(bin_datacard, ["!" + bin_name])
+            with patch_object(logger, "name", "{} (bin {})".format(logger.name, bin_name)):
+                remove_bins.remove_bins(bin_datacard, ["!" + bin_name])
 
     # save the bin names
     if store_file:
