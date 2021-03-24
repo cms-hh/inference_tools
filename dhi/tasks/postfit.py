@@ -4,6 +4,8 @@
 Tasks for working with postfit results.
 """
 
+import copy
+
 import law
 import luigi
 
@@ -37,7 +39,11 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
         return CreateWorkspace.req(self)
 
     def output(self):
-        return self.local_target("fitdiagnostics__{}.root".format(self.get_output_postfix()))
+        postfix = self.get_output_postfix()
+        return {
+            "result": self.local_target("result__{}.root".format(postfix)),
+            "diagnostics": self.local_target("fitdiagnostics__{}.root".format(postfix)),
+        }
 
     @property
     def blinded_args(self):
@@ -47,6 +53,7 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
             return "--toys {self.toys}".format(self=self)
 
     def build_command(self):
+        outputs = self.output()
         return (
             "combine -M FitDiagnostics {workspace}"
             " --verbose 1"
@@ -61,14 +68,18 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
             " --saveWithUncertainties"
             " --saveNormalizations"
             " --saveWorkspace"
+            " --saveToys"
             " {self.combine_optimization_args}"
             " {self.custom_args}"
             " && "
-            "mv fitDiagnostics.root {output}"
+            "mv higgsCombineTest.FitDiagnostics.mH{self.mass_int}.123456.root {output_result}"
+            " && "
+            "mv fitDiagnosticsTest.root {output_diagnostics}"
         ).format(
             self=self,
             workspace=self.input().path,
-            output=self.output().path,
+            output_result=outputs["result"].path,
+            output_diagnostics=outputs["diagnostics"].path,
         )
 
 
@@ -121,7 +132,7 @@ class PlotPostfitSOverB(POIPlotTask):
         output.parent.touch()
 
         # get the path to the fit diagnostics file
-        fit_diagnostics_path = self.input()["collection"][0].path
+        fit_diagnostics_path = self.input()["collection"][0]["diagnostics"].path
 
         # call the plot function
         self.call_plot_func(
@@ -138,3 +149,88 @@ class PlotPostfitSOverB(POIPlotTask):
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
+
+
+class PlotNuisanceLikelihoodScans(POIPlotTask):
+
+    x_min = copy.copy(POIPlotTask.x_min)
+    x_max = copy.copy(POIPlotTask.x_max)
+    x_min._default = -2.
+    x_max._default = 2.
+    y_log = luigi.BoolParameter(
+        default=False,
+        description="apply log scaling to the y-axis; default: False",
+    )
+    only_parameters = law.CSVParameter(
+        default=(),
+        significant=False,
+        description="patterns of parameters to include; skips all others; no default",
+    )
+    skip_parameters = law.CSVParameter(
+        default=(),
+        significant=False,
+        description="patterns of parameters to skip; no default",
+    )
+    parameters_per_page = luigi.IntParameter(
+        default=1,
+        description="number of parameters per page; creates a single page when < 1; default: 1",
+    )
+
+    file_type = "pdf"
+    y_min = None
+    y_max = None
+    z_min = None
+    z_max = None
+
+    force_n_pois = 1
+
+    def requires(self):
+        return FitDiagnostics.req(self)
+
+    def output(self):
+        parts = ["nlls", "{}To{}".format(self.x_min, self.x_max), self.get_output_postfix()]
+        if self.y_log:
+            parts.append("log")
+
+        return self.local_target(self.create_plot_name(parts))
+
+    @law.decorator.log
+    @law.decorator.notify
+    @view_output_plots
+    @law.decorator.safe_output
+    def run(self):
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
+
+        # get input targets
+        inputs = self.input()
+        fit_result = inputs["collection"][0]["result"]
+        fit_diagnostics = inputs["collection"][0]["diagnostics"]
+
+        # open the result file to load the workspace and other objects
+        with fit_result.load("READ", formatter="root") as result_file:
+            # get workspace
+            w = result_file.Get("w")
+
+            # load the dataset
+            dataset = w.data("data_obs") if self.unblinded else result_file.Get("toys/toy_asimov")
+
+            # call the plot function
+            self.call_plot_func(
+                "dhi.plots.likelihoods.plot_nuisance_likelihood_scans",
+                path=output.path,
+                poi=self.pois[0],
+                workspace=w,
+                dataset=dataset,
+                fit_diagnostics_path=fit_diagnostics.path,
+                fit_name="fit_s",
+                only_parameters=self.only_parameters,
+                skip_parameters=self.skip_pameters,
+                parameters_per_page=self.parameters_per_page,
+                x_min=self.x_min,
+                x_max=self.x_max,
+                y_log=self.y_log,
+                model_parameters=self.get_shown_parameters(),
+                campaign=self.campaign if self.campaign != law.NO_STR else None,
+            )

@@ -187,7 +187,7 @@ def plot_limit_scan(
         else:
             g_thy = create_graph(values=theory_values, key="xsec")
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors.red})
-            draw_objs.append((g_thy, "SAME,L"))
+            draw_objs.append((g_thy, "SAME,C"))
             legend_entries[0 if observed_values is None else 1] = (g_thy, "Theory prediction", "L")
 
     # legend
@@ -364,7 +364,7 @@ def plot_limit_scans(
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
     legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
     legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
-        props={"NColumns": legend_cols})
+        props={"NColumns": legend_cols, "TextSize": 18})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
     legend_box = r.routines.create_legend_box(legend, pad, "trl",

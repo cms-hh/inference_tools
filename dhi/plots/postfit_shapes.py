@@ -42,7 +42,7 @@ def plot_s_over_b(
     parameters. *campaign* should refer to the name of a campaign label defined in
     *dhi.config.campaign_labels*.
 
-    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/postfit.html
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/postfit.html#combined-postfit-shapes
     """
     import plotlib.root as r
     ROOT = import_ROOT()

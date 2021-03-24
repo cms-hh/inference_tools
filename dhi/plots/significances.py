@@ -274,7 +274,7 @@ def plot_significance_scans(
     legend_cols = int(math.ceil(len(legend_entries) / 4.))
     legend_rows = min(len(legend_entries), 4)
     legend = r.routines.create_legend(pad=pad, y2=-20, width=legend_cols * 160, n=legend_rows,
-        props={"NColumns": legend_cols})
+        props={"NColumns": legend_cols, "TextSize": 18})
     r.setup_legend(legend)
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)

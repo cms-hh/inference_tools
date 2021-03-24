@@ -114,7 +114,7 @@ More detailed information on the different scans & fits can be found in the foll
     </div>
   </a>
 
-  <a href="tasks/postfit.html">
+  <a href="tasks/postfit.html#combined-postfit-shapes">
     <div class="dhi_image_box">
       <div>
         <img src="images/postfitsoverb__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0.png" />
@@ -165,6 +165,17 @@ More detailed information on the different scans & fits can be found in the foll
       </div>
       <div>
         Multiple goodness-of-fit tests
+      </div>
+    </div>
+  </a>
+
+  <a href="tasks/postfit.html#nuisance-parameter-influence-on-likelihood">
+    <div class="dhi_image_box">
+      <div>
+        <img src="images/nlls__-2.0To2.0__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0__log.png" />
+      </div>
+      <div>
+        Nuisance influence on likelihood
       </div>
     </div>
   </a>

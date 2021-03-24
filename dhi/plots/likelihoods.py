@@ -5,6 +5,7 @@ Likelihood plots using ROOT.
 """
 
 import math
+from collections import OrderedDict
 
 import numpy as np
 import scipy.interpolate
@@ -14,7 +15,7 @@ from scinum import Number
 from dhi.config import (
     poi_data, br_hh_names, campaign_labels, chi2_levels, colors, color_sequence, marker_sequence,
 )
-from dhi.util import import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match
 from dhi.plots.util import (
     use_style, draw_model_parameters, fill_hist_from_points, create_random_name, get_contours,
 )
@@ -323,7 +324,7 @@ def plot_likelihood_scans_1d(
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
     legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
     legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
-        props={"NColumns": legend_cols})
+        props={"NColumns": legend_cols, "TextSize": 18})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
     legend_box = r.routines.create_legend_box(legend, pad, "trl",
@@ -651,6 +652,181 @@ def plot_likelihood_scans_2d(
     # save
     r.update_canvas(canvas)
     canvas.SaveAs(path)
+
+
+def plot_nuisance_likelihood_scans(
+    path,
+    poi,
+    workspace,
+    dataset,
+    fit_diagnostics_path,
+    fit_name="fit_s",
+    skip_parameters=None,
+    only_parameters=None,
+    parameters_per_page=1,
+    scan_points=201,
+    x_min=-2.,
+    x_max=2,
+    y_log=False,
+    model_parameters=None,
+    campaign=None,
+):
+    """
+    Creates a plot showing the change of the negative log-likelihood, obtained *poi*, when varying
+    values of nuisance paramaters and saves it at *path*. The calculation of the likelihood change
+    requires the RooFit *workspace* to read the model config, a RooDataSet *dataset* to construct
+    the functional likelihood, and the output file *fit_diagnostics_path* of the combine fit
+    diagnostics for reading pre- and post-fit parameters for the fit named *fit_name*, defaulting
+    to ``"fit_s"``.
+
+    Nuisances to skip, or to show exclusively can be configured via *skip_parameters* and
+    *only_parameters*, respectively, which can be lists of patterns. *parameters_per_page* defines
+    the number of parameter curves that are drawn in the same canvas page. The scan range and
+    granularity is set via *scan_points*, *x_min* and *x_max*. When *y_log* is *True*, the y-axis is
+    plotted with a logarithmic scale. *model_parameters* can be a dictionary of key-value pairs of
+    model parameters. *campaign* should refer to the name of a campaign label defined in
+    *dhi.config.campaign_labels*.
+
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/postfit.html#nuisance-parameter-influence-on-likelihood
+    """
+    import plotlib.root as r
+    ROOT = import_ROOT()
+
+    # helper to convert a RooArgSet  into a dictionary mapping names to value-errors pairs
+    def convert_argset(argset):
+        data = OrderedDict()
+        it = argset.createIterator()
+        while True:
+            param = it.Next()
+            if not param:
+                break
+            data[param.GetName()] = (param.getVal(), param.getErrorHi(), param.getErrorLo())
+        return data
+
+    # get the best fit value and prefit data from the diagnostics file
+    f = ROOT.TFile(fit_diagnostics_path, "READ")
+    best_fit = f.Get(fit_name)
+    fit_args = best_fit.floatParsFinal()
+    prefit_params = convert_argset(f.Get("nuisances_prefit"))
+
+    # get the model config from the workspace
+    model_config = workspace.genobj("ModelConfig")
+
+    # build the nll object
+    nll_args = ROOT.RooLinkedList()
+    nll_args.Add(ROOT.RooFit.Constrain(model_config.GetNuisanceParameters()))
+    nll_args.Add(ROOT.RooFit.Extended(model_config.GetPdf().canBeExtended()))
+    nll = model_config.GetPdf().createNLL(dataset, nll_args)
+
+    # save the best fit in a snap shot
+    snapshot_name = "best_fit_parameters"
+    workspace.saveSnapshot(snapshot_name, ROOT.RooArgSet(fit_args), True)
+
+    # prepare parameters to plot, stored in groups
+    param_names = [[]]
+    for param_name in prefit_params:
+        if only_parameters and not multi_match(param_name, only_parameters):
+            continue
+        if skip_parameters and multi_match(param_name, skip_parameters):
+            continue
+        if parameters_per_page < 1 or len(param_names[-1]) < parameters_per_page:
+            param_names[-1].append(param_name)
+        else:
+            param_names.append([param_name])
+
+    # prepare the scan values, ensure that 0 is contained
+    scan_values = np.linspace(x_min, x_max, scan_points).tolist()
+    if 0 not in scan_values:
+        scan_values = sorted(scan_values + [0.])
+
+    # go through nuisances
+    canvas = None
+    for _param_names in param_names:
+        # setup the default style and create canvas and pad
+        first_canvas = canvas is None
+        r.setup_style()
+        canvas, (pad,) = r.routines.create_canvas(pad_props={"Logy": y_log})
+        pad.cd()
+
+        # start the multi pdf file
+        if first_canvas:
+            canvas.Print(path + "[")
+
+        # get nll curves for all parameters on this page
+        curve_data = []
+        for param_name in _param_names:
+            pre_u, pre_d = prefit_params[param_name][1:3]
+            workspace.loadSnapshot(snapshot_name)
+            param = workspace.var(param_name)
+            if not param:
+                raise Exception("parameter {} not found in workspace".format(param_name))
+            param_bf = param.getVal()
+            nll_base = nll.getVal()
+            x_values, y_values = [], []
+            for x in scan_values:
+                param.setVal(param_bf + (pre_u if x >= 0 else -pre_d) * x)
+                x_values.append(param.getVal())
+                y_values.append(2 * (nll.getVal() - nll_base))
+            curve_data.append((param_name, x_values, y_values))
+
+        # get y range
+        y_min_value = min(min(y_values) for _, _, y_values in curve_data)
+        y_max_value = max(max(y_values) for _, _, y_values in curve_data)
+        if y_log:
+            y_min = 1.e-3
+            y_max = y_min * 10**(1.35 * math.log10(y_max_value / y_min))
+        else:
+            y_min = y_min_value
+            y_max = 1.35 * (y_max_value - y_min)
+
+        # dummy histogram to control axes
+        x_title = "(#theta - #theta_{best}) / #Delta#theta_{pre}"
+        y_title = "Change in -2 log(L)"
+        h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
+        r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
+        draw_objs = [(h_dummy, "HIST")]
+        legend_entries = []
+
+        # nll graphs
+        for (param_name, x, y), col in zip(curve_data, color_sequence[:len(curve_data)]):
+            g_nll = create_tgraph(len(x), x, y)
+            r.setup_graph(g_nll, props={"LineWidth": 2, "LineStyle": 1}, color=colors[col])
+            draw_objs.append((g_nll, "SAME,C"))
+            legend_entries.append((g_nll, to_root_latex(param_name), "L"))
+
+        # legend
+        legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
+        legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
+        legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
+            props={"NColumns": legend_cols, "TextSize": 18})
+        r.fill_legend(legend, legend_entries)
+        draw_objs.append(legend)
+        legend_box = r.routines.create_legend_box(legend, pad, "trl",
+            props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+        draw_objs.insert(-1, legend_box)
+
+        # model parameter labels
+        if model_parameters:
+            draw_objs.extend(draw_model_parameters(model_parameters, pad))
+
+        # cms label
+        cms_labels = r.routines.create_cms_labels(pad=pad)
+        draw_objs.extend(cms_labels)
+
+        # campaign label
+        if campaign:
+            campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
+            campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad)
+            draw_objs.append(campaign_label)
+
+        # draw objects, update and save
+        r.routines.draw_objects(draw_objs)
+        r.update_canvas(canvas)
+        canvas.Print(path)
+
+    # finish the pdf
+    if canvas:
+        canvas.Print(path + "]")
 
 
 def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):

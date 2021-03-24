@@ -23,7 +23,7 @@ from dhi.tasks.likelihoods import (
 from dhi.tasks.significances import PlotSignificanceScan, PlotMultipleSignificanceScans
 from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
 from dhi.tasks.exclusion import PlotExclusionAndBestFit, PlotExclusionAndBestFit2D
-from dhi.tasks.postfit import PlotPostfitSOverB
+from dhi.tasks.postfit import PlotPostfitSOverB, PlotNuisanceLikelihoodScans
 from dhi.tasks.gof import PlotGoodnessOfFit, PlotMultipleGoodnessOfFits
 from dhi.tasks.studies.model_selection import (
     PlotMorphingScales, PlotMorphedDiscriminant, PlotStatErrorScan,
@@ -64,6 +64,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         "exclusion_and_bestfit",
         "exclusion_and_bestfit_2d",
         "postfit_s_over_b",
+        "nuisance_likelihood_scans",
         "goodness_of_fit",
         "multiple_goodness_of_fits",
         "morphing_scales",
@@ -223,6 +224,15 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
             reqs["postfit_s_over_b"] = PlotPostfitSOverB.req(self,
                 datacards=ggf_cards,
                 pois=("r",),
+                show_parameters=("kl", "kt"),
+            )
+
+        if self.check_enabled("nuisance_likelihood_scans"):
+            reqs["nuisance_likelihood_scans"] = PlotNuisanceLikelihoodScans.req(self,
+                datacards=ggf_cards,
+                pois=("r",),
+                parameters_per_page=6,
+                y_log=True,
                 show_parameters=("kl", "kt"),
             )
 

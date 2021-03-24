@@ -17,6 +17,11 @@ from dhi.datacard_tools import get_workspace_parameters
 
 class PullsAndImpactsBase(POITask):
 
+    only_parameters = law.CSVParameter(
+        default=(),
+        description="comma-separated parameter names to include; supports patterns; skips all "
+        "others; no default",
+    )
     skip_parameters = law.CSVParameter(
         default=(),
         description="comma-separated parameter names to be skipped; supports patterns; "
@@ -62,6 +67,8 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
                 params = [p for p in params if not is_mc_stats(p)]
 
             # skip
+            if self.only_parameters:
+                params = [p for p in params if law.util.multi_match(p, self.only_parameters)]
             if self.skip_parameters:
                 params = [p for p in params if not law.util.multi_match(p, self.skip_parameters)]
 
@@ -139,6 +146,8 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
 
         if self.mc_stats:
             postfix += "_mcstats"
+        if self.only_parameters:
+            postfix += "_only" + law.util.create_hash(sorted(self.only_parameters))
         if self.skip_parameters:
             postfix += "_skip" + law.util.create_hash(sorted(self.skip_parameters))
 
@@ -155,6 +164,8 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         parts = []
         if self.mc_stats:
             parts.append("mcstats")
+        if self.only_parameters:
+            parts.append("only_" + law.util.create_hash(sorted(self.only_parameters)))
         if self.skip_parameters:
             parts.append("skip_" + law.util.create_hash(sorted(self.skip_parameters)))
 
@@ -305,6 +316,8 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         parts = []
         if self.mc_stats:
             parts.append("mcstats")
+        if self.only_parameters:
+            parts.append("only_" + law.util.create_hash(sorted(self.only_parameters)))
         if self.skip_parameters:
             parts.append("skip_" + law.util.create_hash(sorted(self.skip_parameters)))
         if self.page >= 0:
@@ -332,6 +345,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
             data=data,
             parameters_per_page=self.parameters_per_page,
             selected_page=self.page,
+            only_parameters=self.only_parameters,
             skip_parameters=self.skip_parameters,
             order_parameters=self.order_parameters,
             order_by_impact=self.order_by_impact,

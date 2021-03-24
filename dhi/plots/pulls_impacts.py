@@ -26,6 +26,7 @@ def plot_pulls_impacts(
     poi=None,
     parameters_per_page=-1,
     selected_page=-1,
+    only_parameters=None,
     skip_parameters=None,
     order_parameters=None,
     order_by_impact=False,
@@ -45,11 +46,11 @@ def plot_pulls_impacts(
 
     *parameters_per_page* configures how many parameters are shown per plot page. When negative, all
     parameters are shown in the same plot. This feature is only supported for pdfs. When
-    *selected_page* is non-negative, only this page is created. *skip_parameters* can be a list of
-    name patterns or files containing name patterns line-by-line to exclude parameters from
-    plotting. *order_parameters* accepts the same type of values, except they are used to order
-    parameters. When *order_by_impact* is *True*, *order_parameters* is neglected and the order is
-    derived using the largest absolute impact.
+    *selected_page* is non-negative, only this page is created. *only_parameters*
+    (*skip_parameters*) can be a list of name patterns or files containing name patterns
+    line-by-line to include (exclude) parameters from plotting. *order_parameters* accepts the same
+    type of values, except they are used to order parameters. When *order_by_impact* is *True*,
+    *order_parameters* is neglected and the order is derived using the largest absolute impact.
 
     The symmetric range of pulls on the bottom x-axis is defined by *pull_range* (an integer)
     whereas the range of the top x-axis associated to impact values is set by *impact_range*. For
@@ -95,9 +96,13 @@ def plot_pulls_impacts(
     print("{} total parameters found in data".format(len(params)))
 
     # apply filtering
+    if only_parameters:
+        patterns = read_patterns(only_parameters)
+        params = [param for param in params if multi_match(param.name, patterns, mode=any)]
     if skip_parameters:
         patterns = read_patterns(skip_parameters)
         params = [param for param in params if not multi_match(param.name, patterns, mode=any)]
+    if only_parameters or skip_parameters:
         print("{} remaining parameters after filtering".format(len(params)))
 
     # apply ordering
