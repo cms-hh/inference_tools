@@ -697,6 +697,7 @@ def locate_xsec_labels(graphs, level, label_width, pad_width, pad_height, x_min,
 
         # get the best position by checking the distance to other labels and the roration
         # use idx1 when no position was found
+        rot = 0.
         for idx2 in np.append(adist, idx1):
             x, y = xx[idx2, hb_size], yy[idx2, hb_size]
             if not (x_min_vis <= x <= x_max_vis) or not (y_min_vis <= y <= y_max_vis):
@@ -722,7 +723,8 @@ def locate_xsec_labels(graphs, level, label_width, pad_width, pad_height, x_min,
             # at this point, a good position was found
             break
 
-        # store it
-        positions.append((x, y, rot))
+        # store when visible
+        if (x_min_vis <= x <= x_max_vis) and (y_min_vis <= y <= y_max_vis):
+            positions.append((x, y, rot))
 
     return positions

@@ -432,6 +432,7 @@ class CommandTask(AnalysisTask):
             tmp_dir = law.LocalDirectoryTarget(is_tmp=True)
             tmp_dir.touch()
             kwargs["cwd"] = tmp_dir.path
+        self.publish_message("cwd: {}".format(kwargs.get("cwd", os.getcwd())))
 
         # call it
         with self.publish_step("running '{}' ...".format(law.util.colored(cmd, "cyan"))):

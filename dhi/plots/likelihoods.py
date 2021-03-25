@@ -73,7 +73,7 @@ def plot_likelihood_scan_1d(
     dnll2_values = dnll2_values[mask]
 
     # set y range
-    y_max_value = max(dnll2_values[(poi_values >= x_min) & (poi_values <= x_min)])
+    y_max_value = max(dnll2_values[(poi_values >= x_min) & (poi_values <= x_max)])
     if y_log:
         if y_min is None:
             y_min = 1e-3
@@ -245,7 +245,7 @@ def plot_likelihood_scans_1d(
     # set y range
     y_max_value = max([
         d["values"]["dnll2"][
-            (d["values"][poi] >= x_min) & (d["values"][poi] <= x_min)
+            (d["values"][poi] >= x_min) & (d["values"][poi] <= x_max)
         ]
         for d in data
     ])
@@ -361,6 +361,7 @@ def plot_likelihood_scan_2d(
     values,
     poi1_min=None,
     poi2_min=None,
+    draw_sm_point=True,
     x_min=None,
     x_max=None,
     y_min=None,
@@ -375,7 +376,7 @@ def plot_likelihood_scan_2d(
     *values* should be a mapping to lists of values or a record array with keys "<poi1_name>",
     "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be the values of
     the POIs that lead to the best likelihood. Otherwise, they are  estimated from the interpolated
-    curve.
+    curve. The standard model point at (1, 1) as drawn as well unless *draw_sm_point* is *False*.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
     and default to the ranges of the poi values. *z_min* and *z_max* limit the range of the z-axis.
@@ -419,7 +420,7 @@ def plot_likelihood_scan_2d(
     x_max = h_nll.GetXaxis().GetXmax()
     y_min = h_nll.GetYaxis().GetXmin()
     y_max = h_nll.GetYaxis().GetXmax()
-    z_min = h_nll.GetMinimum()
+    z_min = h_nll.GetMinimum() or 1e-3
     z_max = h_nll.GetMaximum()
 
     # dummy histogram to control axes
@@ -429,11 +430,11 @@ def plot_likelihood_scan_2d(
     h_dummy = ROOT.TH2F("h_nll", ";{};{};{}".format(x_title, y_title, z_title),
         1, x_min, x_max, 1, y_min, y_max)
     r.setup_hist(h_dummy, pad=pad, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
-    r.setup_z_axis(h_dummy.GetZaxis(), pad=pad, props={"TitleOffset": 1.3})
-    draw_objs.append((h_dummy, "COLZ"))
+    draw_objs.append((h_dummy, ""))
 
     # setup the nll hist
     r.setup_hist(h_nll, props={"ContourXX": 100, "Minimum": z_min, "Maximum": z_max})
+    r.setup_z_axis(h_nll.GetZaxis(), pad=pad, props={"Title": z_title, "TitleOffset": 1.3})
     draw_objs.append((h_nll, "SAME,COLZ"))
 
     # 1 and 2 sigma contours
@@ -444,6 +445,12 @@ def plot_likelihood_scan_2d(
         r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.yellow})
         draw_objs.append((g, "SAME,C"))
 
+    # SM point
+    if draw_sm_point:
+        g_sm = create_tgraph(1, 1, 1)
+        r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
+        draw_objs.insert(-1, (g_sm, "P"))
+
     # best fit point
     g_fit = ROOT.TGraphAsymmErrors(1)
     g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
@@ -453,7 +460,7 @@ def plot_likelihood_scan_2d(
     if scan.num2_min.uncertainties:
         g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
         g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
-    r.setup_graph(g_fit, color=colors.red)
+    r.setup_graph(g_fit, color=colors.black)
     draw_objs.append((g_fit, "PEZ"))
 
     # measurement and best fit value labels
@@ -463,7 +470,7 @@ def plot_likelihood_scan_2d(
         scan.num2_min.str(format="%.2f", style="root"))
     labels = [fit_label1, fit_label2]
     for i, l in enumerate(labels):
-        l = r.routines.create_top_right_label(l, pad=pad, x_offset=160, y_offset=30 + i * 30,
+        l = r.routines.create_top_right_label(l, pad=pad, x_offset=160, y_offset=30 + i * 34,
             props={"TextAlign": 13})
         draw_objs.append(l)
 
@@ -1041,9 +1048,9 @@ def create_dnll2_hist(poi1_values, poi2_values, dnll2_values, x_min=None, x_max=
     poi2_values = np.array(poi2_values, dtype=np.float32)
     dnll2_values = np.array(dnll2_values, dtype=np.float32)
 
-    # change non-positive numbers and nans to the next smallest number below a threshold
-    mask = (dnll2_values <= 0) & np.isnan(dnll2_values)
-    dnll2_values[mask] = min(dnll2_values[~mask].min(), z_min or 1e-3)
+    # set negative numbers to 0
+    neg_mask = dnll2_values < 0
+    dnll2_values[neg_mask] = 0
 
     # get the smallest difference between two points in each direction and call it bin width
     ex = np.unique(poi1_values)
@@ -1061,7 +1068,7 @@ def create_dnll2_hist(poi1_values, poi2_values, dnll2_values, x_min=None, x_max=
     if y_max is None:
         y_max = max(poi2_values) + 0.5 * y_width
     if z_min is None:
-        z_min = dnll2_values[~np.isnan(dnll2_values)].min()
+        z_min = dnll2_values[(~np.isnan(dnll2_values)) & (dnll2_values > 0)].min()
     if z_max is None:
         z_max = dnll2_values[~np.isnan(dnll2_values)].max()
 
@@ -1082,7 +1089,7 @@ def create_dnll2_hist(poi1_values, poi2_values, dnll2_values, x_min=None, x_max=
     h_nll.SetMinimum(z_min)
     h_nll.SetMaximum(z_max)
 
-    # fill it and lift values to the z_min to avoid drawing white bins
+    # fill it and lift values to the z_min to avoid drawing unfilled white bins
     fill_hist_from_points(h_nll, poi1_values, poi2_values, dnll2_values)
     for bx in range(1, h_nll.GetNbinsX() + 1):
         for by in range(1, h_nll.GetNbinsY() + 1):

@@ -88,7 +88,8 @@ There is also the option to draw the curves of multiple parameters in the same p
 ```shell
 law run PlotNuisanceLikelihoodScans \
     --version dev \
-    --datacards $DHI_EXAMPLE_CARDS
+    --datacards $DHI_EXAMPLE_CARDS \
+    --parameters-per-page 6
 ```
 
 Note that the above command uses `r` as the default POI
@@ -133,7 +134,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 **1.** Plot the curves of multiple parameters on the same page, select only parameters related to b-tagging, and choose a log scale.
 
-```shell hl_lines="4-6"
+```shell hl_lines="5-6"
 law run PlotNuisanceLikelihoodScans \
     --version dev \
     --datacards $DHI_EXAMPLE_CARDS \

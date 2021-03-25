@@ -80,6 +80,7 @@ br_hh_names = DotDict(
     zzzz=r"ZZZZ",
     wwzz=r"WWZZ",
     wwgg=r"WW$\gamma\gamma$",
+    multilepton="Multilepton",
 )
 # aliases
 br_hh_names["bbwwdl"] = br_hh_names.bbwwlvlv
@@ -87,15 +88,16 @@ br_hh_names["bbwwllvv"] = br_hh_names.bbwwlvlv
 br_hh_names["bbwwsl"] = br_hh_names.bbwwqqlv
 br_hh_names["bbzz4l"] = br_hh_names.bbzzllll
 
-# campaign labels, extended by HH branching names
-campaign_labels = DotDict(
-    {
-        "2016": "2016 (13 TeV)",
-        "2017": "2017 (13 TeV)",
-        "2018": "2018 (13 TeV)",
-        "run2": "Run 2 (13 TeV)",
-    }
-)
+# campaign labels, extended by combinations with HH branching names, and names itself
+campaign_labels = DotDict({
+    "2016": "2016 (13 TeV)",
+    "2017": "2017 (13 TeV)",
+    "2018": "2018 (13 TeV)",
+    "run2": "Run 2 (13 TeV)",
+})
+for c, c_label in list(campaign_labels.items()):
+    for b, b_label in br_hh_names.items():
+        campaign_labels["{}_{}".format(b, c)] = "{}, {}".format(b_label, c_label)
 campaign_labels.update(br_hh_names)
 
 # poi defaults (value, range, points, taken from physics model) and labels
