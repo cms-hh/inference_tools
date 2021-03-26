@@ -15,6 +15,8 @@ from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWo
 
 class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
+    SAVE_FLAGS = ("Shapes", "WithUncertainties", "Normalizations", "Workspace", "Toys")
+
     pois = law.CSVParameter(
         default=("r",),
         unique=True,
@@ -22,8 +24,19 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
         choices=POITask.r_pois,
         description="names of POIs; choices: {}; default: (r,)".format(",".join(POITask.r_pois)),
     )
+    skip_b_only = luigi.BoolParameter(
+        default=True,
+        description="when True, skip performing the background-only fit; default: True",
+    )
+    skip_save = law.CSVParameter(
+        default=tuple(),
+        choices=SAVE_FLAGS,
+        description="comma-separated flags to skip passing to combine as '--save<flag>'; "
+            "choices: {}; no default".format(",".join(SAVE_FLAGS)),
+    )
 
     force_n_pois = 1
+    allow_parameter_values_in_pois = True
 
     run_command_in_tmp = True
 
@@ -39,7 +52,13 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
         return CreateWorkspace.req(self)
 
     def output(self):
-        postfix = self.get_output_postfix()
+        parts = [self.get_output_postfix()]
+        if not self.skip_b_only:
+            parts.append("withBOnly")
+        if self.skip_save:
+            parts.append(map("no{}".format, self.skip_save))
+        postfix = self.join_postfix(parts)
+
         return {
             "result": self.local_target("result__{}.root".format(postfix)),
             "diagnostics": self.local_target("fitdiagnostics__{}.root".format(postfix)),
@@ -54,6 +73,15 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
 
     def build_command(self):
         outputs = self.output()
+
+        # prepare optional flags
+        flags = []
+        if self.skip_b_only:
+            flags.append("--skipBOnlyFit")
+        for save_flag in self.SAVE_FLAGS:
+            if save_flag not in self.skip_save:
+                flags.append("--save{}".format(save_flag))
+
         return (
             "combine -M FitDiagnostics {workspace}"
             " --verbose 1"
@@ -63,12 +91,7 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
-            " --saveShapes"
-            " --skipBOnlyFit"
-            " --saveWithUncertainties"
-            " --saveNormalizations"
-            " --saveWorkspace"
-            " --saveToys"
+            " {flags}"
             " {self.combine_optimization_args}"
             " {self.custom_args}"
             " && "
@@ -80,6 +103,7 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
             workspace=self.input().path,
             output_result=outputs["result"].path,
             output_diagnostics=outputs["diagnostics"].path,
+            flags=" ".join(flags),
         )
 
 
@@ -185,7 +209,7 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
     force_n_pois = 1
 
     def requires(self):
-        return FitDiagnostics.req(self)
+        return FitDiagnostics.req(self, skip_save=("WithUncertainties",))
 
     def output(self):
         parts = ["nlls", "{}To{}".format(self.x_min, self.x_max), self.get_output_postfix()]
