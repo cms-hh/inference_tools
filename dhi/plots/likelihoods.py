@@ -244,9 +244,7 @@ def plot_likelihood_scans_1d(
 
     # set y range
     y_max_value = max([
-        d["values"]["dnll2"][
-            (d["values"][poi] >= x_min) & (d["values"][poi] <= x_max)
-        ]
+        d["values"]["dnll2"][(d["values"][poi] >= x_min) & (d["values"][poi] <= x_max)].max()
         for d in data
     ])
     if y_log:
@@ -886,7 +884,7 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     def get_intersections(v):
         def minimize(bounds):
             objective = lambda x: (interp(x) - v) ** 2.0
-            res = minimize_1d(objective, bounds)
+            res = minimize_1d(objective, bounds, start=poi_min)
             return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
 
         return (
@@ -987,10 +985,6 @@ def evaluate_likelihood_scan_2d(
 
     # helper to get the outermost intersection of the nll curve with a certain value
     def get_intersections(v, n_poi):
-        def minimize(bounds):
-            res = minimize_1d(objective, bounds)
-            return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
-
         if n_poi == 1:
             poi_values_min, poi_values_max = poi1_values_min, poi1_values_max
             poi_min = poi1_min
@@ -999,6 +993,10 @@ def evaluate_likelihood_scan_2d(
             poi_values_min, poi_values_max = poi2_values_min, poi2_values_max
             poi_min = poi2_min
             objective = lambda x: (interp(poi1_min, x) - v) ** 2.0
+
+        def minimize(bounds):
+            res = minimize_1d(objective, bounds, start=poi_min)
+            return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
 
         return (
             minimize((poi_min, poi_values_max - 1e-4)),

@@ -314,10 +314,11 @@ class HHModel(PhysicsModel):
             raise Exception("invalid mass value '{}', please provide a valid value using the "
                 "--mass option".format(self.options.mass))
         if self.modelBuilder.out.var("MH"):
+            self.modelBuilder.out.var("MH").removeRange()
             self.modelBuilder.out.var("MH").setVal(self.options.mass)
-            self.modelBuilder.out.var("MH").setConstant(True)
         else:
-            self.modelBuilder.doVar("MH[%g]" % self.options.mass)
+            self.modelBuilder.doVar("MH[%f]" % self.options.mass)
+        self.modelBuilder.out.var("MH").setConstant(True)
 
         # add objects for kl dependent theory uncertainties
         if self.doklDependentUnc:

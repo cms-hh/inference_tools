@@ -226,7 +226,7 @@ def find_poly_bin_center(poly_bin, n=1000):
 
 
 # helper to extract contours
-def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_points=5):
+def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_points=10):
     ROOT = import_ROOT()
 
     # remove nans in z_values
