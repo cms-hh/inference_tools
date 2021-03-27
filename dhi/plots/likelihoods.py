@@ -883,8 +883,16 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     # helper to get the outermost intersection of the nll curve with a certain value
     def get_intersections(v):
         def minimize(bounds):
+            # get a good starting point within the bounds and close to poi_min
+            linspace = np.linspace(bounds[0], bounds[1], 100)
+            for start in sorted(linspace, key=lambda x: abs(x - poi_min)):
+                if interp(start) > v:
+                    break
+            else:
+                start = poi_min
+            # minimize
             objective = lambda x: (interp(x) - v) ** 2.0
-            res = minimize_1d(objective, bounds, start=poi_min)
+            res = minimize_1d(objective, bounds, start=start)
             return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
 
         return (
@@ -988,14 +996,23 @@ def evaluate_likelihood_scan_2d(
         if n_poi == 1:
             poi_values_min, poi_values_max = poi1_values_min, poi1_values_max
             poi_min = poi1_min
-            objective = lambda x: (interp(x, poi2_min) - v) ** 2.0
+            _interp = lambda x: interp(x, poi2_min)
         else:
             poi_values_min, poi_values_max = poi2_values_min, poi2_values_max
             poi_min = poi2_min
-            objective = lambda x: (interp(poi1_min, x) - v) ** 2.0
+            _interp = lambda x: interp(poi1_min, x)
+        objective = lambda x: (_interp(x) - v) ** 2.0
 
         def minimize(bounds):
-            res = minimize_1d(objective, bounds, start=poi_min)
+            # get a good starting point within the bounds and close to poi_min
+            linspace = np.linspace(bounds[0], bounds[1], 100)
+            for start in sorted(linspace, key=lambda x: abs(x - poi_min)):
+                if _interp(start) > v:
+                    break
+            else:
+                start = poi_min
+            # minimize
+            res = minimize_1d(objective, bounds, start=start)
             return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
 
         return (
