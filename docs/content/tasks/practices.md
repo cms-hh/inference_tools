@@ -229,7 +229,7 @@ The exact behavior can be further controlled with parameters:
 - `--workflow STRING`: Defines the type of workflow, e.g., `local` or `htcondor` (see below).
 - `--start-branch INT`: Defines the first branch to run.
 - `--end-branch INT`: Defines the last branch to run.
-- `--branches INT,...`: Defines a granular selection of branches to run.
+- `--branches INT,...`: Defines a granular selection of branches to run. Supports range patterns in the format `START:END` (inclusive).
 
 See the [workflow documentation](https://law.readthedocs.io/en/latest/workflows.html) for more details.
 

@@ -75,8 +75,8 @@ class BaseTask(law.Task):
         "CSV parameter accepts a single integer value which sets the task recursion depth to also "
         "print the commands of required tasks (0 means non-recursive)",
     )
-    notify_slack = law.slack.NotifySlackParameter()
-    notify_telegram = law.telegram.NotifyTelegramParameter()
+    notify_slack = law.slack.NotifySlackParameter(significant=False)
+    notify_telegram = law.telegram.NotifyTelegramParameter(significant=False)
 
     exclude_params_req = {"notify_slack", "notify_telegram"}
 

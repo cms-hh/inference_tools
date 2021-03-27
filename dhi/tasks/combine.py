@@ -250,6 +250,12 @@ class HHModelTask(AnalysisTask):
 
     @require_hh_model
     def convert_to_xsecs(self, *args, **kwargs):
+        if kwargs.get("br") and self.load_hh_model()[1].doBRscaling:
+            self.logger.warning("the computation of cross sections involving the branching ratio "
+                "'{}' does not consider any kappa dependence of the branching ratio itself; this "
+                "is, however, part of the configured physics model '{}' and is therefore used "
+                "internally by combine".format(kwargs.get("br"), self.hh_model))
+
         return self._convert_to_xsecs(self.hh_model, *args, **kwargs)
 
     @require_hh_model
