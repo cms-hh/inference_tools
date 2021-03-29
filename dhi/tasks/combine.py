@@ -407,15 +407,16 @@ class DatacardTask(HHModelTask):
 
         return params
 
-    @classmethod
-    def _repr_param(cls, name, value, **kwargs):
+    def _repr_param(self, name, value, **kwargs):
         if name == "datacards":
             if isinstance(value, six.string_types):
                 value = "@" + value
-            elif cls.hash_datacards_in_repr:
+            elif self.datacards_store_dir != law.NO_STR:
+                value = self.datacards_store_dir
+            elif self.hash_datacards_in_repr:
                 value = "hash:{}".format(law.util.create_hash(value))
             kwargs["serialize"] = False
-        return super(DatacardTask, cls)._repr_param(name, value, **kwargs)
+        return super(DatacardTask, self)._repr_param(name, value, **kwargs)
 
     @classmethod
     def split_datacard_path(cls, path):
@@ -622,12 +623,11 @@ class MultiDatacardTask(DatacardTask):
                 "multi_datacards ({})".format(
                     self, len(self.datacard_order), len(self.multi_datacards)))
 
-    @classmethod
-    def _repr_param(cls, name, value, **kwargs):
-        if cls.hash_datacards_in_repr and name == "multi_datacards":
+    def _repr_param(self, name, value, **kwargs):
+        if self.hash_datacards_in_repr and name == "multi_datacards":
             value = "hash:{}".format(law.util.create_hash(value))
             kwargs["serialize"] = False
-        return super(MultiDatacardTask, cls)._repr_param(name, value, **kwargs)
+        return super(MultiDatacardTask, self)._repr_param(name, value, **kwargs)
 
     def store_parts(self):
         parts = super(MultiDatacardTask, self).store_parts()
