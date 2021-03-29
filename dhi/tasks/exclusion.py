@@ -25,7 +25,7 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
         cls=luigi.IntParameter,
         default=tuple(),
         significant=False,
-        description="comma-separated vertical positions of horizontal lines; default: empty",
+        description="comma-separated vertical positions of horizontal lines; no default",
     )
     left_margin = luigi.IntParameter(
         default=law.NO_INT,
@@ -153,7 +153,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         default=law.NO_STR,
         choices=[law.NO_STR, ""] + list(br_hh.keys()),
         description="name of a branching ratio defined in dhi.config.br_hh to scale the cross "
-        "section when --xsec is set; choices: '',{}; default: empty".format(",".join(br_hh.keys())),
+        "section when --xsec is set; choices: '',{}; no default".format(",".join(br_hh.keys())),
     )
     z_min = None
     z_max = None

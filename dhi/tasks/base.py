@@ -187,7 +187,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         default=law.NO_INT,
         significant=False,
         description="number of CPUs to request; empty value leads to the cluster default setting; "
-        "default: empty",
+        "no default",
     )
     htcondor_flavor = luigi.ChoiceParameter(
         default="cern",
@@ -206,7 +206,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         default=law.NO_STR,
         significant=False,
         description="the name of an accounting group on the cluster to handle user priority; not "
-        "used when empty; default: empty",
+        "used when empty; no default",
     )
 
     exclude_params_branch = {
@@ -394,7 +394,7 @@ class CommandTask(AnalysisTask):
     custom_args = luigi.Parameter(
         default="",
         description="custom arguments that are forwarded to the underlying command; they might not "
-        "be encoded into output file paths; default: empty",
+        "be encoded into output file paths; no default",
     )
 
     exclude_index = True
@@ -488,7 +488,7 @@ class PlotTask(AnalysisTask):
         default=law.NO_STR,
         significant=False,
         description="a command to execute after the task has run to visualize plots right in the "
-        "terminal; default: empty",
+        "terminal; no default",
     )
     campaign = luigi.Parameter(
         default=law.NO_STR,

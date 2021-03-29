@@ -578,29 +578,35 @@ class HHModel(PhysicsModel):
         super(HHModel, self).done()
 
         # get the labels of ggF and VBF samples and store a flag to check if they were matched
-        matches = OrderedDict(
-            (s.label, [])
-            for s in self.ggf_formula.sample_list + self.vbf_formula.sample_list
-        )
+        matches_ggf = OrderedDict((s.label, []) for s in self.ggf_formula.sample_list)
+        matches_vbf = OrderedDict((s.label, []) for s in self.vbf_formula.sample_list)
 
         # go through the scaling map and match to samples
         for sample_name in self.scalingMap:
+            matches = matches_ggf if sample_name.startswith("ggHH_") else matches_vbf
             for sample_label in matches:
                 if sample_name.startswith(sample_label):
                     matches[sample_label].append(sample_name)
                     break
 
         # print matches
-        max_len = max(len(label) for label in matches)
+        max_len = max(len(label) for label in list(matches_ggf.keys()) + list(matches_vbf.keys()))
         print("Matching signal samples:")
-        for label, names in matches.items():
+        for label, names in list(matches_ggf.items()) + list(matches_vbf.items()):
             print("  {}{} -> {}".format(label, " " * (max_len - len(label)), ", ".join(names)))
 
         # complain about samples that were not matched by any process
-        unmatched_samples = [label for label, names in matches.items() if not names]
-        if unmatched_samples:
-            raise Exception("{} HH signal samples were not matched by any process: {}".format(
-                len(unmatched_samples), ", ".join(unmatched_samples)))
+        unmatched_ggf_samples = [label for label, names in matches_ggf.items() if not names]
+        unmatched_vbf_samples = [label for label, names in matches_vbf.items() if not names]
+        msg = []
+        if len(unmatched_ggf_samples) not in [0, len(self.ggf_formula.sample_list)]:
+            msg.append("{} ggF HH signal samples were not matched by any process: {}".format(
+                len(unmatched_ggf_samples), ", ".join(unmatched_ggf_samples)))
+        if len(unmatched_vbf_samples) not in [0, len(self.vbf_formula.sample_list)]:
+            msg.append("{} VBF HH signal samples were not matched by any process: {}".format(
+                len(unmatched_vbf_samples), ", ".join(unmatched_vbf_samples)))
+        if msg:
+            raise Exception("\n".join(msg))
 
 
 # ggf samples with keys (kl, kt), ordered by kl

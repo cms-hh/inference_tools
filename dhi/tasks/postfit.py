@@ -31,8 +31,9 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
     skip_save = law.CSVParameter(
         default=tuple(),
         choices=SAVE_FLAGS,
+        sort=True,
         description="comma-separated flags to skip passing to combine as '--save<flag>'; "
-            "choices: {}; no default".format(",".join(SAVE_FLAGS)),
+        "choices: {}; no default".format(",".join(SAVE_FLAGS)),
     )
 
     force_n_pois = 1
@@ -56,7 +57,7 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
         if not self.skip_b_only:
             parts.append("withBOnly")
         if self.skip_save:
-            parts.append(map("no{}".format, self.skip_save))
+            parts.append(map("no{}".format, sorted(self.skip_save)))
         postfix = self.join_postfix(parts)
 
         return {
@@ -195,10 +196,17 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
         significant=False,
         description="patterns of parameters to skip; no default",
     )
+    mc_stats = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when True, include MC stats nuisances as well; default: False",
+    )
     parameters_per_page = luigi.IntParameter(
         default=1,
         description="number of parameters per page; creates a single page when < 1; default: 1",
     )
+
+    mc_stats_patterns = ["*prop_bin*"]
 
     file_type = "pdf"
     y_min = None
@@ -232,6 +240,11 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
         fit_result = inputs["collection"][0]["result"]
         fit_diagnostics = inputs["collection"][0]["diagnostics"]
 
+        # skip parameter patterns
+        skip_parameters = list(self.skip_parameters)
+        if not self.mc_stats:
+            skip_parameters.extend(self.mc_stats_patterns)
+
         # open the result file to load the workspace and other objects
         with fit_result.load("READ", formatter="root") as result_file:
             # get workspace
@@ -250,7 +263,7 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
                 fit_diagnostics_path=fit_diagnostics.path,
                 fit_name="fit_s",
                 only_parameters=self.only_parameters,
-                skip_parameters=self.skip_pameters,
+                skip_parameters=skip_parameters,
                 parameters_per_page=self.parameters_per_page,
                 x_min=self.x_min,
                 x_max=self.x_max,

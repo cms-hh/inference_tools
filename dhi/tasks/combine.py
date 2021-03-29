@@ -573,13 +573,13 @@ class MultiDatacardTask(DatacardTask):
         cls=luigi.IntParameter,
         significant=False,
         description="indices of datacard sequences in multi_datacards for reordering; not used "
-        "when empty; default: empty",
+        "when empty; no default",
     )
     datacard_names = law.CSVParameter(
         default=(),
         significant=False,
         description="names of datacard sequences for plotting purposes; applied before reordering "
-        "with datacard_order; default: empty",
+        "with datacard_order; no default",
         brace_expand=True,
     )
 
@@ -1149,7 +1149,7 @@ class POIPlotTask(PlotTask, POITask):
         default=(),
         significant=False,
         description="comma-separated list of parameters that are shown in the plot even if they "
-        "are 1; default: empty",
+        "are 1; no default",
     )
 
     def get_shown_parameters(self):

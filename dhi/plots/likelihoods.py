@@ -669,7 +669,7 @@ def plot_nuisance_likelihood_scans(
     skip_parameters=None,
     only_parameters=None,
     parameters_per_page=1,
-    scan_points=201,
+    scan_points=101,
     x_min=-2.,
     x_max=2,
     y_log=False,
@@ -803,7 +803,7 @@ def plot_nuisance_likelihood_scans(
         legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
         legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
         legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
-            props={"NColumns": legend_cols, "TextSize": 18})
+            props={"NColumns": legend_cols, "TextSize": 16})
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
         legend_box = r.routines.create_legend_box(legend, pad, "trl",
@@ -1001,7 +1001,6 @@ def evaluate_likelihood_scan_2d(
             poi_values_min, poi_values_max = poi2_values_min, poi2_values_max
             poi_min = poi2_min
             _interp = lambda x: interp(poi1_min, x)
-        objective = lambda x: (_interp(x) - v) ** 2.0
 
         def minimize(bounds):
             # get a good starting point within the bounds and close to poi_min
@@ -1012,6 +1011,7 @@ def evaluate_likelihood_scan_2d(
             else:
                 start = poi_min
             # minimize
+            objective = lambda x: (_interp(x) - v) ** 2.0
             res = minimize_1d(objective, bounds, start=start)
             return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
 

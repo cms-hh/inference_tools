@@ -24,8 +24,7 @@ class PullsAndImpactsBase(POITask):
     )
     skip_parameters = law.CSVParameter(
         default=(),
-        description="comma-separated parameter names to be skipped; supports patterns; "
-        "default: empty",
+        description="comma-separated parameter names to be skipped; supports patterns; no default",
     )
     mc_stats = luigi.BoolParameter(
         default=False,
@@ -33,7 +32,7 @@ class PullsAndImpactsBase(POITask):
         "default: False",
     )
 
-    mc_stats_patterns = ["prop_bin*"]
+    mc_stats_patterns = ["*prop_bin*"]
 
     force_n_pois = 1
     allow_parameter_values_in_pois = True
@@ -271,7 +270,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
     order_parameters = law.CSVParameter(
         default=(),
         description="list of parameters or files containing parameters line-by-line for ordering; "
-        "supports patterns; default: empty",
+        "supports patterns; no default",
     )
     order_by_impact = luigi.BoolParameter(
         default=False,
