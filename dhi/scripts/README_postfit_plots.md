@@ -37,6 +37,7 @@ This is an example of dictionary booking one plot:
       "align_cats_labels" : [["ch1 bla", "ch1 more details"], ["ch2 bla", "ch2 more details"]],
       "align_cats_labelsX" : [3, 13],
       "cats_labels_height" : 1000000.,
+      "merged_eras_fit" : False,
       "procs_plot_options_bkg" : OrderedDict(
           [
           ("Other_bbWW",       {"color" : 205, "fillStype"   : 1001, "label" : "others"           , "make border" : True}),
@@ -82,7 +83,7 @@ The keys of the dictionary are the names of the bins to plot distributions for (
 -   "align_cats_labels" are the labels for "align_cats"
 -  "align_cats_labelsX" : the X positions for the labels "align_cats_labels"
 -   "cats_labels_height" : the Y positions for the labels "align_cats_labels"
-
+- "merged_eras_fit" : if true it will try to read the single H processes with era in name (e.g. "ttH_2017_hbb" instead of "ttH_hbb")
 
 - TODO: make the dictionary example on datacards_run2 repo, and make the path to the original datacard.root or relative to the datacards_run2 when I do the example with cards from datacards_run2 repo
 

@@ -92,7 +92,7 @@ def create_postfit_plots(
         folder_data = "shapes_prefit"
         typeFit = "prefit"
 
-    name_total = "total"  # total_background ? TOFIX
+    name_total = "total_background"
 
     if normalize_X_original:
         fileOrig = datacard_original
@@ -118,20 +118,14 @@ def create_postfit_plots(
 
     dprocs = bin["procs_plot_options_bkg"]
     # add stack of single H as second
-    # fmt: off
-    singleH = [
-        "ggH_hbb", "ggH_hgg", "ggH_hmm", "ggH_htt", "ggH_hww", "ggH_hzz",
-        "qqH_hbb", "qqH_hgg", "qqH_hmm", "qqH_htt", "qqH_hww", "qqH_hzz",
-        "ttH_hbb", "ttH_hgg", "ttH_hmm", "ttH_htt", "ttH_hww", "ttH_hzz",
-        "WH_hbb", "WH_hgg", "WH_hmm", "WH_htt", "WH_hww", "WH_hzz",
-        "ZH_hbb", "ZH_hgg", "ZH_hmm", "ZH_htt", "ZH_hww", "ZH_hzz",
-        "TH_hbb", "TH_hgg", "TH_hmm", "TH_htt", "TH_hww", "TH_hzz",
-        "tHq_hbb", "tHq_hgg", "tHq_hmm", "tHq_htt", "tHq_hww", "tHq_hzz",
-        "tHW_hbb", "tHW_hgg", "tHW_hmm", "tHW_htt", "tHW_hww", "tHW_hzz",
-        "VH_hww", "VH_hgg", "VH_hmm", "VH_htt", "VH_hww", "VH_hzz",
-        "TH", "VH", "TTH", "ttVH"
-        ]
-    # fmt: on
+    hprocs = ["ggH", "qqH", "bbH", "ttH", "WH", "ZH", "TH", "tHq", "tHW", "VH"]
+    hdecays = ["hbb", "hgg", "hmm", "htt", "hww", "hzz", "hcc",]
+    if bin["merged_eras_fit"] :
+        singleH = [ "%s_%s_%s" % (proc, erastr, decay) for proc in hprocs for erastr in ["2016", "2017", "2018"] for decay in hdecays ]
+    else :
+        singleH = [ "%s_%s" % (proc, decay) for proc in hprocs for decay in hdecays ]
+    # some channels do not separate some by decay, they should, however this is here by now
+    singleH += ["TH", "VH", "TTH", "ttVH"]
     ## make a list without the major
     countOnce = 0
     for sh in singleH:
@@ -156,7 +150,7 @@ def create_postfit_plots(
 
     if normalize_X_original:
         fileorriginal = ROOT.TFile(fileOrig, "READ")
-        histRead = list(dprocs.keys())[0]  # "TTH"
+        histRead = list(dprocs.keys())[0]
         readFromOriginal = (
             "%s/%s" % (bin_name_original, histRead) if not bin_name_original == "none" else histRead
         )
@@ -182,7 +176,12 @@ def create_postfit_plots(
         template.GetYaxis().SetTitle(labelY)
         print(nbinscatlist)
 
-    legend1 = ROOT.TLegend(0.2400, 0.645, 0.9450, 0.910)
+    #legend1 = ROOT.TLegend(0.2400, 0.645, 0.9450, 0.910)
+    if "splitline" in header_legend :
+        bottom_legend = 0.52
+    else :
+        bottom_legend = 0.64
+    legend1 = ROOT.TLegend(0.2400, bottom_legend, 0.9450, 0.90)
     legend1.SetNColumns(number_columns_legend)
     legend1.SetFillStyle(0)
     legend1.SetBorderSize(0)
@@ -193,6 +192,7 @@ def create_postfit_plots(
     header.SetTextSize(0.05 if do_bottom else 0.04)
     header.SetTextColor(1)
     header.SetTextFont(62)
+    #header.SetEntrySeparation(1)
 
     dataTGraph1 = ROOT.TGraphAsymmErrors()
     if unblind:
@@ -370,6 +370,7 @@ def create_postfit_plots(
     del dumb
     dumb = hist_total.Draw("e2,same")
     del dumb
+    legend1.AddEntry(hist_total, "Uncertainty", "f")
 
     for line1 in linebin:
         line1.SetLineColor(1)
@@ -564,9 +565,19 @@ def process_data_histo(
         xp = ROOT.Double()
         yp = ROOT.Double()
         dataTGraph.GetPoint(ii, xp, yp)
+
+        # do noot draw erroor bars on empty bins
+        if yp == 0.0 :
+            yp = ROOT.Double(-100)
+            errYhigh = ROOT.Double(0)
+            errYlow = ROOT.Double(0)
+        else :
+            errYhigh = dataTGraph.GetErrorYhigh(ii)
+            errYlow = dataTGraph.GetErrorYlow(ii)
+
         dataTGraph1.SetPoint(ii + lastbin, template.GetBinCenter(ii + lastbin + 1), yp / bin_width)
-        dataTGraph1.SetPointEYlow(ii + lastbin, dataTGraph.GetErrorYlow(ii) / bin_width)
-        dataTGraph1.SetPointEYhigh(ii + lastbin, dataTGraph.GetErrorYhigh(ii) / bin_width)
+        dataTGraph1.SetPointEYlow(ii + lastbin, errYlow / bin_width)
+        dataTGraph1.SetPointEYhigh(ii + lastbin, errYhigh / bin_width)
         dataTGraph1.SetPointEXlow(ii + lastbin, template.GetBinWidth(ii + 1) / 2.0)
         dataTGraph1.SetPointEXhigh(ii + lastbin, template.GetBinWidth(ii + 1) / 2.0)
     del dataTGraph
@@ -616,8 +627,8 @@ def process_total_histo(
         bin_width = 1.0
         if divideByBinWidth:
             bin_width = total_hist.GetXaxis().GetBinWidth(ii)
-        hist.SetBinContent(ii + lastbin, 0.03 + total_hist.GetBinContent(ii) / bin_width)
-        hist.SetBinError(ii + lastbin, 0.03 + total_hist.GetBinError(ii) / bin_width)
+        hist.SetBinContent(ii + lastbin, 0.0003 + total_hist.GetBinContent(ii) / bin_width)
+        hist.SetBinError(ii + lastbin, 0.0003 + total_hist.GetBinError(ii) / bin_width)
     if not hist.GetSumw2N():
         hist.Sumw2()
     if not do_bottom:
@@ -644,7 +655,7 @@ def addLabel_CMS_preliminary(era, do_bottom):
     ypreliminary = 0.95 if do_bottom else 0.935
     xpreliminary = 0.12 if do_bottom else 0.085
     ylumi = 0.95 if do_bottom else 0.965
-    xlumi = 0.7 if do_bottom else 0.73
+    xlumi = 0.65 if do_bottom else 0.73
     title_size_CMS = 0.0575 if do_bottom else 0.04
     title_size_Preliminary = 0.048 if do_bottom else 0.03
     title_size_lumi = 0.045 if do_bottom else 0.03
@@ -673,6 +684,8 @@ def addLabel_CMS_preliminary(era, do_bottom):
         lumi = "41.53"
     if era == 2018:
         lumi = "59.74"
+    if era == 20172018:
+        lumi = "101.27"
     if era == 0:
         lumi = "137"
     label_luminosity.AddText(lumi + " fb^{-1} (13 TeV)")
@@ -725,9 +738,11 @@ def stack_histo(
         hist_rebin_local.SetFillStyle(itemDict["fillStype"])
 
     if "none" not in itemDict["label"] and addlegend:
-        legend.AddEntry(hist_rebin_local, itemDict["label"], "f")
+        legend.AddEntry(hist_rebin_local, itemDict["label"], "l" if itemDict["color"] == 0 else "f")
     if itemDict["make border"] == True:
-        hist_rebin_local.SetLineColor(1)
+        hist_rebin_local.SetLineColor(1 if itemDict["color"] == 0 else itemDict["color"])
+        hist_rebin_local.SetLineWidth(3 if itemDict["color"] == 0 else 1)
+
     else:
         hist_rebin_local.SetLineColor(itemDict["color"])
     for ii in xrange(1, allbins + 1):
@@ -815,7 +830,7 @@ def err_data(dataTGraph1, template, dataTGraph, histtotal, folder, fin, divideBy
             else:
                 dataTGraph1.SetPoint(ii + lastbin, template.GetBinCenter(ii + lastbin + 1), -1.0)
         else:
-            dataTGraph1.SetPoint(ii + lastbin, template.GetBinCenter(ii + lastbin + 1), -1.0)
+            dataTGraph1.SetPoint(ii + lastbin, template.GetBinCenter(ii + lastbin + 1), -100.0)
         dataTGraph1.SetPointEYlow(ii + lastbin, dataTGraph.GetErrorYlow(ii) / dividend)
         dataTGraph1.SetPointEYhigh(ii + lastbin, dataTGraph.GetErrorYhigh(ii) / dividend)
         dataTGraph1.SetPointEXlow(ii + lastbin, template.GetBinWidth(ii + 1) / 2.0)
@@ -874,7 +889,7 @@ if __name__ == "__main__":
     for key, bin in info_bin.iteritems():
 
         normalize_X_original = True
-        if bin["bin_name_original"] == "none":
+        if bin["datacard_original"] == "none":
             normalize_X_original = False
 
         data_dir = bin["fitdiagnosis"]
