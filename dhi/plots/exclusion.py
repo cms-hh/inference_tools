@@ -15,7 +15,7 @@ from dhi.util import (
 )
 from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
 from dhi.plots.util import (
-    use_style, draw_model_parameters, get_graph_points, get_contours, get_text_extent,
+    use_style, draw_model_parameters, invert_graph, get_graph_points, get_contours, get_text_extent,
 )
 
 
@@ -604,68 +604,6 @@ def get_auto_contour_levels(values, steps=(1,)):
                 levels.append(l)
 
     return levels
-
-
-def repeat_graph(g, n):
-    points = sum((n * [p] for p in zip(*get_graph_points(g))), [])
-    g_repeated = g.__class__(len(points))
-    for i, (x, y) in enumerate(points):
-        g_repeated.SetPoint(i, x, y)
-    return g_repeated
-
-
-def invert_graph(g, x_min=None, x_max=None, y_min=None, y_max=None, x_axis=None, y_axis=None,
-        offset=0.):
-    # get all graph values
-    x_values, y_values = get_graph_points(g)
-
-    # get default frame values
-    if x_min is None:
-        if x_axis:
-            x_min = x_axis.GetXmin() - 0.01 * (x_axis.GetXmax() - x_axis.GetXmin())
-        else:
-            x_min = min(x_values)
-    if x_max is None:
-        if x_axis:
-            x_max = x_axis.GetXmax() + 0.01 * (x_axis.GetXmax() - x_axis.GetXmin())
-        else:
-            x_max = max(x_values)
-    if y_min is None:
-        if y_axis:
-            y_min = y_axis.GetXmin() - 0.01 * (y_axis.GetXmax() - y_axis.GetXmin())
-        else:
-            y_min = min(y_values)
-    if y_max is None:
-        if y_axis:
-            y_max = y_axis.GetXmax() + 0.01 * (y_axis.GetXmax() - y_axis.GetXmin())
-        else:
-            y_max = max(y_values)
-
-    # define outer "frame" points
-    bl = (x_min - offset, y_min - offset)
-    tl = (x_min - offset, y_max + offset)
-    tr = (x_max + offset, y_max + offset)
-    br = (x_max + offset, y_min - offset)
-    corners = [tr, br, bl, tl]
-
-    # find the corner that is closest to the graph start point
-    dist = lambda x, y: ((x - x_values[0])**2. + (y - y_values[0])**2.)**0.5
-    start_index = min(list(range(4)), key=lambda i: dist(corners[i][0], corners[i][1]))
-
-    # to invert the graph, create a new graph whose points start with an outer frame consisting of
-    # the 4 corners, the graph points itself, the first point of the graph again to close it, and
-    # ending with the closest corner again
-    points = (2 * corners)[start_index:start_index + 5]
-    points.extend(zip(x_values, y_values))
-    points.append((x_values[0], y_values[0]))
-    points.append(corners[start_index])
-
-    # copy the graph and fill points
-    g_inv = g.__class__(len(points))
-    for i, (x, y) in enumerate(points):
-        g_inv.SetPoint(i, x, y)
-
-    return g_inv
 
 
 def locate_xsec_labels(graphs, level, label_width, pad_width, pad_height, x_min, x_max, y_min,

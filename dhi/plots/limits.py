@@ -11,9 +11,10 @@ import numpy as np
 from dhi.config import (
     poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence,
 )
-from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, colored
 from dhi.plots.util import (
     use_style, draw_model_parameters, create_hh_process_label, determine_limit_digits,
+    get_graph_points,
 )
 
 
@@ -107,7 +108,7 @@ def plot_limit_scan(
     legend_entries = 6 * [(h_dummy, " ", "L")]
 
     # helper to read values into graphs
-    def create_graph(values=expected_values, key="limit", sigma=None, insert=None):
+    def create_graph(values=expected_values, key="limit", sigma=None, pad=True, insert=None):
         return create_tgraph(
             len(values[key]),
             values[scan_parameter],
@@ -116,24 +117,26 @@ def plot_limit_scan(
             0,
             (values[key] - values["{}_m{}".format(key, sigma)]) if sigma else 0,
             (values["{}_p{}".format(key, sigma)] - values[key]) if sigma else 0,
-            pad=True,
+            pad=pad,
             insert=insert,
         )
 
     # 2 sigma band
+    g_2sigma = None
     if "limit_p2" in expected_values and "limit_m2" in expected_values:
         g_2sigma = create_graph(sigma=2)
         r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.yellow})
-        draw_objs.append((g_2sigma, "SAME,4"))
+        draw_objs.append((g_2sigma, "SAME,4"))  # option 4 might fallback to 3, see below
         legend_entries[5] = (g_2sigma, "#pm 2 #sigma expected", "LF")
         y_max_value = max(y_max_value, max(expected_values["limit_p2"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m2"]))
 
     # 1 sigma band
+    g_1sigma = None
     if "limit_p1" in expected_values and "limit_m1" in expected_values:
         g_1sigma = create_graph(sigma=1)
         r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.green})
-        draw_objs.append((g_1sigma, "SAME,4"))
+        draw_objs.append((g_1sigma, "SAME,4"))  # option 4 might fallback to 3, see below
         legend_entries[4] = (g_1sigma, "#pm 1 #sigma expected", "LF")
         y_max_value = max(y_max_value, max(expected_values["limit_p1"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m1"]))
@@ -172,6 +175,22 @@ def plot_limit_scan(
             y_max = 1.35 * (y_max_value - y_min)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
+
+    # draw option 4 of error graphs is buggy when the error point or bar is above the visible,
+    # vertical range of the pad, so check these cases and fallback to option 3
+    fallback_graph_option = False
+    for g in filter(bool, [g_2sigma, g_1sigma]):
+        _, y_values, _, _, _, y_errors_up = get_graph_points(g, errors=True)
+        if any((y + y_err_up) >= y_max for y, y_err_up in zip(y_values, y_errors_up)):
+            fallback_graph_option = True
+            break
+    if fallback_graph_option:
+        for i, objs in enumerate(list(draw_objs)):
+            if isinstance(objs, tuple) and len(objs) >= 2 and objs[0] in [g_2sigma, g_1sigma]:
+                draw_objs[i] = (objs[0], "SAME,3") + objs[2:]
+                print("{}: changed draw option of graph {} to '3' as it exceeds the vertical pad "
+                    "range which is not supported for option '4'".format(
+                        colored("WARNING", "yellow"), objs[0]))
 
     # theory prediction
     if has_thy:

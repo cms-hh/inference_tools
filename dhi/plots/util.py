@@ -302,17 +302,106 @@ def _get_contour(hist, level):
     return contours
 
 
-def get_graph_points(g):
+def get_graph_points(g, errors=False):
     ROOT = import_ROOT()
 
     x_values, y_values = [], []
+    asym_errors = False
+    if errors:
+        if isinstance(g, ROOT.TGraphAsymmErrors):
+            x_errors_up, x_errors_down = [], []
+            y_errors_up, y_errors_down = [], []
+            asym_errors = True
+        elif isinstance(g, ROOT.TGraphErrors):
+            x_errors, y_errors = [], []
+        else:
+            errors = False
+
     x, y = ROOT.Double(), ROOT.Double()
     for i in range(g.GetN()):
         g.GetPoint(i, x, y)
         x_values.append(float(x))
         y_values.append(float(y))
+        if asym_errors:
+            x_errors_up.append(g.GetErrorXhigh(i))
+            x_errors_down.append(g.GetErrorXlow(i))
+            y_errors_up.append(g.GetErrorYhigh(i))
+            y_errors_down.append(g.GetErrorYlow(i))
+        elif errors:
+            x_errors.append(g.GetErrorX(i))
+            y_errors.append(g.GetErrorY(i))
 
-    return x_values, y_values
+    if asym_errors:
+        return x_values, y_values, x_errors_down, x_errors_up, y_errors_down, y_errors_up
+    elif errors:
+        return x_values, y_values, x_errors, y_errors
+    else:
+        return x_values, y_values
+
+
+def repeat_graph(g, n):
+    points = sum((n * [p] for p in zip(*get_graph_points(g))), [])
+
+    g_repeated = g.__class__(len(points))
+
+    for i, (x, y) in enumerate(points):
+        g_repeated.SetPoint(i, x, y)
+
+    return g_repeated
+
+
+def invert_graph(g, x_min=None, x_max=None, y_min=None, y_max=None, x_axis=None, y_axis=None,
+        offset=0.):
+    # get all graph values
+    x_values, y_values = get_graph_points(g)
+
+    # get default frame values
+    if x_min is None:
+        if x_axis:
+            x_min = x_axis.GetXmin() - 0.01 * (x_axis.GetXmax() - x_axis.GetXmin())
+        else:
+            x_min = min(x_values)
+    if x_max is None:
+        if x_axis:
+            x_max = x_axis.GetXmax() + 0.01 * (x_axis.GetXmax() - x_axis.GetXmin())
+        else:
+            x_max = max(x_values)
+    if y_min is None:
+        if y_axis:
+            y_min = y_axis.GetXmin() - 0.01 * (y_axis.GetXmax() - y_axis.GetXmin())
+        else:
+            y_min = min(y_values)
+    if y_max is None:
+        if y_axis:
+            y_max = y_axis.GetXmax() + 0.01 * (y_axis.GetXmax() - y_axis.GetXmin())
+        else:
+            y_max = max(y_values)
+
+    # define outer "frame" points
+    bl = (x_min - offset, y_min - offset)
+    tl = (x_min - offset, y_max + offset)
+    tr = (x_max + offset, y_max + offset)
+    br = (x_max + offset, y_min - offset)
+    corners = [tr, br, bl, tl]
+
+    # find the corner that is closest to the graph start point
+    dist = lambda x, y: ((x - x_values[0])**2. + (y - y_values[0])**2.)**0.5
+    start_index = min(list(range(4)), key=lambda i: dist(corners[i][0], corners[i][1]))
+
+    # to invert the graph, create a new graph whose points start with an outer frame consisting of
+    # the 4 corners, the graph points itself, the first point of the graph again to close it, and
+    # ending with the closest corner again
+    points = (2 * corners)[start_index:start_index + 5]
+    points.extend(zip(x_values, y_values))
+    points.append((x_values[0], y_values[0]))
+    points.append(corners[start_index])
+
+    # copy the graph and fill points
+    g_inv = g.__class__(len(points))
+    for i, (x, y) in enumerate(points):
+        g_inv.SetPoint(i, x, y)
+
+    return g_inv
 
 
 def get_text_extent(t, text_size=None, text_font=None):
