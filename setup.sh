@@ -68,6 +68,7 @@ setup() {
             cd HiggsAnalysis/CombinedLimit && \
             git fetch --tags && \
             git checkout tags/v8.2.0 && \
+            chmod ug+x test/diffNuisances.py && \
             source env_standalone.sh "" && \
             make -j && \
             make
@@ -91,7 +92,7 @@ setup() {
     source env_standalone.sh "" || return "$?"
     # the setup script appends to PATH, but we need to prepend since some htcondor nodes seem to
     # have an other "combine" executable that gets picked instead
-    export PATH="$PWD/exe:$PWD/scripts:$PATH"
+    export PATH="$PWD/exe:$PWD/scripts:$PWD/test:$PATH"
     cd "$orig"
 
 
