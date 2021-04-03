@@ -669,9 +669,12 @@ def plot_nuisance_likelihood_scans(
     skip_parameters=None,
     only_parameters=None,
     parameters_per_page=1,
+    sort_max=False,
     scan_points=101,
     x_min=-2.,
     x_max=2,
+    y_min=None,
+    y_max=None,
     y_log=False,
     model_parameters=None,
     campaign=None,
@@ -686,11 +689,12 @@ def plot_nuisance_likelihood_scans(
 
     Nuisances to skip, or to show exclusively can be configured via *skip_parameters* and
     *only_parameters*, respectively, which can be lists of patterns. *parameters_per_page* defines
-    the number of parameter curves that are drawn in the same canvas page. The scan range and
-    granularity is set via *scan_points*, *x_min* and *x_max*. When *y_log* is *True*, the y-axis is
-    plotted with a logarithmic scale. *model_parameters* can be a dictionary of key-value pairs of
-    model parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*.
+    the number of parameter curves that are drawn in the same canvas page. When *sort_max* is
+    *True*, the parameter are sorted by their highest likelihood change in the full scan range. The
+    scan range and granularity is set via *scan_points*, *x_min* and *x_max*. *y_min* and *y_max*
+    define the range of the y-axis, which is plotted with a logarithmic scale when *y_log* is
+    *True*. *model_parameters* can be a dictionary of key-value pairs of model parameters.
+    *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/postfit.html#nuisance-parameter-influence-on-likelihood
     """
@@ -727,26 +731,58 @@ def plot_nuisance_likelihood_scans(
     snapshot_name = "best_fit_parameters"
     workspace.saveSnapshot(snapshot_name, ROOT.RooArgSet(fit_args), True)
 
-    # prepare parameters to plot, stored in groups
-    param_names = [[]]
+    # filter parameters
+    param_names = []
     for param_name in prefit_params:
         if only_parameters and not multi_match(param_name, only_parameters):
             continue
         if skip_parameters and multi_match(param_name, skip_parameters):
             continue
-        if parameters_per_page < 1 or len(param_names[-1]) < parameters_per_page:
-            param_names[-1].append(param_name)
-        else:
-            param_names.append([param_name])
+        param_names.append(param_name)
+    print("preparing scans of {} parameter(s)".format(len(param_names)))
 
     # prepare the scan values, ensure that 0 is contained
     scan_values = np.linspace(x_min, x_max, scan_points).tolist()
     if 0 not in scan_values:
         scan_values = sorted(scan_values + [0.])
 
+    # get nll curve values for all parameters before plotting to be able to sort
+    curve_data = {}
+    for name in param_names:
+        pre_u, pre_d = prefit_params[name][1:3]
+        workspace.loadSnapshot(snapshot_name)
+        param = workspace.var(name)
+        if not param:
+            raise Exception("parameter {} not found in workspace".format(name))
+        param_bf = param.getVal()
+        nll_base = nll.getVal()
+        x_values, y_values = [], []
+        print("scanning parameter {}".format(name))
+        for x in scan_values:
+            param.setVal(param_bf + (pre_u if x >= 0 else -pre_d) * x)
+            x_values.append(param.getVal())
+            y_values.append(2 * (nll.getVal() - nll_base))
+        curve_data[name] = (x_values, y_values)
+
+    # sort?
+    if sort_max:
+        param_names.sort(key=lambda name: -max(curve_data[name][1]))
+
+    # group parameters
+    param_groups = [[]]
+    for name in param_names:
+        if only_parameters and not multi_match(name, only_parameters):
+            continue
+        if skip_parameters and multi_match(name, skip_parameters):
+            continue
+        if parameters_per_page < 1 or len(param_groups[-1]) < parameters_per_page:
+            param_groups[-1].append(name)
+        else:
+            param_groups.append([name])
+
     # go through nuisances
     canvas = None
-    for _param_names in param_names:
+    for names in param_groups:
         # setup the default style and create canvas and pad
         first_canvas = canvas is None
         r.setup_style()
@@ -757,47 +793,52 @@ def plot_nuisance_likelihood_scans(
         if first_canvas:
             canvas.Print(path + "[")
 
-        # get nll curves for all parameters on this page
-        curve_data = []
-        for param_name in _param_names:
-            pre_u, pre_d = prefit_params[param_name][1:3]
-            workspace.loadSnapshot(snapshot_name)
-            param = workspace.var(param_name)
-            if not param:
-                raise Exception("parameter {} not found in workspace".format(param_name))
-            param_bf = param.getVal()
-            nll_base = nll.getVal()
-            x_values, y_values = [], []
-            for x in scan_values:
-                param.setVal(param_bf + (pre_u if x >= 0 else -pre_d) * x)
-                x_values.append(param.getVal())
-                y_values.append(2 * (nll.getVal() - nll_base))
-            curve_data.append((param_name, x_values, y_values))
-
         # get y range
-        y_min_value = min(min(y_values) for _, _, y_values in curve_data)
-        y_max_value = max(max(y_values) for _, _, y_values in curve_data)
+        y_min_value = min(min(curve_data[name][1]) for name in names)
+        y_max_value = max(max(curve_data[name][1]) for name in names)
+        _y_min = y_min
+        _y_max = y_max
         if y_log:
-            y_min = 1.e-3
-            y_max = y_min * 10**(1.35 * math.log10(y_max_value / y_min))
+            if _y_min is None:
+                _y_min = 1.e-3
+            if _y_max is None:
+                _y_max = _y_min * 10**(1.35 * math.log10(y_max_value / _y_min))
+            y_max_line = _y_min * 10**(math.log10(_y_max / _y_min) / 1.4)
         else:
-            y_min = y_min_value
-            y_max = 1.35 * (y_max_value - y_min)
+            if _y_min is None:
+                _y_min = y_min_value
+            if _y_max is None:
+                _y_max = 1.35 * (y_max_value - _y_min)
+            y_max_line = _y_max / 1.4 + _y_min
 
         # dummy histogram to control axes
         x_title = "(#theta - #theta_{best}) / #Delta#theta_{pre}"
         y_title = "Change in -2 log(L)"
         h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
-        r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
+        r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": _y_min, "Maximum": _y_max})
         draw_objs = [(h_dummy, "HIST")]
         legend_entries = []
 
+        # horizontal guidance line at dnll = 1 in log scale
+        if y_log and (_y_min < 1. < y_max_line):
+            line = ROOT.TLine(x_min, 1., x_max, 1.)
+            r.setup_line(line, props={"LineColor": 12, "LineStyle": 2, "NDC": False})
+            draw_objs.append(line)
+
+        # vertical guidance lines in log scale
+        for x in [-1, 1]:
+            if y_log and (x_min < x < x_max):
+                line = ROOT.TLine(x, _y_min, x, min(1., y_max_line))
+                r.setup_line(line, props={"LineColor": 12, "LineStyle": 2, "NDC": False})
+                draw_objs.append(line)
+
         # nll graphs
-        for (param_name, x, y), col in zip(curve_data, color_sequence[:len(curve_data)]):
+        for name, col in zip(names, color_sequence[:len(names)]):
+            x, y = curve_data[name]
             g_nll = create_tgraph(len(x), x, y)
             r.setup_graph(g_nll, props={"LineWidth": 2, "LineStyle": 1}, color=colors[col])
             draw_objs.append((g_nll, "SAME,C"))
-            legend_entries.append((g_nll, to_root_latex(param_name), "L"))
+            legend_entries.append((g_nll, to_root_latex(name), "L"))
 
         # legend
         legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)

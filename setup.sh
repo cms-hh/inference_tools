@@ -70,7 +70,7 @@ setup() {
             git checkout tags/v8.2.0 && \
             chmod ug+x test/diffNuisances.py && \
             source env_standalone.sh "" && \
-            make -j && \
+            make -j ${DHI_INSTALL_CORES} && \
             make
         ) || return "$?"
 

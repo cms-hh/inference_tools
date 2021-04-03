@@ -15,7 +15,10 @@ from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWo
 
 class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
-    SAVE_FLAGS = ("Shapes", "WithUncertainties", "Normalizations", "Workspace", "Toys")
+    SAVE_FLAGS = (
+        "Shapes", "WithUncertainties", "Normalizations", "Workspace", "Toys", "NLL",
+        "OverallShapes",
+    )
 
     pois = law.CSVParameter(
         default=("r",),
@@ -205,12 +208,15 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
         default=1,
         description="number of parameters per page; creates a single page when < 1; default: 1",
     )
+    sort_max = luigi.BoolParameter(
+        default=False,
+        description="when True, sort parameters by their hightest likelihood change in the scan "
+        "range; mostly useful when the number of parameters per page is > 1; default: False",
+    )
 
     mc_stats_patterns = ["*prop_bin*"]
 
     file_type = "pdf"
-    y_min = None
-    y_max = None
     z_min = None
     z_max = None
 
@@ -223,6 +229,8 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
         parts = ["nlls", "{}To{}".format(self.x_min, self.x_max), self.get_output_postfix()]
         if self.y_log:
             parts.append("log")
+        if self.sort_max:
+            parts.append("sorted")
 
         return self.local_target(self.create_plot_name(parts))
 
@@ -265,8 +273,11 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
                 only_parameters=self.only_parameters,
                 skip_parameters=skip_parameters,
                 parameters_per_page=self.parameters_per_page,
+                sort_max=self.sort_max,
                 x_min=self.x_min,
                 x_max=self.x_max,
+                y_min=self.get_axis_limit("y_min"),
+                y_max=self.get_axis_limit("y_max"),
                 y_log=self.y_log,
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
