@@ -281,6 +281,9 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
                             1 + len(syst_shapes) * 2, bin_name, proc_name))
                         break
 
+                logger.info("loaded shapes of {} process(es) in datacard bin {}".format(
+                    len(shapes[bin_name]), bin_name))
+
             # keep sets of shape bin indices per datacard bin to remove
             remove_bin_indices = {bin_name: set() for bin_name in shapes}
 
@@ -386,7 +389,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
                         if proc_name == "data_obs":
                             new_observations[bin_name] = new_hist.Integral()
                         else:
-                            new_rates.setdefault("bin_name", {})[proc_name] = new_hist.Integral()
+                            new_rates.setdefault(bin_name, {})[proc_name] = new_hist.Integral()
 
                     # update the all syst hists
                     for _syst_shapes in syst_shapes.values():
@@ -418,7 +421,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
                     "does not match".format(len(rates_bin_names), len(process_names),
                     len(rate_values)))
             new_rate_values = [
-                new_rates.get(bin_name, {}).get(proc_name, rate)
+                (str(new_rates.get(bin_name, {}).get(proc_name, rate)) if rate != "-1" else rate)
                 for bin_name, proc_name, rate in zip(rates_bin_names, process_names, rate_values)
             ]
             blocks["rates"][3] = "rate " + " ".join(new_rate_values)

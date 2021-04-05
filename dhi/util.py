@@ -563,7 +563,7 @@ class TFileCache(object):
                             towner.cd()
                         args = (name,) if name else ()
                         tobj.Write(*args)
-                        self.logger.debug("written object '{}'".format(tobj.GetName()))
+                        # self.logger.debug("written object '{}'".format(tobj.GetName()))
 
                 data["tfile"].Close()
 
@@ -582,6 +582,7 @@ class TFileCache(object):
 
 
 class ROOTColorGetter(object):
+
     def __init__(self, **cache):
         super(ROOTColorGetter, self).__init__()
 
