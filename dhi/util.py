@@ -552,26 +552,29 @@ class TFileCache(object):
             ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = kFatal;")
 
             for abs_path, data in self._w_cache.items():
-                if data["tfile"] and data["tfile"].IsOpen():
-                    if not skip_write:
-                        data["tfile"].cd()
-                        for tobj, towner, name in data["objects"]:
-                            if towner:
-                                towner.cd()
-                            args = (name,) if name else ()
-                            tobj.Write(*args)
+                if not data["tfile"] or not data["tfile"].IsOpen():
+                    continue
 
-                    data["tfile"].Close()
+                if not skip_write:
+                    data["tfile"].cd()
+                    self.logger.debug("going to write {} objects".format(len(data["objects"])))
+                    for tobj, towner, name in data["objects"]:
+                        if towner:
+                            towner.cd()
+                        args = (name,) if name else ()
+                        tobj.Write(*args)
+                        self.logger.debug("written object '{}'".format(tobj.GetName()))
 
-                    if not skip_write:
-                        shutil.move(data["tmp_path"], abs_path)
-                        self.logger.debug(
-                            "moving back temporary file {} to {}".format(data["tmp_path"], abs_path)
-                        )
+                data["tfile"].Close()
 
-            self.logger.debug(
-                "closed {} cached file(s) opened for writing".format(len(self._w_cache))
-            )
+                if not skip_write:
+                    shutil.move(data["tmp_path"], abs_path)
+                    self.logger.debug(
+                        "moving back temporary file {} to {}".format(data["tmp_path"], abs_path)
+                    )
+
+            self.logger.debug("closed {} cached file(s) opened for writing".format(
+                len(self._w_cache)))
             ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = {};".format(ignore_level_orig))
 
         # clear

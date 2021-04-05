@@ -56,7 +56,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
     interpreted:
 
     1. Colon-separated bin indices to remove, starting at 1. Values in the format 'A-B' refer to a
-       range from A to B (inclusive).
+       range from A to B (inclusive). Omitting B will select all bins equal to and above A.
     2. An expression 'PROCESS(<|>)THRESHOLD', with special processes 'S', 'B', 'SB', 'SOB', and
        'STN' being interpreted as combined signal, background, signal+background, signal/background
        and signal/sqrt(background). Process names support patterns where a leading '!' negates their
@@ -108,8 +108,11 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
                 indices = set()
                 for part in expr.split(":"):
                     if "-" in part:
-                        start, stop = map(int, part.split("-", 1))
-                        indices |= set(range(start, stop + 1))
+                        start, stop = part.split("-", 1)
+                        # the stop value is optional
+                        if not stop:
+                            stop = 1000
+                        indices |= set(range(int(start), int(stop) + 1))
                     else:
                         indices.add(int(part))
                 rule.append((INDICES, list(indices)))
@@ -347,7 +350,8 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
                             # apply the comparison function
                             _indices = [(i + 1) for i, v in enumerate(bin_values) if comp_fn(v)]
 
-                        indices.append(set(_indices))
+                        # limit and store the indices
+                        indices.append({i for i in _indices if (1 <= i <= bin_nums[bin_name])})
 
                     # AND concatente indices to drop by finding those existing in all lists
                     joined_indices = set(
@@ -362,7 +366,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
             new_rates = {}
             new_observations = {}
             for bin_name, _shapes in shapes.items():
-                indices = {b for b in remove_bin_indices[bin_name] if b > 0}
+                indices = list(sorted({b for b in remove_bin_indices[bin_name] if b > 0}))
                 if not indices:
                     continue
 
@@ -377,7 +381,6 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
                     new_hist = drop_shape_bins(hist, name, indices, owner)
                     if new_hist:
                         cache.write_tobj(tfile, new_hist, towner=owner, name=name)
-                        print("old bins {}, new bins {}".format(hist.GetNbinsX(), new_hist.GetNbinsX()))
 
                         # remember rate or observation
                         if proc_name == "data_obs":
