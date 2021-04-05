@@ -1235,11 +1235,19 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         if not output_card:
             output_card = self.output().path
 
-        return "combineCards.py {} {} > {}".format(
-            self.custom_args,
-            " ".join(input_cards),
-            output_card,
-        )
+        # when there is only one input datacard without a bin name and no custom args, copy the card
+        if not self.custom_args and len(input_cards) == 1 \
+                and not re.match(r"^[^\/]+=.+$", input_cards[0]):
+            return "cp {} {}".format(
+                input_cards[0],
+                output_card,
+            )
+        else:
+            return "combineCards.py {} {} > {}".format(
+                self.custom_args,
+                " ".join(input_cards),
+                output_card,
+            )
 
     @law.decorator.log
     @law.decorator.safe_output
