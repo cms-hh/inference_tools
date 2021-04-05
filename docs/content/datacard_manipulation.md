@@ -349,7 +349,7 @@ optional arguments:
 ```
 
 
-## Adjusting bin process pairs
+## Adjusting pairs of datacard bins and processes
 
 ### Remove
 
@@ -496,7 +496,7 @@ optional arguments:
 ```
 
 
-## Adjusting bins
+## Adjusting datacard bins
 
 ### Remove
 
@@ -541,6 +541,87 @@ optional arguments:
                         python log level; default: INFO
   --log-name LOG_NAME   name of the logger on the command line; default:
                         remove_bins
+```
+
+
+## Adjusting shape bins
+
+### Remove
+
+```shell hl_lines="1"
+> remove_shape_bins.py --help
+
+usage: remove_shape_bins.py [-h] [--directory [DIRECTORY]] [--no-shapes]
+                            [--mass MASS] [--log-level LOG_LEVEL]
+                            [--log-name LOG_NAME]
+                            DATACARD BIN,EXPRESSION[,EXPRESSION]
+                            [BIN,EXPRESSION[,EXPRESSION] ...]
+
+Script to remove histogram bins from datacard shapes using configurable rules.
+Shapes stored in workspaces are not supported. The bins to remove can be hard
+coded, depend on signal or background content, or be identified through a
+custom function. Example usage:
+
+# remove the first 5 shape bins in a specific datacard bin
+> remove_shape_bins.py datacard.txt 'OS_2018,1-5' -d output_directory
+
+# remove shape bins in all datacard bins with more than 5 signal events
+# (note the quotes)
+> remove_shape_bins.py datacard.txt '*,S>5' -d output_directory
+
+# remove shape bins in all datacard bins with more than 5 signal events AND
+# a S/sqrt(B) ratio (signal-to-noise) above 0.5
+# (note the quotes)
+> remove_shape_bins.py datacard.txt '*,S>5,STN>0.5' -d output_directory
+
+# remove shape bins in all datacard bins with more than 5 signal events OR
+# a S/sqrt(B) ratio (signal-to-noise) above 0.5
+# (note the quotes)
+> remove_shape_bins.py datacard.txt '*,S>5' '*,STN>0.5' -d output_directory
+
+# remove shape bins in all datacard bins using an exteral function
+# (note the quotes)
+> remove_shape_bins.py datacard.txt '*,my_module.func_name" -d output_directory
+
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
+
+positional arguments:
+  DATACARD              the datacard to read and possibly update (see
+                        --directory)
+  BIN,EXPRESSION[,EXPRESSION]
+                        removal rules for shape bins in a datacard bin 'BIN',
+                        which supports patterns; prepending '!' to a bin
+                        pattern negates its meaning; an 'EXPRESSION' can
+                        either be a list of colon-separated bin indices to
+                        remove (starting at 1) with values 'A-B' being
+                        interpreted as ranges from A to B (inclusive), a
+                        simple expression 'PROCESS(<|>)THRESHOLD' (with
+                        special processes 'S', 'B', 'SB', 'SOB' and 'STN'
+                        being interpreted as combined signal, background,
+                        signal+background, signal/background, and
+                        signal/sqrt(background)), or the location of a
+                        function in the format 'module.func_name' with
+                        signature (datacard_content, datacard_bin, histograms)
+                        that should return indices of bins to remove; mutliple
+                        rules passed in the same expression are AND
+                        concatenated; the rules of multiple arguments are OR
+                        concatenated; each argument can also be a file
+                        containing 'BIN,EXPRESSION[,EXPRESSION]' values line
+                        by line
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --no-shapes, -n       do not change process names in shape files
+  --mass MASS, -m MASS  mass hypothesis; default: 125
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        remove_shape_bins
 ```
 
 

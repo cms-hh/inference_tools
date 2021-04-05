@@ -381,7 +381,7 @@ def read_datacard_structured(datacard):
     data["rates"] = OrderedDict()  # {bin: {process: float}
     data["observations"] = OrderedDict()  # {bin: float}
     data["shapes"] = []  # {bin: string, bin_pattern: string process: string, process_pattern: string, path: string, nom_pattern: string, syst_pattern: string}
-    data["parameters"] = []  # {name: string, type: string, columnar: bool, data: ...}
+    data["parameters"] = []  # {name: string, type: string, columnar: bool, spec: ...}
 
     # read the content
     content = read_datacard_blocks(datacard)

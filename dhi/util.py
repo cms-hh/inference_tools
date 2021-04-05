@@ -106,6 +106,21 @@ def multi_match(name, patterns, mode=any, regex=False):
         return mode(re.match(pattern, name) for pattern in patterns)
 
 
+def make_unique(obj):
+    """
+    Takes a list or tuple *obj*, removes duplicate elements in order of their appearance and returns
+    the sequence of remaining, unique elements. The sequence type is preserved. When *obj* is
+    neither a list nor a tuple, but iterable, a list is returned. Otherwise, a *TypeError* is
+    raised.
+    """
+    if not isinstance(obj, (list, tuple)):
+        obj = list(obj)
+
+    ret = sorted(obj.__class__(set(obj)), key=lambda elem: obj.index(elem))
+
+    return obj.__class__(ret) if isinstance(obj, tuple) else ret
+
+
 def to_root_latex(s):
     """
     Converts latex expressions in a string *s* to ROOT-compatible latex.
@@ -436,6 +451,7 @@ def unique_recarray(a, cols=None, sort=True, test_metric=None):
 
 
 class TFileCache(object):
+
     def __init__(self, logger=None):
         super(TFileCache, self).__init__()
 
