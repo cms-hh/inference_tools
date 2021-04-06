@@ -431,7 +431,7 @@ def plot_likelihood_scan_2d(
     draw_objs.append((h_dummy, ""))
 
     # setup the nll hist
-    r.setup_hist(h_nll, props={"ContourXX": 100, "Minimum": z_min, "Maximum": z_max})
+    r.setup_hist(h_nll, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
     r.setup_z_axis(h_nll.GetZaxis(), pad=pad, props={"Title": z_title, "TitleOffset": 1.3})
     draw_objs.append((h_nll, "SAME,COLZ"))
 
@@ -819,15 +819,15 @@ def plot_nuisance_likelihood_scans(
         draw_objs = [(h_dummy, "HIST")]
         legend_entries = []
 
-        # horizontal guidance line at dnll = 1 in log scale
-        if y_log and (_y_min < 1. < y_max_line):
+        # horizontal and vertical guidance lines
+        if (_y_min < 1 < y_max_line) and (y_log or y_max_line < 100):
+            # horizontal
             line = ROOT.TLine(x_min, 1., x_max, 1.)
             r.setup_line(line, props={"LineColor": 12, "LineStyle": 2, "NDC": False})
             draw_objs.append(line)
 
-        # vertical guidance lines in log scale
-        for x in [-1, 1]:
-            if y_log and (x_min < x < x_max):
+            # vertical
+            for x in [-1, 1]:
                 line = ROOT.TLine(x, _y_min, x, min(1., y_max_line))
                 r.setup_line(line, props={"LineColor": 12, "LineStyle": 2, "NDC": False})
                 draw_objs.append(line)

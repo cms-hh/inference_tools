@@ -97,7 +97,7 @@ class MergeLikelihoodScan(LikelihoodBase):
 
         data = []
         dtype = [(p, np.float32) for p in self.scan_parameter_names] + [
-            ("delta_nll", np.float32),
+            ("dnll", np.float32),
             ("dnll2", np.float32),
         ]
         poi_mins = self.n_pois * [np.nan]
@@ -106,7 +106,8 @@ class MergeLikelihoodScan(LikelihoodBase):
             scan_values = branch_map[branch]
 
             f = inp.load(formatter="uproot")["limit"]
-            failed = len(f["deltaNLL"].array()) <= 1
+            dnll = f["deltaNLL"].array()
+            failed = len(dnll) <= 1
             if failed:
                 data.append(scan_values + (np.nan, np.nan))
                 continue
@@ -116,7 +117,7 @@ class MergeLikelihoodScan(LikelihoodBase):
                 poi_mins = [f[p].array()[0] for p in self.pois]
 
             # store the value of that point
-            dnll = f["deltaNLL"].array()[1]
+            dnll = dnll[1]
             data.append(scan_values + (dnll, dnll * 2.0))
 
         data = np.array(data, dtype=dtype)
