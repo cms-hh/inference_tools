@@ -99,7 +99,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
             raise TypeError("invalid removal rule '{}'".format(_rule))
         _rule = list(_rule)
         if len(_rule) < 2:
-            raise ValueError("removal rule '{}' must have at least to values".format(_rule))
+            raise ValueError("removal rule '{}' must have at least two values".format(_rule))
         rule = [str(_rule[0])]
         for expr in _rule[1:]:
             # bin indices?
@@ -154,7 +154,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
 
     # read the datacard content
     with manipulate_datacard(datacard, read_structured=True) as (blocks, content):
-        # nothing to do when there are not shape lines
+        # nothing to do when there are no shape lines
         if not content["shapes"]:
             logger.debug("datacard does not contain shape lines")
             return
@@ -405,7 +405,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
                 raise Exception("the number of bin names ({}) and observations ({}) does not "
                     "match".format(len(obs_bin_names), len(obs_values)))
             new_obs_values = [
-                str(new_observations.get(bin_name, obs_value))
+                (str(new_observations.get(bin_name, obs_value)) if obs_value != "-1" else obs_value)
                 for bin_name, obs_value in zip(obs_bin_names, obs_values)
             ]
             blocks["observations"][1] = "observation " + " ".join(new_obs_values)

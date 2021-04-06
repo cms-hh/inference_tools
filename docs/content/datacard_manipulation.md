@@ -452,6 +452,65 @@ optional arguments:
 ```
 
 
+### Remove depending on rate
+
+```shell hl_lines="1"
+> remove_empty_processes.py --help
+
+usage: remove_empty_processes.py [-h] [--skip-signal]
+                                 [--directory [DIRECTORY]] [--no-shapes]
+                                 [--mass MASS] [--log-level LOG_LEVEL]
+                                 [--log-name LOG_NAME]
+                                 DATACARD BIN,PROCESS,THRESHOLD
+                                 [BIN,PROCESS,THRESHOLD ...]
+
+Script to remove processes from datacard bins whose rate is below a certain
+threshold. Bins, processes and the threshold value can be fully configured.
+Example usage:
+
+# remove a certain process from all bins where its rate is below 0.1
+# (note the quotes)
+> remove_empty_processes.py datacard.txt '*,tt,0.1' -d output_directory
+
+# remove all processes in a certain bin whose rate is below 0.1
+# (note the quotes)
+> remove_empty_processes.py datacard.txt 'OS_2018,*,0.1' -d output_directory
+
+# remove all processes except signal in a certain bin whose rate is below 0.1
+# (note the quotes)
+> remove_empty_processes.py datacard.txt 'OS_2018,*,0.1' -s -d output_directory
+
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
+
+positional arguments:
+  DATACARD              the datacard to read and possibly update (see
+                        --directory)
+  BIN,PROCESS,THRESHOLD
+                        names of bins, processes and a threshold value below
+                        which processes are removed in the format
+                        'bin_name,process_name,threshold_value'; both names
+                        support patterns where a leading '!' negates their
+                        meaning; each argument can also be a file containing
+                        'BIN,PROCESS,THRESHOLD' values line by line
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --skip-signal, -s     skip signal processes, independent of whether they are
+                        matched by a process pattern
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --no-shapes, -n       do not change process names in shape files
+  --mass MASS, -m MASS  mass hypothesis; default: 125
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        remove_empty_processes
+```
+
+
 ### Rename
 
 ```shell hl_lines="1"
@@ -554,8 +613,8 @@ optional arguments:
 usage: remove_shape_bins.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--mass MASS] [--log-level LOG_LEVEL]
                             [--log-name LOG_NAME]
-                            DATACARD BIN,EXPRESSION[,EXPRESSION]
-                            [BIN,EXPRESSION[,EXPRESSION] ...]
+                            DATACARD BIN,EXPRESSION[,EXPRESSION[,...]]
+                            [BIN,EXPRESSION[,EXPRESSION[,...]] ...]
 
 Script to remove histogram bins from datacard shapes using configurable rules.
 Shapes stored in workspaces are not supported. The bins to remove can be hard
@@ -589,7 +648,7 @@ Note: The use of an output directory is recommended to keep input files
 positional arguments:
   DATACARD              the datacard to read and possibly update (see
                         --directory)
-  BIN,EXPRESSION[,EXPRESSION]
+  BIN,EXPRESSION[,EXPRESSION[,...]]
                         removal rules for shape bins in a datacard bin 'BIN',
                         which supports patterns; prepending '!' to a bin
                         pattern negates its meaning; an 'EXPRESSION' can
@@ -603,12 +662,11 @@ positional arguments:
                         signal/sqrt(background)), or the location of a
                         function in the format 'module.func_name' with
                         signature (datacard_content, datacard_bin, histograms)
-                        that should return indices of bins to remove; mutliple
+                        that should return indices of bins to remove; multiple
                         rules passed in the same expression are AND
                         concatenated; the rules of multiple arguments are OR
                         concatenated; each argument can also be a file
-                        containing 'BIN,EXPRESSION[,EXPRESSION]' values line
-                        by line
+                        containing 'BIN,EXPRESSION,...' values line by line
 
 optional arguments:
   -h, --help            show this help message and exit

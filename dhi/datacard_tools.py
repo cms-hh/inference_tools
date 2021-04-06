@@ -208,13 +208,35 @@ class DatacardRenamer(object):
 class ShapeLine(object):
 
     @classmethod
-    def parse(cls, line):
-        parts = line.strip().split()
+    def parse_line(cls, line):
+        return cls.parse_tuple(line.strip().split())
 
-        if len(parts) < 4 or (len(parts) == 4 and parts[-1] != "FAKE"):
-            raise Exception("invalid shape line format: {}".format(line))
+    @classmethod
+    def parse_dict(cls, d):
+        required = ["process_pattern", "bin_pattern", "file", "nom_pattern"]
+        optional = ["syst_pattern"]
+        for key in required:
+            if key not in d:
+                raise Exception("shape line dict misses field '{}'".format(key))
 
-        return (parts + [None, None])[1:6]
+        return cls.parse_tuple([d.get(key) for key in required + optional])
+
+    @classmethod
+    def parse_tuple(cls, tpl):
+        tpl = tuple(tpl)
+        if len(tpl) < 4 or (len(tpl) == 4 and tpl[-1] != "FAKE"):
+            raise Exception("invalid shape line tuple {}".format(tpl))
+
+        return (tpl + (None, None))[1:6]
+
+    @classmethod
+    def parse(cls, value):
+        if isinstance(value, six.string_types):
+            return cls.parse_line(value)
+        elif isinstance(value, dict):
+            return cls.parse_dict(value)
+        else:
+            return cls.parse_tuple(value)
 
     def __init__(self, line, i):
         super(ShapeLine, self).__init__()
@@ -380,7 +402,7 @@ def read_datacard_structured(datacard):
     data["processes"] = []  # {name: string, id: int}
     data["rates"] = OrderedDict()  # {bin: {process: float}
     data["observations"] = OrderedDict()  # {bin: float}
-    data["shapes"] = []  # {bin: string, bin_pattern: string process: string, process_pattern: string, path: string, nom_pattern: string, syst_pattern: string}
+    data["shapes"] = []  # {index: int, bin: string, bin_pattern: string process: string, process_pattern: string, path: string, nom_pattern: string, syst_pattern: string}
     data["parameters"] = []  # {name: string, type: string, columnar: bool, spec: ...}
 
     # read the content
@@ -432,6 +454,7 @@ def read_datacard_structured(datacard):
             if multi_match(bin_name, sl.bin) and multi_match(process_name, sl.process):
                 # store the entry
                 data["shapes"].append(OrderedDict([
+                    ("index", sl.i),
                     ("bin", bin_name),
                     ("bin_pattern", sl.bin),
                     ("process", process_name),
