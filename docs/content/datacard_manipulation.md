@@ -20,7 +20,7 @@ Please note that, when no output directory is given, ==the content of datacards 
 
 usage: remove_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                             [--log-level LOG_LEVEL] [--log-name LOG_NAME]
-                            DATACARD NAME [NAME ...]
+                            DATACARD SPEC [SPEC ...]
 
 Script to remove one or multiple (nuisance) parameters from a datacard.
 Example usage:
@@ -28,8 +28,17 @@ Example usage:
 # remove certain parameters
 > remove_parameters.py datacard.txt CMS_btag_JES CMS_btag_JER -d output_directory
 
-# remove parameters via fnmatch wildcards (note the quotes)
+# remove parameters via fnmatch wildcards
+# (note the quotes)
 > remove_parameters.py datacard.txt 'CMS_btag_JE?' -d output_directory
+
+# remove a parameter from all processes in a certain bin
+# (note the quotes)
+> remove_parameters.py datacard.txt 'OS_2018,*,CMS_btag_JES' -d output_directory
+
+# remove a parameter from a certain processes in all bins
+# (note the quotes)
+> remove_parameters.py datacard.txt '*,tt,CMS_btag_JES' -d output_directory
 
 # remove parameters listed in a file
 > remove_parameters.py datacard.txt parameters.txt -d output_directory
@@ -40,8 +49,15 @@ Note: The use of an output directory is recommended to keep input files
 positional arguments:
   DATACARD              the datacard to read and possibly update (see
                         --directory)
-  NAME                  names of parameters or files containing parameter
-                        names to remove line by line; supports patterns
+  SPEC                  specifications of parameters to remove or a file
+                        containing these specifications line by line; a
+                        specification should have the format
+                        '[BIN,PROCESS,]PARAMETER'; when a bin name and process
+                        are defined, the parameter should be of a type that is
+                        defined on a bin and process basis, and is removed
+                        only in this bin process combination; all values
+                        support patterns; prepending '!' to a bin or process
+                        pattern negates its meaning
 
 optional arguments:
   -h, --help            show this help message and exit

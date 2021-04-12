@@ -41,6 +41,7 @@ columnar_parameter_directives = ["lnN", "lnU", "gmN", "shape*"]
 
 
 class DatacardRenamer(object):
+
     @classmethod
     def parse_rules(cls, rules):
         """
@@ -406,13 +407,13 @@ def read_datacard_structured(datacard):
     data["parameters"] = []  # {name: string, type: string, columnar: bool, spec: ...}
 
     # read the content
-    content = read_datacard_blocks(datacard)
+    blocks = read_datacard_blocks(datacard)
 
     # get bin and process name pairs
-    bin_names = content["rates"][0].split()[1:]
-    process_names = content["rates"][1].split()[1:]
-    process_ids = content["rates"][2].split()[1:]
-    rates = content["rates"][3].split()[1:]
+    bin_names = blocks["rates"][0].split()[1:]
+    process_names = blocks["rates"][1].split()[1:]
+    process_ids = blocks["rates"][2].split()[1:]
+    rates = blocks["rates"][3].split()[1:]
 
     # check if all lists have the same lengths
     if not (len(bin_names) == len(process_names) == len(process_ids) == len(rates)):
@@ -432,8 +433,8 @@ def read_datacard_structured(datacard):
         data["rates"].setdefault(bin_name, OrderedDict())[process_name] = float(rate)
 
     # get observations
-    bin_names_obs = content["observations"][0].split()[1:]
-    observations = content["observations"][1].split()[1:]
+    bin_names_obs = blocks["observations"][0].split()[1:]
+    observations = blocks["observations"][1].split()[1:]
 
     # check if the bin names are the same
     if set(bin_names) != set(bin_names_obs):
@@ -446,7 +447,7 @@ def read_datacard_structured(datacard):
 
     # read shape file data
     # sort them so that most specific ones (i.e. without wildcards) come first
-    shape_lines = [ShapeLine(line, j) for j, line in enumerate(content.get("shapes", []))]
+    shape_lines = [ShapeLine(line, j) for j, line in enumerate(blocks.get("shapes", []))]
     shape_lines.sort(key=lambda shape_line: shape_line.sorting_weight)
     for bin_name, process_name in zip(bin_names, process_names):
         # get the shape line that applies
@@ -466,7 +467,7 @@ def read_datacard_structured(datacard):
                 break
 
     # get parameters
-    for line in content.get("parameters", []):
+    for line in blocks.get("parameters", []):
         parts = line.split()
 
         # skip certain lines

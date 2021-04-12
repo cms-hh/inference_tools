@@ -8,8 +8,17 @@ Example usage:
 # remove certain parameters
 > remove_parameters.py datacard.txt CMS_btag_JES CMS_btag_JER -d output_directory
 
-# remove parameters via fnmatch wildcards (note the quotes)
+# remove parameters via fnmatch wildcards
+# (note the quotes)
 > remove_parameters.py datacard.txt 'CMS_btag_JE?' -d output_directory
+
+# remove a parameter from all processes in a certain bin
+# (note the quotes)
+> remove_parameters.py datacard.txt 'OS_2018,*,CMS_btag_JES' -d output_directory
+
+# remove a parameter from a certain processes in all bins
+# (note the quotes)
+> remove_parameters.py datacard.txt '*,tt,CMS_btag_JES' -d output_directory
 
 # remove parameters listed in a file
 > remove_parameters.py datacard.txt parameters.txt -d output_directory
@@ -34,7 +43,9 @@ logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
     """
     Reads a *datacard* and removes parameters given by a list of *patterns*. A pattern can be a
-    parameter name, a pattern that is matched via fnmatch, or a file containing patterns.
+    parameter pattern that is matched via fnmatch, a 3-tuple defining a certain bin, process and
+    parameter combination, or a file containing these values line by line. When a bin and process
+    pattern are present, they are negated when they start with a '!'.
 
     When *directory* is *None*, the input *datacard* is updated in-place. Otherwise, both the
     changed datacard and all the shape files it refers to are stored in the specified directory. For
@@ -45,8 +56,24 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
     # prepare the datacard path
     datacard = real_path(datacard)
 
-    # expand patterns from files
-    patterns = expand_file_lines(patterns)
+    # expand patterns from files and parse
+    _patterns = expand_file_lines(patterns)
+    patterns = []
+    for pattern in _patterns:
+        _pattern = tuple(pattern if isinstance(pattern, (list, tuple)) else pattern.split(","))
+        if len(_pattern) == 1:
+            _pattern = ("*", "*", _pattern[0])
+        elif len(_pattern) != 3:
+            raise ValueError("invalid parameter removal pattern '{}'".format(pattern))
+        patterns.append(_pattern)
+
+    # get parameter patterns which full bin and process wildcards as they are the only ones
+    # considered for removing parameters other than columnar ones and rateParam's
+    # only consider the parameter patterns with bin and process wildcards
+    single_patterns = [
+        param_pattern for bin_pattern, proc_pattern, param_pattern in patterns
+        if (bin_pattern, proc_pattern) == ("*", "*")
+    ]
 
     # when a directory is given, copy the datacard (and all its shape files when not skipping them)
     # into that directory and continue working on copies
@@ -56,22 +83,104 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
 
     # start removing
     with manipulate_datacard(datacard) as blocks:
-        # keep track of which exact parameters were removed that describe nuisances
-        removed_nuisance_names = []
-
-        # remove from parameters
+        # remove from parameters, keep track of parameters that were fully removed
+        removed_nuisances = []
         if blocks.get("parameters"):
+            # get bin and process name pairs for removing the proper columns of columnar parameters
+            bin_names = blocks["rates"][0].split()[1:]
+            process_names = blocks["rates"][1].split()[1:]
+            process_ids = blocks["rates"][2].split()[1:]
+            rates = blocks["rates"][3].split()[1:]
+
+            # check if all lists have the same lengths
+            if not (len(bin_names) == len(process_names) == len(process_ids) == len(rates)):
+                raise Exception("the number of bin names ({}), process names ({}), process ids "
+                    "({}) and rates ({}) does not match".format(len(bin_names), len(process_names),
+                    len(process_ids), len(rates)))
+
+            # go through parameter lines
+            # remember those to remove and updated columnar parameter lines
             to_remove = []
-            for i, param_line in enumerate(blocks["parameters"]):
+            for i, param_line in enumerate(list(blocks["parameters"])):
                 param_line = param_line.split()
                 if len(param_line) < 2:
                     continue
+
                 param_name, param_type = param_line[:2]
-                if multi_match(param_name, patterns):
-                    logger.info("remove parameter {}".format(param_name))
-                    to_remove.append(i)
-                    if multi_match(param_type, columnar_parameter_directives):
-                        removed_nuisance_names.append(param_name)
+                if multi_match(param_type, columnar_parameter_directives):
+                    # store updated effects
+                    effects = []
+                    for bin_name, proc_name, f in zip(bin_names, process_names, param_line[2:]):
+                        # when the effect is missing, do nothing
+                        if f in ["-", "0", "0.0"]:
+                            effects.append("-")
+                            continue
+
+                        # compare with all patterns
+                        for bin_pattern, proc_pattern, param_pattern in patterns:
+                            neg = bin_pattern.startswith("!")
+                            if multi_match(bin_name, bin_pattern[int(neg):]) == neg:
+                                continue
+
+                            neg = proc_pattern.startswith("!")
+                            if multi_match(proc_name, proc_pattern[int(neg):]) == neg:
+                                continue
+
+                            if not multi_match(param_name, param_pattern):
+                                continue
+
+                            effects.append("-")
+                            logger.debug("remove effect {} from {} parameter {} in bin {} and "
+                                "process {}".format(f, param_type, param_name, bin_name, proc_name))
+                            break
+                        else:
+                            effects.append(f)
+
+                    # when there is no effect left, remove it completely, otherwise update
+                    if effects.count("-") == len(effects):
+                        to_remove.append(i)
+                        removed_nuisances.append(param_name)
+                        logger.info("no effect left for {} parameter {}, remove parameter".format(
+                            param_type, param_name))
+                    else:
+                        blocks["parameters"][i] = " ".join([param_name, param_type] + effects)
+
+                elif param_type == "rateParam":
+                    # special treatment of rate parameters
+                    if len(param_line) < 4:
+                        continue
+                    bin_name, proc_name = param_line[2:4]
+
+                    # compare with all patterns
+                    for bin_pattern, proc_pattern, param_pattern in patterns:
+                        # special cases with patterns in the datacards
+                        if bin_name == "*" and bin_pattern != "*":
+                            continue
+                        if proc_name == "*" and proc_pattern != "*":
+                            continue
+
+                        neg = bin_pattern.startswith("!")
+                        if multi_match(bin_name, bin_pattern[int(neg):]) == neg:
+                            continue
+
+                        neg = proc_pattern.startswith("!")
+                        if multi_match(proc_name, proc_pattern[int(neg):]) == neg:
+                            continue
+
+                        if not multi_match(param_name, param_pattern):
+                            continue
+
+                        to_remove.append(i)
+                        logger.info("remove {} parameter {} in bin {} and process {}".format(
+                            param_type, param_name, bin_name, proc_name))
+                        break
+
+                else:
+                    # general parameter without binding to a bin or process
+                    # remove when a single pattern matches
+                    if multi_match(param_name, single_patterns):
+                        logger.info("remove {} parameter {}".format(param_type, param_name))
+                        to_remove.append(i)
 
             # change lines in-place
             lines = [line for i, line in enumerate(blocks["parameters"]) if i not in to_remove]
@@ -88,8 +197,8 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                 group_name = m.group(1)
                 param_names = m.group(2).split()
                 for param_name in list(param_names):
-                    if param_name in param_names and multi_match(param_name, patterns):
-                        logger.info("remove parameter {} in group {}".format(
+                    if param_name in param_names and multi_match(param_name, removed_nuisances):
+                        logger.info("remove parameter {} from group {}".format(
                             param_name, group_name))
                         param_names.remove(param_name)
                 group_line = "{} group = {}".format(group_name, " ".join(param_names))
@@ -100,7 +209,7 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
             to_remove = []
             for i, group_line in enumerate(blocks["groups"]):
                 group_name = group_line.split()[0]
-                if multi_match(group_name, patterns):
+                if multi_match(group_name, single_patterns):
                     logger.info("remove group {}".format(group_name))
                     to_remove.append(i)
 
@@ -113,8 +222,9 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
         if blocks.get("auto_mc_stats"):
             new_lines = []
             for line in blocks["auto_mc_stats"]:
+                # the bin name is the actual parameter name, so compare it with the single patterns
                 bin_name = line.strip().split()[0]
-                if bin_name != "*" and multi_match(bin_name, patterns):
+                if bin_name != "*" and multi_match(bin_name, single_patterns):
                     logger.info("remove autoMCStats for bin {}".format(bin_name))
                 else:
                     new_lines.append(line)
@@ -124,8 +234,8 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
             blocks["auto_mc_stats"].extend(new_lines)
 
         # decrease kmax in counts
-        if removed_nuisance_names:
-            update_datacard_count(blocks, "kmax", -len(removed_nuisance_names), diff=True,
+        if removed_nuisances:
+            update_datacard_count(blocks, "kmax", -len(removed_nuisances), diff=True,
                 logger=logger)
 
 
@@ -138,8 +248,12 @@ if __name__ == "__main__":
 
     parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
         "update (see --directory)")
-    parser.add_argument("names", nargs="+", metavar="NAME", help="names of parameters or files "
-        "containing parameter names to remove line by line; supports patterns")
+    parser.add_argument("names", nargs="+", metavar="SPEC", help="specifications of parameters to "
+        "remove or a file containing these specifications line by line; a specification should "
+        "have the format '[BIN,PROCESS,]PARAMETER'; when a bin name and process are defined, the "
+        "parameter should be of a type that is defined on a bin and process basis, and is removed "
+        "only in this bin process combination; all values support patterns; prepending '!' to a "
+        "bin or process pattern negates its meaning")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
