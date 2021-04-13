@@ -1,7 +1,7 @@
 # coding: utf-8
 
 """
-Collections of tools for the EFT workflow.
+Collection of tools for the EFT workflow.
 """
 
 __all__ = []
@@ -18,8 +18,8 @@ class EFTCrossSectionProvider(object):
     def __init__(self):
         super(EFTCrossSectionProvider, self).__init__()
 
-        # varaious coefficients
-        # from https://github.com/pmandrik/VSEVA/blob/master/HHWWgg/reweight/reweight_HH.C#L117
+        # various coefficients
+        # from https://github.com/pmandrik/VSEVA/blob/f7224649297f900a4ae25cf721d65cae8bd7b408/HHWWgg/reweight/reweight_HH.C#L117
         self.coeffs_ggf_nlo_13tev = [
             62.5088, 345.604, 9.63451, 4.34841, 39.0143, -268.644, -44.2924, 96.5595, 53.515,
             -155.793, -23.678, 54.5601, 12.2273, -26.8654, -19.3723, -0.0904439, 0.321092, 0.452381,

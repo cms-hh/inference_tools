@@ -1161,9 +1161,10 @@ class POIPlotTask(PlotTask, POITask):
 
 
 class InputDatacards(DatacardTask, law.ExternalTask):
+
     version = None
     mass = None
-    hh_model = None
+    hh_model = law.NO_STR
     allow_empty_hh_model = True
 
     def output(self):
@@ -1213,6 +1214,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 
     priority = 100
 
+    allow_empty_hh_model = True
     allow_workspace_input = False
 
     def __init__(self, *args, **kwargs):
@@ -1279,16 +1281,18 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         self.run_command(self.build_command(datacards, output_card.path), cwd=tmp_dir.path)
 
         # remove ggf and vbf processes that are not covered by the physics model
-        mod, model = self.load_hh_model()
-        all_hh_processes = {sample.label for sample in mod.ggf_samples.values()}
-        all_hh_processes |= {sample.label for sample in mod.vbf_samples.values()}
-        model_hh_processes = {sample.label for sample in model.ggf_formula.sample_list}
-        model_hh_processes |= {sample.label for sample in model.vbf_formula.sample_list}
-        to_remove = all_hh_processes - model_hh_processes
-        if to_remove:
-            self.logger.info("trying to remove processe(s) '{}' from the combined datacard as they "
-                "are not part of the phyics model {}".format(",".join(to_remove), self.hh_model))
-            remove_processes_script(output_card.path, map("{}*".format, to_remove))
+        if not self.hh_model_empty:
+            mod, model = self.load_hh_model()
+            all_hh_processes = {sample.label for sample in mod.ggf_samples.values()}
+            all_hh_processes |= {sample.label for sample in mod.vbf_samples.values()}
+            model_hh_processes = {sample.label for sample in model.ggf_formula.sample_list}
+            model_hh_processes |= {sample.label for sample in model.vbf_formula.sample_list}
+            to_remove = all_hh_processes - model_hh_processes
+            if to_remove:
+                self.logger.info("trying to remove processe(s) '{}' from the combined datacard as "
+                    "they are not part of the phyics model {}".format(
+                        ",".join(to_remove), self.hh_model))
+                remove_processes_script(output_card.path, map("{}*".format, to_remove))
 
         # copy shape files and the datacard to the output location
         output = self.output()
@@ -1301,6 +1305,8 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 class CreateWorkspace(DatacardTask, CombineCommandTask):
 
     priority = 90
+
+    allow_empty_hh_model = True
 
     run_command_in_tmp = True
 

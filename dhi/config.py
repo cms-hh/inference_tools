@@ -109,6 +109,9 @@ poi_data = DotDict(
     kt=DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}"),
     C2V=DotDict(range=(-10.0, 10.0), label=r"\kappa_{VV}"),
     CV=DotDict(range=(-10.0, 10.0), label=r"\kappa_{V}"),
+    C2=DotDict(range=(-2.0, 2.0), label=r"c_{2}"),
+    Cg=DotDict(range=(-2.0, 2.0), label=r"c_{g}"),
+    C2g=DotDict(range=(-2.0, 2.0), label=r"c_{2g}"),
 )
 # add "$" embedded labels
 for poi, data in poi_data.items():
