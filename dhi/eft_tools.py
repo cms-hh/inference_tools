@@ -9,7 +9,7 @@ __all__ = []
 
 class EFTCrossSectionProvider(object):
     """
-    Helper class to calculate HH cross sections in EFT.
+    Helper class to calculate HH cross sections in EFT, as usualy in units of pb.
     Coefficients and formulae are taken from
     https://github.com/fabio-mon/HHStatAnalysis/blob/c8fc33d2ae3f7e04cfc83e773e2880657ffdce3b/AnalyticalModels/python/NonResonantModelNLO.py
     with credits to F. Monti and P. Mandrik.
