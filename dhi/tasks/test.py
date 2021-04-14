@@ -25,6 +25,7 @@ from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
 from dhi.tasks.exclusion import PlotExclusionAndBestFit, PlotExclusionAndBestFit2D
 from dhi.tasks.postfit import PlotPostfitSOverB, PlotNuisanceLikelihoodScans
 from dhi.tasks.gof import PlotGoodnessOfFit, PlotMultipleGoodnessOfFits
+from dhi.tasks.eft import PlotEFTBenchmarkLimits, PlotEFTUpperLimits
 from dhi.tasks.studies.model_selection import (
     PlotMorphingScales, PlotMorphedDiscriminant, PlotStatErrorScan,
 )
@@ -66,6 +67,8 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         "postfit_s_over_b",
         "nuisance_likelihood_scans",
         "goodness_of_fit",
+        "eft_benchmark_limits",
+        "eft_upper_limits",
         "multiple_goodness_of_fits",
         "morphing_scales",
         "morphed_discriminant",
@@ -93,6 +96,8 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         multi_cards = (ggf_cards, vbf_cards, ggf_cards + vbf_cards)
         multi_cards_names = ("ggF", "VBF", "All")
         test_models = tuple("HHModelPinv.model_no_ggf_kl" + kl for kl in "1 2p45 5".split())
+        eft_cards_bm = tuple(os.environ["DHI_EXAMPLE_CARDS_EFT_BM"].split(","))
+        eft_cards_c2 = tuple(os.environ["DHI_EXAMPLE_CARDS_EFT_C2"].split(","))
 
         if self.check_enabled("upper_limits"):
             reqs["upper_limits"] = PlotUpperLimits.req(self,
@@ -253,6 +258,16 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 toys=(300,),
                 toys_per_task=(15,),
                 show_parameters=("kt", "kt"),
+            )
+
+        if self.check_enabled("eft_benchmark_limits"):
+            reqs["eft_benchmark_limits"] = PlotEFTBenchmarkLimits.req(self,
+                multi_datacards=(eft_cards_bm,),
+            )
+
+        if self.check_enabled("eft_upper_limits"):
+            reqs["eft_upper_limits"] = PlotEFTUpperLimits.req(self,
+                multi_datacards=(eft_cards_c2,),
             )
 
         if self.check_enabled("morphing_scales"):

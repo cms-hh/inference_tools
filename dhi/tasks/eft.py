@@ -6,14 +6,14 @@ Tasks related to EFT benchmarks and scans.
 
 import os
 import re
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 import law
 import luigi
 
 from dhi.tasks.base import HTCondorWorkflow, PlotTask, view_output_plots
 from dhi.tasks.combine import (
-    DatacardTask,
+    MultiDatacardTask,
     CombineCommandTask,
     CreateWorkspace,
 )
@@ -23,7 +23,7 @@ from dhi.eft_tools import (
 )
 
 
-class EFTBase(DatacardTask):
+class EFTBase(MultiDatacardTask):
 
     datacard_pattern = luigi.Parameter(
         default="datacard_(.+).txt",
@@ -49,12 +49,25 @@ class EFTBase(DatacardTask):
         description="unblinded computation and plotting of results; default: False",
     )
 
+    exclude_params_index = {"datacard_names", "datacard_order"}
+
     hh_model = law.NO_STR
     allow_empty_hh_model = True
 
     @classmethod
     def modify_param_values(cls, params):
-        params = DatacardTask.modify_param_values.__func__.__get__(cls)(params)
+        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
+
+        # re-group multi datacards by basenames
+        if "multi_datacards" in params:
+            groups = defaultdict(set)
+            for datacards in params["multi_datacards"]:
+                for datacard in datacards:
+                    groups[os.path.basename(datacard)].add(datacard)
+            params["multi_datacards"] = tuple(sorted(
+                tuple(sorted(datacards))
+                for datacards in groups.values()
+            ))
 
         # sort frozen parameters
         if "frozen_parameters" in params:
@@ -70,16 +83,21 @@ class EFTBase(DatacardTask):
         super(EFTBase, self).__init__(*args, **kwargs)
 
         # create a map of datacard names (e.g. benchmark number or EFT parameters) to datacard paths
-        self.eft_datacards = OrderedDict()
-        for datacard in sorted(self.datacards):
-            m = re.match(self.datacard_pattern, os.path.basename(datacard))
+        self.eft_datacards = {}
+        for datacards in self.multi_datacards:
+            # check if all basenames are identical
+            basenames = set(map(os.path.basename, datacards))
+            if len(basenames) != 1:
+                raise Exception("found multiple basenames {} in datacards:\n  {}".format(
+                    ",".join(basenames), "\n  ".join(datacards)))
+
+            # extract the name
+            basename = list(basenames)[0]
+            m = re.match(self.datacard_pattern, basename)
             if not m:
-                raise ValueError("datacard {} does not match pattern '{}'".format(
-                    datacard, self.datacard_pattern))
-            name = m.group(1)
-            if name in self.eft_datacards:
-                raise ValueError("EFT datacard name '{}' is not unique".format(name))
-            self.eft_datacards[name] = datacard
+                raise ValueError("datacard basename {} does not match pattern '{}'".format(
+                    basename, self.datacard_pattern))
+            self.eft_datacards[m.group(1)] = datacards
 
     def get_output_postfix(self, join=True):
         parts = []
@@ -114,7 +132,7 @@ class EFTBenchmarkBase(EFTBase):
 
         # sort EFT datacards according to benchmark names
         names = sort_eft_benchmark_names(self.eft_datacards.keys())
-        self.benchmarks = OrderedDict((name, self.eft_datacards[name]) for name in names)
+        self.benchmark_datacards = OrderedDict((name, self.eft_datacards[name]) for name in names)
 
 
 class EFTScanBase(EFTBase):
@@ -135,7 +153,6 @@ class EFTScanBase(EFTBase):
 
     def get_output_postfix(self, join=True):
         parts = [self.scan_parameter]
-
         parts += super(EFTScanBase, self).get_output_postfix(join=False)
 
         return self.join_postfix(parts) if join else parts
@@ -184,17 +201,17 @@ class EFTBenchmarkLimits(EFTBenchmarkBase, EFTLimitBase):
     run_command_in_tmp = True
 
     def create_branch_map(self):
-        return list(self.benchmarks.keys())
+        return list(self.benchmark_datacards.keys())
 
     def requires(self):
-        return CreateWorkspace.req(self, datacards=(self.benchmarks[self.branch_data],),
+        return CreateWorkspace.req(self, datacards=self.benchmark_datacards[self.branch_data],
             hh_model=law.NO_STR)
 
     def output(self):
         parts = self.get_output_postfix(join=False)
         parts.append("bm{}".format(self.branch_data))
 
-        return self.local_target("limit__{}.root".format(self.join_postfix(parts)))
+        return self.local_target("eftlimit__{}.root".format(self.join_postfix(parts)))
 
 
 class EFTUpperLimits(EFTScanBase, EFTLimitBase):
@@ -205,14 +222,14 @@ class EFTUpperLimits(EFTScanBase, EFTLimitBase):
         return list(self.scan_datacards.keys())
 
     def requires(self):
-        return CreateWorkspace.req(self, datacards=(self.scan_datacards[self.branch_data],),
+        return CreateWorkspace.req(self, datacards=self.scan_datacards[self.branch_data],
             hh_model=law.NO_STR)
 
     def output(self):
         parts = self.get_output_postfix(join=False)
         parts[0] = "{}_{}".format(self.scan_parameter, self.branch_data)
 
-        return self.local_target("limit__{}.root".format(self.join_postfix(parts)))
+        return self.local_target("eftlimit__{}.root".format(self.join_postfix(parts)))
 
 
 class MergeEFTBenchmarkLimits(EFTBenchmarkBase):
@@ -224,7 +241,7 @@ class MergeEFTBenchmarkLimits(EFTBenchmarkBase):
         parts = self.get_output_postfix(join=False)
         postfix = ("__" + self.join_postfix(parts)) if parts else ""
 
-        return self.local_target("limits{}.npz".format(postfix))
+        return self.local_target("eftlimits{}.npz".format(postfix))
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -256,7 +273,7 @@ class MergeEFTUpperLimits(EFTScanBase):
         return EFTUpperLimits.req(self)
 
     def output(self):
-        return self.local_target("limits__{}.npz".format(self.get_output_postfix()))
+        return self.local_target("eftlimits__{}.npz".format(self.get_output_postfix()))
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -304,7 +321,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
         if self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(["limits"] + parts)
+        name = self.create_plot_name(["eftlimits"] + parts)
         return self.local_target(name)
 
     @law.decorator.log
@@ -321,7 +338,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
 
         # fill data entries as expected by the plot function
         data = []
-        for name, record in zip(self.benchmarks, limit_values):
+        for name, record in zip(self.benchmark_datacards.keys(), limit_values):
             entry = {
                 "name": name,
                 "expected": record.tolist()[:5],
@@ -365,7 +382,7 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
         if self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(["limits"] + parts)
+        name = self.create_plot_name(["eftlimits"] + parts)
         return self.local_target(name)
 
     @law.decorator.log
