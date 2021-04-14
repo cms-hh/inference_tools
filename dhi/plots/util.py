@@ -64,6 +64,9 @@ def draw_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_o
     import plotlib.root as r
     from plotlib.util import merge_dicts
 
+    # list helper
+    make_list = lambda obj: obj if isinstance(obj, (list, tuple)) else [obj]
+
     # merge properties with defaults
     props = merge_dicts({"TextSize": 20}, props)
 
@@ -73,8 +76,10 @@ def draw_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_o
         # group parameters by value
         groups = collections.OrderedDict()
         for p, v in model_parameters.items():
-            p_label = poi_data.get(p, {}).get("label", p)
-            groups.setdefault(v, []).append(p_label)
+            # each parameter key can be a list
+            for _p in make_list(p):
+                p_label = poi_data.get(_p, {}).get("label", _p)
+                groups.setdefault(v, []).append(p_label)
 
         # create labels
         for i, (v, ps) in enumerate(groups.items()):
@@ -86,8 +91,9 @@ def draw_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_o
     else:
         # create one label per parameter
         for i, (p, v) in enumerate(model_parameters.items()):
-            p_label = poi_data.get(p, {}).get("label", p)
-            label = "{} = {}".format(p_label, try_int(v))
+            # each parameter key can be a list
+            p_labels = [poi_data.get(_p, {}).get("label", _p) for _p in make_list(p)]
+            label = "{} = {}".format(" = ".join(p_labels), try_int(v))
             label = r.routines.create_top_left_label(label, pad=pad, props=props, x_offset=x_offset,
                 y_offset=y_offset + i * dy)
             labels.append(label)

@@ -38,6 +38,7 @@ def plot_limit_scan(
     hh_process=None,
     model_parameters=None,
     campaign=None,
+    show_points=False,
 ):
     """
     Creates a plot for the upper limit scan of a *poi* over a *scan_parameter* and saves it at
@@ -56,7 +57,8 @@ def plot_limit_scan(
     in the title of the y-axis and indicates that the plotted cross section data was (e.g.) scaled
     by a branching ratio. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*.
+    *dhi.config.campaign_labels*. When *show_points* is *True*, the central scan points are drawn
+    on top of the interpolated curve.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#limit-on-poi-vs-scan-parameter
     """
@@ -144,7 +146,7 @@ def plot_limit_scan(
     # central values
     g_exp = create_graph()
     r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 2})
-    draw_objs.append((g_exp, "SAME,CP"))
+    draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
     legend_entries[3] = (g_exp, "Median expected", "L")
     y_max_value = max(y_max_value, max(expected_values["limit"]))
     y_min_value = min(y_min_value, min(expected_values["limit"]))
@@ -256,6 +258,7 @@ def plot_limit_scans(
     hh_process=None,
     model_parameters=None,
     campaign=None,
+    show_points=True,
 ):
     """
     Creates a plot showing multiple upper limit scans of a *poi* over a *scan_parameter* and saves
@@ -274,6 +277,8 @@ def plot_limit_scans(
     title of the y-axis and indicates that the plotted cross section data was (e.g.) scaled by a
     branching ratio. *model_parameters* can be a dictionary of key-value pairs of model parameters.
     *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
+    When *show_points* is *True*, the central scan points are drawn on top of the interpolated
+    curve.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-on-poi-vs-scan-parameter
     """
@@ -335,9 +340,10 @@ def plot_limit_scans(
         g_exp = create_tgraph(mask.sum(), scan_values[mask], ev["limit"][mask])
         r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
-        draw_objs.append((g_exp, "SAME,CP"))
+        draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
         name = names[n_graphs - i - 1]
-        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)), "LP"))
+        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)),
+            "LP" if show_points else "L"))
         y_max_value = max(y_max_value, max(ev["limit"]))
         y_min_value = min(y_min_value, min(ev["limit"]))
 

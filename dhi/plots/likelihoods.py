@@ -38,6 +38,7 @@ def plot_likelihood_scan_1d(
     y_log=False,
     model_parameters=None,
     campaign=None,
+    show_points=False,
 ):
     """
     Creates a likelihood plot of the 1D scan of a *poi* and saves it at *path*. *values* should be a
@@ -50,7 +51,8 @@ def plot_likelihood_scan_1d(
     *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
     the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
+    *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d
     """
@@ -147,7 +149,7 @@ def plot_likelihood_scan_1d(
     # nll curve
     g_nll = create_tgraph(len(poi_values), poi_values, dnll2_values)
     r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75})
-    draw_objs.append((g_nll, "SAME,CP"))
+    draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=230, n=len(legend_entries))
@@ -191,6 +193,7 @@ def plot_likelihood_scans_1d(
     y_log=False,
     model_parameters=None,
     campaign=None,
+    show_points=True,
 ):
     """
     Plots multiple curves of 1D likelihood scans of a POI *poi1* and *poi2*, and saves it at *path*.
@@ -209,7 +212,8 @@ def plot_likelihood_scans_1d(
     *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
     the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. When
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
+    *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d_1
     """
@@ -310,8 +314,9 @@ def plot_likelihood_scans_1d(
             d["values"]["dnll2"])
         r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
-        draw_objs.append((g_nll, "SAME,CP"))
-        legend_entries.append((g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])), "LP"))
+        draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
+        legend_entries.append((g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])),
+            "LP" if show_points else "L"))
 
         # line for best fit value
         line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
