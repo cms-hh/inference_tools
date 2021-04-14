@@ -14,7 +14,7 @@ from dhi.util import make_list
 
 class EFTCrossSectionProvider(object):
     """
-    Helper class to calculate HH cross sections in EFT, as usualy in units of pb.
+    Helper class to calculate HH cross sections in EFT in units of pb.
     Coefficients and formulae are taken from
     https://github.com/fabio-mon/HHStatAnalysis/blob/c8fc33d2ae3f7e04cfc83e773e2880657ffdce3b/AnalyticalModels/python/NonResonantModelNLO.py
     with credits to F. Monti and P. Mandrik.
@@ -23,21 +23,22 @@ class EFTCrossSectionProvider(object):
     def __init__(self):
         super(EFTCrossSectionProvider, self).__init__()
 
-        # from https://github.com/pmandrik/VSEVA/blob/f7224649297f900a4ae25cf721d65cae8bd7b408/HHWWgg/reweight/reweight_HH.C#L117
-        self.coeffs_ggf_nlo_13tev = [
+        # ggf nlo coefficients in pb, converted from fb values
+        # https://github.com/pmandrik/VSEVA/blob/f7224649297f900a4ae25cf721d65cae8bd7b408/HHWWgg/reweight/reweight_HH.C#L117
+        self.coeffs_ggf_nlo_13tev = [0.001 * c for c in [
             62.5088, 345.604, 9.63451, 4.34841, 39.0143, -268.644, -44.2924, 96.5595, 53.515,
             -155.793, -23.678, 54.5601, 12.2273, -26.8654, -19.3723, -0.0904439, 0.321092, 0.452381,
             -0.0190758, -0.607163, 1.27408, 0.364487, -0.499263,
-        ]
+        ]]
 
-        self.ggf_xsec_sm_nnlo = 0.03105
+        self.ggf_xsec_sm_nnlo = 0.03105  # pb
 
     def get_ggf_xsec_nlo(self, kl=1., kt=1., c2=0., cg=0., c2g=0., coeffs=None):
         if coeffs is None:
             coeffs = self.coeffs_ggf_nlo_13tev
 
-        return 0.001 * (
-            coeffs[0] * kt**4 + \
+        return (
+            coeffs[0] * kt**4 +
             coeffs[1] * c2**2 +
             coeffs[2] * kt**2 * kl**2 +
             coeffs[3] * cg**2 * kl**2 +
@@ -63,13 +64,10 @@ class EFTCrossSectionProvider(object):
         )
 
     def get_ggf_xsec_nnlo(self, kl=1., kt=1., c2=0., cg=0., c2g=0., coeffs=None):
-        if coeffs is None:
-            coeffs = self.coeffs_ggf_nlo_13tev
-
         xsec_bsm_nlo = self.get_ggf_xsec_nlo(kl=kl, kt=kt, c2=c2, cg=cg, c2g=c2g, coeffs=coeffs)
         xsec_sm_nlo = self.get_ggf_xsec_nlo(kl=1., kt=1., c2=0., cg=0., c2g=0., coeffs=coeffs)
 
-        return self.ggf_xsec_sm_nnlo * xsec_bsm_nlo / xsec_sm_nlo
+        return xsec_bsm_nlo * self.ggf_xsec_sm_nnlo / xsec_sm_nlo
 
 
 #: EFTCrossSectionProvider singleton.

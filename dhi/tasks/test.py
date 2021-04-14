@@ -263,11 +263,13 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         if self.check_enabled("eft_benchmark_limits"):
             reqs["eft_benchmark_limits"] = PlotEFTBenchmarkLimits.req(self,
                 multi_datacards=(eft_cards_bm,),
+                xsec="fb",
             )
 
         if self.check_enabled("eft_upper_limits"):
             reqs["eft_upper_limits"] = PlotEFTUpperLimits.req(self,
                 multi_datacards=(eft_cards_c2,),
+                xsec="fb",
             )
 
         if self.check_enabled("morphing_scales"):

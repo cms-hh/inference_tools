@@ -22,6 +22,7 @@ from dhi.eft_tools import (
     get_eft_ggf_xsec_nnlo, sort_eft_benchmark_names, sort_eft_scan_names,
     extract_eft_scan_parameter,
 )
+from dhi.config import br_hh
 
 
 class EFTBase(MultiDatacardTask):
@@ -304,6 +305,17 @@ class MergeEFTUpperLimits(EFTScanBase):
 
 class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
 
+    xsec = luigi.ChoiceParameter(
+        default="fb",
+        choices=["pb", "fb"],
+        description="convert limits to cross sections in this unit; choices: pb,fb; default: fb",
+    )
+    br = luigi.ChoiceParameter(
+        default=law.NO_STR,
+        choices=[law.NO_STR, ""] + list(br_hh.keys()),
+        description="name of a branching ratio defined in dhi.config.br_hh to scale the cross "
+        "section when xsec is used; choices: '',{}; no default".format(",".join(br_hh.keys())),
+    )
     y_log = luigi.BoolParameter(
         default=False,
         description="apply log scaling to the y-axis; default: False",
@@ -318,11 +330,15 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
         return MergeEFTBenchmarkLimits.req(self)
 
     def output(self):
-        parts = self.get_output_postfix(join=False)
+        # additional postfix
+        parts = []
+        parts.append(self.xsec)
+        if self.br and self.br != law.NO_STR:
+            parts.append(self.br)
         if self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(["eftlimits"] + parts)
+        name = self.create_plot_name(["eftlimits", self.get_output_postfix(), parts])
         return self.local_target(name)
 
     @law.decorator.log
@@ -337,15 +353,18 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
         # load limit values
         limit_values = self.input().load(formatter="numpy")["data"]
 
+        # prepare conversion scale
+        scale = br_hh.get(self.br, 1.) * {"fb": 1., "pb": 0.001}[self.xsec]
+
         # fill data entries as expected by the plot function
         data = []
         for name, record in zip(self.benchmark_datacards.keys(), limit_values):
             entry = {
                 "name": name,
-                "expected": record.tolist()[:5],
+                "expected": [v * scale for v in record.tolist()[:5]],
             }
             if self.unblinded:
-                entry["observed"] = float(record[5])
+                entry["observed"] = float(record[5]) * scale
             data.append(entry)
 
             # some printing
@@ -360,13 +379,25 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
-            xsec_unit="fb",
+            xsec_unit=self.xsec,
+            hh_process=self.br if self.br in br_hh else None,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
 
 
 class PlotEFTUpperLimits(EFTScanBase, PlotTask):
 
+    xsec = luigi.ChoiceParameter(
+        default=law.NO_STR,
+        choices=[law.NO_STR, "", "pb", "fb"],
+        description="convert limits to cross sections in this unit; choices: '',pb,fb; no default",
+    )
+    br = luigi.ChoiceParameter(
+        default=law.NO_STR,
+        choices=[law.NO_STR, ""] + list(br_hh.keys()),
+        description="name of a branching ratio defined in dhi.config.br_hh to scale the cross "
+        "section when xsec is used; choices: '',{}; no default".format(",".join(br_hh.keys())),
+    )
     y_log = luigi.BoolParameter(
         default=False,
         description="apply log scaling to the y-axis; default: False",
@@ -379,11 +410,16 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
         return MergeEFTUpperLimits.req(self)
 
     def output(self):
-        parts = self.get_output_postfix(join=False)
+        # additional postfix
+        parts = []
+        if self.xsec in ["pb", "fb"]:
+            parts.append(self.xsec)
+            if self.br not in (law.NO_STR, ""):
+                parts.append(self.br)
         if self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(["eftlimits"] + parts)
+        name = self.create_plot_name(["eftlimits", self.get_output_postfix(), parts])
         return self.local_target(name)
 
     @law.decorator.log
@@ -391,20 +427,50 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
     @view_output_plots
     @law.decorator.safe_output
     def run(self):
+        import numpy as np
+
         # prepare the output
         output = self.output()
         output.parent.touch()
 
-        # load limit values
+        # load limit values, given in fb
         limit_values = self.input().load(formatter="numpy")["data"]
 
-        # get theory values
+        # get nnlo cross sections in pb
+        xsecs = OrderedDict(
+            (v, get_eft_ggf_xsec_nnlo(**{self.scan_parameter: v}))
+            for v in limit_values[self.scan_parameter]
+        )
+
+        # prepare the br value
+        br_value = br_hh.get(self.br, 1.)
+
+        # get scaling factors for xsec and limit values
+        # apply scaling by xsec and br
+        n = len(xsecs)
+        if self.xsec == "fb":
+            xsec_unit = "fb"
+            limit_scales = n * [br_value]
+            xsec_scales = n * [1000. * br_value]
+        elif self.xsec == "pb":
+            xsec_unit = "pb"
+            limit_scales = n * [0.001 * br_value]
+            xsec_scales = n * [br_value]
+        else:
+            xsec_unit = None
+            limit_scales = (np.array(xsecs.values()) * 1000.)**-1
+            xsec_scales = [xsec**-1 for xsec in xsecs.values()]
+
+        # apply scales
+        for name in limit_values.dtype.names:
+            if name in ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2", "observed"]:
+                limit_values[name] *= limit_scales
+        xsecs = OrderedDict((v, xsec * s) for (v, xsec), s in zip(xsecs.items(), xsec_scales))
+
+        # preate theory values in the correct structure
         thy_values = {
             self.scan_parameter: limit_values[self.scan_parameter],
-            "xsec": [
-                get_eft_ggf_xsec_nnlo(**{self.scan_parameter: v}) * 0.001
-                for v in limit_values[self.scan_parameter]
-            ],
+            "xsec": list(xsecs.values()),
         }
 
         # prepare observed values
@@ -432,7 +498,8 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
-            xsec_unit="fb",
+            xsec_unit=xsec_unit,
+            hh_process=self.br if xsec_unit and self.br in br_hh else None,
             model_parameters=model_parameters,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )

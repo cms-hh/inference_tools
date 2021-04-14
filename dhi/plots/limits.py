@@ -709,6 +709,7 @@ def plot_benchmark_limits(
     y_max=None,
     y_log=False,
     xsec_unit="fb",
+    hh_process=None,
     campaign=None,
     bar_width=0.66,
 ):
@@ -739,9 +740,12 @@ def plot_benchmark_limits(
 
     *y_min* and *y_max* define the y axis range and default to the range of the given values. When
     *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *xsec_unit* denotes the unit
-    of the passed values and defaults to fb. *campaign* should refer to the name of a campaign label
-    defined in dhi.config.campaign_labels. The *bar_width* should be a value between 0 and 1 and
-    controls the fraction of the limit bar width relative to the bin width.
+    of the passed values and defaults to fb. *hh_process* can be the name of a HH subprocess
+    configured in *dhi.config.br_hh_names* and is inserted to the process name in the title of the
+    y-axis and indicates that the plotted cross section data was (e.g.) scaled by a branching ratio.
+    *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
+    The *bar_width* should be a value between 0 and 1 and controls the fraction of the limit bar
+    width relative to the bin width.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/eft.html#benchmark-limits  TODO
     """
@@ -787,7 +791,7 @@ def plot_benchmark_limits(
     # dummy histogram to control axes
     x_title = "Shape benchmark"
     y_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
-        create_hh_process_label(poi), to_root_latex(xsec_unit))
+        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), n, -0.5, n - 0.5)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"Ndivisions": n})
