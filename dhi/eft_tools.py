@@ -23,7 +23,6 @@ class EFTCrossSectionProvider(object):
     def __init__(self):
         super(EFTCrossSectionProvider, self).__init__()
 
-        # various coefficients
         # from https://github.com/pmandrik/VSEVA/blob/f7224649297f900a4ae25cf721d65cae8bd7b408/HHWWgg/reweight/reweight_HH.C#L117
         self.coeffs_ggf_nlo_13tev = [
             62.5088, 345.604, 9.63451, 4.34841, 39.0143, -268.644, -44.2924, 96.5595, 53.515,
@@ -31,40 +30,56 @@ class EFTCrossSectionProvider(object):
             -0.0190758, -0.607163, 1.27408, 0.364487, -0.499263,
         ]
 
-    def get_ggf_xsec(self, kl=1., kt=1., c2=1., cg=1., c2g=1., coeffs=None):
+        self.ggf_xsec_sm_nnlo = 0.03105
+
+    def get_ggf_xsec_nlo(self, kl=1., kt=1., c2=0., cg=0., c2g=0., coeffs=None):
         if coeffs is None:
             coeffs = self.coeffs_ggf_nlo_13tev
 
-        return coeffs[0] * kt**4 + \
-            coeffs[1] * c2**2 + \
-            coeffs[2] * kt**2 * kl**2 + \
-            coeffs[3] * cg**2 * kl**2 + \
-            coeffs[4] * c2g**2 + \
-            coeffs[5] * c2 * kt**2 + \
-            coeffs[6] * kl * kt**3 + \
-            coeffs[7] * kt * kl * c2 + \
-            coeffs[8] * cg * kl * c2 + \
-            coeffs[9] * c2 * c2g + \
-            coeffs[10] * cg * kl * kt**2 + \
-            coeffs[11] * c2g * kt**2 + \
-            coeffs[12] * kl**2 * cg * kt + \
-            coeffs[13] * c2g * kt * kl + \
-            coeffs[14] * cg * c2g * kl + \
-            coeffs[15] * kt**3 * cg + \
-            coeffs[16] * kt * c2 * cg + \
-            coeffs[17] * kt * cg**2 * kl + \
-            coeffs[18] * cg * kt * c2g + \
-            coeffs[19] * kt**2 * cg**2 + \
-            coeffs[20] * c2 * cg**2 + \
-            coeffs[21] * cg**3 * kl + \
+        return 0.001 * (
+            coeffs[0] * kt**4 + \
+            coeffs[1] * c2**2 +
+            coeffs[2] * kt**2 * kl**2 +
+            coeffs[3] * cg**2 * kl**2 +
+            coeffs[4] * c2g**2 +
+            coeffs[5] * c2 * kt**2 +
+            coeffs[6] * kl * kt**3 +
+            coeffs[7] * kt * kl * c2 +
+            coeffs[8] * cg * kl * c2 +
+            coeffs[9] * c2 * c2g +
+            coeffs[10] * cg * kl * kt**2 +
+            coeffs[11] * c2g * kt**2 +
+            coeffs[12] * kl**2 * cg * kt +
+            coeffs[13] * c2g * kt * kl +
+            coeffs[14] * cg * c2g * kl +
+            coeffs[15] * kt**3 * cg +
+            coeffs[16] * kt * c2 * cg +
+            coeffs[17] * kt * cg**2 * kl +
+            coeffs[18] * cg * kt * c2g +
+            coeffs[19] * kt**2 * cg**2 +
+            coeffs[20] * c2 * cg**2 +
+            coeffs[21] * cg**3 * kl +
             coeffs[22] * cg**2 * c2g
+        )
+
+    def get_ggf_xsec_nnlo(self, kl=1., kt=1., c2=0., cg=0., c2g=0., coeffs=None):
+        if coeffs is None:
+            coeffs = self.coeffs_ggf_nlo_13tev
+
+        xsec_bsm_nlo = self.get_ggf_xsec_nlo(kl=kl, kt=kt, c2=c2, cg=cg, c2g=c2g, coeffs=coeffs)
+        xsec_sm_nlo = self.get_ggf_xsec_nlo(kl=1., kt=1., c2=0., cg=0., c2g=0., coeffs=coeffs)
+
+        return self.ggf_xsec_sm_nnlo * xsec_bsm_nlo / xsec_sm_nlo
 
 
 #: EFTCrossSectionProvider singleton.
 eft_xsec_provider = EFTCrossSectionProvider()
 
-#: Default ggF cross section getter.
-get_eft_ggf_xsec = eft_xsec_provider.get_ggf_xsec
+#: Default ggF NLO cross section getter.
+get_eft_ggf_xsec_nlo = eft_xsec_provider.get_ggf_xsec_nlo
+
+#: Default ggF NNLO cross section getter.
+get_eft_ggf_xsec_nnlo = eft_xsec_provider.get_ggf_xsec_nnlo
 
 
 def sort_eft_benchmark_names(names):

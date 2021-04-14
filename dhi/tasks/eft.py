@@ -19,7 +19,8 @@ from dhi.tasks.combine import (
 )
 from dhi.tasks.limits import UpperLimits
 from dhi.eft_tools import (
-    get_eft_ggf_xsec, sort_eft_benchmark_names, sort_eft_scan_names, extract_eft_scan_parameter,
+    get_eft_ggf_xsec_nnlo, sort_eft_benchmark_names, sort_eft_scan_names,
+    extract_eft_scan_parameter,
 )
 
 
@@ -401,7 +402,7 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
         thy_values = {
             self.scan_parameter: limit_values[self.scan_parameter],
             "xsec": [
-                get_eft_ggf_xsec(**{self.scan_parameter: v}) * 0.001
+                get_eft_ggf_xsec_nnlo(**{self.scan_parameter: v}) * 0.001
                 for v in limit_values[self.scan_parameter]
             ],
         }
