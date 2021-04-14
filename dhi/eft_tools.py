@@ -7,6 +7,11 @@ Collection of tools for the EFT workflow.
 __all__ = []
 
 
+import re
+
+from dhi.util import make_list
+
+
 class EFTCrossSectionProvider(object):
     """
     Helper class to calculate HH cross sections in EFT, as usualy in units of pb.
@@ -59,4 +64,60 @@ class EFTCrossSectionProvider(object):
 eft_xsec_provider = EFTCrossSectionProvider()
 
 #: Default ggF cross section getter.
-get_ggf_xsec = eft_xsec_provider.get_ggf_xsec
+get_eft_ggf_xsec = eft_xsec_provider.get_ggf_xsec
+
+
+def sort_eft_benchmark_names(names):
+    """
+    Example order: 1, 2, 3, 3a, 3b, 4, 5, a_string, other_string, z_string
+    """
+    names = make_list(names)
+
+    # split into names being a number or starting with one, and pure strings
+    # store numeric names as tuples as sorted() will do exactly what we want
+    num_names, str_names = [], []
+    for name in names:
+        m = re.match(r"^(\d+)(.*)$", name)
+        if m:
+            num_names.append((int(m.group(1)), m.group(2)))
+        else:
+            str_names.append(name)
+
+    # sort and add
+    num_names.sort()
+    str_names.sort()
+    return ["{}{}".format(*pair) for pair in num_names] + str_names
+
+
+def extract_eft_scan_parameter(name):
+    """
+    c2_1p5 -> c2
+    """
+    if "_" not in name:
+        raise ValueError("invalid datacard name '{}'".format(name))
+    return name.split("_", 1)[0]
+
+
+def sort_eft_scan_names(scan_parameter, names):
+    """
+    Names have the format "<scan_parameters>_<number>"" where number might have "-" replaced by
+    "m" and "." replaced by "d", so revert this and simply sort by number.
+    """
+    names = make_list(names)
+
+    # extract the scan values
+    values = []
+    for name in names:
+        if not name.startswith(scan_parameter + "_"):
+            raise ValueError("invalid datacard name '{}'".format(name))
+        v = name[len(scan_parameter) + 1:].replace("d", ".").replace("m", "-")
+        try:
+            v = float(v)
+        except ValueError:
+            raise ValueError("invalid scan value '{}' in datacard name '{}'".format(v, name))
+        values.append((name, v))
+
+    # sort by value
+    values.sort(key=lambda tpl: tpl[1])
+
+    return values

@@ -18,6 +18,9 @@ from dhi.tasks.combine import (
     CreateWorkspace,
 )
 from dhi.tasks.limits import UpperLimits
+from dhi.eft_tools import (
+    get_eft_ggf_xsec, sort_eft_benchmark_names, sort_eft_scan_names, extract_eft_scan_parameter,
+)
 
 
 class EFTBase(DatacardTask):
@@ -110,30 +113,8 @@ class EFTBenchmarkBase(EFTBase):
         super(EFTBenchmarkBase, self).__init__(*args, **kwargs)
 
         # sort EFT datacards according to benchmark names
-        names = self.sort_benchmark_names(self.eft_datacards.keys())
+        names = sort_eft_benchmark_names(self.eft_datacards.keys())
         self.benchmarks = OrderedDict((name, self.eft_datacards[name]) for name in names)
-
-    @classmethod
-    def sort_benchmark_names(cls, names):
-        """
-        Example order: 1, 2, 3, 3a, 3b, 4, 5, a_string, other_string, z_string
-        """
-        names = law.util.make_list(names)
-
-        # split into names being a number or starting with one, and pure strings
-        # store numeric names as tuples as sorted() will do exactly what we want
-        num_names, str_names = [], []
-        for name in names:
-            m = re.match(r"^(\d+)(.*)$", name)
-            if m:
-                num_names.append((int(m.group(1)), m.group(2)))
-            else:
-                str_names.append(name)
-
-        # sort and add
-        num_names.sort()
-        str_names.sort()
-        return ["{}{}".format(*pair) for pair in num_names] + str_names
 
 
 class EFTScanBase(EFTBase):
@@ -142,49 +123,15 @@ class EFTScanBase(EFTBase):
         super(EFTScanBase, self).__init__(*args, **kwargs)
 
         # get the name of the parameter to scan
-        scan_parameters = set(map(self.extract_scan_parameter, self.eft_datacards.keys()))
+        scan_parameters = set(map(extract_eft_scan_parameter, self.eft_datacards.keys()))
         if len(scan_parameters) != 1:
             raise Exception("datacards belong to more than one EFT scan parameter: {}".format(
                 ",".join(scan_parameters)))
         self.scan_parameter = list(scan_parameters)[0]
 
         # sort EFT datacards according to scan parameter values
-        values = self.sort_scan_names(self.scan_parameter, self.eft_datacards.keys())
+        values = sort_eft_scan_names(self.scan_parameter, self.eft_datacards.keys())
         self.scan_datacards = OrderedDict((v, self.eft_datacards[name]) for name, v in values)
-
-    @classmethod
-    def extract_scan_parameter(cls, name):
-        """
-        c2_1p5 -> c2
-        """
-        if "_" not in name:
-            raise ValueError("invalid datacard name '{}'".format(name))
-        return name.split("_", 1)[0]
-
-    @classmethod
-    def sort_scan_names(cls, scan_parameter, names):
-        """
-        Names have the format "<scan_parameters>_<number>"" where number might have "-" replaced by
-        "m" and "." replaced by "d", so revert this and simply sort by number.
-        """
-        names = law.util.make_list(names)
-
-        # extract the scan values
-        values = []
-        for name in names:
-            if not name.startswith(scan_parameter + "_"):
-                raise ValueError("invalid datacard name '{}'".format(name))
-            v = name[len(scan_parameter) + 1:].replace("d", ".").replace("m", "-")
-            try:
-                v = float(v)
-            except ValueError:
-                raise ValueError("invalid scan value '{}' in datacard name '{}'".format(v, name))
-            values.append((name, v))
-
-        # sort by value
-        values.sort(key=lambda tpl: tpl[1])
-
-        return values
 
     def get_output_postfix(self, join=True):
         parts = [self.scan_parameter]
@@ -391,6 +338,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
             "dhi.plots.limits.plot_benchmark_limits",
             path=output.path,
             data=data,
+            poi="r_gghh",
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
@@ -425,8 +373,6 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
     @view_output_plots
     @law.decorator.safe_output
     def run(self):
-        from dhi.eft_tools import get_ggf_xsec
-
         # prepare the output
         output = self.output()
         output.parent.touch()
@@ -438,7 +384,7 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
         thy_values = {
             self.scan_parameter: limit_values[self.scan_parameter],
             "xsec": [
-                get_ggf_xsec(**{self.scan_parameter: v}) * 0.001
+                get_eft_ggf_xsec(**{self.scan_parameter: v}) * 0.001
                 for v in limit_values[self.scan_parameter]
             ],
         }

@@ -17,7 +17,7 @@ import numpy as np
 import scipy.interpolate
 
 from dhi.config import poi_data, br_hh_names
-from dhi.util import import_ROOT, try_int, to_root_latex
+from dhi.util import import_ROOT, try_int, to_root_latex, make_list
 
 
 _styles = {}
@@ -63,9 +63,6 @@ def draw_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_o
         props=None):
     import plotlib.root as r
     from plotlib.util import merge_dicts
-
-    # list helper
-    make_list = lambda obj: obj if isinstance(obj, (list, tuple)) else [obj]
 
     # merge properties with defaults
     props = merge_dicts({"TextSize": 20}, props)

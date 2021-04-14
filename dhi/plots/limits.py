@@ -704,6 +704,7 @@ def plot_limit_points(
 def plot_benchmark_limits(
     path,
     data,
+    poi="r_gghh",
     y_min=None,
     y_max=None,
     y_log=False,
@@ -712,8 +713,8 @@ def plot_benchmark_limits(
     bar_width=0.66,
 ):
     """
-    Creates a plot showing a the limits of BSM benchmarks and saves it at *path*. *data* should be a
-    list of dictionaries with fields
+    Creates a plot showing a the limits of BSM benchmarks for a *poi* and saves it at *path*. *data*
+    should be a list of dictionaries with fields
 
     - "expected", a sequence of five values, i.e., central limit, and +1 sigma, -1 sigma, +2 sigma,
       and -2 sigma variations (absolute values, not errors!),
@@ -786,7 +787,7 @@ def plot_benchmark_limits(
     # dummy histogram to control axes
     x_title = "Shape benchmark"
     y_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
-        create_hh_process_label("r_gghh"), to_root_latex(xsec_unit))
+        create_hh_process_label(poi), to_root_latex(xsec_unit))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), n, -0.5, n - 0.5)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"Ndivisions": n})
