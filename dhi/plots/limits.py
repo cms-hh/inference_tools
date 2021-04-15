@@ -747,7 +747,7 @@ def plot_benchmark_limits(
     The *bar_width* should be a value between 0 and 1 and controls the fraction of the limit bar
     width relative to the bin width.
 
-    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/eft.html#benchmark-limits  TODO
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/eft.html#benchmark-limits
     """
     import plotlib.root as r
     ROOT = import_ROOT()

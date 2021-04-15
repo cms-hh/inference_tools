@@ -14,7 +14,7 @@ from dhi.util import make_list
 
 class EFTCrossSectionProvider(object):
     """
-    Helper class to calculate HH cross sections in EFT in units of pb.
+    Helper class to calculate HH EFT cross sections in units of pb.
     Coefficients and formulae are taken from
     https://github.com/fabio-mon/HHStatAnalysis/blob/c8fc33d2ae3f7e04cfc83e773e2880657ffdce3b/AnalyticalModels/python/NonResonantModelNLO.py
     with credits to F. Monti and P. Mandrik.
