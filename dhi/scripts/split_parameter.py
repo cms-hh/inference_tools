@@ -107,8 +107,8 @@ def split_parameter(datacard, param_name, specs, ensure_unique=False, ensure_all
             raise Exception("parameter {} does not exist in datacard".format(param_name))
 
         # get bins and processes
-        bin_names = content["rates"][0].split()[1:]
-        process_names = content["rates"][1].split()[1:]
+        bin_names = blocks["rates"][0].split()[1:]
+        process_names = blocks["rates"][1].split()[1:]
         if len(bin_names) != len(process_names):
             raise Exception("number of bins ({}) and processes ({}) not matching in datacard "
                 "rates".format(len(bin_names), len(process_names)))

@@ -15,9 +15,7 @@ import law
 import six
 
 
-law.contrib.load(
-    "git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks", "wlcg",
-)
+law.contrib.load("git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks")
 
 
 class LocalTarget(law.LocalTarget):
