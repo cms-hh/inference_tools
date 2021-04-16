@@ -158,7 +158,7 @@ class HHModelTask(AnalysisTask):
             has_unc = False
         else:  # r
             # TODO: vhh_formula disabled at the moment
-            get_hh_xsec = module.create_hh_xsec_func(model.ggf_formula, model.vbf_formula, False)
+            get_hh_xsec = module.create_hh_xsec_func(model.ggf_formula, model.vbf_formula)
             get_xsec = functools.partial(get_hh_xsec, nnlo=model.doNNLOscaling)
             signature_kwargs = set(inspect.getargspec(get_hh_xsec).args) - {"nnlo"}
             has_unc = True
@@ -310,6 +310,7 @@ class MultiHHModelTask(HHModelTask):
     )
 
     hh_model = None
+    allow_empty_hh_model = True
     split_hh_model = None
     load_hh_model = None
     create_xsec_func = None
