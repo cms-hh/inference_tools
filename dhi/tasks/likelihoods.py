@@ -172,8 +172,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             theory_value = None
             if self.pois[0] in self.r_pois:
                 get_xsec = self.create_xsec_func(self.pois[0], "fb", safe_signature=True)
-                has_unc = self.pois[0] in ("r", "r_gghh") and self.load_hh_model()[1].doNNLOscaling
-                if has_unc:
+                if get_xsec.has_unc:
                     xsec = get_xsec(**self.parameter_values_dict)
                     xsec_up = get_xsec(unc="up", **self.parameter_values_dict)
                     xsec_down = get_xsec(unc="down", **self.parameter_values_dict)
@@ -336,8 +335,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
             theory_value = None
             if self.pois[0] in self.r_pois:
                 get_xsec = self.create_xsec_func(self.pois[0], "fb", safe_signature=True)
-                has_unc = self.pois[0] in ("r", "r_gghh") and self.load_hh_model()[1].doNNLOscaling
-                if has_unc:
+                if get_xsec.has_unc:
                     xsec = get_xsec(**self.parameter_values_dict)
                     xsec_up = get_xsec(unc="up", **self.parameter_values_dict)
                     xsec_down = get_xsec(unc="down", **self.parameter_values_dict)
@@ -445,8 +443,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
             if self.pois[0] in self.r_pois:
                 hh_model = self.hh_models[0]
                 get_xsec = self._create_xsec_func(hh_model, self.pois[0], "fb", safe_signature=True)
-                has_unc = self.pois[0] in ("r", "r_gghh") and self._load_hh_model(hh_model)[1].doNNLOscaling
-                if has_unc:
+                if get_xsec.has_unc:
                     xsec = get_xsec(**self.parameter_values_dict)
                     xsec_up = get_xsec(unc="up", **self.parameter_values_dict)
                     xsec_down = get_xsec(unc="down", **self.parameter_values_dict)
