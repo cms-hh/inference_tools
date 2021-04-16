@@ -188,7 +188,6 @@ class VBFHHFormula:
 #########################################
 
 class VHHFormula:
-    #               inversion method and coefficients is indeed identical for VHH.
 
     def __init__(self, sample_list):
         self.sample_list = sample_list
@@ -638,7 +637,7 @@ class HHModel(PhysicsModel):
 
             # no constant expressions are expected
             if len(couplings_in_expr) == 0:
-                raise RuntimeError('VBF HH : scaling expression has no coefficients')
+                raise RuntimeError('VHH : scaling expression has no coefficients')
 
             for idx, ce in enumerate(couplings_in_expr):
                 # print '..replacing', ce
@@ -795,9 +794,9 @@ vbf_samples = OrderedDict([
 ])
 
 # vhh samples with keys (CV, C2V, kl), SM point first, then ordered by kl, then C2V, then CV
+# cross section values are LO (no k-factor applied) and are only used in create_vhh_xsec_func below
 vhh_samples = OrderedDict([
     ((1,   1, 1), VHHSample(1,   1, 1, val_xs=0.0008095, label="VHH_CV_1_C2V_1_kl_1")),
-    # ((1,   1, 0), VHHSample(1,   1, 0, val_xs=1.0, label="VHH_CV_1_C2V_1_kl_0")),
     ((1,   1, 2), VHHSample(1,   1, 2, val_xs=0.0013204, label="VHH_CV_1_C2V_1_kl_2")),
     ((1,   0, 1), VHHSample(1,   0, 1, val_xs=0.0002850, label="VHH_CV_1_C2V_0_kl_1")),
     ((1,   2, 1), VHHSample(1,   2, 1, val_xs=0.0021291, label="VHH_CV_1_C2V_2_kl_1")),
