@@ -188,7 +188,6 @@ class VBFHHFormula:
 #########################################
 
 class VHHFormula:
-    # TODO(lowang): This formula is a plain copy of the one for VBF. Please check if the matrix
     #               inversion method and coefficients is indeed identical for VHH.
 
     def __init__(self, sample_list):
@@ -796,16 +795,14 @@ vbf_samples = OrderedDict([
 ])
 
 # vhh samples with keys (CV, C2V, kl), SM point first, then ordered by kl, then C2V, then CV
-# TODO(lowang): add correct cross section values here and check if the sample labels are ok for you,
-#               for consistency with ggF and VBF it could be better to rename C3 to kl
 vhh_samples = OrderedDict([
-    ((1,   1, 1), VHHSample(1,   1, 1, val_xs=1.0, label="VHH_CV_1_C2V_1_C3_1")),
-    # ((1,   1, 0), VHHSample(1,   1, 0, val_xs=1.0, label="VHH_CV_1_C2V_1_C3_0")),
-    ((1,   1, 2), VHHSample(1,   1, 2, val_xs=1.0, label="VHH_CV_1_C2V_1_C3_2")),
-    ((1,   0, 1), VHHSample(1,   0, 1, val_xs=1.0, label="VHH_CV_1_C2V_0_C3_1")),
-    ((1,   2, 1), VHHSample(1,   2, 1, val_xs=1.0, label="VHH_CV_1_C2V_2_C3_1")),
-    ((0.5, 1, 1), VHHSample(0.5, 1, 1, val_xs=1.0, label="VHH_CV_0p5_C2V_1_C3_1")),
-    ((1.5, 1, 1), VHHSample(1.5, 1, 1, val_xs=1.0, label="VHH_CV_1p5_C2V_1_C3_1")),
+    ((1,   1, 1), VHHSample(1,   1, 1, val_xs=0.0008095, label="VHH_CV_1_C2V_1_kl_1")),
+    # ((1,   1, 0), VHHSample(1,   1, 0, val_xs=1.0, label="VHH_CV_1_C2V_1_kl_0")),
+    ((1,   1, 2), VHHSample(1,   1, 2, val_xs=0.0013204, label="VHH_CV_1_C2V_1_kl_2")),
+    ((1,   0, 1), VHHSample(1,   0, 1, val_xs=0.0002850, label="VHH_CV_1_C2V_0_kl_1")),
+    ((1,   2, 1), VHHSample(1,   2, 1, val_xs=0.0021291, label="VHH_CV_1_C2V_2_kl_1")),
+    ((0.5, 1, 1), VHHSample(0.5, 1, 1, val_xs=0.0005371, label="VHH_CV_0p5_C2V_1_kl_1")),
+    ((1.5, 1, 1), VHHSample(1.5, 1, 1, val_xs=0.0017450, label="VHH_CV_1p5_C2V_1_kl_1")),
 ])
 
 
@@ -854,7 +851,7 @@ def get_vhh_samples(keys):
     .. code-block:: python
 
         get_vhh_samples([2, (1, 2, 1)])
-        # -> [VHHSample:VHH_CV_1_C2V_1_C3_2, VHHSample:VHH_CV_1_C2V_2_C3_1]
+        # -> [VHHSample:VHH_CV_1_C2V_1_kl_2, VHHSample:VHH_CV_1_C2V_2_kl_1]
     """
     return _get_hh_samples(vhh_samples, keys)
 
