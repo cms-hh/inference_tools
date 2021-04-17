@@ -54,7 +54,11 @@ class EFTBase(MultiDatacardTask):
     exclude_params_index = {"datacard_names", "datacard_order"}
 
     hh_model = law.NO_STR
+    datacard_names = None
+    datacard_order = None
     allow_empty_hh_model = True
+
+    poi = "r_gghh"
 
     @classmethod
     def modify_param_values(cls, params):
@@ -101,12 +105,20 @@ class EFTBase(MultiDatacardTask):
                     basename, self.datacard_pattern))
             self.eft_datacards[m.group(1)] = datacards
 
+    def store_parts(self):
+        parts = super(EFTBase, self).store_parts()
+        parts["poi"] = "poi_{}".format(self.poi)
+        return parts
+
     def get_output_postfix(self, join=True):
         parts = []
 
         # add the unblinded flag
         if self.unblinded:
             parts.append(["unblinded"])
+
+        # add the poi
+        parts.append(["poi", self.poi])
 
         # add frozen paramaters
         if self.frozen_parameters:
@@ -139,6 +151,16 @@ class EFTBenchmarkBase(EFTBase):
 
 class EFTScanBase(EFTBase):
 
+    scan_range = law.CSVParameter(
+        default=(-100., 100.),
+        cls=luigi.FloatParameter,
+        min_len=2,
+        max_len=2,
+        sort=True,
+        description="the range of the scan parameter extracted from the datacards in the format "
+        "'min,max'; when empty, the full range is used; no default",
+    )
+
     def __init__(self, *args, **kwargs):
         super(EFTScanBase, self).__init__(*args, **kwargs)
 
@@ -151,11 +173,28 @@ class EFTScanBase(EFTBase):
 
         # sort EFT datacards according to scan parameter values
         values = sort_eft_scan_names(self.scan_parameter, self.eft_datacards.keys())
-        self.scan_datacards = OrderedDict((v, self.eft_datacards[name]) for name, v in values)
+
+        # apply the requested scan range
+        scan_min = max(self.scan_range[0], min(v for _, v in values))
+        scan_max = min(self.scan_range[1], max(v for _, v in values))
+        self.scan_range = (scan_min, scan_max)
+
+        # store a mapping of scan value to datacards
+        self.scan_datacards = OrderedDict(
+            (v, self.eft_datacards[name])
+            for name, v in values
+            if scan_min <= v <= scan_max
+        )
 
     def get_output_postfix(self, join=True):
-        parts = [self.scan_parameter]
-        parts += super(EFTScanBase, self).get_output_postfix(join=False)
+        parts = super(EFTScanBase, self).get_output_postfix(join=False)
+
+        # insert the scan parameter value when this is a workflow branch, and the range otherwise
+        if isinstance(self, law.BaseWorkflow) and self.is_branch():
+            scan_part = [self.scan_parameter, self.branch_data]
+        else:
+            scan_part = ["scan", self.scan_parameter] + list(self.scan_range)
+        parts.insert(2 if self.unblinded else 1, scan_part)
 
         return self.join_postfix(parts) if join else parts
 
@@ -197,6 +236,9 @@ class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
             output=self.output().path,
         )
 
+    def htcondor_output_postfix(self):
+        return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
+
 
 class EFTBenchmarkLimits(EFTBenchmarkBase, EFTLimitBase):
 
@@ -228,10 +270,7 @@ class EFTUpperLimits(EFTScanBase, EFTLimitBase):
             hh_model=law.NO_STR)
 
     def output(self):
-        parts = self.get_output_postfix(join=False)
-        parts[0] = "{}_{}".format(self.scan_parameter, self.branch_data)
-
-        return self.local_target("eftlimit__{}.root".format(self.join_postfix(parts)))
+        return self.local_target("eftlimit__{}.root".format(self.get_output_postfix()))
 
 
 class MergeEFTBenchmarkLimits(EFTBenchmarkBase):
@@ -338,7 +377,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
         if self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(["eftlimits", self.get_output_postfix(), parts])
+        name = self.create_plot_name(["eftbenchmarks", self.get_output_postfix(), parts])
         return self.local_target(name)
 
     @law.decorator.log
@@ -466,6 +505,13 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
             if name in ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2", "observed"]:
                 limit_values[name] *= limit_scales
         xsecs = OrderedDict((v, xsec * s) for (v, xsec), s in zip(xsecs.items(), xsec_scales))
+
+        # some printing
+        for v in np.linspace(-0.5, 0.5, 11):
+            if v in limit_values[self.scan_parameter]:
+                record = limit_values[limit_values[self.scan_parameter] == v][0]
+                self.publish_message("{} = {} -> {} {}".format(self.scan_parameter, v,
+                    record["limit"], xsec_unit or "({})".format(self.poi)))
 
         # preate theory values in the correct structure
         thy_values = {
