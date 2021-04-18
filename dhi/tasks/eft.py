@@ -485,7 +485,6 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
         br_value = br_hh.get(self.br, 1.)
 
         # get scaling factors for xsec and limit values
-        # apply scaling by xsec and br
         n = len(xsecs)
         if self.xsec == "fb":
             xsec_unit = "fb"
@@ -500,7 +499,7 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
             limit_scales = (np.array(xsecs.values()) * 1000.)**-1
             xsec_scales = [xsec**-1 for xsec in xsecs.values()]
 
-        # apply scales
+        # apply scales per element
         for name in limit_values.dtype.names:
             if name in ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2", "observed"]:
                 limit_values[name] *= limit_scales
@@ -513,7 +512,7 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
                 self.publish_message("{} = {} -> {} {}".format(self.scan_parameter, v,
                     record["limit"], xsec_unit or "({})".format(self.poi)))
 
-        # preate theory values in the correct structure
+        # prepare theory values in the structure expected by the plot function
         thy_values = {
             self.scan_parameter: limit_values[self.scan_parameter],
             "xsec": list(xsecs.values()),

@@ -65,7 +65,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Execute `PullsAndImpacts` including all MC stats nuisances on htcondor.
+**1.** Execute `PullsAndImpacts` including all MC stats nuisances on HTCondor:
 
 ```shell hl_lines="5-6"
 law run PlotPullsAndImpacts \

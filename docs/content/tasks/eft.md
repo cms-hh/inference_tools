@@ -1,6 +1,42 @@
+The tasks documented below produce and visualize limits of two different EFT workflows, i.e., different (discrete) [EFT benchmarks](#benchmark-limits) and a [scan of the *c2* (*ffHH*) coupling](#scan-of-c2).
+Compared to the [other tasks for obtaining limits](limits.md) which rely on the HH physics model for inter- and extrapolating the effect of variations of the *kappa* values, the EFT limit tasks extract information of the benchmark name or *c2* value directly from the name of the datacard files.
+This entails two major differences in the preparation of datacards and the steering of the tasks via parameters.
+
+**Datacards**
+
+The datacards for the various EFT benchmarks and *c2* values should be prepared according to the central [EFT documentation](https://gitlab.cern.ch/hh/eft-benchmarks).
+Names of datacard files should have the following format:
+
+- Benchmarks: `datacard_<NAME>.txt`, where `NAME` is the name of the particular benchmark.
+- *c2* scan: `datacard_c2_<VALUE>.txt`, where `VALUE` is the corresponding value of *c2*. The value parsing accepts two different formats, i.e. `1.5` or `1d5` for positive, and `-1.5` or `m1d5` for negative numbers.
+
+==If your datacards contribute to the HH combination==, please make sure to use the ==exact same== naming scheme for processes, bins and parameters as the other datacards provided by your channel.
+
+**Task parameters**
+
+As benchmark names and *c2* values are extracted from names of the datacard files, the usual `--datacards` parameter cannot be used as it would not support the combination of cards across multiple channels.
+The tasks below use the `--multi-datacards` parameter instead, allowing multiple sequences of files, separated by `:`, to be passed in the format `ch1/cardA,ch1/cardB:ch2/cardA,ch2/cardB`
+In this example, the different sequences could correspond to different analysis channels.
+Files with the same (base)name across sequences will be combined by means of the `CombineDatacards` task.
+Therefore, a valid example is
+
+```shell
+--multi-datacards 'my_cards/datacard_c2_*.txt'
+```
+
+for a single channel, and
+
+```shell
+--multi-datacards 'bbbb/datacard_c2_*.txt:bbgg/datacard_c2_*.txt'
+```
+
+for multiple channels, where datacards corresponding to the same *c2* value will be combined across the channels.
+
+
 ### Benchmark limits
 
-The `PlotUpperLimits` task shows the upper limits on a POI computed over a range of values of a scan parameter.
+The `PlotEFTBenchmarkLimits` task shows the upper limits on the rate of HH production via gluon-gluon fusion (POI `r_gghh`) obtained for several EFT benchmarks.
+As described above, datacard names should have the format `datacard_<NAME>.txt`.
 
 - [Quick example](#quick-example)
 - [Dependencies](#dependencies)
@@ -11,15 +47,13 @@ The `PlotUpperLimits` task shows the upper limits on a POI computed over a range
 #### Quick example
 
 ```shell
-law run PlotUpperLimits \
+law run PlotEFTBenchmarkLimits \
     --version dev \
-    --datacards $DHI_EXAMPLE_CARDS \
-    --xsec fb \
-    --y-log
+    --multi-datacards $DHI_EXAMPLE_CARDS_EFT_BM \
+    --xsec fb
 ```
 
-Note that the above command uses `r` as the default POI and `kl,-25,25` as the default scan parameter and range.
-See the task parameters below for fore info.
+As described above, the `--multi-datacards` parameter should be used to identify different sequences of datacards.
 
 Output:
 
@@ -30,10 +64,13 @@ Output:
 
 ```mermaid
 graph LR;
-    A(PlotUpperLimits) --> B(MergeUpperLimits);
-    B --> C([UpperLimits]);
-    C --> D(CreateWorkspace);
-    D --> E(CombineDatacards);
+    A(PlotEFTBenchmarkLimits) --> B(MergeEFTBenchmarkLimits);
+    B --> C([EFTBenchmarkLimits]);
+    C --> D1(CreateWorkspace);
+    C --> D2(CreateWorkspace);
+    C --> ...;
+    D1 --> E1(CombineDatacards);
+    D2 --> E2(CombineDatacards);
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
@@ -41,17 +78,17 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Parameters
 
-=== "PlotUpperLimits"
+=== "PlotEFTBenchmarkLimits"
 
-    --8<-- "content/snippets/plotupperlimits_param_tab.md"
+    --8<-- "content/snippets/ploteftbenchmarklimits_param_tab.md"
 
-=== "MergeUpperLimits"
+=== "MergeEFTBenchmarkLimits"
 
-    --8<-- "content/snippets/mergeupperlimits_param_tab.md"
+    --8<-- "content/snippets/mergeeftbenchmarklimits_param_tab.md"
 
-=== "UpperLimits"
+=== "EFTBenchmarkLimits"
 
-    --8<-- "content/snippets/upperlimits_param_tab.md"
+    --8<-- "content/snippets/eftbenchmarklimits_param_tab.md"
 
 === "CreateWorkspace"
 
@@ -64,38 +101,22 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Limit on `r_qqhh` vs. `C2V` with 4 local cores:
+**1.** Execute `EFTBenchmarkLimits` tasks on HTCondor and apply the branching ratio of the `bbgg` channel to extracted limits:
 
-```shell hl_lines="4-6"
-law run PlotUpperLimits \
+```shell hl_lines="5-6"
+law run PlotEFTBenchmarkLimits \
     --version dev \
-    --datacards $DHI_EXAMPLE_CARDS \
-    --pois r_qqhh \
-    --scan-parameters C2V,-10,10,21 \
-    --workers 4
-```
-
-**2.** Executing `UpperLimit` tasks on htcondor, with one job handling two tasks sequentially:
-
-```shell hl_lines="4-5"
-law run PlotUpperLimits \
-    --version dev \
-    --datacards $DHI_EXAMPLE_CARDS \
-    --UpperLimits-workflow htcondor \
-    --UpperLimits-tasks-per-job 2
+    --multi-datacards $DHI_EXAMPLE_CARDS_EFT_BM \
+    --xsec fb \
+    --br bbgg \
+    --EFTBenchmarkLimits-workflow htcondor
 ```
 
 
 ### Scan of `c2`
 
-There are two plots that provide a visual comparison between multiple *configurations* - these can be different versions of datacards, or even channels or analyses.
-
-The first one, `PlotMultipleUpperLimits`, draws multiple limits just as done with `PlotUpperLimits`.
-The only difference is that only the median limit is shown to provide a better visual aid.
-
-Instead of a parameter `--datacards`, this task introduces a `--multi-datacards` parameter.
-It takes several CSV sequences of datacard paths, separated by a colon, e.g. `--multi-datacards card_ee_1.txt,card_ee_2.txt:card_mumu_1.txt,card_mumu_2.txt`.
-In this example, the two `card_ee_*.txt` and the two `card_mumu_*.txt` cards will result in two dedicated measurmments, following the same task requirements, i.e., `UpperLimits` and `MergeUpperLimits`, as described above.
+The `PlotEFTUpperLimits` task shows the upper limits on the rate of HH production via gluon-gluon fusion (POI `r_gghh`) obtained for several EFT coupling values.
+As described above, datacard names should have the format `datacard_c2_<VALUE>.txt`.
 
 - [Quick example](#quick-example_1)
 - [Dependencies](#dependencies_1)
@@ -106,15 +127,13 @@ In this example, the two `card_ee_*.txt` and the two `card_mumu_*.txt` cards wil
 #### Quick example
 
 ```shell
-law run PlotMultipleUpperLimits \
+law run PlotEFTUpperLimits \
     --version dev \
-    --multi-datacards $DHI_EXAMPLE_CARDS:$DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF \
-    --xsec fb \
-    --y-log
+    --multi-datacards $DHI_EXAMPLE_CARDS_EFT_C2 \
+    --xsec fb
 ```
 
-Note that the above command uses `r` as the default POI and `kl,-25,25` as the default scan parameter and range.
-See the task parameters below for fore info.
+As described above, the `--multi-datacards` parameter should be used to identify different sequences of datacards.
 
 Output:
 
@@ -125,13 +144,11 @@ Output:
 
 ```mermaid
 graph LR;
-    A(PlotMultipleUpperLimits) --> B1(MergeUpperLimits);
-    A --> B2(MergeUpperLimits);
-    A --> ...;
-    B1 --> C1([UpperLimits]);
-    B2 --> C2([UpperLimits]);
-    C1 --> D1(CreateWorkspace);
-    C2 --> D2(CreateWorkspace);
+    A(PlotEFTUpperLimits) --> B(MergeEFTUpperLimits);
+    B --> C([EFTUpperLimits]);
+    C --> D1(CreateWorkspace);
+    C --> D2(CreateWorkspace);
+    C --> ...;
     D1 --> E1(CombineDatacards);
     D2 --> E2(CombineDatacards);
 ```
@@ -141,93 +158,17 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Parameters
 
-=== "PlotMultipleUpperLimits"
+=== "PlotEFTUpperLimits"
 
-    --8<-- "content/snippets/plotmultipleupperlimits_param_tab.md"
+    --8<-- "content/snippets/ploteftupperlimits_param_tab.md"
 
-=== "MergeUpperLimits"
+=== "MergeEFTUpperLimits"
 
-    --8<-- "content/snippets/mergeupperlimits_param_tab.md"
+    --8<-- "content/snippets/mergeeftupperlimits_param_tab.md"
 
-=== "UpperLimits"
+=== "EFTUpperLimits"
 
-    --8<-- "content/snippets/upperlimits_param_tab.md"
-
-=== "CreateWorkspace"
-
-    --8<-- "content/snippets/createworkspace_param_tab.md"
-
-=== "CombineDatacards"
-
-    --8<-- "content/snippets/combinedatacards_param_tab.md"
-
-
-#### Example commands
-
-**1.** Executing `UpperLimit` tasks on htcondor, with one job handling two tasks sequentially:
-
-```shell hl_lines="5-6"
-law run PlotUpperLimits \
-    --version dev \
-    --multi-datacards /afs/cern.ch/user/m/mfackeld/public/datacards/ee_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/emu_tight/datacard.txt:/afs/cern.ch/user/m/mfackeld/public/datacards/mumu_tight/datacard.txt \
-    --datacard-names ee,emu,mumu \
-    --UpperLimits-workflow htcondor \
-    --UpperLimits-tasks-per-job 2
-```
-
-
-### Multiple limits at a certain point of parameters
-
-The second task, `PlotUpperLimitsAtPoint`, creates a plot comparing upper limits at a certain point of model parameters.
-Just as for the `PlotMultipleUpperLimits` task above, it includes a parameter `--multi-datacards` that accepts multiple CSV sequences of datacard paths, separated with a colon to denote multiple measurements.
-
-- [Quick example](#quick-example_2)
-- [Dependencies](#dependencies_2)
-- [Parameters](#parameters_2)
-- [Example commands](#example-commands_2)
-
-
-#### Quick example
-
-```shell
-law run PlotUpperLimitsAtPoint \
-    --version dev \
-    --multi-datacards $DHI_EXAMPLE_CARDS:$DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF
-```
-
-Note that the above command uses `r` as the default POI.
-See the task parameters below for fore info.
-
-Output:
-
-![Upper limits at POI](../images/limitsatpoint__poi_r__params_r_qqhh1.0_r_gghh1.0_kl1.0_kt1.0_CV1.0_C2V1.0.png)
-
-
-#### Dependencies
-
-```mermaid
-graph LR;
-    A(PlotUpperLimitsAtPoint) --> B1([UpperLimits]);
-    A --> B2([UpperLimits]);
-    A --> ...;
-    B1 --> C1(CreateWorkspace);
-    B2 --> C2(CreateWorkspace);
-    C1 --> D1(CombineDatacards);
-    C2 --> D2(CombineDatacards);
-```
-
-Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
-
-
-#### Parameters
-
-=== "PlotUpperLimitsAtPoint"
-
-    --8<-- "content/snippets/plotupperlimitsatpoint_param_tab.md"
-
-=== "UpperLimits"
-
-    --8<-- "content/snippets/upperlimits_param_tab.md"
+    --8<-- "content/snippets/eftupperlimits_param_tab.md"
 
 === "CreateWorkspace"
 
@@ -240,12 +181,14 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Changing the order of limits in the plot without changing `--multi-datacards` and updating labels:
+**1.** Execute `EFTUpperLimits` tasks on HTCondor, apply the branching ratio of the `bbgg` channel to extracted limits, and limit the scan range to values between -1 and 1 (inclusive):
 
-```shell hl_lines="4-5"
-law run PlotUpperLimitsAtPoint \
+```shell hl_lines="5-7"
+law run PlotEFTUpperLimits \
     --version dev \
-    --multi-datacards $DHI_EXAMPLE_CARDS:$DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF \
-    --datacard-names All,ggF,VBF \
-    --datacard-order 1,0,2
+    --multi-datacards $DHI_EXAMPLE_CARDS_EFT_BM \
+    --xsec fb \
+    --br bbgg \
+    --scan-range=-1,1 \
+    --EFTUpperLimits-workflow htcondor
 ```

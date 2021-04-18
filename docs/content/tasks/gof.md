@@ -64,7 +64,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Run the test with the `KS` algorithm, executing tasks on htcondor.
+**1.** Run the test with the `KS` algorithm, executing tasks on HTCondor:
 
 ```shell hl_lines="6-7"
 law run PlotGoodnessOfFit \
@@ -150,7 +150,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Run the test with the `KS` algorithm, executing tasks on htcondor.
+**1.** Run the test with the `KS` algorithm, executing tasks on HTCondor:
 
 ```shell hl_lines="7-8"
 law run PlotMultipleGoodnessOfFits \

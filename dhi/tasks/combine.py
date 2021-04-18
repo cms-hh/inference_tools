@@ -614,11 +614,11 @@ class MultiDatacardTask(DatacardTask):
         super(MultiDatacardTask, self).__init__(*args, **kwargs)
 
         # the lengths of names and order indices must match multi_datacards when given
-        if self.datacard_names and len(datacard_names) != len(multi_datacards):
+        if self.datacard_names and len(self.datacard_names) != len(self.multi_datacards):
             raise Exception("{!r}: when datacard_names is set, its length ({}) must match that of "
                 "multi_datacards ({})".format(
                     self, len(self.datacard_names), len(self.multi_datacards)))
-        if self.datacard_order and len(datacard_order) != len(multi_datacards):
+        if self.datacard_order and len(self.datacard_order) != len(self.multi_datacards):
             raise Exception("{!r}: when datacard_order is set, its length ({}) must match that of "
                 "multi_datacards ({})".format(
                     self, len(self.datacard_order), len(self.multi_datacards)))

@@ -86,7 +86,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Executing `PlotExclusionAndBestFit` of `C2V` from `-5..5` with 4 local cores and changing the labels.
+**1.** Executing `PlotExclusionAndBestFit` of `C2V` from `-5..5` with 4 local cores and changing the labels:
 
 ```shell hl_lines="6-9"
 law run PlotExclusionAndBestFit \
@@ -101,7 +101,7 @@ law run PlotExclusionAndBestFit \
 ```
 
 
-**2.** Executing `PlotExclusionAndBestFit` tasks on htcondor, managed by 4 local workers, and changing the labels.
+**2.** Executing `PlotExclusionAndBestFit` tasks on HTCondor, managed by 4 local workers, and changing the labels:
 
 ```shell hl_lines="6-9"
 law run PlotExclusionAndBestFit \
@@ -190,7 +190,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Executing `PlotExclusionAndBestFit2D` of `kl` and `C2V` on htcondor with each job processing 3 tasks, managed by 2 local processes.
+**1.** Executing `PlotExclusionAndBestFit2D` of `kl` and `C2V` on HTCondor with each job processing 3 tasks, managed by 2 local processes:
 
 ```shell hl_lines="5-10"
 law run PlotExclusionAndBestFit \
