@@ -59,7 +59,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Run the scan for POI `r_qqhh`, scanning over `C2V` in the range `[-10,10]` with two points per integer step, including edges.
+**1.** Run the scan for POI `r_qqhh`, scanning over `C2V` in the range `[-10,10]` with two points per integer step, including edges:
 
 ```shell hl_lines="4-5"
 law run PlotSignificanceScan \
@@ -69,7 +69,7 @@ law run PlotSignificanceScan \
     --scan-parameter C2V,-10,10,41
 ```
 
-**2.** Executing `SignificanceScan` tasks on htcondor, with one job handling two tasks sequentially:
+**2.** Execute `SignificanceScan` tasks on HTCondor, with one job handling two tasks sequentially:
 
 ```shell hl_lines="4-5"
 law run PlotSignificanceScan \
@@ -149,7 +149,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Executing `SignificanceScan` tasks on htcondor, with one job handling two tasks sequentially, and updating the labels:
+**1.** Execute `SignificanceScan` tasks on HTCondor, with one job handling two tasks sequentially, and updating the labels:
 
 ```shell hl_lines="3-5"
 law run PlotMultipleSignificanceScans \

@@ -93,6 +93,7 @@ nav:
     - Significances: tasks/significances.md
     - Postfit plots: tasks/postfit.md
     - Goodness-of-fit tests: tasks/gof.md
+    - EFT limits: tasks/eft.md
     - Best practices: tasks/practices.md
   - Datacard manipulation: datacard_manipulation.md
   - Useful scripts: scripts.md

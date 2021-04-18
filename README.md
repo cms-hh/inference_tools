@@ -99,36 +99,46 @@ module 'dhi.tasks.limits', 6 task(s):
     - PlotUpperLimits
     - PlotUpperLimitsAtPoint
     - PlotMultipleUpperLimitsByModel
-    - MergeUpperLimits
     - PlotMultipleUpperLimits
+    - MergeUpperLimits
 
 module 'dhi.tasks.likelihoods', 5 task(s):
     - LikelihoodScan
     - PlotLikelihoodScan
     - PlotMultipleLikelihoodScansByModel
-    - MergeLikelihoodScan
     - PlotMultipleLikelihoodScans
+    - MergeLikelihoodScan
 
 module 'dhi.tasks.significances', 4 task(s):
     - SignificanceScan
     - PlotSignificanceScan
-    - MergeSignificanceScan
     - PlotMultipleSignificanceScans
+    - MergeSignificanceScan
 
 module 'dhi.tasks.pulls_impacts', 3 task(s):
     - PullsAndImpacts
     - PlotPullsAndImpacts
     - MergePullsAndImpacts
 
-module 'dhi.tasks.postfit_shapes', 2 task(s):
-    - PostfitShapes
+module 'dhi.tasks.postfit', 3 task(s):
+    - FitDiagnostics
     - PlotPostfitSOverB
+    - PlotNuisanceLikelihoodScans
 
-module 'dhi.tasks.gof', 3 task(s):
+module 'dhi.tasks.gof', 4 task(s):
     - GoodnessOfFit
     - PlotGoodnessOfFit
     - PlotMultipleGoodnessOfFits
     - MergeGoodnessOfFit
+
+module 'dhi.tasks.eft', 7 task(s):
+    - EFTLimitBase
+    - EFTBenchmarkLimits
+    - EFTUpperLimits
+    - PlotEFTBenchmarkLimits
+    - PlotEFTUpperLimits
+    - MergeEFTBenchmarkLimits
+    - MergeEFTUpperLimits
 
 module 'dhi.tasks.test', 1 task(s):
     - test.TestPlots
@@ -142,7 +152,7 @@ module 'dhi.tasks.exclusion', 2 task(s):
     - PlotExclusionAndBestFit
     - PlotExclusionAndBestFit2D
 
-written 36 task(s) to index file '/your/path/inference/.law/index'
+written 44 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type

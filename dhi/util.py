@@ -7,7 +7,6 @@ Helpers and utilities.
 import os
 import sys
 import re
-import fnmatch
 import shutil
 import itertools
 import array
@@ -17,6 +16,7 @@ import operator
 import logging
 
 import six
+from law.util import multi_match, make_unique, make_list  # noqa
 
 # modules and objects from lazy imports
 _plt = None
@@ -90,35 +90,6 @@ def rgb(r, g, b):
     when using the atom package "pigments"!
     """
     return tuple(v if v <= 1.0 else float(v) / 255.0 for v in (r, g, b))
-
-
-def multi_match(name, patterns, mode=any, regex=False):
-    """
-    Compares *name* to multiple *patterns* and returns *True* in case of at least one match (*mode*
-    = *any*, the default), or in case all patterns match (*mode* = *all*). Otherwise, *False* is
-    returned. When *regex* is *True*, *re.match* is used instead of *fnmatch.fnmatch*.
-    """
-    if not isinstance(patterns, (list, tuple, set)):
-        patterns = [patterns]
-    if not regex:
-        return mode(fnmatch.fnmatch(name, pattern) for pattern in patterns)
-    else:
-        return mode(re.match(pattern, name) for pattern in patterns)
-
-
-def make_unique(obj):
-    """
-    Takes a list or tuple *obj*, removes duplicate elements in order of their appearance and returns
-    the sequence of remaining, unique elements. The sequence type is preserved. When *obj* is
-    neither a list nor a tuple, but iterable, a list is returned. Otherwise, a *TypeError* is
-    raised.
-    """
-    if not isinstance(obj, (list, tuple)):
-        obj = list(obj)
-
-    ret = sorted(obj.__class__(set(obj)), key=lambda elem: obj.index(elem))
-
-    return obj.__class__(ret) if isinstance(obj, tuple) else ret
 
 
 def to_root_latex(s):

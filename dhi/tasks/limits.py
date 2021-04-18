@@ -182,7 +182,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         parts = []
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
-            if self.br not in (law.NO_STR, ""):
+            if self.br and self.br != law.NO_STR:
                 parts.append(self.br)
         if self.y_log:
             parts.append("log")
@@ -268,7 +268,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
             xsec_unit=xsec_unit,
-            hh_process=None if self.br in (None, law.NO_STR) else self.br,
+            hh_process=self.br if xsec_unit and self.br in br_hh else None,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
@@ -318,7 +318,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         parts = []
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
-            if self.br not in (law.NO_STR, ""):
+            if self.br and self.br != law.NO_STR:
                 parts.append(self.br)
         if self.y_log:
             parts.append("log")
@@ -405,7 +405,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
             xsec_unit=xsec_unit,
-            hh_process=None if self.br in (None, law.NO_STR) else self.br,
+            hh_process=self.br if xsec_unit and self.br in br_hh else None,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
@@ -414,6 +414,8 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
 class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
 
     unblinded = None
+
+    allow_empty_hh_model = True
 
     def requires(self):
         return [
@@ -429,7 +431,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         parts = []
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
-            if self.br not in (law.NO_STR, ""):
+            if self.br and self.br != law.NO_STR:
                 parts.append(self.br)
         if self.y_log:
             parts.append("log")
@@ -523,7 +525,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
             xsec_unit=xsec_unit,
-            hh_process=None if self.br in (None, law.NO_STR) else self.br,
+            hh_process=self.br if xsec_unit and self.br in br_hh else None,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
@@ -591,7 +593,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         parts = []
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
-            if self.br not in (law.NO_STR, ""):
+            if self.br and self.br != law.NO_STR:
                 parts.append(self.br)
         if self.x_log:
             parts.append("log")
@@ -680,7 +682,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
             x_max=self.get_axis_limit("x_max"),
             x_log=self.x_log,
             xsec_unit=xsec_unit,
-            hh_process=None if self.br in (None, law.NO_STR) else self.br,
+            hh_process=self.br if xsec_unit and self.br in br_hh else None,
             left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
             model_parameters=self.get_shown_parameters(),
             h_lines=self.h_lines,

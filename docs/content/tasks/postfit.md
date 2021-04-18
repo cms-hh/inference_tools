@@ -56,7 +56,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Configure custom bin edges and set the minimum y-axis value of the ratio plot.
+**1.** Configure custom bin edges and set the minimum y-axis value of the ratio plot:
 
 ```shell hl_lines="4-5"
 law run PlotPostfitSOverB \
@@ -132,7 +132,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Plot the curves of multiple parameters on the same page, select only parameters related to b-tagging, and choose a log scale.
+**1.** Plot the curves of multiple parameters on the same page, select only parameters related to b-tagging, and choose a log scale:
 
 ```shell hl_lines="5-6"
 law run PlotNuisanceLikelihoodScans \

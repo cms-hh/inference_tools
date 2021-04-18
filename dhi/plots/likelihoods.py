@@ -38,6 +38,7 @@ def plot_likelihood_scan_1d(
     y_log=False,
     model_parameters=None,
     campaign=None,
+    show_points=False,
 ):
     """
     Creates a likelihood plot of the 1D scan of a *poi* and saves it at *path*. *values* should be a
@@ -50,7 +51,8 @@ def plot_likelihood_scan_1d(
     *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
     the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
+    *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d
     """
@@ -147,7 +149,7 @@ def plot_likelihood_scan_1d(
     # nll curve
     g_nll = create_tgraph(len(poi_values), poi_values, dnll2_values)
     r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75})
-    draw_objs.append((g_nll, "SAME,CP"))
+    draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=230, n=len(legend_entries))
@@ -191,6 +193,7 @@ def plot_likelihood_scans_1d(
     y_log=False,
     model_parameters=None,
     campaign=None,
+    show_points=True,
 ):
     """
     Plots multiple curves of 1D likelihood scans of a POI *poi1* and *poi2*, and saves it at *path*.
@@ -209,7 +212,8 @@ def plot_likelihood_scans_1d(
     *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
     the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. When
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
+    *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d_1
     """
@@ -281,26 +285,9 @@ def plot_likelihood_scans_1d(
             r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
             draw_objs.append(line)
 
-    # theory prediction with uncertainties
-    if theory_value:
-        has_thy_err = len(theory_value) == 3
-        if has_thy_err:
-            # theory graph
-            g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1],
-                0, y_max_line)
-            r.setup_graph(g_thy, props={"LineColor": colors.red, "FillStyle": 1001,
-                "FillColor": colors.red_trans_50})
-            draw_objs.append((g_thy, "SAME,02"))
-            legend_entries.append((g_thy, "Theory prediction", "LF"))
-        # theory line
-        line_thy = ROOT.TLine(theory_value[0], y_min, theory_value[0], y_max_line)
-        r.setup_line(line_thy, props={"NDC": False}, color=colors.red)
-        draw_objs.append(line_thy)
-        if not has_thy_err:
-            legend_entries.append((line_thy, "Theory prediction", "L"))
-
     # perform scans and draw nll curves
-    for d, col, ms in zip(data, color_sequence[:len(data)], marker_sequence[:len(data)]):
+    for d, col, ms in zip(data[::-1], color_sequence[:len(data)][::-1],
+            marker_sequence[:len(data)][::-1]):
         # evaluate the scan, run interpolation and error estimation
         scan = evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"],
             poi_min=d["poi_min"])
@@ -310,13 +297,32 @@ def plot_likelihood_scans_1d(
             d["values"]["dnll2"])
         r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
-        draw_objs.append((g_nll, "SAME,CP"))
-        legend_entries.append((g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])), "LP"))
+        draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
+        legend_entries.insert(-1, (g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])),
+            "LP" if show_points else "L"))
 
         # line for best fit value
         line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
         r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors[col])
         draw_objs.append(line_fit)
+
+    # theory prediction with uncertainties
+    if theory_value:
+        has_thy_err = len(theory_value) == 3
+        if has_thy_err:
+            # theory graph
+            g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1],
+                0, y_max_line)
+            r.setup_graph(g_thy, props={"LineColor": colors.red, "FillStyle": 1001,
+                "FillColor": colors.red_trans_50})
+            draw_objs.insert(-len(data), (g_thy, "SAME,02"))
+            legend_entries.append((g_thy, "Theory prediction", "LF"))
+        # theory line
+        line_thy = ROOT.TLine(theory_value[0], y_min, theory_value[0], y_max_line)
+        r.setup_line(line_thy, props={"NDC": False}, color=colors.red)
+        draw_objs.append(line_thy)
+        if not has_thy_err:
+            legend_entries.insert(-len(data), (line_thy, "Theory prediction", "L"))
 
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
@@ -585,7 +591,7 @@ def plot_likelihood_scans_2d(
     draw_objs.append((h_dummy, "HIST"))
 
     # loop through data entries
-    for d, (cont1, cont2), col in zip(data, contours, color_sequence[:len(data)]):
+    for d, (cont1, cont2), col in zip(data[::-1], contours[::-1], color_sequence[:len(data)][::-1]):
         # evaluate the scan
         scan = evaluate_likelihood_scan_2d(
             d["values"][poi1], d["values"][poi2], d["values"]["dnll2"],
@@ -600,7 +606,7 @@ def plot_likelihood_scans_2d(
             r.setup_graph(g2, props={"LineWidth": 2, "LineStyle": 2, "LineColor": colors[col]})
             draw_objs.append((g2, "SAME,C"))
         name = to_root_latex(br_hh_names.get(d["name"], d["name"]))
-        legend_entries.append((g1, name, "L"))
+        legend_entries.insert(-1, (g1, name, "L"))
 
         # best fit point
         g_fit = create_tgraph(1, scan.num1_min(), scan.num2_min())

@@ -32,6 +32,7 @@ def plot_significance_scan(
     y_log=False,
     model_parameters=None,
     campaign=None,
+    show_points=False,
 ):
     """
     Creates a plot for the significance scan of a *poi* over a *scan_parameter* and saves it at
@@ -42,7 +43,8 @@ def plot_significance_scan(
     *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
     given values. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
+    *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/significances.html#significance-vs-scan-parameter
     """
@@ -93,8 +95,8 @@ def plot_significance_scan(
     g_exp = create_tgraph(n_points, scan_values, expected_values["significance"])
     r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
         "MarkerSize": 0.7})
-    draw_objs.append((g_exp, "SAME,PL"))
-    legend_entries.append((g_exp, "Expected", "PL"))
+    draw_objs.append((g_exp, "SAME,C" + ("P" if show_points else "")))
+    legend_entries.append((g_exp, "Expected", "L"))
     y_max_value = max(y_max_value, max(expected_values["significance"]))
     y_min_value = min(y_min_value, min(expected_values["significance"]))
 
@@ -177,6 +179,7 @@ def plot_significance_scans(
     y_log=False,
     model_parameters=None,
     campaign=None,
+    show_points=True,
 ):
     """
     Creates a plot showing multiple significance scans of a *poi* over a *scan_parameter* and saves
@@ -187,7 +190,8 @@ def plot_significance_scans(
     *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
     given values. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
+    *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/significances.html#multiple-significance-scans-vs-scan-parameter
     """
@@ -240,9 +244,10 @@ def plot_significance_scans(
         g_exp = create_tgraph(n_points, scan_values, ev["significance"])
         r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": ms,
             "MarkerSize": 1.2}, color=colors[col])
-        draw_objs.append((g_exp, "SAME,PL"))
+        draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
         name = names[n_graphs - i - 1]
-        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)), "PL"))
+        legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
+            "LP" if show_points else "L"))
         y_max_value = max(y_max_value, max(ev["significance"]))
         y_min_value = min(y_min_value, min(ev["significance"]))
 
