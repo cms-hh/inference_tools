@@ -415,6 +415,8 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
 
     unblinded = None
 
+    allow_empty_hh_model = True
+
     def requires(self):
         return [
             [
