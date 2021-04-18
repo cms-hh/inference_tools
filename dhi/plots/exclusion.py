@@ -7,12 +7,10 @@ Exclusion result plots using ROOT.
 import math
 
 import numpy as np
-import scipy.interpolate
 
 from dhi.config import poi_data, campaign_labels, colors, br_hh_names
-from dhi.util import (
-    import_ROOT, DotDict, to_root_latex, create_tgraph, minimize_1d, try_int,
-)
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int
+from dhi.plots.limits import evaluate_limit_scan_1d
 from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
 from dhi.plots.util import (
     use_style, draw_model_parameters, invert_graph, get_graph_points, get_contours, get_text_extent,
@@ -531,63 +529,6 @@ def plot_exclusion_and_bestfit_2d(
     # save
     r.update_canvas(canvas)
     canvas.SaveAs(path)
-
-
-def evaluate_limit_scan_1d(scan_values, limit_values):
-    """
-    Takes the results of an upper limit scan given by the *scan_values* and the corresponding *limit*
-    values, performs an interpolation and returns certain results of the scan in a dict.
-
-    The returned fields are:
-
-    - ``interp``: The generated interpolation function.
-    - ``excluded_ranges``: A list of 2-tuples denoting ranges in units of the poi where limits are
-      below one.
-    """
-    scan_values = np.array(scan_values)
-    limit_values = np.array(limit_values)
-
-    # first, obtain an interpolation function
-    mask = ~np.isnan(limit_values)
-    scan_values = scan_values[mask]
-    limit_values = limit_values[mask]
-    # interp = scipy.interpolate.interp1d(scan_values, limit_values, kind="cubic")
-    interp = scipy.interpolate.interp1d(scan_values, limit_values, kind="linear")
-
-    # interpolation bounds
-    bounds = (scan_values.min() + 1e-4, scan_values.max() - 1e-4)
-
-    # helper to find intersections with one given a starting point
-    def get_intersection(start):
-        objective = lambda x: (interp(x) - 1) ** 2.0
-        res = minimize_1d(objective, bounds, start=start)
-        return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
-
-    # get exclusion range edges from intersections and remove duplicates
-    rnd = lambda v: round(v, 3)
-    edges = [rnd(scan_values.min()), rnd(scan_values.max())]
-    for start in np.linspace(bounds[0], bounds[1], 100):
-        edge = get_intersection(start)
-        if edge is None:
-            continue
-        edge = rnd(edge)
-        if edge not in edges:
-            edges.append(edge)
-    edges.sort()
-
-    # create ranges consisting of two adjacent edges
-    ranges = [(edges[i - 1], edges[i]) for i in range(1, len(edges))]
-
-    # select those ranges whose central value is below 1
-    excluded_ranges = [
-        r for r in ranges
-        if interp(0.5 * (r[1] + r[0])) < 1
-    ]
-
-    return DotDict(
-        interp=interp,
-        excluded_ranges=excluded_ranges,
-    )
 
 
 def get_auto_contour_levels(values, steps=(1,)):

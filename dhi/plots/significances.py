@@ -246,7 +246,7 @@ def plot_significance_scans(
             "MarkerSize": 1.2}, color=colors[col])
         draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
         name = names[n_graphs - i - 1]
-        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)),
+        legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
             "LP" if show_points else "L"))
         y_max_value = max(y_max_value, max(ev["significance"]))
         y_min_value = min(y_min_value, min(ev["significance"]))
