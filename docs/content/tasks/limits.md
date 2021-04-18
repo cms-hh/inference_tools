@@ -75,7 +75,7 @@ law run PlotUpperLimits \
     --workers 4
 ```
 
-**2.** Executing `UpperLimit` tasks on htcondor, with one job handling two tasks sequentially:
+**2.** Execute `UpperLimit` tasks on HTCondor, with one job handling two tasks sequentially:
 
 ```shell hl_lines="4-5"
 law run PlotUpperLimits \
@@ -164,7 +164,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Executing `UpperLimit` tasks on htcondor, with one job handling two tasks sequentially:
+**1.** Execute `UpperLimit` tasks on HTCondor, with one job handling two tasks sequentially:
 
 ```shell hl_lines="5-6"
 law run PlotUpperLimits \
@@ -240,7 +240,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Changing the order of limits in the plot without changing `--multi-datacards` and updating labels:
+**1.** Change the order of limits in the plot without changing `--multi-datacards` and update labels:
 
 ```shell hl_lines="4-5"
 law run PlotUpperLimitsAtPoint \

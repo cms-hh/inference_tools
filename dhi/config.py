@@ -101,6 +101,7 @@ for c, c_label in list(campaign_labels.items()):
 campaign_labels.update(br_hh_names)
 
 # poi defaults (value, range, points, taken from physics model) and labels
+# note: C2V and CV are not following kappa notation and are upper case to be consistent to the model
 poi_data = DotDict(
     r=DotDict(range=(-20.0, 20.0), label="r"),
     r_gghh=DotDict(range=(-20.0, 20.0), label="r_{gghh}"),
@@ -109,6 +110,9 @@ poi_data = DotDict(
     kt=DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}"),
     C2V=DotDict(range=(-10.0, 10.0), label=r"\kappa_{VV}"),
     CV=DotDict(range=(-10.0, 10.0), label=r"\kappa_{V}"),
+    c2=DotDict(range=(-2.0, 3.0), label=r"c_{2}"),
+    cg=DotDict(range=(-2.0, 2.0), label=r"c_{g}"),
+    c2g=DotDict(range=(-2.0, 2.0), label=r"c_{2g}"),
 )
 # add "$" embedded labels
 for poi, data in poi_data.items():

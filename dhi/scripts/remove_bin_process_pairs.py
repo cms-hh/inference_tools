@@ -26,7 +26,7 @@ import re
 
 from dhi.datacard_tools import (
     columnar_parameter_directives, ShapeLine, bundle_datacard, manipulate_datacard,
-    expand_file_lines, update_datacard_count,
+    expand_file_lines, update_datacard_count, drop_datacard_lines,
 )
 from dhi.util import real_path, multi_match, create_console_logger, patch_object
 
@@ -67,57 +67,52 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
 
     # start removing
     with manipulate_datacard(datacard) as blocks:
-        # keep track of which bins and processes were fully removed
-        fully_removed_bin_names = set()
-        fully_removed_process_names = set()
-
         # remove from process rates and remember column indices for removal in parameters
         removed_columns = []
-        if blocks.get("rates"):
-            bin_names = blocks["rates"][0].split()[1:]
-            process_names = blocks["rates"][1].split()[1:]
-            process_ids = blocks["rates"][2].split()[1:]
-            rates = blocks["rates"][3].split()[1:]
+        bin_names = blocks["rates"][0].split()[1:]
+        process_names = blocks["rates"][1].split()[1:]
+        process_ids = blocks["rates"][2].split()[1:]
+        rates = blocks["rates"][3].split()[1:]
 
-            # quick check if all lists have the same lengths
-            if not (len(bin_names) == len(process_names) == len(process_ids) == len(rates)):
-                raise Exception("the number of bin names ({}), process names ({}), process ids "
-                    "({}) and rates ({}) does not match".format(len(bin_names), len(process_names),
-                    len(process_ids), len(rates)))
+        # quick check if all lists have the same lengths
+        if not (len(bin_names) == len(process_names) == len(process_ids) == len(rates)):
+            raise Exception("the number of bin names ({}), process names ({}), process ids "
+                "({}) and rates ({}) does not match".format(len(bin_names), len(process_names),
+                len(process_ids), len(rates)))
 
-            # go through bin and process names and compare with patterns
-            for i, (bin_name, process_name) in enumerate(zip(bin_names, process_names)):
-                for bin_pattern, process_pattern in patterns:
-                    neg = bin_pattern.startswith("!")
-                    if multi_match(bin_name, bin_pattern[int(neg):]) == neg:
-                        continue
+        # go through bin and process names and compare with patterns
+        for i, (bin_name, process_name) in enumerate(zip(bin_names, process_names)):
+            for bin_pattern, process_pattern in patterns:
+                neg = bin_pattern.startswith("!")
+                if multi_match(bin_name, bin_pattern[int(neg):]) == neg:
+                    continue
 
-                    neg = process_pattern.startswith("!")
-                    if multi_match(process_name, process_pattern[int(neg):]) == neg:
-                        continue
+                neg = process_pattern.startswith("!")
+                if multi_match(process_name, process_pattern[int(neg):]) == neg:
+                    continue
 
-                    logger.debug("remove process {} from rates in bin {}".format(
-                        process_name, bin_name))
-                    removed_columns.append(i)
-                    break
+                logger.debug("remove process {} from rates in bin {}".format(
+                    process_name, bin_name))
+                removed_columns.append(i)
+                break
 
-            # remove hits
-            mask = lambda l: [elem for j, elem in enumerate(l) if j not in removed_columns]
-            new_bin_names = mask(bin_names)
-            new_process_names = mask(process_names)
-            new_process_ids = mask(process_ids)
-            new_rates = mask(rates)
+        # remove hits
+        mask = lambda l: [elem for j, elem in enumerate(l) if j not in removed_columns]
+        new_bin_names = mask(bin_names)
+        new_process_names = mask(process_names)
+        new_process_ids = mask(process_ids)
+        new_rates = mask(rates)
 
-            # check if certain bins or processes were removed entirely
-            fully_removed_bin_names = set(bin_names) - set(new_bin_names)
-            fully_removed_process_names = set(process_names) - set(new_process_names)
+        # check if certain bins or processes were removed entirely
+        fully_removed_bin_names = set(bin_names) - set(new_bin_names)
+        fully_removed_process_names = set(process_names) - set(new_process_names)
 
-            # add back reduced lines
-            blocks["rates"][0] = "bin " + " ".join(new_bin_names)
-            blocks["rates"][1] = "process " + " ".join(new_process_names)
-            blocks["rates"][2] = "process " + " ".join(new_process_ids)
-            blocks["rates"][3] = "rate " + " ".join(new_rates)
-            logger.info("removed {} entries from process rates".format(len(removed_columns)))
+        # add back reduced lines
+        blocks["rates"][0] = "bin " + " ".join(new_bin_names)
+        blocks["rates"][1] = "process " + " ".join(new_process_names)
+        blocks["rates"][2] = "process " + " ".join(new_process_ids)
+        blocks["rates"][3] = "rate " + " ".join(new_rates)
+        logger.info("removed {} entries from process rates".format(len(removed_columns)))
 
         # decrease imax in counts
         if fully_removed_bin_names:
@@ -183,45 +178,82 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
                     break
 
             # change lines in-place
-            lines = [line for j, line in enumerate(blocks["shapes"]) if j not in to_remove]
-            del blocks["shapes"][:]
-            blocks["shapes"].extend(lines)
+            drop_datacard_lines(blocks, "shapes", to_remove)
 
-        # remove columns from certain parameters
-        if blocks.get("parameters") and removed_columns:
-            expr = r"^([^\s]+)\s+({})\s+(.+)$".format("|".join(columnar_parameter_directives))
-            for i, param_line in enumerate(list(blocks["parameters"])):
-                m = re.match(expr, param_line.strip())
-                if not m:
+        # remove certain parameters
+        if blocks.get("parameters"):
+            # columnar parameters
+            if removed_columns:
+                expr = r"^([^\s]+)\s+({})\s+(.+)$".format("|".join(columnar_parameter_directives))
+                for i, param_line in enumerate(list(blocks["parameters"])):
+                    m = re.match(expr, param_line.strip())
+                    if not m:
+                        continue
+
+                    # split the line
+                    param_name = m.group(1)
+                    param_type = m.group(2)
+                    columns = m.group(3).split()
+                    if max(removed_columns) >= len(columns):
+                        raise Exception("parameter line {} '{} {} ...' has less columns than "
+                            "defined in rates".format(i, param_name, param_name))
+
+                    # remove columns and update the line
+                    logger.debug("remove {} column(s) from parameter {}".format(
+                        len(removed_columns), param_name))
+                    columns = [c for j, c in enumerate(columns) if j not in removed_columns]
+                    blocks["parameters"][i] = " ".join([param_name, param_type] + columns)
+
+            # other parameters
+            to_remove = []
+            for i, param_line in enumerate(blocks["parameters"]):
+                param_line = param_line.split()
+                if len(param_line) < 2:
                     continue
+                param_name, param_type = param_line[:2]
 
-                # split the line
-                param_name = m.group(1)
-                param_type = m.group(2)
-                columns = m.group(3).split()
-                if max(removed_columns) >= len(columns):
-                    raise Exception("parameter line {} '{} {} ...' has less columns than defined "
-                        "in rates".format(i, param_name, param_name))
+                # check rateParam's
+                if param_type == "rateParam" and len(param_line) >= 4:
+                    bin_name, proc_name = param_line[2:4]
+                    if not multi_match(bin_name, new_bin_names) or \
+                            not multi_match(proc_name, new_process_names):
+                        to_remove.append(i)
+                        logger.debug("remove {} {} with no matching bin or process left".format(
+                            param_type, param_name))
 
-                # remove columns and update the line
-                logger.debug("remove {} column(s) from parameter {}".format(
-                    len(removed_columns), param_name))
-                columns = [c for j, c in enumerate(columns) if j not in removed_columns]
-                blocks["parameters"][i] = " ".join([param_name, param_type] + columns)
+            # change lines in-place
+            drop_datacard_lines(blocks, "parameters", to_remove)
 
         # remove fully removed bins from auto mc stats
         if blocks.get("auto_mc_stats") and fully_removed_bin_names:
-            new_lines = []
-            for line in blocks["auto_mc_stats"]:
+            to_remove = []
+            for i, line in enumerate(blocks["auto_mc_stats"]):
                 bin_name = line.strip().split()[0]
-                if bin_name not in fully_removed_bin_names:
-                    new_lines.append(line)
-                else:
+                if bin_name in fully_removed_bin_names:
+                    to_remove.append(i)
                     logger.info("remove autoMCStats for bin {}".format(bin_name))
 
             # change lines in place
-            del blocks["auto_mc_stats"][:]
-            blocks["auto_mc_stats"].extend(new_lines)
+            drop_datacard_lines(blocks, "auto_mc_stats", to_remove)
+
+        # remove certain nuisance edit lines
+        if blocks.get("nuisance_edits"):
+            to_remove = []
+            for i, edit_line in enumerate(blocks["nuisance_edits"]):
+                edit_line = edit_line.split()
+                if len(edit_line) < 5 or tuple(edit_line[:2]) != ("nuisance", "edit"):
+                    continue
+                action, proc_name, bin_name = edit_line[2:5]
+
+                if action in ["add", "drop", "split", "merge"]:
+                    if not multi_match(bin_name, new_bin_names) or \
+                            not multi_match(proc_name, new_process_names):
+                        to_remove.append(i)
+                        logger.debug("remove nuisance edit action {} in bin {} and process {} with "
+                            "no matching bin or process left".format(action, bin_name, proc_name))
+
+            # change lines in-place
+            drop_datacard_lines(blocks, "nuisance_edits", to_remove)
 
 
 if __name__ == "__main__":

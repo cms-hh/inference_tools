@@ -17,7 +17,7 @@ import numpy as np
 import scipy.interpolate
 
 from dhi.config import poi_data, br_hh_names
-from dhi.util import import_ROOT, try_int, to_root_latex
+from dhi.util import import_ROOT, try_int, to_root_latex, make_list
 
 
 _styles = {}
@@ -73,8 +73,10 @@ def draw_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_o
         # group parameters by value
         groups = collections.OrderedDict()
         for p, v in model_parameters.items():
-            p_label = poi_data.get(p, {}).get("label", p)
-            groups.setdefault(v, []).append(p_label)
+            # each parameter key can be a list
+            for _p in make_list(p):
+                p_label = poi_data.get(_p, {}).get("label", _p)
+                groups.setdefault(v, []).append(p_label)
 
         # create labels
         for i, (v, ps) in enumerate(groups.items()):
@@ -86,8 +88,9 @@ def draw_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_o
     else:
         # create one label per parameter
         for i, (p, v) in enumerate(model_parameters.items()):
-            p_label = poi_data.get(p, {}).get("label", p)
-            label = "{} = {}".format(p_label, try_int(v))
+            # each parameter key can be a list
+            p_labels = [poi_data.get(_p, {}).get("label", _p) for _p in make_list(p)]
+            label = "{} = {}".format(" = ".join(p_labels), try_int(v))
             label = r.routines.create_top_left_label(label, pad=pad, props=props, x_offset=x_offset,
                 y_offset=y_offset + i * dy)
             labels.append(label)
@@ -97,7 +100,7 @@ def draw_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_o
 
 def create_hh_process_label(poi="r", br=None):
     return "pp #rightarrow {}{}".format(
-        {"r": "HH/HHjj", "r_gghh": "HH", "r_qqhh": "HHjj"}.get(poi, "HH"),
+        {"r": "HH (incl.)", "r_gghh": "HH", "r_qqhh": "HHjj"}.get(poi, "HH"),
         "#scale[0.75]{{ ({})}}".format(to_root_latex(br_hh_names[br])) if br in br_hh_names else "",
     )
 

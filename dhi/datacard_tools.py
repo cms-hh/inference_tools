@@ -942,15 +942,15 @@ def expand_variables(s, process=None, channel=None, systematic=None, mass=None):
     return s
 
 
-def update_datacard_count(content, key, value, diff=False, logger=None):
+def update_datacard_count(blocks, key, value, diff=False, logger=None):
     """
-    Update the count *key* (e.g. imax, jmax, or kmax) of a datacard given by *content*, as returned
+    Update the count *key* (e.g. imax, jmax, or kmax) of a datacard given by *blocks*, as returned
     by :py:func:`manipulate_datacard`, to a *value*. When *diff* is *True* and the current value is
     not a wildcard, *value* is added to that value. When a *logger* is defined, an info-level log
     is produced.
     """
-    if content.get("counts"):
-        for i, count_line in enumerate(list(content["counts"])):
+    if blocks.get("counts"):
+        for i, count_line in enumerate(list(blocks["counts"])):
             parts = count_line.split()
             if len(parts) >= 2 and parts[0] == key:
                 new_value = None
@@ -964,8 +964,30 @@ def update_datacard_count(content, key, value, diff=False, logger=None):
                     logger.info("set {} from {} to {}".format(key, old_value, new_value))
                 if new_value is not None:
                     parts[1] = str(new_value)
-                    content["counts"][i] = " ".join(parts)
+                    blocks["counts"][i] = " ".join(parts)
                 break
+
+
+def drop_datacard_lines(blocks, field, indices):
+    """
+    Drops lines with *indices* inplace from a datacard block given by *blocks*, as returned
+    by :py:func:`manipulate_datacard`, and *field*. Returns *True* when at least one line was
+    removed, and *False* otherwise. Example:
+
+    .. code-block:: python
+
+        # drop the first four line of the "parameters" block
+        drop_datacard_lines(blocks, "parameters", [0, 1, 2, 3])
+    """
+    if field not in blocks or not any(i < len(blocks[field]) for i in indices):
+        return False
+
+    # change lines in-place
+    lines = [line for i, line in enumerate(blocks[field]) if i not in indices]
+    del blocks[field][:]
+    blocks[field].extend(lines)
+
+    return True
 
 
 def expand_file_lines(paths, skip_comments=True):

@@ -41,6 +41,7 @@ def plot_limit_scan(
     hh_process=None,
     model_parameters=None,
     campaign=None,
+    show_points=False,
 ):
     """
     Creates a plot for the upper limit scan of a *poi* over a *scan_parameter* and saves it at
@@ -52,14 +53,15 @@ def plot_limit_scan(
     with keys "<scan_parameter>" and "xsec", and optionally "xsec_p1" and "xsec_m1".
 
     When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*,
-    *y_min* and *y_max* define the axis ranges and default to the range of the given values.
+    *y_min* and *y_max* define the axes ranges and default to the ranges of the given values.
     *xsec_unit* denotes whether the passed values are given as real cross sections in this unit or,
     when *None*, as a ratio over the theory prediction. *hh_process* can be the name of a HH
     subprocess configured in *dhi.config.br_hh_names* and is inserted to the process name
     in the title of the y-axis and indicates that the plotted cross section data was (e.g.) scaled
     by a branching ratio. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*.
+    *dhi.config.campaign_labels*. When *show_points* is *True*, the central scan points are drawn
+    on top of the interpolated curve.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#limit-on-poi-vs-scan-parameter
     """
@@ -147,7 +149,7 @@ def plot_limit_scan(
     # central values
     g_exp = create_graph()
     r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 2})
-    draw_objs.append((g_exp, "SAME,CP"))
+    draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
     legend_entries[3] = (g_exp, "Median expected", "L")
     y_max_value = max(y_max_value, max(expected_values["limit"]))
     y_min_value = min(y_min_value, min(expected_values["limit"]))
@@ -259,6 +261,7 @@ def plot_limit_scans(
     hh_process=None,
     model_parameters=None,
     campaign=None,
+    show_points=True,
 ):
     """
     Creates a plot showing multiple upper limit scans of a *poi* over a *scan_parameter* and saves
@@ -277,6 +280,8 @@ def plot_limit_scans(
     title of the y-axis and indicates that the plotted cross section data was (e.g.) scaled by a
     branching ratio. *model_parameters* can be a dictionary of key-value pairs of model parameters.
     *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
+    When *show_points* is *True*, the central scan points are drawn on top of the interpolated
+    curve.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-on-poi-vs-scan-parameter
     """
@@ -338,9 +343,10 @@ def plot_limit_scans(
         g_exp = create_tgraph(mask.sum(), scan_values[mask], ev["limit"][mask])
         r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
-        draw_objs.append((g_exp, "SAME,CP"))
+        draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
         name = names[n_graphs - i - 1]
-        legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)), "LP"))
+        legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
+            "LP" if show_points else "L"))
         y_max_value = max(y_max_value, max(ev["limit"]))
         y_min_value = min(y_min_value, min(ev["limit"]))
 
@@ -676,6 +682,171 @@ def plot_limit_points(
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
+    r.fill_legend(legend, legend_entries)
+    draw_objs.append(legend)
+
+    # cms label
+    cms_labels = r.routines.create_cms_labels(pad=pad)
+    draw_objs.extend(cms_labels)
+
+    # campaign label
+    if campaign:
+        campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
+        campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad)
+        draw_objs.append(campaign_label)
+
+    # draw all objects
+    r.routines.draw_objects(draw_objs)
+
+    # save
+    r.update_canvas(canvas)
+    canvas.SaveAs(path)
+
+
+@use_style("dhi_default")
+def plot_benchmark_limits(
+    path,
+    data,
+    poi="r_gghh",
+    y_min=None,
+    y_max=None,
+    y_log=False,
+    xsec_unit="fb",
+    hh_process=None,
+    campaign=None,
+    bar_width=0.66,
+):
+    """
+    Creates a plot showing a the limits of BSM benchmarks for a *poi* and saves it at *path*. *data*
+    should be a list of dictionaries with fields
+
+    - "expected", a sequence of five values, i.e., central limit, and +1 sigma, -1 sigma, +2 sigma,
+      and -2 sigma variations (absolute values, not errors!),
+    - "observed" (optional), a single value,
+    - "name", shown as the y-axis label and when it is a key of dhi.config.br_hh_names,
+      its value is used as a label instead.
+
+    Example:
+
+    .. code-block:: python
+
+        plot_benchmark_limits(
+            path="plot.pdf",
+            data=[{
+                "expected": (40., 50., 28., 58., 18.),
+                "observed": 45.,
+                "name": "1",
+            }, {
+                ...
+            }],
+        )
+
+    *y_min* and *y_max* define the y axis range and default to the range of the given values. When
+    *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *xsec_unit* denotes the unit
+    of the passed values and defaults to fb. *hh_process* can be the name of a HH subprocess
+    configured in *dhi.config.br_hh_names* and is inserted to the process name in the title of the
+    y-axis and indicates that the plotted cross section data was (e.g.) scaled by a branching ratio.
+    *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
+    The *bar_width* should be a value between 0 and 1 and controls the fraction of the limit bar
+    width relative to the bin width.
+
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/eft.html#benchmark-limits
+    """
+    import plotlib.root as r
+    ROOT = import_ROOT()
+
+    # check inputs and get extrema
+    n = len(data)
+    has_obs = False
+    y_min_value = 1e5
+    y_max_value = -1e5
+    for d in data:
+        assert("name" in d)
+        assert("expected" in d)
+        y_min_value = min(y_min_value, min(d["expected"]))
+        y_max_value = max(y_max_value, max(d["expected"]))
+        if "observed" in d:
+            assert(isinstance(d["observed"], (float, int)))
+            has_obs = True
+            y_min_value = min(y_min_value, d["observed"])
+            y_max_value = max(y_max_value, d["observed"])
+            d["observed"] = [d["observed"]]
+
+    # set limits
+    if y_min is None:
+        if y_log:
+            y_min = 0.75 * y_min_value
+        else:
+            y_min = 0.
+    if y_max is None:
+        if y_log:
+            y_max = y_min * 10**(1.35 * math.log10(y_max_value / y_min))
+        else:
+            y_max = 1.35 * (y_max_value - y_min)
+
+    # setup the default style and create canvas and pad
+    r.setup_style()
+    canvas, (pad,) = r.routines.create_canvas(pad_props={"Logy": y_log})
+    pad.cd()
+    draw_objs = []
+    legend_entries = []
+
+    # dummy histogram to control axes
+    x_title = "Shape benchmark"
+    y_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
+        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit))
+    h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), n, -0.5, n - 0.5)
+    r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
+    r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"Ndivisions": n})
+    draw_objs.append((h_dummy, "HIST"))
+
+    # benchmark labels
+    for i, d in enumerate(data):
+        h_dummy.GetXaxis().SetBinLabel(i + 1, d["name"])
+
+    # helper to read values into graphs
+    def create_graph(key="expected", sigma=None):
+        args = x, y, x_err_d, x_err_u, y_err_d, y_err_u = [n * [0.] for _ in range(6)]
+        for i, d in enumerate(data):
+            if key not in d:
+                y[i] = -1.e5
+                continue
+            x[i] = i - 0.5 * bar_width
+            x_err_u[i] = bar_width
+            y[i] = d[key][0]
+            if sigma:
+                y_err_d[i] = y[i] - d[key][sigma * 2]
+                y_err_u[i] = d[key][sigma * 2 - 1] - y[i]
+        return create_tgraph(n, *args)
+
+    # 2 sigma band
+    g_2sigma = create_graph(sigma=2)
+    r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.yellow})
+    draw_objs.append((g_2sigma, "SAME,2"))
+    legend_entries.append((g_2sigma, r"#pm 2 #sigma expected", "LF"))
+
+    # 1 sigma band
+    g_1sigma = create_graph(sigma=1)
+    r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.green})
+    draw_objs.append((g_1sigma, "SAME,2"))
+    legend_entries.insert(0, (g_1sigma, r"#pm 1 #sigma expected", "LF"))
+
+    # prepare graphs
+    g_exp = create_graph(sigma=0)
+    r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 2})
+    draw_objs.append((g_exp, "SAME,EZ"))
+    legend_entries.insert(0, (g_exp, "Median expected", "L"))
+
+    # observed values
+    if has_obs:
+        g_obs = create_graph(key="observed")
+        r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1})
+        draw_objs.append((g_obs, "SAME,EZ"))
+        legend_entries.insert(0, (g_obs, "Observed", "L"))
+
+    # legend
+    n_cols = 2 if has_obs else 1
+    legend = r.routines.create_legend(pad=pad, width=220 * n_cols, n=3, props={"NColumns": n_cols})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 

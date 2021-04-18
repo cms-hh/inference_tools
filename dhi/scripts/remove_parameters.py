@@ -32,7 +32,7 @@ import re
 
 from dhi.datacard_tools import (
     columnar_parameter_directives, bundle_datacard, manipulate_datacard, update_datacard_count,
-    expand_file_lines,
+    expand_file_lines, drop_datacard_lines,
 )
 from dhi.util import real_path, multi_match, create_console_logger, patch_object
 
@@ -183,9 +183,7 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                         to_remove.append(i)
 
             # change lines in-place
-            lines = [line for i, line in enumerate(blocks["parameters"]) if i not in to_remove]
-            del blocks["parameters"][:]
-            blocks["parameters"].extend(lines)
+            drop_datacard_lines(blocks, "parameters", to_remove)
 
         # remove from group listings
         if blocks.get("groups"):
@@ -214,24 +212,47 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                     to_remove.append(i)
 
             # change lines in-place
-            lines = [line for j, line in enumerate(blocks["groups"]) if j not in to_remove]
-            del blocks["groups"][:]
-            blocks["groups"].extend(lines)
+            drop_datacard_lines(blocks, "groups", to_remove)
 
         # remove auto mc stats
         if blocks.get("auto_mc_stats"):
-            new_lines = []
-            for line in blocks["auto_mc_stats"]:
+            to_remove = []
+            for i, line in enumerate(blocks["auto_mc_stats"]):
                 # the bin name is the actual parameter name, so compare it with the single patterns
                 bin_name = line.strip().split()[0]
                 if bin_name != "*" and multi_match(bin_name, single_patterns):
+                    to_remove.append(i)
                     logger.info("remove autoMCStats for bin {}".format(bin_name))
-                else:
-                    new_lines.append(line)
 
             # change lines in-place
-            del blocks["auto_mc_stats"][:]
-            blocks["auto_mc_stats"].extend(new_lines)
+            drop_datacard_lines(blocks, "auto_mc_stats", to_remove)
+
+        # remove certain nuisance edit lines
+        if blocks.get("nuisance_edits"):
+            to_remove = []
+            for i, edit_line in enumerate(blocks["nuisance_edits"]):
+                edit_line = edit_line.split()
+                if len(edit_line) < 4 or tuple(edit_line[:2]) != ("nuisance", "edit"):
+                    continue
+                action = edit_line[2]
+
+                if action == "rename":
+                    if len(edit_line) == 5 and multi_match(edit_line[4], single_patterns):
+                        to_remove.append(i)
+                    elif len(edit_line) >= 7 and multi_match(edit_line[6], single_patterns):
+                        logger.warning("removing 'nuisance edit add' lines with process and bin "
+                            "options is not yet supported")
+                elif action in ["freeze", "changepdf"]:
+                    if multi_match(edit_line[3], single_patterns):
+                        to_remove.append(i)
+                elif action in ["add", "drop"]:
+                    if len(edit_line) >= 6 and multi_match(edit_line[5], single_patterns):
+                        to_remove.append(i)
+                if to_remove and to_remove[-1] == i:
+                    logger.debug("remove nuisance edit line '{}'".format(" ".join(edit_line)))
+
+            # change lines in-place
+            drop_datacard_lines(blocks, "nuisance_edits", to_remove)
 
         # decrease kmax in counts
         if removed_nuisances:

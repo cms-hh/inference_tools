@@ -98,7 +98,7 @@ law run PlotLikelihoodScan \
 ```
 
 
-**2.** Executing `LikelihoodScan` tasks on htcondor, with one job handling three tasks sequentially.
+**2.** Execute `LikelihoodScan` tasks on HTCondor, with one job handling three tasks sequentially.
 
 ```shell hl_lines="5-6"
 law run PlotLikelihoodScan \
@@ -206,7 +206,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Multiple 1D scans with renamed labels, processed with 4 local cores.
+**1.** Multiple 1D scans with renamed labels, processed with 4 local cores:
 
 ```shell hl_lines="6-7"
 law run PlotMultipleLikelihoodScans \
@@ -218,7 +218,7 @@ law run PlotMultipleLikelihoodScans \
     --workers 4
 ```
 
-**2.** Executing `LikelihoodScan` tasks on htcondor for 2D scans, with one job handling three tasks sequentially.
+**2.** Execute `LikelihoodScan` tasks on HTCondor for 2D scans, with one job handling three tasks sequentially:
 
 ```shell hl_lines="6-7"
 law run PlotMultipleLikelihoodScans \
@@ -327,7 +327,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Multiple 1D scans with renamed labels, processed with 4 local cores.
+**1.** Multiple 1D scans with renamed labels, processed with 4 local cores:
 
 ```shell hl_lines="7-8"
 law run PlotMultipleLikelihoodScansByModel \
@@ -340,7 +340,7 @@ law run PlotMultipleLikelihoodScansByModel \
     --workers 4
 ```
 
-**2.** Executing `LikelihoodScan` tasks on htcondor for 2D scans, with one job handling three tasks sequentially.
+**2.** Execute `LikelihoodScan` tasks on HTCondor for 2D scans, with one job handling three tasks sequentially:
 
 ```shell hl_lines="7-8"
 law run PlotMultipleLikelihoodScansByModel \
