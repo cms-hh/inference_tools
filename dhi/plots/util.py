@@ -100,7 +100,7 @@ def draw_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_o
 
 def create_hh_process_label(poi="r", br=None):
     return "pp #rightarrow {}{}".format(
-        {"r": "HH (incl.)", "r_gghh": "HH", "r_qqhh": "HHjj"}.get(poi, "HH"),
+        {"r": "HH (incl.)", "r_gghh": "HH", "r_qqhh": "HHqq"}.get(poi, "HH"),
         "#scale[0.75]{{ ({})}}".format(to_root_latex(br_hh_names[br])) if br in br_hh_names else "",
     )
 
@@ -121,6 +121,24 @@ def determine_limit_digits(limit, is_xsec=False):
             return 1
         else:
             return 0
+
+
+def get_y_range(y_min_value, y_max_value, y_min=None, y_max=None, log=False, top_margin=0.38,
+        visible_margin=0.4):
+    if log:
+        if y_min is None:
+            y_min = (0.75 * y_min_value) if y_min_value > 0 else 1e-3
+        if y_max is None:
+            y_max = y_min * 10**(math.log10(y_max_value / y_min) * (1. + top_margin))
+        y_max_vis = y_min * 10**(math.log10(y_max / y_min) / (1. + visible_margin))
+    else:
+        if y_min is None:
+            y_min = 0. if y_min_value is None else y_min_value
+        if y_max is None:
+            y_max = (y_max_value - y_min) * (1. + top_margin)
+        y_max_vis = y_max / (1. + visible_margin) + y_min
+
+    return y_min, y_max, y_max_vis
 
 
 def frame_histogram(hist, x_width, y_width, mode="edge", frame_value=None, contour_level=None):

@@ -18,6 +18,7 @@ from dhi.config import (
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match
 from dhi.plots.util import (
     use_style, draw_model_parameters, fill_hist_from_points, create_random_name, get_contours,
+    get_y_range,
 )
 
 
@@ -76,18 +77,7 @@ def plot_likelihood_scan_1d(
 
     # set y range
     y_max_value = max(dnll2_values[(poi_values >= x_min) & (poi_values <= x_max)])
-    if y_log:
-        if y_min is None:
-            y_min = 1e-3
-        if y_max is None:
-            y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
-        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.4)
-    else:
-        if y_min is None:
-            y_min = 0.
-        if y_max is None:
-            y_max = 1.35 * (y_max_value - y_min)
-        y_max_line = y_max / 1.4 + y_min
+    y_min, y_max, y_max_line = get_y_range(0., y_max_value, y_min, y_max, log=y_log)
 
     # evaluate the scan, run interpolation and error estimation
     scan = evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min)
@@ -251,18 +241,7 @@ def plot_likelihood_scans_1d(
         d["values"]["dnll2"][(d["values"][poi] >= x_min) & (d["values"][poi] <= x_max)].max()
         for d in data
     ])
-    if y_log:
-        if y_min is None:
-            y_min = 1e-3
-        if y_max is None:
-            y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
-        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.4)
-    else:
-        if y_min is None:
-            y_min = 0.
-        if y_max is None:
-            y_max = 1.35 * (y_max_value - y_min)
-        y_max_line = y_max / 1.4 + y_min
+    y_min, y_max, y_max_line = get_y_range(0., y_max_value, y_min, y_max, log=y_log)
 
     # start plotting
     r.setup_style()
@@ -804,18 +783,8 @@ def plot_nuisance_likelihood_scans(
         y_max_value = max(max(curve_data[name][1]) for name in names)
         _y_min = y_min
         _y_max = y_max
-        if y_log:
-            if _y_min is None:
-                _y_min = 1.e-3
-            if _y_max is None:
-                _y_max = _y_min * 10**(1.35 * math.log10(y_max_value / _y_min))
-            y_max_line = _y_min * 10**(math.log10(_y_max / _y_min) / 1.4)
-        else:
-            if _y_min is None:
-                _y_min = y_min_value
-            if _y_max is None:
-                _y_max = 1.35 * (y_max_value - _y_min)
-            y_max_line = _y_max / 1.4 + _y_min
+        _y_min, _y_max, y_max_line = get_y_range(0. if y_log else y_min_value, y_max_value, y_min,
+            y_max, log=y_log)
 
         # dummy histogram to control axes
         x_title = "(#theta - #theta_{best}) / #Delta#theta_{pre}"

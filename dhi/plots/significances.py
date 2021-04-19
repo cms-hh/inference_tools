@@ -12,7 +12,7 @@ from dhi.config import (
     poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence,
 )
 from dhi.util import import_ROOT, to_root_latex, create_tgraph
-from dhi.plots.util import use_style, draw_model_parameters
+from dhi.plots.util import use_style, draw_model_parameters, get_y_range
 
 
 colors = colors.root
@@ -111,18 +111,7 @@ def plot_significance_scan(
         y_min_value = min(y_min_value, min(observed_values["significance"]))
 
     # set limits
-    if y_log:
-        if y_min is None:
-            y_min = 1e-2
-        if y_max is None:
-            y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
-        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.4)
-    else:
-        if y_min is None:
-            y_min = 0.
-        if y_max is None:
-            y_max = 1.35 * (y_max_value - y_min)
-        y_max_line = y_max / 1.4 + y_min
+    y_min, y_max, _ = get_y_range(0 if y_log else y_min_value, y_max_value, y_min, y_max, log=y_log)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
@@ -252,18 +241,7 @@ def plot_significance_scans(
         y_min_value = min(y_min_value, min(ev["significance"]))
 
     # set limits
-    if y_log:
-        if y_min is None:
-            y_min = 1e-2
-        if y_max is None:
-            y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.35)
-        y_max_line = y_min * 10**(math.log10(y_max / y_min) / 1.4)
-    else:
-        if y_min is None:
-            y_min = 0.
-        if y_max is None:
-            y_max = 1.35 * (y_max_value - y_min)
-        y_max_line = y_max / 1.4 + y_min
+    y_min, y_max, _ = get_y_range(0 if y_log else y_min_value, y_max_value, y_min, y_max, log=y_log)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 

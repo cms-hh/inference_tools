@@ -11,7 +11,7 @@ import scipy.stats
 
 from dhi.config import campaign_labels, colors, br_hh_names
 from dhi.util import import_ROOT, to_root_latex, create_tgraph
-from dhi.plots.util import use_style, draw_model_parameters
+from dhi.plots.util import use_style, draw_model_parameters, get_y_range
 
 
 colors = colors.root
@@ -80,11 +80,7 @@ def plot_gof_distribution(
     legend_entries.append((h_toys, "{} toys ({})".format(len(toys), algorithm), "L"))
 
     # set limits
-    if y_min is None:
-        y_min = 0.
-    if y_max is None:
-        y_max = 1.35 * (y_max_value - y_min)
-    y_max_line = y_max / 1.35 + y_min
+    y_min, y_max, y_max_line = get_y_range(0., y_max_value, y_min, y_max)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
