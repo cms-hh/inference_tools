@@ -15,7 +15,9 @@ from scinum import Number
 from dhi.config import (
     poi_data, br_hh_names, campaign_labels, chi2_levels, colors, color_sequence, marker_sequence,
 )
-from dhi.util import import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match
+from dhi.util import (
+    import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match, convert_rooargset,
+)
 from dhi.plots.util import (
     use_style, draw_model_parameters, fill_hist_from_points, create_random_name, get_contours,
     get_y_range,
@@ -686,22 +688,11 @@ def plot_nuisance_likelihood_scans(
     import plotlib.root as r
     ROOT = import_ROOT()
 
-    # helper to convert a RooArgSet  into a dictionary mapping names to value-errors pairs
-    def convert_argset(argset):
-        data = OrderedDict()
-        it = argset.createIterator()
-        while True:
-            param = it.Next()
-            if not param:
-                break
-            data[param.GetName()] = (param.getVal(), param.getErrorHi(), param.getErrorLo())
-        return data
-
     # get the best fit value and prefit data from the diagnostics file
     f = ROOT.TFile(fit_diagnostics_path, "READ")
     best_fit = f.Get(fit_name)
     fit_args = best_fit.floatParsFinal()
-    prefit_params = convert_argset(f.Get("nuisances_prefit"))
+    prefit_params = convert_rooargset(f.Get("nuisances_prefit"))
 
     # get the model config from the workspace
     model_config = workspace.genobj("ModelConfig")

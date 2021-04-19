@@ -14,6 +14,7 @@ import contextlib
 import tempfile
 import operator
 import logging
+from collections import OrderedDict
 
 import six
 from law.util import multi_match, make_unique, make_list  # noqa
@@ -252,6 +253,22 @@ def create_tgraph(n, *args, **kwargs):
         return cls(n)
     else:
         return cls(n, *(array.array("f", a) for a in _args))
+
+
+def convert_rooargset(argset):
+    """
+    Helper to convert a RooArgSet into a dictionary mapping names to value-errors pairs.
+    """
+    data = OrderedDict()
+
+    it = argset.createIterator()
+    while True:
+        param = it.Next()
+        if not param:
+            break
+        data[param.GetName()] = (param.getVal(), param.getErrorHi(), param.getErrorLo())
+
+    return data
 
 
 def copy_no_collisions(path, directory, postfix_format="_{}"):
