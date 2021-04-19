@@ -2,6 +2,6 @@ The `PlotMultipleGoodnessOfFits` task collects results from multiple `MergeGoodn
 
 <div class="dhi_parameter_table">
 
---8<-- "content/snippets/parameters.md@-2,20,19,16,14,17,18,51,49,50,3,4,22,23,5,6,7,8"
+--8<-- "content/snippets/parameters.md@-2,20,19,16,14,17,18,51,49,50,53,3,4,22,23,5,6,7,8"
 
 </div>

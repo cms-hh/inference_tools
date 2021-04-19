@@ -23,7 +23,7 @@ class SignificanceBase(POIScanTask):
     force_scan_parameters_unequal_pois = True
     allow_parameter_values_in_pois = True
 
-    postfit_toys = luigi.BoolParameter(
+    frequentist_toys = luigi.BoolParameter(
         default=False,
         description="when set, create frequentist postfit toys, producing a-posteriori expected "
         "significances, which depend on observed data; has no effect when --unblinded is used as "
@@ -33,15 +33,15 @@ class SignificanceBase(POIScanTask):
     def __init__(self, *args, **kwargs):
         super(SignificanceBase, self).__init__(*args, **kwargs)
 
-        if self.unblinded and self.postfit_toys:
-            self.postfit_toys = False
-            self.logger.warning("both unblinded and postfit_toys were set, will only consider "
-                "the unblinded flag")
+        if self.unblinded and self.frequentist_toys:
+            self.frequentist_toys = False
+            self.logger.warning("both --unblinded and --frequentist_toys were set, will only "
+                "consider the unblinded flag")
 
     def get_output_postfix(self, join=True):
         parts = super(SignificanceBase, self).get_output_postfix(join=False)
 
-        if not self.unblinded and self.postfit_toys:
+        if not self.unblinded and self.frequentist_toys:
             parts.insert(0, ["postfit"])
 
         return self.join_postfix(parts) if join else parts
@@ -69,7 +69,7 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
     def blinded_args(self):
         if self.unblinded:
             return "--seed {self.branch}".format(self=self)
-        elif self.postfit_toys:
+        elif self.frequentist_toys:
             return "--seed {self.branch} --toys {self.toys} --toysFreq".format(self=self)
         else:
             return "--seed {self.branch} --toys {self.toys}".format(self=self)
