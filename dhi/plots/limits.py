@@ -17,7 +17,7 @@ from dhi.util import (
 )
 from dhi.plots.util import (
     use_style, draw_model_parameters, create_hh_process_label, determine_limit_digits,
-    get_graph_points,
+    get_graph_points, get_y_range,
 )
 
 
@@ -168,16 +168,7 @@ def plot_limit_scan(
         y_min_value = min(y_min_value, min(theory_values["xsec_m1" if has_thy_err else "xsec"]))
 
     # set limits
-    if y_min is None:
-        if y_log:
-            y_min = 0.75 * y_min_value
-        else:
-            y_min = 0.
-    if y_max is None:
-        if y_log:
-            y_max = y_min * 10**(1.35 * math.log10(y_max_value / y_min))
-        else:
-            y_max = 1.35 * (y_max_value - y_min)
+    y_min, y_max, _ = get_y_range(y_min_value, y_max_value, y_min, y_max, log=y_log)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
@@ -355,16 +346,7 @@ def plot_limit_scans(
         y_min_value = min(y_min_value, min(theory_values["xsec_m1" if has_thy_err else "xsec"]))
 
     # set limits
-    if y_min is None:
-        if y_log:
-            y_min = 0.75 * y_min_value
-        else:
-            y_min = 0.
-    if y_max is None:
-        if y_log:
-            y_max = y_min * 10**(1.35 * math.log10(y_max_value / y_min))
-        else:
-            y_max = 1.35 * (y_max_value - y_min)
+    y_min, y_max, _ = get_y_range(y_min_value, y_max_value, y_min, y_max, log=y_log)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
@@ -773,16 +755,7 @@ def plot_benchmark_limits(
             d["observed"] = [d["observed"]]
 
     # set limits
-    if y_min is None:
-        if y_log:
-            y_min = 0.75 * y_min_value
-        else:
-            y_min = 0.
-    if y_max is None:
-        if y_log:
-            y_max = y_min * 10**(1.35 * math.log10(y_max_value / y_min))
-        else:
-            y_max = 1.35 * (y_max_value - y_min)
+    y_min, y_max, _ = get_y_range(y_min_value, y_max_value, y_min, y_max, log=y_log)
 
     # setup the default style and create canvas and pad
     r.setup_style()

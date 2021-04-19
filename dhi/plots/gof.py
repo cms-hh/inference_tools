@@ -11,7 +11,7 @@ import scipy.stats
 
 from dhi.config import campaign_labels, colors, br_hh_names
 from dhi.util import import_ROOT, to_root_latex, create_tgraph
-from dhi.plots.util import use_style, draw_model_parameters
+from dhi.plots.util import use_style, draw_model_parameters, get_y_range
 
 
 colors = colors.root
@@ -80,11 +80,7 @@ def plot_gof_distribution(
     legend_entries.append((h_toys, "{} toys ({})".format(len(toys), algorithm), "L"))
 
     # set limits
-    if y_min is None:
-        y_min = 0.
-    if y_max is None:
-        y_max = 1.35 * (y_max_value - y_min)
-    y_max_line = y_max / 1.35 + y_min
+    y_min, y_max, y_max_line = get_y_range(0., y_max_value, y_min, y_max)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
@@ -336,20 +332,26 @@ def remove_outliers(toys, sigma_outlier=10.):
 
 
 def create_integration_graph(hist, data, y_offset=0):
-    # get the index of the bin in hist that contains the data point
-    x_axis = hist.GetXaxis()
-    for b_data in range(1, x_axis.GetNbins() + 1):
-        if x_axis.GetBinLowEdge(b_data) <= data < x_axis.GetBinLowEdge(b_data + 1):
-            break
-    else:
-        return create_tgraph(1, -1e6, 0)
-
     # create a graph with errors that mimics the area under the histogram
     x_values, x_widths, y_heights = [], [], []
+
+    # get the index of the bin in the hist that contains the data point
+    x_axis = hist.GetXaxis()
+    if data < x_axis.GetXmin():
+        b_data = 0
+    else:
+        for b_data in range(1, x_axis.GetNbins() + 1):
+            if x_axis.GetBinLowEdge(b_data) <= data < x_axis.GetBinLowEdge(b_data + 1):
+                break
+        else:
+            return create_tgraph(1, -1e6, 0)
+
     # add the bin that was hit by the data point
-    x_values.append(data)
-    x_widths.append(x_axis.GetBinLowEdge(b_data + 1) - data)
-    y_heights.append(hist.GetBinContent(b_data) - y_offset)
+    if b_data > 0:
+        x_values.append(data)
+        x_widths.append(x_axis.GetBinLowEdge(b_data + 1) - data)
+        y_heights.append(hist.GetBinContent(b_data) - y_offset)
+
     # fill the remaining bins
     for b in range(b_data + 1, x_axis.GetNbins() + 1):
         x_values.append(x_axis.GetBinLowEdge(b))
