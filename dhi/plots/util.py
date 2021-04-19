@@ -101,7 +101,7 @@ def draw_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_o
 def create_hh_process_label(poi="r", br=None):
     return "pp #rightarrow {}{}".format(
         {"r": "HH (incl.)", "r_gghh": "HH", "r_qqhh": "HHqq", "r_vhh": "VHH"}.get(poi, "HH"),
-        "#scale[0.75]{{ ({})}}".format(to_root_latex(br_hh_names[br])) if br in br_hh_names else "",
+        " ({})".format(to_root_latex(br_hh_names[br])) if br in br_hh_names else "",
     )
 
 

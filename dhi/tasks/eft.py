@@ -414,7 +414,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
             "dhi.plots.limits.plot_benchmark_limits",
             path=output.path,
             data=data,
-            poi="r_gghh",
+            poi=self.poi,
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
@@ -533,7 +533,7 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scan",
             path=output.path,
-            poi="r_gghh",
+            poi=self.poi,
             scan_parameter=self.scan_parameter,
             expected_values=limit_values,
             observed_values=obs_values,

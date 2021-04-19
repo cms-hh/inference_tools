@@ -689,14 +689,14 @@ def plot_limit_points(
 def plot_benchmark_limits(
     path,
     data,
-    poi="r_gghh",
+    poi,
     y_min=None,
     y_max=None,
     y_log=False,
     xsec_unit="fb",
     hh_process=None,
     campaign=None,
-    bar_width=0.66,
+    bar_width=0.6,
 ):
     """
     Creates a plot showing a the limits of BSM benchmarks for a *poi* and saves it at *path*. *data*
