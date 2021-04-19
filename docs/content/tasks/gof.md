@@ -18,8 +18,11 @@ law run PlotGoodnessOfFit \
     --version dev \
     --datacards $DHI_EXAMPLE_CARDS \
     --toys 1000 \
-    --toys-per-task 20
+    --toys-per-task 20 \
+    --frequentist-toys
 ```
+
+Please note that frequentist toys (nuisance parameters set to nominal ==post-fit== values) are [recommended](http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/commonstatsmethods/#goodness-of-fit-tests) when using the *saturated* algorithm which is the default in the above command.
 
 Output:
 
@@ -99,8 +102,11 @@ law run PlotMultipleGoodnessOfFits \
     --multi-datacards $DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF:$DHI_EXAMPLE_CARDS \
     --datacard-names ggF,VBF,Combined \
     --toys 1000 \
-    --toys-per-task 20
+    --toys-per-task 20 \
+    --frequentist-toys
 ```
+
+Please note that frequentist toys (nuisance parameters set to nominal ==post-fit== values) are [recommended](http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/commonstatsmethods/#goodness-of-fit-tests) when using the *saturated* algorithm which is the default in the above command.
 
 Output:
 

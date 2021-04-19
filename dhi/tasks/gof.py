@@ -34,6 +34,11 @@ class GoodnessOfFitBase(POITask):
         description="the algorithm to use; possible choices are 'saturated', 'KS' and 'AD'; "
         "default: saturated",
     )
+    frequentist_toys = luigi.BoolParameter(
+        default=False,
+        description="use frequentist toys (nuisance parameters set to nominal post-fit values); "
+        "recommended for the 'saturated' algorithm; default: False",
+    )
 
     unblinded = None
     allow_parameter_values_in_pois = True
@@ -46,7 +51,10 @@ class GoodnessOfFitBase(POITask):
 
     @property
     def toys_postfix(self):
-        return "t{}_pt{}".format(self.toys, self.toys_per_task)
+        postfix = "t{}_pt{}".format(self.toys, self.toys_per_task)
+        if self.frequentist_toys:
+            postfix += "_freq"
+        return postfix
 
 
 class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
@@ -59,6 +67,12 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
         # check that the number of toys is positive
         if self.toys <= 0:
             raise ValueError("{!r}: number of toys must be positive for GOF tests".format(self))
+
+        # print a warning when the saturated algorithm is use without frequentist toys
+        if self.algorithm == "saturated" and not self.frequentist_toys:
+            self.logger.warning("it is recommended for goodness-of-fit tests with the "
+                "'saturated' algorithm to use frequentiest toys, so please consider adding "
+                "--frequentist-toys to the {} task".format(self.__class__.__name__))
 
     def create_branch_map(self):
         # the branch map refers to indices of toys in that branch, with 0 meaning the test on data
@@ -83,14 +97,18 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
         return self.local_target(name + ".root")
 
     def build_command(self):
-        # skip toys for the measurement (branch 0)
-        branch_opts = "" if self.branch == 0 else "--toys {}".format(len(self.branch_data))
+        # toy options
+        toy_opts = ""
+        if self.branch > 0:
+            toy_opts = "--toys {}".format(len(self.branch_data))
+            if self.frequentist_toys:
+                toy_opts += " --toysFrequentist"
 
         return (
             "combine -M GoodnessOfFit {workspace}"
             " --verbose 1"
             " --mass {self.mass}"
-            " {branch_opts}"
+            " {toy_opts}"
             " --seed {self.branch}"
             " --algo {self.algorithm}"
             " --redefineSignalPOIs {self.joined_pois}"
@@ -105,7 +123,7 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
             self=self,
             workspace=self.input().path,
             output=self.output().path,
-            branch_opts=branch_opts,
+            toy_opts=toy_opts,
         )
 
     def htcondor_output_postfix(self):
@@ -236,7 +254,10 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
     @property
     def toys_postfix(self):
         tpl_to_str = lambda tpl: "_".join(map(str, tpl))
-        return "t{}_pt{}".format(tpl_to_str(self.toys), tpl_to_str(self.toys_per_task))
+        postfix = "t{}_pt{}".format(tpl_to_str(self.toys), tpl_to_str(self.toys_per_task))
+        if self.frequentist_toys:
+            postfix += "_freq"
+        return postfix
 
     def requires(self):
         return [
