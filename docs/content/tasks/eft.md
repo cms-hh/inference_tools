@@ -5,6 +5,7 @@ This entails two major differences in the preparation of datacards and the steer
 **Datacards**
 
 The datacards for the various EFT benchmarks and *c2* values should be prepared according to the central [EFT documentation](https://gitlab.cern.ch/hh/eft-benchmarks).
+In particular, please make sure that your ggF signal is normalized to a hypothetical cross section of 1fb times the branching ratio of your channel, and that VBF processes (`qqHH_*`) are marked as background by attributing them a positive process id.
 Names of datacard files should have the following format:
 
 - Benchmarks: `datacard_<NAME>.txt`, where `NAME` is the name of the particular benchmark.
@@ -115,7 +116,7 @@ law run PlotEFTBenchmarkLimits \
 
 ### Scan of `c2`
 
-The `PlotEFTUpperLimits` task shows the upper limits on the rate of HH production via gluon-gluon fusion (POI `r_gghh`) obtained for several EFT coupling values.
+The `PlotEFTUpperLimits` task shows the upper limits on the rate of HH production via gluon-gluon fusion (POI `r_gghh`) obtained for several EFT coupling values at NLO.
 As described above, datacard names should have the format `datacard_c2_<VALUE>.txt`.
 
 - [Quick example](#quick-example_1)
