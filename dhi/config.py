@@ -106,6 +106,7 @@ poi_data = DotDict(
     r=DotDict(range=(-20.0, 20.0), label="r"),
     r_gghh=DotDict(range=(-20.0, 20.0), label="r_{gghh}"),
     r_qqhh=DotDict(range=(-20.0, 20.0), label="r_{qqhh}"),
+    r_vhh=DotDict(range=(-20.0, 20.0), label="r_{vhh}"),
     kl=DotDict(range=(-30.0, 30.0), label=r"\kappa_{\lambda}"),
     kt=DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}"),
     C2V=DotDict(range=(-10.0, 10.0), label=r"\kappa_{VV}"),

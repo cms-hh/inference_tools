@@ -147,13 +147,21 @@ class HHModelTask(AnalysisTask):
             get_ggf_xsec = module.create_ggf_xsec_func(model.ggf_formula)
             get_xsec = functools.partial(get_ggf_xsec, nnlo=model.doNNLOscaling)
             signature_kwargs = set(inspect.getargspec(get_ggf_xsec).args) - {"nnlo"}
+            has_unc = bool(model.doNNLOscaling)
         elif r_poi == "r_qqhh":
             get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
             signature_kwargs = set(inspect.getargspec(get_xsec).args)
+            has_unc = True
+        elif r_poi == "r_vhh":
+            get_xsec = module.create_vhh_xsec_func(model.vhh_formula)
+            signature_kwargs = set(inspect.getargspec(get_xsec).args)
+            has_unc = False
         else:  # r
+            # TODO: vhh_formula disabled at the moment
             get_hh_xsec = module.create_hh_xsec_func(model.ggf_formula, model.vbf_formula)
             get_xsec = functools.partial(get_hh_xsec, nnlo=model.doNNLOscaling)
             signature_kwargs = set(inspect.getargspec(get_hh_xsec).args) - {"nnlo"}
+            has_unc = True
 
         # compute the scale conversion
         scale = {"pb": 1.0, "fb": 1000.0}[unit]
@@ -166,6 +174,9 @@ class HHModelTask(AnalysisTask):
                 # remove all kwargs that are not accepted
                 kwargs = {k: v for k, v in kwargs.items() if k in signature_kwargs}
             return get_xsec(**kwargs) * scale
+
+        # store whether it accepts an uncertainty
+        wrapper.has_unc = has_unc
 
         return wrapper
 
@@ -209,13 +220,10 @@ class HHModelTask(AnalysisTask):
         # create the xsec getter
         get_xsec = cls._create_xsec_func(hh_model, r_poi, unit, br=br)
 
-        # for certain cases, also obtain errors
-        has_unc = r_poi == "r_qqhh" or cls._load_hh_model(hh_model)[1].doNNLOscaling
-
         # store as records
         records = []
         dtype = [(p, np.float32) for p in param_names] + [("xsec", np.float32)]
-        if has_unc:
+        if get_xsec.has_unc:
             dtype.extend([("xsec_p1", np.float32), ("xsec_m1", np.float32)])
         for values in param_values:
             # prepare the xsec kwargs
@@ -225,7 +233,7 @@ class HHModelTask(AnalysisTask):
 
             # create the record, potentially with uncertainties and normalization
             record = values + (get_xsec(**_xsec_kwargs),)
-            if has_unc:
+            if get_xsec.has_unc:
                 record += (
                     get_xsec(unc="up", **_xsec_kwargs),
                     get_xsec(unc="down", **_xsec_kwargs),
@@ -302,6 +310,7 @@ class MultiHHModelTask(HHModelTask):
     )
 
     hh_model = None
+    allow_empty_hh_model = True
     split_hh_model = None
     load_hh_model = None
     create_xsec_func = None
@@ -874,7 +883,7 @@ class ParameterScanTask(AnalysisTask):
 
 class POITask(DatacardTask, ParameterValuesTask):
 
-    r_pois = ("r", "r_qqhh", "r_gghh")
+    r_pois = ("r", "r_qqhh", "r_gghh", "r_vhh")
     k_pois = ("kl", "kt", "CV", "C2V")
     all_pois = r_pois + k_pois
 
