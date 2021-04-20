@@ -181,7 +181,7 @@ optional arguments:
 > merge_parameters.py --help
 
 usage: merge_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
-                           [--flip-parameters FLIP_PARAMETERS]
+                           [--unique] [--flip-parameters FLIP_PARAMETERS]
                            [--auto-rate-flip] [--auto-rate-max]
                            [--auto-rate-envelope] [--auto-shape-average]
                            [--auto-shape-envelope] [--digits DIGITS]
@@ -223,6 +223,8 @@ optional arguments:
                         changed in-place
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
+  --unique, -u          only merge parameters when at most on of them as an
+                        effect in a bin process pair
   --flip-parameters FLIP_PARAMETERS
                         comma-separated list of parameters whose effect should
                         be flipped, i.e., flips effects of up and down

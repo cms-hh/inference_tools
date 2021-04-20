@@ -36,7 +36,7 @@ from dhi.util import (
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
-def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=False,
+def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=False, unique=False,
         flip_parameters=None, auto_rate_flip=False, auto_rate_max=False, auto_rate_envelope=False,
         auto_shape_average=False, auto_shape_envelope=False, digits=4, mass="125"):
     """
@@ -44,18 +44,21 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
     parameter *new_name*. A pattern can be a parameter name, a pattern that is matched via fnmatch,
     or a file containing patterns. The matched parameters are required to have the exact same type.
     Currently, only parameters with columnar type "lnN", "lnU" and "shape" are supported.
-    *flip_parameters* can be a list of names or patterns matching parameters whose effect should be
-    flipped, i.e., the effect of its up and down variation will be interchanged.
+    When *unique* is *True*, the merging is only done when there is at most one parameter in each
+    bin process pair with a non-zero effect. This effectively "zips" multiple parameters a creates a
+    new one, without actually merging effects. *flip_parameters* can be a list of names or patterns
+    matching parameters whose effect should be flipped, i.e., the effect of its up and down
+    variation will be interchanged.
 
     The combination of uncertainties is usually not trivial and situations where no standard recipe
-    exists occur quite often. In these cases, the default behavior of this function is to raise an
-    exception unless explicitly configured not to do so. There are three cases handled for "lnN" and
-    "lnU", and two cases for "shape" parameters.
+    exists probably occur quite often. In these cases, the default behavior of this function is to
+    raise an exception unless explicitly configured per case not to do so. There are three cases
+    handled for "lnN" and "lnU", and two cases for "shape" parameters.
 
     1. lnN/lnU: Multiple asymmetric rate uncertainties are not allowed to have effects pointing in
        different directions, leading to situations where a positive and a negative uncertainty are
        to be combined. When *auto_rate_flip* is *True*, the effects are automatically interchanged
-       so that a combination makes sense.
+       so that their combination is reasonable.
 
     2. lnN/lnU: Asymmetric rate uncertainty with both variations pointing in the same direction
        (one-sided effects) are not allowed. When *auto_rate_max* is *True*, the maximum value will
@@ -66,16 +69,16 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
        prevents errors described in 1. and 2. above.
 
     1. shape: The merging of shapes is done bin-wise with the uncertainty defined by each bin being
-       propagated by addition in quadrature. When the input shapes contain both negative and
-       positive effects in the same bin, there is no consistent way for combining errors and an
-       error is raised. When *auto_shape_average* is *True*, positive and negative merged components
-       will be determined first, and averaged afterwards. This approach is highly experimental and
-       should not be used extensively to merge incompatible systematics which would rather need more
-       insight on analysis level.
+       propagated by summing in quadrature. When the input shapes contain both negative and positive
+       effects in the same bin, there is no consistent way of combining errors and an error is
+       raised. When *auto_shape_average* is *True*, positive and negative merged components will be
+       determined first, and averaged afterwards. This approach is highly experimental and should
+       not be used extensively to merge incompatible systematics which would rather need more
+       insight and handling on analysis level.
 
     2. shape: When *auto_shape_envelope* is *True*, shapes are not combined by means of uncorrelated
        error propagation, but the envelopes for up and down variations are constructed instead. This
-       intrinsically prevents errors described in 1. above.
+       intrinsically prevents errors described in case 1 above.
 
     The merged effects of "lnN" and "lnU" parameters are rounded using *digits*. When *directory* is
     *None*, the input *datacard* is updated in-place. Otherwise, both the changed datacard and all
@@ -205,7 +208,27 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
             for col in range(n_cols)
         ]
 
-        # loop though bin, process and effects within the context of a tfile cache to handle files
+        # check if the merging is supposed to be unique per bin process pair
+        if unique:
+            n_effects = [len(set(eff) - {(empty_value,)}) for eff in effects]
+            non_unique = [
+                (bin_name, process_name, n)
+                for (bin_name, process_name, n) in zip(bin_names, process_names, n_effects)
+                if n > 1
+            ]
+            if non_unique:
+                msg = "found {} case(s) where parameters need to be merged across bin process " \
+                    "pairs but unique merging was configured:".format(len(non_unique))
+                for i in range(5):
+                    msg += "\n    bin: {0[0]}, process {0[1]}: effects: {0[2]}".format(
+                        non_unique[i])
+                    if len(non_unique) <= i + 1:
+                        break
+                else:
+                    msg += "\n    ... and {} more".format(len(non_unique) - i - 1)
+                raise Exception(msg)
+
+        # loop though bin, process and effects within the context of a tfile cache
         with TFileCache(logger=logger) as tcache:
             merged_effects = []
             for bin_name, process_name, eff in zip(bin_names, process_names, effects):
@@ -385,6 +408,11 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                         # under consideration of the auto_rate_* settings
                         comb_d = []
                         comb_u = []
+                        def add_unc(d, u):
+                            if d and u:
+                                comb_d.append(d)
+                                comb_u.append(u)
+
                         for name, d, u in zip(removed_param_names, uncs_d, uncs_u):
                             # manually flip variations
                             if flip_parameters and multi_match(name, flip_parameters):
@@ -409,45 +437,52 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                             # check the orientation of effects for later combination in quadrature
                             if d <= 0 and u >= 0:
                                 # default case, no further action required
-                                comb_d.append(d)
-                                comb_u.append(u)
+                                add_unc(d, u)
 
                             elif d >= 0 and u <= 0:
                                 # flipped case
-                                if not auto_rate_flip:
-                                    raise Exception("the signs of down ({}) and up ({}) variations "
-                                        "of parameter {} in bin {} and process {} are mixed and "
-                                        "automatic flipping is not allowed".format(d, u, name,
-                                        bin_name, process_name))
+                                # only consider this an issue when there were non-flipped variations
+                                # of previously seen parameters
+                                first_flipped = comb_d and comb_d[0] >= 0 and comb_u[0] <= 0
+                                if not first_flipped:
+                                    # no issue (yet), just add
+                                    comb_d.append(d)
+                                    comb_u.append(u)
+                                else:
+                                    if not auto_rate_flip:
+                                        raise Exception("the signs of down ({}) and up ({}) "
+                                            "variations of parameter {} with effect {} in bin {} "
+                                            "and process {} are mixed and automatic flipping is "
+                                            "not enabled".format(
+                                            d, u, name, f, bin_name, process_name))
 
-                                comb_d.append(u)
-                                comb_u.append(d)
-                                logger.warning("automatically flipped down ({}) and up ({}) "
-                                    "variations of parameter {} in bin {} and process {}".format(d,
-                                    u, name, bin_name, process_name))
+                                    add_unc(d=u, u=d)
+                                    logger.warning("automatically flipped down ({}) and up ({}) "
+                                        "variations of parameter {} in bin {} and process {}".format(
+                                        d, u, name, bin_name, process_name))
 
                             else:
                                 # both effects are either negative or positive
                                 if not auto_rate_max:
                                     raise Exception("the down ({}) and up ({}) variations of "
-                                        "parameter {} in bin {} and process {} are one-sided and "
-                                        "automatic maximum selection is not allowed".format(d, u,
-                                        name, bin_name, process_name))
+                                        "parameter {} with effect {} in bin {} and process {} are "
+                                        "one-sided and automatic maximum selection is not "
+                                        "enabled".format(d, u, name, f, bin_name, process_name))
 
                                 max_value = d if max(abs(d), abs(u)) == abs(d) else u
                                 if max_value > 0:
-                                    comb_d.append(0.)
-                                    comb_u.append(max_value)
+                                    add_unc(d=0., u=max_value)
                                 else:
-                                    comb_d.append(max_value)
-                                    comb_u.append(0.)
+                                    add_unc(d=max_value, u=0.)
                                 logger.warning("automatically built envelope of down ({}) and up "
                                     "({}) variations of parameter {} in bin {} and process "
                                     "{}".format(d, u, name, bin_name, process_name))
 
-                        # create the merged effect
-                        unc_d = -sum(d**2. for d in comb_d)**0.5
-                        unc_u = sum(u**2. for u in comb_u)**0.5
+                        # create the merged effect with relative signs inferred from the first value
+                        sign_d = -1 if comb_d[0] < 0 else 1
+                        sign_u = -1 if comb_u[0] < 0 else 1
+                        unc_d = sign_d * sum(d**2. for d in comb_d)**0.5
+                        unc_u = sign_u * sum(u**2. for u in comb_u)**0.5
                         merged_effect = "{}/{}".format(rnd(unc2ln(unc_d)), rnd(unc2ln(unc_u)))
                 else:
                     # this should never happen
@@ -486,6 +521,8 @@ if __name__ == "__main__":
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
         "the output directory when --directory is set")
+    parser.add_argument("--unique", "-u", action="store_true", help="only merge parameters when at "
+        "most on of them as an effect in a bin process pair")
     parser.add_argument("--flip-parameters", help="comma-separated list of parameters whose effect "
         "should be flipped, i.e., flips effects of up and down variations; supports patterns")
     parser.add_argument("--auto-rate-flip", action="store_true", help="only for lnN and lnU; when "
@@ -520,7 +557,7 @@ if __name__ == "__main__":
     # run the merging
     with patch_object(logger, "name", args.log_name):
         merge_parameters(args.input, args.merged, args.names, directory=args.directory,
-            skip_shapes=args.no_shapes, flip_parameters=flip_parameters,
+            skip_shapes=args.no_shapes, unique=args.unique, flip_parameters=flip_parameters,
             auto_rate_flip=args.auto_rate_flip, auto_rate_max=args.auto_rate_max,
             auto_rate_envelope=args.auto_rate_envelope, auto_shape_average=args.auto_shape_average,
             auto_shape_envelope=args.auto_shape_envelope, digits=args.digits, mass=args.mass)
