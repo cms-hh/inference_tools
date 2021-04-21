@@ -214,12 +214,15 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
 
                 # check rateParam's
                 if param_type == "rateParam" and len(param_line) >= 4:
-                    bin_name, proc_name = param_line[2:4]
-                    if not multi_match(bin_name, new_bin_names) or \
-                            not multi_match(proc_name, new_process_names):
+                    bin_pattern, proc_pattern = param_line[2:4]
+                    for bin_name, proc_name in zip(new_bin_names, new_process_names):
+                        if multi_match(bin_name, bin_pattern) and \
+                                multi_match(proc_name, proc_pattern):
+                            break
+                    else:
                         to_remove.append(i)
-                        logger.debug("remove {} {} with no matching bin or process left".format(
-                            param_type, param_name))
+                        logger.debug("remove '{}' with no matching bin or process left".format(
+                            " ".join(param_line)))
 
             # change lines in-place
             drop_datacard_lines(blocks, "parameters", to_remove)
@@ -243,11 +246,14 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
                 edit_line = edit_line.split()
                 if len(edit_line) < 5 or tuple(edit_line[:2]) != ("nuisance", "edit"):
                     continue
-                action, proc_name, bin_name = edit_line[2:5]
+                action, proc_pattern, bin_pattern = edit_line[2:5]
 
                 if action in ["add", "drop", "split", "merge"]:
-                    if not multi_match(bin_name, new_bin_names) or \
-                            not multi_match(proc_name, new_process_names):
+                    for bin_name, proc_name in zip(new_bin_names, new_process_names):
+                        if multi_match(bin_name, bin_pattern) and \
+                                multi_match(proc_name, proc_pattern):
+                            break
+                    else:
                         to_remove.append(i)
                         logger.debug("remove nuisance edit action {} in bin {} and process {} with "
                             "no matching bin or process left".format(action, bin_name, proc_name))

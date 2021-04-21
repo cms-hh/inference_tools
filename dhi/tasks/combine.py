@@ -22,7 +22,7 @@ from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, LocalFileTarget
 from dhi.config import poi_data, br_hh
 from dhi.util import linspace, try_int
 from dhi.datacard_tools import bundle_datacard
-from dhi.scripts.remove_processes import remove_processes as remove_processes_script
+from dhi.scripts import remove_processes as remove_processes_script
 
 
 def require_hh_model(func):
@@ -1301,7 +1301,8 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
                 self.logger.info("trying to remove processe(s) '{}' from the combined datacard as "
                     "they are not part of the phyics model {}".format(
                         ",".join(to_remove), self.hh_model))
-                remove_processes_script(output_card.path, map("{}*".format, to_remove))
+                remove_processes_script.remove_processes(
+                    output_card.path, map("{}*".format, to_remove))
 
         # copy shape files and the datacard to the output location
         output = self.output()
