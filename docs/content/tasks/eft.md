@@ -11,27 +11,59 @@ Names of datacard files should have the following format:
 - Benchmarks: `datacard_<NAME>.txt`, where `NAME` is the name of the particular benchmark.
 - *c2* scan: `datacard_c2_<VALUE>.txt`, where `VALUE` is the corresponding value of *c2*. The value parsing accepts two different formats, i.e. `1.5` or `1d5` for positive, and `-1.5` or `m1d5` for negative numbers.
 
+When working with the provided law tasks, the accepted datacard naming scheme can be slightly adapted to cover scenarios where several datacards of the same EFT benchmark or *c2* value are located in the same directory.
+See the **task parameters** section below for more information.
+
 ==If your datacards contribute to the HH combination==, please make sure to use the ==exact same== naming scheme for processes, bins and parameters as the other datacards provided by your channel.
 
 **Task parameters**
 
 As benchmark names and *c2* values are extracted from names of the datacard files, the usual `--datacards` parameter cannot be used as it would not support the combination of cards across multiple channels.
-The tasks below use the `--multi-datacards` parameter instead, allowing multiple sequences of files, separated by `:`, to be passed in the format `ch1/cardA,ch1/cardB:ch2/cardA,ch2/cardB`
-In this example, the different sequences could correspond to different analysis channels.
-Files with the same (base)name across sequences will be combined by means of the `CombineDatacards` task.
+
+The tasks below use the `--multi-datacards` parameter instead, allowing multiple sequences of files, separated by `:`, to be passed in the format `ch1/cardA,ch1/cardB:ch2/cardA,ch2/cardB`.
+In this example, the different sequences `ch1/cardA,ch1/cardB` and `ch2/cardA,ch2/cardB` could correspond to different analysis channels.
+**Files with the same (base)name across sequences will be combined** by means of the `CombineDatacards` task.
 Therefore, a valid example is
 
 ```shell
 --multi-datacards 'my_cards/datacard_c2_*.txt'
 ```
 
-for a single channel, and
+for a **single channel**, and
 
 ```shell
 --multi-datacards 'bbbb/datacard_c2_*.txt:bbgg/datacard_c2_*.txt'
 ```
 
-for multiple channels, where datacards corresponding to the same *c2* value will be combined across the channels.
+for **multiple channels**, where datacards corresponding to the same *c2* value will be combined across the channels.
+
+When datacards of the same EFT benchmark or *c2* value are located in the same directory (unlike the example above which assumes that files are placed in different subdirectories), you can use the `--datacard-pattern` parameter to select the datacards per sequence and to extract either the benchmark name or *c2* value.
+
+Consider a directory that contains 6 files
+
+```
+datacard_c2_0.5_A.txt
+datacard_c2_1.0_A.txt
+datacard_c2_1.5_A.txt
+datacard_c2_0.5_B.txt
+datacard_c2_1.0_B.txt
+datacard_c2_1.5_B.txt
+```
+
+and you want to perform the *c2* scan **only** for datacards `A`.
+In case, one can use
+
+```shell
+--multi-datacards 'datacard_c2_*.txt' --datacard-pattern 'datacard_c2_(.*)_A.txt'
+```
+
+where the pattern `datacard_c2_(.*)_A.txt` is used both to select files from all matches of `--multi-datacards` and to extract the corresponding *c2* value via the regex group `(.*)`.
+
+If you like to perform the scan for `A` **and* `B`, with datacards of the same *c2* value being combined first, you can add another pattern separated by comma,
+
+```shell
+--multi-datacards 'datacard_c2_*.txt' --datacard-pattern 'datacard_c2_(.*)_A.txt,datacard_c2_(.*)_B.txt'
+```
 
 
 ### Benchmark limits

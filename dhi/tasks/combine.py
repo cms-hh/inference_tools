@@ -1177,9 +1177,7 @@ class InputDatacards(DatacardTask, law.ExternalTask):
     allow_empty_hh_model = True
 
     def output(self):
-        return law.TargetCollection(
-            [law.LocalFileTarget(self.split_datacard_path(card)[0]) for card in self.datacards]
-        )
+        return [law.LocalFileTarget(self.split_datacard_path(card)[0]) for card in self.datacards]
 
 
 class CombineCommandTask(CommandTask):

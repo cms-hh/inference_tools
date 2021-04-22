@@ -27,11 +27,12 @@ from dhi.config import br_hh
 
 class EFTBase(MultiDatacardTask):
 
-    datacard_pattern = luigi.Parameter(
-        default="datacard_(.+).txt",
-        description="regular expression for extracting benchmark names from basenames of datacards "
-        "with a single group; when set on the command line, single quotes should be used; "
-        "default: datacard_(.+).txt",
+    datacard_pattern = law.CSVParameter(
+        default=("datacard_(.+).txt",),
+        description="one or multiple comma-separated regular expressions for selecting datacards "
+        "from each of the sequences passed in --multi-datacards, and for extracting information "
+        "with a single regex group; when set on the command line, single quotes should be used; "
+        "default: ('datacard_(.+).txt',)",
     )
     frozen_parameters = law.CSVParameter(
         default=(),
@@ -50,8 +51,13 @@ class EFTBase(MultiDatacardTask):
         default=False,
         description="unblinded computation and plotting of results; default: False",
     )
+    datacard_pattern_matches = law.CSVParameter(
+        default=(),
+        significant=False,
+        description="internal parameter, do not use"
+    )
 
-    exclude_params_index = {"datacard_names", "datacard_order"}
+    exclude_params_index = {"datacard_names", "datacard_order", "datacard_pattern_matches"}
 
     hh_model = law.NO_STR
     datacard_names = None
@@ -64,16 +70,39 @@ class EFTBase(MultiDatacardTask):
     def modify_param_values(cls, params):
         params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
 
-        # re-group multi datacards by basenames
-        if "multi_datacards" in params:
+        # re-group multi datacards by basenames, filter with datacard_pattern and store matches
+        if "multi_datacards" in params and "datacard_pattern" in params \
+                and not params.get("datacard_pattern_matches"):
+            # when there is one pattern and multiple datacards or vice versa, expand the former
+            patterns = params["datacard_pattern"]
+            multi_datacards = params["multi_datacards"]
+            if len(patterns) == 1 and len(multi_datacards) > 1:
+                patterns *= len(params["multi_datacards"])
+            elif len(patterns) > 1 and len(multi_datacards) == 1:
+                multi_datacards *= len(patterns)
+            elif len(patterns) != len(multi_datacards):
+                raise ValueError("the number of patterns in --datacard-pattern ({}) does not "
+                    "match the number of datacard sequences in --multi-datacards ({})".format(
+                        len(patterns), len(params["multi_datacards"])))
+
+            # assign datacards to groups, based on the matched group
             groups = defaultdict(set)
-            for datacards in params["multi_datacards"]:
+            for datacards, pattern in zip(multi_datacards, patterns):
+                n_matches = 0
                 for datacard in datacards:
-                    groups[os.path.basename(datacard)].add(datacard)
-            params["multi_datacards"] = tuple(sorted(
-                tuple(sorted(datacards))
-                for datacards in groups.values()
-            ))
+                    # apply the pattern to the basename
+                    m = re.match(pattern, os.path.basename(datacard))
+                    if m:
+                        groups[m.group(1)].add(datacard)
+                        n_matches += 1
+                if not n_matches:
+                    raise Exception("the datacard pattern '{}' did not match any of the selected "
+                        "datacards\n  {}".format(pattern, "\n  ".join(datacards)))
+
+            # sort cards, assign back to multi_datacards and store the pattern matches
+            params["multi_datacards"] = tuple(tuple(sorted(cards)) for cards in groups.values())
+            params["datacard_pattern_matches"] = tuple(groups.keys())
+            params["datacard_pattern"] = tuple(patterns)
 
         # sort frozen parameters
         if "frozen_parameters" in params:
@@ -89,21 +118,7 @@ class EFTBase(MultiDatacardTask):
         super(EFTBase, self).__init__(*args, **kwargs)
 
         # create a map of datacard names (e.g. benchmark number or EFT parameters) to datacard paths
-        self.eft_datacards = {}
-        for datacards in self.multi_datacards:
-            # check if all basenames are identical
-            basenames = set(map(os.path.basename, datacards))
-            if len(basenames) != 1:
-                raise Exception("found multiple basenames {} in datacards:\n  {}".format(
-                    ",".join(basenames), "\n  ".join(datacards)))
-
-            # extract the name
-            basename = list(basenames)[0]
-            m = re.match(self.datacard_pattern, basename)
-            if not m:
-                raise ValueError("datacard basename {} does not match pattern '{}'".format(
-                    basename, self.datacard_pattern))
-            self.eft_datacards[m.group(1)] = datacards
+        self.eft_datacards = dict(zip(self.datacard_pattern_matches, self.multi_datacards))
 
     def store_parts(self):
         parts = super(EFTBase, self).store_parts()
