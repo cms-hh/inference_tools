@@ -125,14 +125,16 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
             # keep track of shapes yet to be updated
             unhandled_shapes = renamer.get_bin_process_pairs()
 
-            # extract shape lines that have a systematic pattern and sort them so that most specific
-            # ones (i.e. without wildcards) come first
+            # extract shape lines, sort them so that most specific ones (no wildcards) come first
             shape_lines = [ShapeLine(line, j) for j, line in enumerate(blocks["shapes"])]
-            shape_lines = [shape_line for shape_line in shape_lines if shape_line.syst_pattern]
             shape_lines.sort(key=lambda shape_line: shape_line.sorting_weight)
 
             # go through shape lines and do the renaming
             for shape_line in shape_lines:
+                # skip fake shape lines and those without a systematic pattern
+                if shape_line.is_fake or not shape_line.syst_pattern:
+                    continue
+
                 # work on a temporary copy of the shape file
                 src_path = os.path.join(os.path.dirname(renamer.datacard), shape_line.file)
                 tfile = renamer.open_tfile(src_path, "UPDATE")

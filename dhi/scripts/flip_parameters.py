@@ -120,14 +120,15 @@ def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass=
                         if f == "-" or skip_shapes or not blocks.get("shapes"):
                             continue
 
-                        # extract shape lines that have a systematic pattern and sort them so
-                        # that most specific ones (i.e. without wildcards) come first
+                        # extract shape lines, sort them so that most specific ones (no wildcards)
+                        # come first
                         shape_lines = [ShapeLine(l, k) for k, l in enumerate(blocks["shapes"])]
-                        shape_lines = [sl for sl in shape_lines if sl.syst_pattern]
                         shape_lines.sort(key=lambda sl: sl.sorting_weight)
 
                         # find the first shape line that matches bin and process
                         for sl in shape_lines:
+                            if sl.is_fake or not sl.syst_pattern:
+                                continue
                             if not multi_match(bin_name, sl.bin):
                                 continue
                             if not multi_match(process_name, sl.process):

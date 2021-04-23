@@ -158,10 +158,8 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
         shape_lines = None
         if new_type == "shape":
             if blocks.get("shapes"):
-                # prepare shape lines that have a systematic pattern and sort them so that most
-                # specific ones (i.e. without wildcards) come first
+                # extract shape lines, sort them so that most specific ones (no wildcards) come first
                 shape_lines = [ShapeLine(line, j) for j, line in enumerate(blocks["shapes"])]
-                shape_lines = [shape_line for shape_line in shape_lines if shape_line.syst_pattern]
                 shape_lines.sort(key=lambda shape_line: shape_line.sorting_weight)
 
             if not shape_lines:
@@ -237,6 +235,8 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                 if new_type == "shape":
                     # get the most specific shape line that applies to the bin process pair
                     for shape_line in shape_lines:
+                        if shape_line.is_fake or not shape_line.syst_pattern:
+                            continue
                         if multi_match(bin_name, shape_line.bin) and \
                                 multi_match(process_name, shape_line.process):
                             break

@@ -115,7 +115,7 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
 
                 # work on a temporary copy of the shape file
                 tfile = None
-                if not skip_shapes:
+                if not skip_shapes and not shape_line.is_fake:
                     src_path = os.path.join(os.path.dirname(renamer.datacard), shape_line.file)
                     tfile = renamer.open_tfile(src_path, "UPDATE")
 
@@ -127,6 +127,14 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                         continue
                     unhandled_shapes.remove((bin_name, process_name))
                     process_is_wildcard = shape_line.process != process_name
+
+                    # rename the process when not a wildcard
+                    if not process_is_wildcard:
+                        new_shape_line.process = renamer.translate(process_name)
+
+                    # handle shape and pattern renaming below only when this is not a fake shape
+                    if shape_line.is_fake:
+                        continue
 
                     # get the expanded old and new shape names, the updated shape pattern
                     # and the owning object
@@ -156,10 +164,6 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                                     update_shape_name(towner, old_name, new_name)
                                 if not process_is_wildcard:
                                     new_shape_line.syst_pattern = new_pattern
-
-                    # rename the process when specified
-                    if not process_is_wildcard:
-                        new_shape_line.process = renamer.translate(process_name)
 
                 # add the new line back to blocks
                 blocks["shapes"][new_shape_line.i] = str(new_shape_line)

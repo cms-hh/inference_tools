@@ -260,11 +260,17 @@ class ShapeLine(object):
     @property
     def sorting_weight(self):
         w = self.i
+        if self.is_fake:
+            w += 10000
         if self.bin == "*":
-            w += 100000
-        if self.process == "*":
             w += 1000000
+        if self.process == "*":
+            w += 100000000
         return w
+
+    @property
+    def is_fake(self):
+        return self.f.lower() == "fake"
 
     def copy(self):
         return copy.copy(self)

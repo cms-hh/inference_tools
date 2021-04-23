@@ -201,8 +201,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
 
         # start a tfile cache for opening and updating shape files
         with TFileCache(logger=logger) as cache:
-            # prepare shape lines that have a systematic pattern and sort them so that most
-            # specific ones (i.e. without wildcards) come first
+            # extract shape lines, sort them so that most specific ones (no wildcards) come first
             shape_lines = [ShapeLine(line, j) for j, line in enumerate(blocks["shapes"])]
             shape_lines.sort(key=lambda shape_line: shape_line.sorting_weight)
 
@@ -216,11 +215,11 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
                 for proc_name in proc_names:
                     # find the shape line that applies
                     for shape_line in shape_lines:
+                        if shape_line.is_fake or not shape_line.nom_pattern:
+                            continue
                         if not multi_match(bin_name, shape_line.bin):
                             continue
                         if not multi_match(proc_name, shape_line.process):
-                            continue
-                        if not shape_line.nom_pattern:
                             continue
 
                         # reject shapes in workspaces
