@@ -22,7 +22,6 @@ Note: The use of an output directory is recommended to keep input files
 """
 
 import os
-import re
 
 from dhi.datacard_tools import (
     columnar_parameter_directives, ShapeLine, bundle_datacard, manipulate_datacard,
@@ -184,23 +183,24 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
         if blocks.get("parameters"):
             # columnar parameters
             if removed_columns:
-                expr = r"^([^\s]+)\s+({})\s+(.+)$".format("|".join(columnar_parameter_directives))
                 for i, param_line in enumerate(list(blocks["parameters"])):
-                    m = re.match(expr, param_line.strip())
-                    if not m:
+                    param_line = param_line.split()
+                    if len(param_line) < 3:
                         continue
 
                     # split the line
-                    param_name = m.group(1)
-                    param_type = m.group(2)
-                    columns = m.group(3).split()
+                    param_name, param_type = param_line[:2]
+                    if not multi_match(param_type, columnar_parameter_directives):
+                        continue
+
+                    columns = param_line[2:]
                     if max(removed_columns) >= len(columns):
                         raise Exception("parameter line {} '{} {} ...' has less columns than "
-                            "defined in rates".format(i, param_name, param_name))
+                            "defined in rates".format(i, param_name, param_type))
 
                     # remove columns and update the line
-                    logger.debug("remove {} column(s) from parameter {}".format(
-                        len(removed_columns), param_name))
+                    logger.debug("remove {} column(s) from {} parameter {} with {} columns".format(
+                        len(removed_columns), param_type, param_name, len(columns)))
                     columns = [c for j, c in enumerate(columns) if j not in removed_columns]
                     blocks["parameters"][i] = " ".join([param_name, param_type] + columns)
 

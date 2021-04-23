@@ -452,7 +452,11 @@ class DatacardTask(HHModelTask):
         paths = []
         bin_names = []
         store_dir = None
-        dc_path = os.path.expandvars("$DHI_DATACARDS_RUN2")
+        has_dcr2 = "DHI_DATACARDS_RUN2" in os.environ \
+                and os.path.isdir(os.path.expandvars("$DHI_DATACARDS_RUN2"))
+        if has_dcr2:
+            dc_path = os.path.realpath(os.path.expandvars("$DHI_DATACARDS_RUN2"))
+            in_dc_path = dc_path == os.path.realpath(os.getcwd())
         single_dc_matched = []
 
         # try to resolve all patterns
@@ -472,23 +476,21 @@ class DatacardTask(HHModelTask):
 
             # get matching paths
             pattern = os.path.expandvars(os.path.expanduser(pattern))
-            _paths = list(glob.glob(pattern))
+            _paths = [] if has_dcr2 and in_dc_path else list(glob.glob(pattern))
 
             # when the pattern did not match anything, repeat relative to the datacards_run2 dir
-            if not _paths and "DHI_DATACARDS_RUN2" in os.environ:
+            _single_dc_matched = False
+            if not _paths and has_dcr2:
                 _paths = list(glob.glob(os.path.join(dc_path, pattern)))
                 if len(_paths) == 1:
+                    _single_dc_matched = True
+
                     # special case: when there is a single matched card and no bin_name defined,
                     # use the basename of the path; this will most likely match the analysis channel
                     # name of cards to be combined
                     if not bin_name:
                         bin_name = os.path.basename(_paths[0])
-
-                    single_dc_matched.append(True)
-                else:
-                    single_dc_matched.append(False)
-            else:
-                single_dc_matched.append(False)
+            single_dc_matched.append(_single_dc_matched)
 
             # when directories are given, assume to find a file "datacard.txt"
             # when such a file does not exist, but a directory "latest" does, use it and try again
