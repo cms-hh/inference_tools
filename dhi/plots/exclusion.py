@@ -10,7 +10,7 @@ import numpy as np
 
 from dhi.config import poi_data, campaign_labels, colors, br_hh_names
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int
-from dhi.plots.limits import evaluate_limit_scan_1d
+from dhi.plots.limits import evaluate_limit_scan_1d, _print_excluded_ranges
 from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
 from dhi.plots.util import (
     use_style, draw_model_parameters, invert_graph, get_graph_points, get_contours, get_text_extent,
@@ -124,12 +124,14 @@ def plot_exclusion_and_bestfit_1d(
     draw_objs.append((h_dummy, "HIST"))
 
     # expected exclusion area from intersections of limit with 1
-    def create_exclusion_graph(data_key):
+    def create_exclusion_graph(kind):
+        data_key = kind + "_limits"
         excl_x, excl_y, excl_d, excl_u = [], [], [], []
         for i, d in enumerate(data):
             if data_key not in d:
                 continue
             ranges = evaluate_limit_scan_1d(scan_values, d[data_key]["limit"]).excluded_ranges
+            _print_excluded_ranges(scan_parameter, poi + " " + kind, scan_values, ranges)
             for start, stop in ranges:
                 is_left = start < 1 and stop < 1
                 excl_x.append(stop if is_left else start)
@@ -139,7 +141,7 @@ def plot_exclusion_and_bestfit_1d(
         return create_tgraph(len(excl_x), excl_x, excl_y, excl_d, excl_u, 0.5, 0.5)
 
     # expected
-    g_excl_exp = create_exclusion_graph("expected_limits")
+    g_excl_exp = create_exclusion_graph("expected")
     r.setup_graph(g_excl_exp, color=colors.black, color_flags="f",
         props={"FillStyle": 3345, "MarkerStyle": 20, "MarkerSize": 0, "LineWidth": 0})
     draw_objs.append((g_excl_exp, "SAME,2"))
@@ -147,7 +149,7 @@ def plot_exclusion_and_bestfit_1d(
 
     # observed
     if has_obs:
-        g_excl_obs = create_exclusion_graph("observed_limits")
+        g_excl_obs = create_exclusion_graph("observed")
         r.setup_graph(g_excl_obs, color=colors.blue_signal, color_flags="f",
             props={"FillStyle": 3354, "MarkerStyle": 20, "MarkerSize": 0, "LineWidth": 0})
         draw_objs.append((g_excl_obs, "SAME,2"))

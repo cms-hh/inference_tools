@@ -130,6 +130,11 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         default=False,
         description="apply log scaling to the y-axis when the plot is 1D; default: False",
     )
+    show_points = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="show points of central likelihood values when the plot is 1D; default: False",
+    )
 
     force_n_pois = (1, 2)
     force_n_scan_parameters = (1, 2)
@@ -196,6 +201,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 y_log=self.y_log,
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
+                show_points=self.show_points,
             )
         else:  # 2
             self.call_plot_func(
@@ -358,6 +364,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 y_log=self.y_log,
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
+                show_points=self.show_points,
             )
         else:  # 2
             self.call_plot_func(
@@ -466,6 +473,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 y_log=self.y_log,
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
+                show_points=self.show_points,
             )
         else:  # 2
             self.call_plot_func(

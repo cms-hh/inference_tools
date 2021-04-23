@@ -104,7 +104,7 @@ def plot_limit_scan(
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
     y_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
-        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{SM}"))
+        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
@@ -153,6 +153,12 @@ def plot_limit_scan(
     legend_entries[3] = (g_exp, "Median expected", "L")
     y_max_value = max(y_max_value, max(expected_values["limit"]))
     y_min_value = min(y_min_value, min(expected_values["limit"]))
+    print_excluded_ranges(scan_parameter, poi + " expected",
+        expected_values[scan_parameter],
+        expected_values["limit"],
+        theory_values[scan_parameter] if has_thy else None,
+        theory_values["xsec"] if has_thy else None,
+    )
 
     # observed values
     if observed_values is not None:
@@ -162,6 +168,12 @@ def plot_limit_scan(
         legend_entries[0] = (g_inj, "Observed", "L")
         y_max_value = max(y_max_value, max(observed_values["limit"]))
         y_min_value = min(y_min_value, min(observed_values["limit"]))
+        print_excluded_ranges(scan_parameter, poi + " observed",
+            observed_values[scan_parameter],
+            observed_values["limit"],
+            theory_values[scan_parameter] if has_thy else None,
+            theory_values["xsec"] if has_thy else None,
+        )
 
     # get theory prediction limits
     if has_thy:
@@ -322,7 +334,7 @@ def plot_limit_scans(
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
     y_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
-        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{SM}"))
+        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
@@ -340,6 +352,12 @@ def plot_limit_scans(
             "LP" if show_points else "L"))
         y_max_value = max(y_max_value, max(ev["limit"]))
         y_min_value = min(y_min_value, min(ev["limit"]))
+        print_excluded_ranges(scan_parameter, poi + " " + name,
+            scan_values[mask],
+            ev["limit"][mask],
+            theory_values[scan_parameter] if has_thy else None,
+            theory_values["xsec"] if has_thy else None,
+        )
 
     # get theory prediction limits
     if has_thy:
@@ -539,7 +557,7 @@ def plot_limit_points(
 
     # dummy histogram to control axes
     x_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
-        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{SM}"))
+        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"TitleOffset": 1.2,
@@ -841,10 +859,11 @@ def plot_benchmark_limits(
     canvas.SaveAs(path)
 
 
-def evaluate_limit_scan_1d(scan_values, limit_values):
+def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xsec_values=None,
+        interpolation="linear"):
     """
-    Takes the results of an upper limit scan given by the *scan_values* and the corresponding *limit*
-    values, performs an interpolation and returns certain results of the scan in a dict.
+    Takes the results of an upper limit scan given by the *scan_values* and the corresponding
+    *limit* values, performs an interpolation and returns certain results of the scan in a dict.
 
     The returned fields are:
 
@@ -859,40 +878,90 @@ def evaluate_limit_scan_1d(scan_values, limit_values):
     mask = ~np.isnan(limit_values)
     scan_values = scan_values[mask]
     limit_values = limit_values[mask]
-    # interp = scipy.interpolate.interp1d(scan_values, limit_values, kind="cubic")
-    interp = scipy.interpolate.interp1d(scan_values, limit_values, kind="linear")
+    interp = scipy.interpolate.interp1d(scan_values, limit_values, kind=interpolation,
+        fill_value="extrapolate")
+
+    # same for cross section values when given
+    if xsec_scan_values is not None and xsec_values is not None:
+        mask = ~np.isnan(xsec_values)
+        xsec_scan_values = xsec_scan_values[mask]
+        xsec_values = xsec_values[mask]
+        xsec_interp = scipy.interpolate.interp1d(xsec_scan_values, xsec_values, kind=interpolation,
+            fill_value="extrapolate")
+    else:
+        xsec_interp = lambda x: 1.
+
+    # interpolated difference between of limit and prediction (== cross section or 1)
+    diff_interp = lambda x: interp(x) - xsec_interp(x)
+    # diff_log_interp = lambda x: math.log(interp(x)) - math.log(xsec_interp(x))
 
     # interpolation bounds
     bounds = (scan_values.min() + 1e-4, scan_values.max() - 1e-4)
 
     # helper to find intersections with one given a starting point
     def get_intersection(start):
-        objective = lambda x: (interp(x) - 1) ** 2.0
+        objective = lambda x: abs(diff_interp(x))
         res = minimize_1d(objective, bounds, start=start)
-        return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
+        return res.x[0] if res.status == 0 and (bounds[0] <= res.x[0] <= bounds[1]) else None
 
-    # get exclusion range edges from intersections and remove duplicates
-    rnd = lambda v: round(v, 3)
-    edges = [rnd(scan_values.min()), rnd(scan_values.max())]
-    for start in np.linspace(bounds[0], bounds[1], 100):
-        edge = get_intersection(start)
-        if edge is None:
+    # get exclusion range edges from intersections
+    rnd = lambda v: round(float(v), 7)
+    edges = {rnd(scan_values.min()), rnd(scan_values.max())}
+    for start in np.linspace(scan_values.min(), scan_values.max(), 100):
+        x = get_intersection(start)
+        if x is None:
             continue
-        edge = rnd(edge)
-        if edge not in edges:
-            edges.append(edge)
-    edges.sort()
+        edges.add(rnd(x))
+
+    # drop edges that are too close to one another (within 4 digits)
+    _edges = []
+    for x in sorted(edges):
+        if not _edges or x - _edges[-1] >= 1e-4:
+            _edges.append(x)
+    edges = _edges
 
     # create ranges consisting of two adjacent edges
     ranges = [(edges[i - 1], edges[i]) for i in range(1, len(edges))]
 
     # select those ranges whose central value is below 1
-    excluded_ranges = [
-        r for r in ranges
-        if interp(0.5 * (r[1] + r[0])) < 1
-    ]
+    excluded_ranges = [r for r in ranges if diff_interp(0.5 * (r[1] + r[0])) < 0]
 
     return DotDict(
         interp=interp,
         excluded_ranges=excluded_ranges,
     )
+
+
+def print_excluded_ranges(param_name, scan_name, scan_values, limit_values, xsec_scan_values=None,
+        xsec_values=None):
+    # get excluded ranges
+    ranges = evaluate_limit_scan_1d(
+        scan_values,
+        limit_values,
+        xsec_scan_values=xsec_scan_values,
+        xsec_values=xsec_values,
+    ).excluded_ranges
+
+    _print_excluded_ranges(param_name, scan_name, scan_values, ranges)
+
+
+def _print_excluded_ranges(param_name, scan_name, scan_values, ranges):
+    # helper to format a range
+    def format_range(start, stop):
+        if abs(start - scan_values.min()) < 1e-4:
+            return "{} < {:.5f}".format(param_name, stop)
+        elif abs(stop - scan_values.max()) < 1e-4:
+            return "{} > {:.5f}".format(param_name, start)
+        else:
+            return "{:.5f} < {} < {:.5f}".format(start, param_name, stop)
+
+    # start printing
+    print("")
+    title = "Excluded ranges of parameter '{}' in scan '{}'".format(param_name, scan_name)
+    print(title)
+    print(len(title) * "=")
+    if not ranges:
+        print("-")
+    for start, stop in ranges:
+        print("  - " + format_range(start, stop))
+    print("")

@@ -56,6 +56,7 @@ br_hh = DotDict(
     wwgg=2.0 * br_h.ww * br_h.gg,
 )
 # aliases
+br_hh["bbbb_boosted"] = br_hh.bbbb
 br_hh["bbwwdl"] = br_hh.bbwwlvlv
 br_hh["bbwwllvv"] = br_hh.bbwwlvlv
 br_hh["bbwwsl"] = br_hh.bbwwqqlv
@@ -64,6 +65,7 @@ br_hh["bbzz4l"] = br_hh.bbzzllll
 # HH branching names (TODO: find prettier abbreviations)
 br_hh_names = DotDict(
     bbbb=r"bbbb",
+    bbbb_boosted=r"bbbb (boosted)",
     bbvv=r"bbVV",
     bbww=r"bbWW",
     bbwwqqlv=r"bbWW, qql$\nu$",

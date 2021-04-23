@@ -183,13 +183,12 @@ def get_neighbor_coordinates(shape, i, j):
     return neighbors
 
 
-def minimize_1d(objective, bounds, start=None, niter=10, **kwargs):
+def minimize_1d(objective, bounds, start=None, **kwargs):
     """
-    Performs a 1D minimization of an *objective* using scipy.optimize.basinhopping over *niter*
-    iterations within certain parameter *bounds*. When *start* is *None*, these bounds are used
-    initially to get a good starting point. *kwargs* are forwarded as *minimizer_kwargs* to the
-    underlying minimizer function. The optimizer result of the lowest optimization iteration is
-    returned.
+    Performs a 1D minimization of an *objective* using scipy.optimize.basinhoppingiterations
+    (fowarding all *kwargs*) within certain parameter *bounds*. When *start* is *None*, these bounds
+    are used initially to get a good starting point. The optimizer result of the lowest optimization
+    iteration is returned.
     """
     import numpy as np
     import scipy.optimize
@@ -201,8 +200,11 @@ def minimize_1d(objective, bounds, start=None, niter=10, **kwargs):
         start = x[np.argmin(y)]
 
     # minimization using basin hopping
-    kwargs["bounds"] = [bounds]
-    res = scipy.optimize.basinhopping(objective, start, niter=10, minimizer_kwargs=kwargs)
+    kwargs.setdefault("niter", 30)
+    minimizer_kwargs = kwargs.setdefault("minimizer_kwargs", {})
+    minimizer_kwargs["bounds"] = [bounds]
+    minimizer_kwargs.setdefault("tol", 0.00001)
+    res = scipy.optimize.basinhopping(objective, start, **kwargs)
 
     return res.lowest_optimization_result
 

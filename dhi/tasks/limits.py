@@ -153,6 +153,11 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         default=False,
         description="apply log scaling to the y-axis; default: False",
     )
+    show_points = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="show points of central limit values; default: False",
+    )
 
     z_min = None
     z_max = None
@@ -271,6 +276,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
             hh_process=self.br if xsec_unit and self.br in br_hh else None,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            show_points=self.show_points,
         )
 
     def load_scan_data(self, inputs):
@@ -408,6 +414,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
             hh_process=self.br if xsec_unit and self.br in br_hh else None,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            show_points=self.show_points,
         )
 
 
@@ -528,6 +535,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
             hh_process=self.br if xsec_unit and self.br in br_hh else None,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            show_points=self.show_points,
         )
 
 

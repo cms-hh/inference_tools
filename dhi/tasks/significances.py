@@ -96,6 +96,7 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
 
 
 class MergeSignificanceScan(SignificanceBase):
+
     def requires(self):
         return SignificanceScan.req(self)
 
@@ -128,6 +129,11 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
     y_log = luigi.BoolParameter(
         default=False,
         description="apply log scaling to the y-axis; default: False",
+    )
+    show_points = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="show points of central significance values; default: False",
     )
 
     z_min = None
@@ -199,6 +205,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
             y_log=self.y_log,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            show_points=self.show_points,
         )
 
     def load_scan_data(self, inputs):
@@ -291,4 +298,5 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
             y_log=self.y_log,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            show_points=self.show_points,
         )
