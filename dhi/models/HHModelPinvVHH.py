@@ -312,12 +312,13 @@ class HHModel(PhysicsModel):
         known_flags = ["doNNLOscaling", "doBRscaling", "doHscaling", "doklDependentUnc"]
         known_params = ["doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V"]
 
+        set_params = set()
         for key, value in opts:
             # identify boolean flags
             if key in known_flags:
                 flag = value.lower() in ["yes", "true", "1"]
                 setattr(self, key, flag)
-                print("[INFO] set {} of model {} to {}".format(key, self.name, flag))
+                set_params.add(key)
                 continue
 
             # identify remaining "key=value" parameter pairs
@@ -326,8 +327,15 @@ class HHModel(PhysicsModel):
                 if value.lower() in ("", "none"):
                     value = None
                 setattr(self, key, value)
-                print("[INFO] set {} of model {} to {}".format(key, self.name, value))
+                set_params.add(key)
                 continue
+
+        # print all current options
+        for param in known_flags + known_params:
+            msg = "[INFO] using model option {} = {}".format(param, getattr(self, param))
+            if param in set_params:
+                msg += " (set via option)"
+            print(msg)
 
     def check_validity_ggf(self, ggf_sample_list):
         if len(ggf_sample_list) < 3:
@@ -688,7 +696,7 @@ class HHModel(PhysicsModel):
             scaling = self.f_r_ggf_names[isample]
             # when the BR scaling is enabled, try to extract the decays from the process name
             if self.doBRscaling:
-                scaling = self.HBRscal.buildXSBRScalingHH(scaling, process) or scaling
+                scaling = self.HBRscal.buildXSBRScalingHH(scaling, bin, process) or scaling
             return scaling
 
         # vbf match?
@@ -698,7 +706,7 @@ class HHModel(PhysicsModel):
             scaling = self.f_r_vbf_names[isample]
             # when the BR scaling is enabled, try to extract the decays from the process name
             if self.doBRscaling:
-                scaling = self.HBRscal.buildXSBRScalingHH(scaling, process) or scaling
+                scaling = self.HBRscal.buildXSBRScalingHH(scaling, bin, process) or scaling
             return scaling
 
         # vhh match?
@@ -708,7 +716,7 @@ class HHModel(PhysicsModel):
             scaling = self.f_r_vhh_names[isample]
             # when the BR scaling is enabled, try to extract the decays from the process name
             if self.doBRscaling:
-                scaling = self.HBRscal.buildXSBRScalingHH(scaling, process) or scaling
+                scaling = self.HBRscal.buildXSBRScalingHH(scaling, bin, process) or scaling
             return scaling
 
         # complain when the process is a signal but no sample matched
@@ -718,10 +726,10 @@ class HHModel(PhysicsModel):
 
         # single H match?
         if self.doHscaling:
-            scaling = self.HBRscal.findSingleHMatch(process)
+            scaling = self.HBRscal.findSingleHMatch(bin, process)
             # when the BR scaling is enabled, try to extract the decay from the process name
             if scaling and self.doBRscaling:
-                scaling = self.HBRscal.buildXSBRScalingH(scaling, process) or scaling
+                scaling = self.HBRscal.buildXSBRScalingH(scaling, bin, process) or scaling
             return scaling or 1.
 
         # at this point we are dealing with a background process that is also not single-H-scaled,
