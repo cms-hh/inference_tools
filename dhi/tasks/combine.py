@@ -477,7 +477,16 @@ class DatacardTask(HHModelTask):
             # when the pattern did not match anything, repeat relative to the datacards_run2 dir
             if not _paths and "DHI_DATACARDS_RUN2" in os.environ:
                 _paths = list(glob.glob(os.path.join(dc_path, pattern)))
-                single_dc_matched.append(len(_paths) == 1)
+                if len(_paths) == 1:
+                    # special case: when there is a single matched card and no bin_name defined,
+                    # use the basename of the path; this will most likely match the analysis channel
+                    # name of cards to be combined
+                    if not bin_name:
+                        bin_name = os.path.basename(_paths[0])
+
+                    single_dc_matched.append(True)
+                else:
+                    single_dc_matched.append(False)
             else:
                 single_dc_matched.append(False)
 
