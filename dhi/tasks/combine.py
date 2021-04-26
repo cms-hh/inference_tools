@@ -725,6 +725,7 @@ class ParameterScanTask(AnalysisTask):
     force_n_scan_parameters = None
     sort_scan_parameters = True
     allow_multiple_scan_ranges = False
+    find_scan_parameter_patches = True
 
     @classmethod
     def modify_param_values(cls, params):
@@ -867,24 +868,42 @@ class ParameterScanTask(AnalysisTask):
             else:
                 return r[2]
 
-        return list(
-            itertools.product(
-                *[
-                    linspace(r[0], r[1], get_points(r, step_size))
-                    for r, step_size in zip(ranges, step_sizes)
-                ]
-            )
-        )
+        return list(itertools.product(*[
+            linspace(r[0], r[1], get_points(r, step_size))
+            for r, step_size in zip(ranges, step_sizes)
+        ]))
 
     def get_scan_linspace(self, step_sizes=None):
         self._assert_single_scan_range("get_scan_linspace")
         return self._get_scan_linspace([ranges[0] for ranges in self.scan_parameters_dict.values()],
             step_sizes=step_sizes)
 
-    def get_scan_parameters_product(self):
-        names = self.scan_parameter_names
+    def get_scan_parameter_combinations(self, find_patches=None):
+        if find_patches is None:
+            find_patches = self.find_scan_parameter_patches
+
+        n_params = len(self.scan_parameter_names)
+        if len(self.scan_parameters) > n_params > 1 and find_patches:
+            # patches are identified when parameters of scan ranges are repeated multiple times
+            # in the exact same order, e.g. for two parameters a and b:
+            # (a, b, b) or (a, b, a) or (a, b, b, a)
+            #   -> no patch, fallback to the full product
+            # (a, b, a, b) or (a, b, a, b, a, b)
+            #   -> two or three patches found
+            names = tuple(p[0] for p in self.scan_parameters)
+            n_patches = len(self.scan_parameters) / float(n_params)
+            is_int = lambda n: int(n) == n
+            if is_int(n_patches) and names == int(n_patches) * tuple(self.scan_parameter_names):
+                self.logger.info("identified {} unique patches in scan parameter ranges".format(
+                    int(n_patches)))
+                return [
+                    self.scan_parameters[i * n_params:(i + 1) * n_params]
+                    for i in range(int(n_patches))
+                ]
+
+        # build the product of all scan ranges
         return [
-            tuple((name,) + _values for name, _values in zip(names, values))
+            tuple((name,) + _values for name, _values in zip(self.scan_parameter_names, values))
             for values in itertools.product(*self.scan_parameters_dict.values())
         ]
 
