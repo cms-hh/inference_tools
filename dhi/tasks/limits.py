@@ -179,7 +179,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
     def requires(self):
         return [
             MergeUpperLimits.req(self, scan_parameters=scan_parameters)
-            for scan_parameters in self.get_scan_parameters_product()
+            for scan_parameters in self.get_scan_parameter_combinations()
         ]
 
     def output(self):
@@ -284,16 +284,13 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
 
     @classmethod
     def _load_scan_data(cls, inputs, scan_parameter_names):
-        import numpy as np
-
         # load values of each input
-        all_values = []
+        values = []
         for inp in inputs:
             data = inp.load(formatter="numpy")
-            all_values.append(data["data"])
+            values.append(data["data"])
 
         # concatenate values and safely remove duplicates
-        values = np.concatenate(all_values, axis=0)
         test_fn = lambda kept, removed: kept < 1e-7 or abs((kept - removed) / kept) < 0.001
         values = unique_recarray(values, cols=scan_parameter_names, test_metric=("limit", test_fn))
 
@@ -314,7 +311,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         return [
             [
                 MergeUpperLimits.req(self, datacards=datacards, scan_parameters=scan_parameters)
-                for scan_parameters in self.get_scan_parameters_product()
+                for scan_parameters in self.get_scan_parameter_combinations()
             ]
             for datacards in self.multi_datacards
         ]
@@ -428,7 +425,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         return [
             [
                 MergeUpperLimits.req(self, hh_model=hh_model, scan_parameters=scan_parameters)
-                for scan_parameters in self.get_scan_parameters_product()
+                for scan_parameters in self.get_scan_parameter_combinations()
             ]
             for hh_model in self.hh_models
         ]
@@ -547,6 +544,13 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         default=False,
         description="apply log scaling to the x-axis; default: False",
     )
+    sort_by = luigi.ChoiceParameter(
+        default=law.NO_STR,
+        choices=(law.NO_STR, "expected", "observed"),
+        significant=False,
+        description="either 'expected' or 'observed' for sorting entries from top to bottom in "
+        "descending order; has precedence over --datacard-order when set; no default",
+    )
     h_lines = law.CSVParameter(
         cls=luigi.IntParameter,
         default=tuple(),
@@ -556,8 +560,14 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
     left_margin = luigi.IntParameter(
         default=law.NO_INT,
         significant=False,
-        description="the left margin of the pad in pixels; uses the default of the plot when "
-        "empty; no default"
+        description="left margin of the pad in pixels; uses the default of the plot when empty; no "
+        "default",
+    )
+    entry_height = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="vertical height of each entry in pixels; uses the default of the plot when "
+        "empty; no default",
     )
 
     y_min = None
@@ -688,11 +698,89 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
             data=data,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
+            sort_by=None if self.sort_by == law.NO_STR else self.sort_by,
             x_log=self.x_log,
             xsec_unit=xsec_unit,
             hh_process=self.br if xsec_unit and self.br in br_hh else None,
             left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
+            entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             model_parameters=self.get_shown_parameters(),
             h_lines=self.h_lines,
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
+        )
+
+
+class PlotUpperLimits2D(POIScanTask, POIPlotTask):
+
+    z_log = luigi.BoolParameter(
+        default=False,
+        description="apply log scaling to the z-axis; default: False",
+    )
+
+    force_n_pois = 1
+    force_n_scan_parameters = 2
+    force_scan_parameters_unequal_pois = True
+    sort_scan_parameters = False
+    allow_multiple_scan_ranges = True
+
+    def requires(self):
+        return [
+            MergeUpperLimits.req(self, scan_parameters=scan_parameters)
+            for scan_parameters in self.get_scan_parameter_combinations()
+        ]
+
+    def output(self):
+        # additional postfix
+        parts = []
+        if self.z_log:
+            parts.append("log")
+
+        name = self.create_plot_name(["limits2d", self.get_output_postfix(), parts])
+        return self.local_target(name)
+
+    @law.decorator.log
+    @law.decorator.notify
+    @view_output_plots
+    @law.decorator.safe_output
+    def run(self):
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
+
+        # load limit scan data
+        limits = []
+        for inp in self.input():
+            data = inp.load(formatter="numpy")
+            limits.append(data["data"])
+
+        # get observed limits when unblinded
+        obs_limits = None
+        if self.unblinded:
+            obs_limits = [
+                {
+                    self.scan_parameter_names[0]: _limits[self.scan_parameter_names[0]],
+                    self.scan_parameter_names[1]: _limits[self.scan_parameter_names[1]],
+                    "limit": _limits["observed"],
+                }
+                for _limits in limits
+            ]
+
+        # call the plot function
+        self.call_plot_func(
+            "dhi.plots.limits.plot_limit_scan_2d",
+            path=output.path,
+            poi=self.pois[0],
+            scan_parameter1=self.scan_parameter_names[0],
+            scan_parameter2=self.scan_parameter_names[1],
+            expected_limits=limits,
+            observed_limits=obs_limits,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
+            y_min=self.get_axis_limit("y_min"),
+            y_max=self.get_axis_limit("y_max"),
+            z_min=self.get_axis_limit("z_min"),
+            z_max=self.get_axis_limit("z_max"),
+            z_log=self.z_log,
+            model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )

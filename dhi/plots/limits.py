@@ -13,11 +13,12 @@ from dhi.config import (
     poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence,
 )
 from dhi.util import (
-    import_ROOT, DotDict, to_root_latex, create_tgraph, try_int, colored, minimize_1d,
+    import_ROOT, DotDict, to_root_latex, create_tgraph, colored, minimize_1d, unique_recarray,
+    make_list,
 )
 from dhi.plots.util import (
-    use_style, draw_model_parameters, create_hh_process_label, determine_limit_digits,
-    get_graph_points, get_y_range,
+    use_style, create_model_parameters, create_hh_process_label, determine_limit_digits,
+    get_graph_points, get_y_range, get_contours, fill_hist_from_points,
 )
 
 
@@ -103,7 +104,7 @@ def plot_limit_scan(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
+    y_title = "95% CLs limit on #sigma({}) / {}".format(
         create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
@@ -227,7 +228,7 @@ def plot_limit_scan(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(draw_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -401,10 +402,7 @@ def plot_limit_scans(
 
     # model parameter labels
     if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
-                y_offset=40 + i * 24, props={"TextSize": 20}))
+        draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -429,12 +427,14 @@ def plot_limit_points(
     path,
     poi,
     data,
-    x_log=False,
+    sort_by=None,
     x_min=None,
     x_max=None,
+    x_log=False,
     xsec_unit=None,
     hh_process=None,
     left_margin=None,
+    entry_height=None,
     model_parameters=None,
     h_lines=None,
     campaign=None,
@@ -469,18 +469,21 @@ def plot_limit_points(
             }],
         )
 
-    When *x_log* is *True*, the x-axis is scaled logarithmically. *x_min* and *x_max* define the
-    range of the x-axis and default to the maximum range of values passed in data, including
-    uncertainties. *xsec_unit* denotes whether the passed values are given as real cross sections in
-    this unit or, when *None*, as a ratio over the theory prediction. *hh_process* can be the name
-    of a HH subprocess configured in *dhi.config.br_hh_names* and is inserted to the process name in
-    the title of the x-axis and indicates that the plotted cross section data was (e.g.) scaled by a
-    branching ratio. *left_margin* controls the left margin of the pad in pixels. *model_parameters*
-    can be a dictionary of key-value pairs of model parameters. *h_lines* can be a list of integers
-    denoting positions where additional horizontal lines are drawn for visual guidance. *campaign*
-    should refer to the name of a campaign label defined in dhi.config.campaign_labels. *digits*
-    controls the number of digits of the limit values shown for each entry. When *None*, a number
-    based on the lowest limit values is determined automatically.
+    The entries can be automatically sorted by setting *sort_by* to either ``"expected"`` or, when
+    existing in *data*, ``"observed"``. When *x_log* is *True*, the x-axis is scaled
+    logarithmically. *x_min* and *x_max* define the range of the x-axis and default to the maximum
+    range of values passed in data, including uncertainties. *xsec_unit* denotes whether the passed
+    values are given as real cross sections in this unit or, when *None*, as a ratio over the theory
+    prediction. *hh_process* can be the name of a HH subprocess configured in
+    *dhi.config.br_hh_names* and is inserted to the process name in the title of the x-axis and
+    indicates that the plotted cross section data was (e.g.) scaled by a branching ratio.
+    *left_margin* controls the left margin of the pad in pixels, and *entry_height* the vertical
+    height of each entry box. *model_parameters* can be a dictionary of key-value pairs of model
+    parameters. *h_lines* can be a list of integers denoting positions where additional horizontal
+    lines are drawn for visual guidance. *campaign* should refer to the name of a campaign label
+    defined in dhi.config.campaign_labels. *digits* controls the number of digits of the limit
+    values shown for each entry. When *None*, a number based on the lowest limit values is
+    determined automatically.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-at-a-certain-point-of-parameters
     """
@@ -517,6 +520,12 @@ def plot_limit_points(
             x_min_value = min(x_min_value, min(d["theory"]))
             x_max_value = max(x_max_value, max(d["theory"]))
 
+    # sort data
+    if sort_by == "expected":
+        data.sort(key=lambda d: -d["expected"][0] if "expected" in d else -1e6)
+    elif sort_by == "observed" and has_obs:
+        data.sort(key=lambda d: -d["observed"][0] if "observed" in d else -1e6)
+
     # set default ranges
     if x_min is None:
         if not xsec_unit:
@@ -531,7 +540,7 @@ def plot_limit_points(
     top_margin = 35  # pixels
     bottom_margin = 70  # pixels
     left_margin = left_margin or 150  # pixels
-    entry_height = 90  # pixels
+    entry_height = entry_height or 90  # pixels
     head_space = 130  # pixels
 
     # get the canvas height
@@ -556,7 +565,7 @@ def plot_limit_points(
     draw_objs = []
 
     # dummy histogram to control axes
-    x_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
+    x_title = "95% CLs limit on #sigma({}) / {}".format(
         create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
@@ -675,15 +684,237 @@ def plot_limit_points(
 
     # model parameter labels
     if model_parameters:
-        for i, (p, v) in enumerate(model_parameters.items()):
-            text = "{} = {}".format(poi_data.get(p, {}).get("label", p), try_int(v))
-            draw_objs.append(r.routines.create_top_left_label(text, pad=pad, x_offset=25,
-                y_offset=40 + i * 24, props={"TextSize": 20}))
+        draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
+
+    # cms label
+    cms_labels = r.routines.create_cms_labels(pad=pad)
+    draw_objs.extend(cms_labels)
+
+    # campaign label
+    if campaign:
+        campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
+        campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad)
+        draw_objs.append(campaign_label)
+
+    # draw all objects
+    r.routines.draw_objects(draw_objs)
+
+    # save
+    r.update_canvas(canvas)
+    canvas.SaveAs(path)
+
+
+@use_style("dhi_default")
+def plot_limit_scan_2d(
+    path,
+    poi,
+    scan_parameter1,
+    scan_parameter2,
+    expected_limits,
+    observed_limits=None,
+    draw_sm_point=True,
+    x_min=None,
+    x_max=None,
+    y_min=None,
+    y_max=None,
+    z_min=None,
+    z_max=None,
+    z_log=False,
+    model_parameters=None,
+    campaign=None,
+):
+    """
+    Creates a plot for the upper limit scan of a *poi* in two dimensions over *scan_parameter1* and
+    *scan_parameter2*, and saves it at *path*. *expected_limits* should be a mapping to lists of
+    values or a record array with keys "<scan_parameter1>", "<scan_parameter2>" and "limit", and
+    optionally "limit_p1" (plus 1 sigma) and "limit_m1" (minus 1 sigma). When the variations are
+    missing, the plot is created without them. When *observed_limits* is set, it should have a
+    similar format with keys "<scan_parameter1>", "<scan_parameter2>" and "limit". When
+    *draw_sm_point* is set, a marker is shown at the coordinates (1, 1).
+
+    *x_min*, *x_max*, *y_min*, *y_max*, *z_min* and *z_max* define the axes ranges and default to
+    the ranges of the given values. When *z_log* is *True*, the z-axis is plotted with a logarithmic
+    scale. *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign*
+    should refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
+    *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
+
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#limit-on-poi-vs-two-scan-parameters
+    """
+    import plotlib.root as r
+    ROOT = import_ROOT()
+
+    def check_values(values):
+        if isinstance(values, list):
+            return list(map(check_values, values))
+        if isinstance(values, np.ndarray):
+            values = {key: values[key] for key in values.dtype.names}
+        assert(scan_parameter1 in values)
+        assert(scan_parameter2 in values)
+        return values
+
+    def join_limits(values):
+        rec_arrays = []
+        for _values in values:
+            n = set(len(v) for v in _values.values())
+            assert(len(n) == 1)
+            dtype = [(key, np.float32) for key in _values]
+            records = [tuple(v[i] for v in _values.values()) for i in range(list(n)[0])]
+            rec_arrays.append(np.array(records, dtype=dtype))
+        return unique_recarray(rec_arrays, cols=[scan_parameter1, scan_parameter2])
+
+    # prepare inputs
+    expected_limits = check_values(make_list(expected_limits))
+    joined_expected_limits = join_limits(expected_limits)
+    shown_limits = expected_limits
+    has_obs = False
+    if observed_limits is not None:
+        observed_limits = check_values(make_list(observed_limits))
+        joined_observed_limits = join_limits(observed_limits)
+        shown_limits = observed_limits
+        has_obs = True
+
+    # determine contours independent of plotting
+    exp_contours = get_contours(
+        joined_expected_limits[scan_parameter1],
+        joined_expected_limits[scan_parameter2],
+        joined_expected_limits["limit"],
+        levels=[1.],
+        frame_kwargs=[{"mode": "edge", "width": 1.}],
+    )[0]
+    if "limit_p1" in expected_limits and "limit_m1" in expected_limits:
+        exp_p1_contours = get_contours(
+            joined_expected_limits[scan_parameter1],
+            joined_expected_limits[scan_parameter2],
+            joined_expected_limits["limit_p1"],
+            levels=[1.],
+            frame_kwargs=[{"mode": "edge", "width": 1.}],
+        )[0]
+        exp_m1_contours = get_contours(
+            joined_expected_limits[scan_parameter1],
+            joined_expected_limits[scan_parameter2],
+            joined_expected_limits["limit_m1"],
+            levels=[1.],
+            frame_kwargs=[{"mode": "edge", "width": 1.}],
+        )[0]
+    if has_obs:
+        obs_contours = get_contours(
+            joined_observed_limits[scan_parameter1],
+            joined_observed_limits[scan_parameter2],
+            joined_observed_limits["limit"],
+            levels=[1.],
+            frame_kwargs=[{"mode": "edge", "width": 1.}],
+        )[0]
+
+    # start plotting
+    r.setup_style()
+    canvas, (pad,) = r.routines.create_canvas(pad_props={"RightMargin": 0.17, "Logz": z_log})
+    pad.cd()
+    draw_objs = []
+
+    # custom palette, requires that the z range is symmetrical around 1
+    rvals = np.array([ROOT.gROOT.GetColor(colors.red).GetRed(), 1., 0.])
+    gvals = np.array([0., 1., 0.])
+    bvals = np.array([0., 1., ROOT.gROOT.GetColor(colors.blue).GetBlue()])
+    lvals = np.array([0.0, 0.5, 1.0])
+    ROOT.TColor.CreateGradientColorTable(len(lvals), lvals, rvals, gvals, bvals, 100)
+
+    # helper to extract binning information
+    def infer_binning(data):
+        # get the smallest difference between two points in each direction and call it bin width
+        scan_values1 = np.array(data[scan_parameter1], dtype=np.float32)
+        scan_values2 = np.array(data[scan_parameter2], dtype=np.float32)
+        ex = np.unique(scan_values1)
+        ey = np.unique(scan_values2)
+        x_width = min(ex[1:] - ex[:-1])
+        y_width = min(ey[1:] - ey[:-1])
+
+        # get axis limits
+        x_min = min(ex) - 0.5 * x_width
+        x_max = max(ex) + 0.5 * x_width
+        y_min = min(ey) - 0.5 * y_width
+        y_max = max(ey) + 0.5 * y_width
+        z_min = data["limit"].min()
+        z_max = data["limit"].max()
+
+        # infer the number of bins
+        x_bins = (x_max - x_min) / x_width
+        y_bins = (y_max - y_min) / y_width
+        if round(x_bins, 3) != int(x_bins):
+            raise Exception("x axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
+                x_min, x_max, x_width))
+        if round(y_bins, 3) != int(y_bins):
+            raise Exception("y axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
+                y_min, y_max, y_width))
+        x_bins = int(x_bins)
+        y_bins = int(y_bins)
+
+        return x_width, y_width, x_bins, y_bins, x_min, x_max, y_min, y_max, z_min, z_max
+
+    hists = []
+    for i, data in enumerate(shown_limits):
+        _, _, _x_bins, _y_bins, _x_min, _x_max, _y_min, _y_max, _z_min, _z_max = infer_binning(data)
+
+        # get axis limits for the first set of values
+        if i == 0:
+            x_min = _x_min if x_min is None else x_min
+            x_max = _x_max if x_max is None else x_max
+            y_min = _y_min if y_min is None else y_min
+            y_max = _y_max if y_max is None else y_max
+            z_min = _z_min if z_min is None else z_min
+            z_max = _z_max if z_max is None else z_max
+            h = ROOT.TH2F("h", "", _x_bins, x_min, x_max, _y_bins, y_min, y_max)
+        else:
+            h = ROOT.TH2F("h" + str(i), "", _x_bins, _x_min, _x_max, _y_bins, _y_min, _y_max)
+
+        # fill and store the histogram
+        fill_hist_from_points(h, data[scan_parameter1], data[scan_parameter2], data["limit"])
+        hists.append(h)
+
+    # dummy histogram to control axes
+    x_title = to_root_latex(poi_data[scan_parameter1].label)
+    y_title = to_root_latex(poi_data[scan_parameter2].label)
+    z_title = "{} 95% CLs limit on #sigma({}) / #sigma_{{Theory}}".format(
+        "Observed" if has_obs else "Expected", create_hh_process_label(poi))
+    h_dummy = ROOT.TH2F("h_dummy", ";{};{};{}".format(x_title, y_title, z_title),
+        1, x_min, x_max, 1, y_min, y_max)
+    r.setup_hist(h_dummy, pad=pad, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
+    draw_objs.append((h_dummy, ""))
+
+    # setup actual histograms
+    for i, h in enumerate(hists):
+        r.setup_hist(h, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
+        if i == 0:
+            r.setup_z_axis(h.GetZaxis(), pad=pad, props={"Title": z_title, "TitleSize": 21,
+                "TitleOffset": 1.6})
+        draw_objs.append((h, "SAME,COLZ"))
+
+    # exclusion contours
+    for g in exp_contours:
+        r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black, "LineStyle": 2})
+        draw_objs.append((g, "SAME,C"))
+    if "limit_p1" in expected_limits and "limit_m1" in expected_limits:
+        for g in exp_p1_contours + exp_m1_contours:
+            r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black, "LineStyle": 3})
+            draw_objs.append((g, "SAME,C"))
+    if has_obs:
+        for g in obs_contours:
+            r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black})
+            draw_objs.append((g, "SAME,C"))
+
+    # SM point
+    if draw_sm_point:
+        g_sm = create_tgraph(1, 1, 1)
+        r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.black)
+        draw_objs.append((g_sm, "P"))
+
+    # model parameter labels
+    if model_parameters:
+        draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -784,7 +1015,7 @@ def plot_benchmark_limits(
 
     # dummy histogram to control axes
     x_title = "Shape benchmark"
-    y_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
+    y_title = "95% CLs limit on #sigma({}) / {}".format(
         create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), n, -0.5, n - 0.5)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
@@ -893,7 +1124,7 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
 
     # interpolated difference between of limit and prediction (== cross section or 1)
     diff_interp = lambda x: interp(x) - xsec_interp(x)
-    # diff_log_interp = lambda x: math.log(interp(x)) - math.log(xsec_interp(x))
+    # diff_interp = lambda x: math.log(interp(x)) - math.log(xsec_interp(x))
 
     # interpolation bounds
     bounds = (scan_values.min() + 1e-4, scan_values.max() - 1e-4)
@@ -933,33 +1164,62 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
 
 
 def print_excluded_ranges(param_name, scan_name, scan_values, limit_values, xsec_scan_values=None,
-        xsec_values=None):
+        xsec_values=None, interpolation="cubic"):
     # get excluded ranges
     ranges = evaluate_limit_scan_1d(
         scan_values,
         limit_values,
         xsec_scan_values=xsec_scan_values,
         xsec_values=xsec_values,
+        interpolation=interpolation,
     ).excluded_ranges
 
     _print_excluded_ranges(param_name, scan_name, scan_values, ranges)
 
 
 def _print_excluded_ranges(param_name, scan_name, scan_values, ranges):
+    # helper to check if the granularity of scan values is too small at a certain point
+    def granularity_check(value, digits=2):
+        # get the closest values
+        for i in range(len(scan_values) - 1):
+            l, r = scan_values[i], scan_values[i + 1]
+            if l <= value <= r:
+                break
+        else:
+            raise Exception("could not find closest scan value pair around value {}".format(value))
+
+        # case 1: pass when the value is very close to any of the two closest points
+        if min([r - value, value - l]) <= 10**(-1 * digits):
+            return True
+
+        # case2: pass when the granularity is sufficiently fine
+        if r - l <= 10**(1 - digits):
+            return True
+
+        return False
+
     # helper to format a range
     def format_range(start, stop):
         if abs(start - scan_values.min()) < 1e-4:
-            return "{} < {:.5f}".format(param_name, stop)
+            r = "{} < {:.5f}".format(param_name, stop)
+            check = granularity_check(stop)
         elif abs(stop - scan_values.max()) < 1e-4:
-            return "{} > {:.5f}".format(param_name, start)
+            r = "{} > {:.5f}".format(param_name, start)
+            check = granularity_check(start)
         else:
-            return "{:.5f} < {} < {:.5f}".format(start, param_name, stop)
+            r = "{:.5f} < {} < {:.5f}".format(start, param_name, stop)
+            check = granularity_check(start) and granularity_check(stop)
+        # check currently disabled
+        # if not check:
+        #     r += " (granularity potentially insufficient for accurate interpolation)"
+        return r
 
     # start printing
     print("")
     title = "Excluded ranges of parameter '{}' in scan '{}'".format(param_name, scan_name)
     print(title)
     print(len(title) * "=")
+    print("(granularity potentially insufficient for accurate interpolation)")
     if not ranges:
         print("-")
     for start, stop in ranges:
