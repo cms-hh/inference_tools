@@ -8,9 +8,9 @@ import math
 import array
 import uuid
 import functools
-import collections
 import itertools
 import contextlib
+from collections import OrderedDict
 
 import six
 import numpy as np
@@ -59,48 +59,55 @@ def create_random_name():
     return str(uuid.uuid4())
 
 
-def draw_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_offset=40, dy=24,
-        props=None):
+def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_offset=40,
+        dy=24, props=None):
+    """
+    Creates a list of ``ROOT.TLatex`` objects for *model_parameters*, properly positioned for *pad*
+    with options to change the offsets *x_offset* and *y_offset*, the vertical distance between
+    labels *dy*, and optional properties *props*.
+
+    *model_parameters* should be a dictionary mapping one or multiple parameter names (in a tuple)
+    to values. When multiple names are given, they are contained in the same label using the format
+    ``"p1 = p2 = ... = value"``. When *grouped* is *True*, groups are created over all
+    *model_parameters* with same values.
+    """
     import plotlib.root as r
     from plotlib.util import merge_dicts
 
     # merge properties with defaults
     props = merge_dicts({"TextSize": 20}, props)
 
-    labels = []
-
+    # handle grouping
     if grouped:
-        # group parameters by value
-        groups = collections.OrderedDict()
-        for p, v in model_parameters.items():
-            # each parameter key can be a list
-            for _p in make_list(p):
-                p_label = poi_data.get(_p, {}).get("label", _p)
-                groups.setdefault(v, []).append(p_label)
+        # assign to groups
+        groups = OrderedDict()
+        for names, value in model_parameters.items():
+            for name in make_list(names):
+                groups.setdefault(value, []).append(name)
 
-        # create labels
-        for i, (v, ps) in enumerate(groups.items()):
-            label = "{} = {}".format(" = ".join(map(str, ps)), try_int(v))
-            label = r.routines.create_top_left_label(label, pad=pad, props=props, x_offset=x_offset,
-                y_offset=y_offset + i * dy)
-            labels.append(label)
+        # fill back to model parameters
+        model_parameters = OrderedDict(sum((
+            [(tuple(names), value) for value, names in group.items()]
+            for group in [groups_k1, groups_k2, groups]
+        ), []))
 
-    else:
-        # create one label per parameter
-        for i, (p, v) in enumerate(model_parameters.items()):
-            # each parameter key can be a list
-            p_labels = [poi_data.get(_p, {}).get("label", _p) for _p in make_list(p)]
-            label = "{} = {}".format(" = ".join(p_labels), try_int(v))
-            label = r.routines.create_top_left_label(label, pad=pad, props=props, x_offset=x_offset,
-                y_offset=y_offset + i * dy)
-            labels.append(label)
+    # create labels
+    parameter_labels = []
 
-    return labels
+    for i, (names, value) in enumerate(model_parameters.items()):
+        # each parameter key can be a list
+        labels = [poi_data.get(name, {}).get("label", name) for name in make_list(names)]
+        label = "{} = {}".format(" = ".join(labels), try_int(value))
+        label = r.routines.create_top_left_label(label, pad=pad, props=props, x_offset=x_offset,
+            y_offset=y_offset + i * dy)
+        parameter_labels.append(label)
+
+    return parameter_labels
 
 
 def create_hh_process_label(poi="r", br=None):
     return "pp #rightarrow {}{}".format(
-        {"r": "HH (incl.)", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH"),
+        {"r": "HH (incl)", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH"),
         " ({})".format(to_root_latex(br_hh_names[br])) if br in br_hh_names else "",
     )
 
@@ -247,7 +254,8 @@ def find_poly_bin_center(poly_bin, n=1000):
 
 
 # helper to extract contours
-def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_points=10):
+def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_points=10,
+        interpolation="tgraph2d"):
     ROOT = import_ROOT()
 
     # remove nans in z_values
@@ -255,6 +263,10 @@ def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_po
     x_values = [x for i, x in enumerate(x_values) if i not in nan_indices]
     y_values = [y for i, y in enumerate(y_values) if i not in nan_indices]
     z_values = [z for i, z in enumerate(z_values) if i not in nan_indices]
+
+    # when there are no values left, return empty lists
+    if not x_values:
+        return [[] for _ in range(len(levels))]
 
     # to extract contours, we need a 2D histogram with optimized bin widths, edges and padding
     def get_min_diff(values):
@@ -280,7 +292,7 @@ def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_po
     with temporary_canvas() as c:
         c.cd()
         h = ROOT.TH2F(create_random_name(), "", x_n, x_min, x_max, y_n, y_min, y_max)
-        fill_hist_from_points(h, x_values, y_values, z_values)
+        fill_hist_from_points(h, x_values, y_values, z_values, interpolation=interpolation)
 
         # get contours in a nested list of graphs
         contours = []

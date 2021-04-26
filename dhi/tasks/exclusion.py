@@ -30,8 +30,14 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
     left_margin = luigi.IntParameter(
         default=law.NO_INT,
         significant=False,
-        description="the left margin of the pad in pixels; uses the default of the plot when "
-        "empty; no default"
+        description="left margin of the pad in pixels; uses the default of the plot when empty; no "
+        "default",
+    )
+    entry_height = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="vertical height of each entry in pixels; uses the default of the plot when "
+        "empty; no default",
     )
 
     y_min = None
@@ -48,7 +54,7 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
         def merge_tasks(cls, **kwargs):
             return [
                 cls.req(self, scan_parameters=scan_parameters, **kwargs)
-                for scan_parameters in self.get_scan_parameters_product()
+                for scan_parameters in self.get_scan_parameter_combinations()
             ]
 
         reqs = []
@@ -86,7 +92,7 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
             nll_values, scan_min = None, None
             if "likelihoods" in inp:
                 nll_values, scan_min = PlotLikelihoodScan._load_scan_data(inp["likelihoods"],
-                    self.scan_parameter_names, self.get_scan_parameters_product())
+                    self.scan_parameter_names, self.get_scan_parameter_combinations())
                 scan_min = None if np.isnan(scan_min[0]) else float(scan_min[0])
 
             # store data
@@ -122,6 +128,7 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
+            entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             model_parameters=self.get_shown_parameters(),
             h_lines=self.h_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
@@ -176,7 +183,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         def merge_tasks(cls, **kwargs):
             return [
                 cls.req(self, scan_parameters=scan_parameters, **kwargs)
-                for scan_parameters in self.get_scan_parameters_product()
+                for scan_parameters in self.get_scan_parameter_combinations()
             ]
 
         reqs = {"limits": merge_tasks(MergeUpperLimits)}
@@ -250,7 +257,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         nll_values, scan_mins = None, None
         if "likelihoods" in inputs:
             nll_values, scan_mins = PlotLikelihoodScan._load_scan_data(inputs["likelihoods"],
-                self.scan_parameter_names, self.get_scan_parameters_product())
+                self.scan_parameter_names, self.get_scan_parameter_combinations())
             scan_mins = [(None if np.isnan(v) else float(v)) for v in scan_mins]
 
         # call the plot function

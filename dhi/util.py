@@ -200,7 +200,7 @@ def minimize_1d(objective, bounds, start=None, **kwargs):
         start = x[np.argmin(y)]
 
     # minimization using basin hopping
-    kwargs.setdefault("niter", 30)
+    kwargs.setdefault("niter", 20)
     minimizer_kwargs = kwargs.setdefault("minimizer_kwargs", {})
     minimizer_kwargs["bounds"] = [bounds]
     minimizer_kwargs.setdefault("tol", 0.00001)
@@ -400,6 +400,10 @@ def unique_recarray(a, cols=None, sort=True, test_metric=None):
     import numpy as np
 
     metric, test_fn = test_metric or (None, None)
+
+    # concatenate multiple input arrays
+    if isinstance(a, (list, tuple)):
+        a = np.concatenate(a, axis=0)
 
     # use all columns by default, except for the optional test metric
     if not cols:

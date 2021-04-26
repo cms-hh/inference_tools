@@ -145,7 +145,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
     def requires(self):
         return [
             MergeLikelihoodScan.req(self, scan_parameters=scan_parameters)
-            for scan_parameters in self.get_scan_parameters_product()
+            for scan_parameters in self.get_scan_parameter_combinations()
         ]
 
     def output(self):
@@ -224,25 +224,24 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
     def load_scan_data(self, inputs):
         return self._load_scan_data(inputs, self.scan_parameter_names,
-            self.get_scan_parameters_product())
+            self.get_scan_parameter_combinations())
 
     @classmethod
     def _load_scan_data(cls, inputs, scan_parameter_names, scan_parameter_combinations):
         import numpy as np
 
         # load values of each input
-        all_values = []
+        values = []
         all_poi_mins = []
         for inp in inputs:
             data = inp.load(formatter="numpy")
-            all_values.append(data["data"])
+            values.append(data["data"])
             all_poi_mins.append([
                 (None if np.isnan(data["poi_mins"][i]) else float(data["poi_mins"][i]))
                 for i in range(len(scan_parameter_names))
             ])
 
         # concatenate values and safely remove duplicates
-        values = np.concatenate(all_values, axis=0)
         test_fn = lambda kept, removed: kept < 1e-7 or abs((kept - removed) / kept) < 0.001
         values = unique_recarray(values, cols=scan_parameter_names,
             test_metric=("dnll2", test_fn))
@@ -289,7 +288,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
         return [
             [
                 MergeLikelihoodScan.req(self, datacards=datacards, scan_parameters=scan_parameters)
-                for scan_parameters in self.get_scan_parameters_product()
+                for scan_parameters in self.get_scan_parameter_combinations()
             ]
             for datacards in self.multi_datacards
         ]
@@ -392,7 +391,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
         return [
             [
                 MergeLikelihoodScan.req(self, hh_model=hh_model, scan_parameters=scan_parameters)
-                for scan_parameters in self.get_scan_parameters_product()
+                for scan_parameters in self.get_scan_parameter_combinations()
             ]
             for hh_model in self.hh_models
         ]

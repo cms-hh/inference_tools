@@ -147,7 +147,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
         def merge_tasks(**kwargs):
             return [
                 MergeSignificanceScan.req(self, scan_parameters=scan_parameters, **kwargs)
-                for scan_parameters in self.get_scan_parameters_product()
+                for scan_parameters in self.get_scan_parameter_combinations()
             ]
 
         reqs = {}
@@ -213,16 +213,13 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
 
     @classmethod
     def _load_scan_data(cls, inputs, scan_parameter_names):
-        import numpy as np
-
         # load values of each input
-        all_values = []
+        values = []
         for inp in inputs:
             data = inp.load(formatter="numpy")
-            all_values.append(data["data"])
+            values.append(data["data"])
 
         # concatenate values and safely remove duplicates
-        values = np.concatenate(all_values, axis=0)
         test_fn = lambda kept, removed: kept < 1e-7 or abs((kept - removed) / kept) < 0.001
         values = unique_recarray(values, cols=scan_parameter_names,
             test_metric=("significance", test_fn))
@@ -244,7 +241,7 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
         return [
             [
                 MergeSignificanceScan.req(self, datacards=datacards, scan_parameters=scan_parameters)
-                for scan_parameters in self.get_scan_parameters_product()
+                for scan_parameters in self.get_scan_parameter_combinations()
             ]
             for datacards in self.multi_datacards
         ]

@@ -13,7 +13,8 @@ from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int
 from dhi.plots.limits import evaluate_limit_scan_1d, _print_excluded_ranges
 from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
 from dhi.plots.util import (
-    use_style, draw_model_parameters, invert_graph, get_graph_points, get_contours, get_text_extent,
+    use_style, create_model_parameters, invert_graph, get_graph_points, get_contours,
+    get_text_extent,
 )
 
 
@@ -29,6 +30,7 @@ def plot_exclusion_and_bestfit_1d(
     x_min=None,
     x_max=None,
     left_margin=None,
+    entry_height=None,
     model_parameters=None,
     h_lines=None,
     campaign=None,
@@ -61,11 +63,11 @@ def plot_exclusion_and_bestfit_1d(
         )
 
     *x_min* and *x_max* define the range of the x-axis and default to the maximum range of poi
-    values passed in data. *left_margin* controls the left margin of the pad in pixels.
-    *model_parameters* can be a dictionary of key-value pairs of model parameters. *h_lines* can be
-    a list of integers denoting positions where additional horizontal lines are drawn for visual
-    guidance. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*.
+    values passed in data. *left_margin* controls the left margin of the pad in pixels, and
+    *entry_height* the vertical height of each entry box. *model_parameters* can be a dictionary of
+    key-value pairs of model parameters. *h_lines* can be a list of integers denoting positions
+    where additional horizontal lines are drawn for visual guidance. *campaign* should refer to the
+    name of a campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/exclusion.html#comparison-of-exclusion-performance
     """
@@ -91,7 +93,7 @@ def plot_exclusion_and_bestfit_1d(
     top_margin = 35  # pixels
     bottom_margin = 70  # pixels
     left_margin = left_margin or 150  # pixels
-    entry_height = 90  # pixels
+    entry_height = entry_height or 90  # pixels
     head_space = 130  # pixels
 
     # get the canvas height
@@ -225,7 +227,7 @@ def plot_exclusion_and_bestfit_1d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(draw_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -306,10 +308,9 @@ def plot_exclusion_and_bestfit_2d(
         return arr
 
     expected_limits = rec2dict(expected_limits)
-    if observed_limits:
-        observed_limits = rec2dict(observed_limits)
     nll_values = rec2dict(nll_values)
     xsec_values = rec2dict(xsec_values)
+    observed_limits = rec2dict(observed_limits)
 
     # input checks
     assert(scan_parameter1 in expected_limits)
@@ -329,6 +330,13 @@ def plot_exclusion_and_bestfit_2d(
         assert("dnll2" in nll_values)
     if scan_minima:
         assert(len(scan_minima) == 2)
+
+    # store content flags
+    has_unc1 = "limit_p1" in expected_limits and "limit_m1" in expected_limits
+    has_unc2 = "limit_p2" in expected_limits and "limit_m2" in expected_limits
+    has_uncs = has_unc1 and has_unc2
+    has_obs = bool(observed_limits)
+    has_best_fit = bool(nll_values)
 
     # set shown ranges
     if x_min is None:
@@ -357,7 +365,7 @@ def plot_exclusion_and_bestfit_2d(
     h_dummy = ROOT.TH2F("h", ";{};{};".format(x_title, y_title), 1, x_min, x_max, 1, y_min, y_max)
     r.setup_hist(h_dummy, pad=pad)
     draw_objs.append((h_dummy, ""))
-    legend_entries = []
+    legend_entries = 6 * [(h_dummy, " ", "")]
 
     # extract contours for all limit values
     contours = {}
@@ -376,22 +384,21 @@ def plot_exclusion_and_bestfit_2d(
 
     # style graphs and add to draw objects, from outer to inner graphs (-2, -1, +1, +2), followed by
     # nominal or observed
-    has_unc1 = "limit_p1" in contours and "limit_m1" in contours
-    has_unc2 = "limit_p2" in contours and "limit_m2" in contours
-
     # +2 sigma exclusion
     if has_unc2:
-        for g in contours["limit_p2"]:
+        for i, g in enumerate(contours["limit_p2"]):
             r.setup_graph(g, props={"LineStyle": 2, "FillColor": colors.light_grey})
             draw_objs.append((g, "SAME,F"))
-        legend_entries.append((g, "#pm 2 #sigma expected", "LF"))
+            if i == 0:
+                legend_entries[2] = (g, "#pm 2 #sigma expected", "LF")
 
     # -1 and +1 sigma exclusion
     if has_unc1:
-        for g in contours["limit_p1"]:
+        for i, g in enumerate(contours["limit_p1"]):
             r.setup_graph(g, props={"LineStyle": 2, "FillColor": colors.grey})
             draw_objs.append((g, "SAME,F"))
-        legend_entries.insert(0, (g, "#pm 1 #sigma expected", "LF"))
+            if i == 0:
+                legend_entries[1] = (g, "#pm 1 #sigma expected", "LF")
 
         p1_col = colors.light_grey if has_unc2 else colors.white
         for g in contours["limit_m1"]:
@@ -446,10 +453,11 @@ def plot_exclusion_and_bestfit_2d(
                 draw_objs.append((xsec_label, "SAME"))
 
     # nominal exclusion
-    for g in contours["limit"]:
+    for i, g in enumerate(contours["limit"]):
         r.setup_graph(g, props={"LineStyle": 2})
         draw_objs.append((g, "SAME,L"))
-    legend_entries.insert(0, (g, "Excluded (expected)", "L"))
+        if i == 0:
+            legend_entries[0] = (g, "Excluded (expected)", "L")
 
     # observed exclusion
     # for testing
@@ -458,6 +466,7 @@ def plot_exclusion_and_bestfit_2d(
     #     scan_parameter2: expected_limits[scan_parameter2],
     #     "limit": expected_limits["limit"] * 1.2,
     # }
+    # has_obs = True
     if observed_limits:
         # get contours
         obs_contours = get_contours(
@@ -469,14 +478,15 @@ def plot_exclusion_and_bestfit_2d(
         )[0]
 
         # draw them
-        for g in obs_contours:
+        for i, g in enumerate(obs_contours):
             # create an inverted graph to close the outer polygon
             g_inv = invert_graph(g, x_axis=h_dummy.GetXaxis(), y_axis=h_dummy.GetYaxis())
             r.setup_graph(g, props={"LineStyle": 1})
             r.setup_graph(g_inv, props={"LineStyle": 1, "FillColor": colors.blue_signal_trans})
             draw_objs.append((g, "SAME,L"))
             draw_objs.append((g_inv, "SAME,F"))
-        legend_entries.append((g_inv, "Excluded (observed)", "AF"))
+            if i == 0:
+                legend_entries[1 + 2 * has_uncs] = (g_inv, "Excluded (observed)", "AF")
 
     # best fit point
     if nll_values:
@@ -493,14 +503,14 @@ def plot_exclusion_and_bestfit_2d(
             g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
         r.setup_graph(g_fit, props={"FillStyle": 0}, color=colors.black)
         draw_objs.append((g_fit, "PEZ"))
-        legend_entries.append((g_fit, "Best fit value", "LPE"))
+        legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "LPE")
 
     # SM point
     if draw_sm_point:
         g_sm = create_tgraph(1, 1, 1)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
-        legend_entries.append((g_sm, "Standard model", "P"))
+        legend_entries[1 + 2 * has_uncs + has_obs + has_best_fit] = (g_sm, "Standard model", "P")
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=480, n=3, x2=-44, props={"NColumns": 2})
@@ -512,7 +522,7 @@ def plot_exclusion_and_bestfit_2d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(draw_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -534,7 +544,7 @@ def plot_exclusion_and_bestfit_2d(
 
 
 def get_auto_contour_levels(values, steps=(1,)):
-    min_value = min(values)
+    min_value = max(min(values), 1e-3)
     max_value = max(values)
     start = int(math.floor(math.log(min_value, 10)))
     stop = int(math.ceil(math.log(max_value, 10)))

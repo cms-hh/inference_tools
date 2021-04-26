@@ -19,7 +19,7 @@ from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match, convert_rooargset,
 )
 from dhi.plots.util import (
-    use_style, draw_model_parameters, fill_hist_from_points, create_random_name, get_contours,
+    use_style, create_model_parameters, fill_hist_from_points, create_random_name, get_contours,
     get_y_range,
 )
 
@@ -152,7 +152,7 @@ def plot_likelihood_scan_1d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(draw_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -318,7 +318,7 @@ def plot_likelihood_scans_1d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(draw_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -461,7 +461,7 @@ def plot_likelihood_scan_2d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(draw_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -626,7 +626,7 @@ def plot_likelihood_scans_2d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(draw_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -819,7 +819,7 @@ def plot_nuisance_likelihood_scans(
 
         # model parameter labels
         if model_parameters:
-            draw_objs.extend(draw_model_parameters(model_parameters, pad))
+            draw_objs.extend(create_model_parameters(model_parameters, pad))
 
         # cms label
         cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -1111,7 +1111,7 @@ def create_dnll2_hist(poi1_values, poi2_values, dnll2_values, x_min=None, x_max=
     h_nll.SetMinimum(z_min)
     h_nll.SetMaximum(z_max)
 
-    # fill it and lift values to the z_min to avoid drawing unfilled white bins
+    # fill it and lift values to z_min to avoid drawing unfilled white bins
     fill_hist_from_points(h_nll, poi1_values, poi2_values, dnll2_values)
     for bx in range(1, h_nll.GetNbinsX() + 1):
         for by in range(1, h_nll.GetNbinsY() + 1):

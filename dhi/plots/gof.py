@@ -11,7 +11,7 @@ import scipy.stats
 
 from dhi.config import campaign_labels, colors, br_hh_names
 from dhi.util import import_ROOT, to_root_latex, create_tgraph
-from dhi.plots.util import use_style, draw_model_parameters, get_y_range
+from dhi.plots.util import use_style, create_model_parameters, get_y_range
 
 
 colors = colors.root
@@ -108,7 +108,7 @@ def plot_gof_distribution(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(draw_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)
@@ -289,7 +289,7 @@ def plot_gofs(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(draw_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad)

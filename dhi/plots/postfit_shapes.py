@@ -12,7 +12,7 @@ import uproot
 
 from dhi.config import poi_data, campaign_labels, colors
 from dhi.util import import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors
-from dhi.plots.util import use_style, draw_model_parameters
+from dhi.plots.util import use_style, create_model_parameters
 
 
 colors = colors.root
@@ -198,7 +198,7 @@ def plot_s_over_b(
 
     # model parameter labels
     if model_parameters:
-        draw_objs1.extend(draw_model_parameters(model_parameters, pad1))
+        draw_objs1.extend(create_model_parameters(model_parameters, pad1))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad1)

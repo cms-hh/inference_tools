@@ -453,7 +453,7 @@ class DatacardTask(HHModelTask):
         bin_names = []
         store_dir = None
         has_dcr2 = "DHI_DATACARDS_RUN2" in os.environ \
-                and os.path.isdir(os.path.expandvars("$DHI_DATACARDS_RUN2"))
+            and os.path.isdir(os.path.expandvars("$DHI_DATACARDS_RUN2"))
         if has_dcr2:
             dc_path = os.path.realpath(os.path.expandvars("$DHI_DATACARDS_RUN2"))
             in_dc_path = dc_path == os.path.realpath(os.getcwd())
@@ -1165,19 +1165,35 @@ class POIScanTask(POITask, ParameterScanTask):
 
 class POIPlotTask(PlotTask, POITask):
 
-    show_parameters = law.CSVParameter(
+    show_parameters = law.MultiCSVParameter(
         default=(),
         significant=False,
-        description="comma-separated list of parameters that are shown in the plot even if they "
-        "are 1; no default",
+        description="colon-separated list of parameters that are shown in the plot even if they "
+        "are 1; parameters separated by comma are shown in the same line when their value is "
+        "identical same; no default",
     )
 
     def get_shown_parameters(self):
         parameter_values = self._joined_parameter_values(join=False)
-        for p, v in list(parameter_values.items()):
-            if v == 1 and p not in self.show_parameters:
-                parameter_values.pop(p, None)
-        return parameter_values
+        shown_parameters = OrderedDict()
+
+        # add those requested explicitly
+        for names in self.show_parameters:
+            groups = OrderedDict()
+            for name in names:
+                if name not in parameter_values:
+                    continue
+                groups.setdefault(parameter_values[name], []).append(name)
+                parameter_values.pop(name)
+            for value, names in groups.items():
+                shown_parameters[tuple(names)] = value
+
+        # add remaining ones
+        for name, value in list(parameter_values.items()):
+            if value != 1:
+                shown_parameters[(name,)] = value
+
+        return shown_parameters
 
 
 class InputDatacards(DatacardTask, law.ExternalTask):
