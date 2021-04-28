@@ -36,6 +36,7 @@ def _setup_styles():
     s.legend_dy = 32
     s.legend.TextSize = 20
     s.legend.FillStyle = 1
+    s.style.PaintTextFormat = "1.2f"
 
 
 def use_style(style_name):
@@ -86,10 +87,7 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
                 groups.setdefault(value, []).append(name)
 
         # fill back to model parameters
-        model_parameters = OrderedDict(sum((
-            [(tuple(names), value) for value, names in group.items()]
-            for group in [groups_k1, groups_k2, groups]
-        ), []))
+        model_parameters = OrderedDict((tuple(names), value) for value, names in groups.items())
 
     # create labels
     parameter_labels = []
@@ -122,9 +120,9 @@ def determine_limit_digits(limit, is_xsec=False):
         else:
             return 0
     else:
-        if limit < 10:
+        if limit < 50:
             return 2
-        elif limit < 300:
+        elif limit < 100:
             return 1
         else:
             return 0
@@ -205,11 +203,16 @@ def frame_histogram(hist, x_width, y_width, mode="edge", frame_value=None, conto
 
 
 # helper to fill each bin in a 2D histogram from potentially sparse points via interpolation
-def fill_hist_from_points(h, x_values, y_values, z_values, interpolation="tgraph2d"):
+def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=None, replace_nan=None,
+        interpolation="tgraph2d"):
     ROOT = import_ROOT()
 
-    # remove nans in z_values
-    nan_indices = np.argwhere(np.isnan(np.array(z_values)))
+    # remove or replace nans in z_values
+    z_values = np.array(z_values)
+    nan_indices = np.argwhere(np.isnan(z_values))
+    if replace_nan is not None:
+        z_values[nan_indices] = replace_nan
+        nan_indices = []
     x_values = [x for i, x in enumerate(x_values) if i not in nan_indices]
     y_values = [y for i, y in enumerate(y_values) if i not in nan_indices]
     z_values = [z for i, z in enumerate(z_values) if i not in nan_indices]
@@ -223,18 +226,26 @@ def fill_hist_from_points(h, x_values, y_values, z_values, interpolation="tgraph
     elif interpolation.startswith("interp2d_"):
         interp = scipy.interpolate.interp2d(x_values, y_values, z_values, kind=interpolation[9:])
 
+    # helper for limiting z values
+    def cap_z(z):
+        if z_min is not None and z < z_min:
+            return z_min
+        if z_max is not None and z > z_max:
+            return z_max
+        return z
+
     # then, fill histogram bins
     if isinstance(h, ROOT.TH2Poly):
         for poly_bin in h.GetBins():
             z = interp(*find_poly_bin_center(poly_bin))
-            poly_bin.SetContent(z)
+            poly_bin.SetContent(cap_z(z))
     else:
         # strictly rectangular bins
         for bx in range(1, h.GetNbinsX() + 1):
             for by in range(1, h.GetNbinsY() + 1):
                 x = h.GetXaxis().GetBinCenter(bx)
                 y = h.GetYaxis().GetBinCenter(by)
-                h.SetBinContent(bx, by, interp(x, y))
+                h.SetBinContent(bx, by, cap_z(interp(x, y)))
 
 
 def find_poly_bin_center(poly_bin, n=1000):
@@ -254,8 +265,7 @@ def find_poly_bin_center(poly_bin, n=1000):
 
 
 # helper to extract contours
-def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_points=10,
-        interpolation="tgraph2d"):
+def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_points=10, **kwargs):
     ROOT = import_ROOT()
 
     # remove nans in z_values
@@ -292,7 +302,7 @@ def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_po
     with temporary_canvas() as c:
         c.cd()
         h = ROOT.TH2F(create_random_name(), "", x_n, x_min, x_max, y_n, y_min, y_max)
-        fill_hist_from_points(h, x_values, y_values, z_values, interpolation=interpolation)
+        fill_hist_from_points(h, x_values, y_values, z_values, **kwargs)
 
         # get contours in a nested list of graphs
         contours = []

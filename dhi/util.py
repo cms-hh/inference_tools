@@ -200,7 +200,7 @@ def minimize_1d(objective, bounds, start=None, **kwargs):
         start = x[np.argmin(y)]
 
     # minimization using basin hopping
-    kwargs.setdefault("niter", 20)
+    kwargs.setdefault("niter", 50)
     minimizer_kwargs = kwargs.setdefault("minimizer_kwargs", {})
     minimizer_kwargs["bounds"] = [bounds]
     minimizer_kwargs.setdefault("tol", 0.00001)

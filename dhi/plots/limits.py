@@ -6,6 +6,7 @@ Limit plots using ROOT.
 
 import math
 
+import six
 import numpy as np
 import scipy.interpolate
 
@@ -14,7 +15,7 @@ from dhi.config import (
 )
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, create_tgraph, colored, minimize_1d, unique_recarray,
-    make_list,
+    make_list, try_int,
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, create_hh_process_label, determine_limit_digits,
@@ -727,6 +728,8 @@ def plot_limit_scan_2d(
     z_log=False,
     model_parameters=None,
     campaign=None,
+    h_lines=None,
+    v_lines=None,
 ):
     """
     Creates a plot for the upper limit scan of a *poi* in two dimensions over *scan_parameter1* and
@@ -742,6 +745,8 @@ def plot_limit_scan_2d(
     scale. *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign*
     should refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
     *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
+    *h_lines* and *v_lines* can be sequences of float values denoting positions of horizontal and
+    vertical lines, respectively, to be drawn.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#limit-on-poi-vs-two-scan-parameters
     """
@@ -757,6 +762,7 @@ def plot_limit_scan_2d(
         assert(scan_parameter2 in values)
         return values
 
+    # TOOD: externalize to dhi.utils
     def join_limits(values):
         rec_arrays = []
         for _values in values:
@@ -770,6 +776,8 @@ def plot_limit_scan_2d(
     # prepare inputs
     expected_limits = check_values(make_list(expected_limits))
     joined_expected_limits = join_limits(expected_limits)
+    has_unc = "limit_p1" in joined_expected_limits.dtype.names \
+        and "limit_m1" in joined_expected_limits.dtype.names
     shown_limits = expected_limits
     has_obs = False
     if observed_limits is not None:
@@ -786,7 +794,7 @@ def plot_limit_scan_2d(
         levels=[1.],
         frame_kwargs=[{"mode": "edge", "width": 1.}],
     )[0]
-    if "limit_p1" in expected_limits and "limit_m1" in expected_limits:
+    if has_unc:
         exp_p1_contours = get_contours(
             joined_expected_limits[scan_parameter1],
             joined_expected_limits[scan_parameter2],
@@ -824,6 +832,7 @@ def plot_limit_scan_2d(
     ROOT.TColor.CreateGradientColorTable(len(lvals), lvals, rvals, gvals, bvals, 100)
 
     # helper to extract binning information
+    # TODO: externalize this function to dhi.plots.utils, can be used as well for 2d nll plots
     def infer_binning(data):
         # get the smallest difference between two points in each direction and call it bin width
         scan_values1 = np.array(data[scan_parameter1], dtype=np.float32)
@@ -872,7 +881,8 @@ def plot_limit_scan_2d(
             h = ROOT.TH2F("h" + str(i), "", _x_bins, _x_min, _x_max, _y_bins, _y_min, _y_max)
 
         # fill and store the histogram
-        fill_hist_from_points(h, data[scan_parameter1], data[scan_parameter2], data["limit"])
+        fill_hist_from_points(h, data[scan_parameter1], data[scan_parameter2], data["limit"],
+            z_min=z_min, z_max=z_max)
         hists.append(h)
 
     # dummy histogram to control axes
@@ -889,18 +899,49 @@ def plot_limit_scan_2d(
     for i, h in enumerate(hists):
         r.setup_hist(h, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
         if i == 0:
-            r.setup_z_axis(h.GetZaxis(), pad=pad, props={"Title": z_title, "TitleSize": 21,
-                "TitleOffset": 1.6})
+            r.setup_z_axis(h.GetZaxis(), pad=pad, props={"Title": z_title, "TitleSize": 24,
+                "TitleOffset": 1.5})
         draw_objs.append((h, "SAME,COLZ"))
+        # draw_objs.append((h, "SAME,TEXT"))
+
+    # helper for parsing line options
+    def parse_line_value(v, props):
+        if isinstance(v, six.string_types):
+            parts = v.split("@")
+            v = float(parts[0])
+            for part in parts[1:]:
+                if "=" not in part:
+                    continue
+                key, prop = part.split("=", 1)
+                props[key] = try_int(float(prop))  # cast to float or integer
+
+        return v, props
+
+    # horizontal lines
+    if h_lines:
+        for y in h_lines:
+            y, props = parse_line_value(y, {"NDC": False, "LineColor": colors.dark_grey})
+            line = ROOT.TLine(x_min, float(y), x_max, float(y))
+            r.setup_line(line, props=props)
+            draw_objs.append(line)
+
+    # vertical lines
+    if v_lines:
+        for x in v_lines:
+            x, props = parse_line_value(x, {"NDC": False, "LineColor": colors.dark_grey})
+            line = ROOT.TLine(y_min, float(x), y_max, float(x))
+            r.setup_line(line, props=props)
+            draw_objs.append(line)
 
     # exclusion contours
     for g in exp_contours:
         r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black, "LineStyle": 2})
         draw_objs.append((g, "SAME,C"))
-    if "limit_p1" in expected_limits and "limit_m1" in expected_limits:
-        for g in exp_p1_contours + exp_m1_contours:
-            r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black, "LineStyle": 3})
-            draw_objs.append((g, "SAME,C"))
+    # disabled for the moment
+    # if has_unc:
+    #     for g in exp_p1_contours + exp_m1_contours:
+    #         r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black, "LineStyle": 3})
+    #         draw_objs.append((g, "SAME,C"))
     if has_obs:
         for g in obs_contours:
             r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black})
@@ -1138,7 +1179,7 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
     # get exclusion range edges from intersections
     rnd = lambda v: round(float(v), 7)
     edges = {rnd(scan_values.min()), rnd(scan_values.max())}
-    for start in np.linspace(scan_values.min(), scan_values.max(), 100):
+    for start in np.linspace(scan_values.min(), scan_values.max(), 20):
         x = get_intersection(start)
         if x is None:
             continue
@@ -1202,13 +1243,13 @@ def _print_excluded_ranges(param_name, scan_name, scan_values, ranges):
     def format_range(start, stop):
         if abs(start - scan_values.min()) < 1e-4:
             r = "{} < {:.5f}".format(param_name, stop)
-            check = granularity_check(stop)
+            # check = granularity_check(stop)
         elif abs(stop - scan_values.max()) < 1e-4:
             r = "{} > {:.5f}".format(param_name, start)
-            check = granularity_check(start)
+            # check = granularity_check(start)
         else:
             r = "{:.5f} < {} < {:.5f}".format(start, param_name, stop)
-            check = granularity_check(start) and granularity_check(stop)
+            # check = granularity_check(start) and granularity_check(stop)
         # check currently disabled
         # if not check:
         #     r += " (granularity potentially insufficient for accurate interpolation)"

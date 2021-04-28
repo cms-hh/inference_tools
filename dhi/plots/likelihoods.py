@@ -5,7 +5,6 @@ Likelihood plots using ROOT.
 """
 
 import math
-from collections import OrderedDict
 
 import numpy as np
 import scipy.interpolate
@@ -133,15 +132,15 @@ def plot_likelihood_scan_1d(
     # line for best fit value
     line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
     r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors.black)
-    fit_label = "{} = {}".format(to_root_latex(poi_data[poi].label),
-        scan.num_min.str(format="%.2f", style="root"))
     draw_objs.append(line_fit)
-    legend_entries.insert(0, (line_fit, fit_label, "L"))
 
     # nll curve
     g_nll = create_tgraph(len(poi_values), poi_values, dnll2_values)
     r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75})
     draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
+    fit_label = "{} = {}".format(to_root_latex(poi_data[poi].label),
+        scan.num_min.str(format="%.2f", style="root"))
+    legend_entries.insert(0, (g_nll, fit_label, "LP" if show_points else "L"))
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=230, n=len(legend_entries))
@@ -890,21 +889,21 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     # helper to get the outermost intersection of the nll curve with a certain value
     def get_intersections(v):
         def minimize(bounds):
-            # get a good starting point within the bounds and close to poi_min
-            linspace = np.linspace(bounds[0], bounds[1], 100)
-            for start in sorted(linspace, key=lambda x: abs(x - poi_min)):
-                if interp(start) > v:
+            # cap the farther bound using a simple scan
+            for x in np.linspace(bounds[0], bounds[1], 50):
+                if interp(x) > v * 1.05:
+                    bounds[1] = x
                     break
-            else:
-                start = poi_min
+            bounds.sort()
+
             # minimize
-            objective = lambda x: (interp(x) - v) ** 2.0
-            res = minimize_1d(objective, bounds, start=start)
+            objective = lambda x: abs(interp(x) - v)
+            res = minimize_1d(objective, bounds)
             return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
 
         return (
-            minimize((poi_min, poi_values_max - 1e-4)),
-            minimize((poi_values_min + 1e-4, poi_min)),
+            minimize([poi_min, poi_values_max - 1e-4]),
+            minimize([poi_min, poi_values_min + 1e-4]),
         )
 
     # get the intersections with values corresponding to 1 and 2 sigma
@@ -1010,21 +1009,21 @@ def evaluate_likelihood_scan_2d(
             _interp = lambda x: interp(poi1_min, x)
 
         def minimize(bounds):
-            # get a good starting point within the bounds and close to poi_min
-            linspace = np.linspace(bounds[0], bounds[1], 100)
-            for start in sorted(linspace, key=lambda x: abs(x - poi_min)):
-                if _interp(start) > v:
+            # cap the farther bound using a simple scan
+            for x in np.linspace(bounds[0], bounds[1], 50):
+                if _interp(x) > v * 1.05:
+                    bounds[1] = x
                     break
-            else:
-                start = poi_min
+            bounds.sort()
+
             # minimize
-            objective = lambda x: (_interp(x) - v) ** 2.0
-            res = minimize_1d(objective, bounds, start=start)
+            objective = lambda x: abs(_interp(x) - v)
+            res = minimize_1d(objective, bounds)
             return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
 
         return (
-            minimize((poi_min, poi_values_max - 1e-4)),
-            minimize((poi_values_min + 1e-4, poi_min)),
+            minimize([poi_min, poi_values_max - 1e-4]),
+            minimize([poi_min, poi_values_min + 1e-4]),
         )
 
     # get the intersections with values corresponding to 1 and 2 sigma
@@ -1112,10 +1111,6 @@ def create_dnll2_hist(poi1_values, poi2_values, dnll2_values, x_min=None, x_max=
     h_nll.SetMaximum(z_max)
 
     # fill it and lift values to z_min to avoid drawing unfilled white bins
-    fill_hist_from_points(h_nll, poi1_values, poi2_values, dnll2_values)
-    for bx in range(1, h_nll.GetNbinsX() + 1):
-        for by in range(1, h_nll.GetNbinsY() + 1):
-            if h_nll.GetBinContent(bx, by) < z_min:
-                h_nll.SetBinContent(bx, by, z_min)
+    fill_hist_from_points(h_nll, poi1_values, poi2_values, dnll2_values, z_min=z_min)
 
     return h_nll
