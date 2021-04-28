@@ -115,6 +115,11 @@ class MergeSignificanceScan(SignificanceBase):
         ]
         scan_task = self.requires()
         for branch, inp in self.input()["collection"].targets.items():
+            if not inp.exists():
+                self.logger.warning("input of branch {} at {} does not exist".format(
+                    branch, inp.path))
+                continue
+
             scan_values = scan_task.branch_map[branch]
             sig = inp.load(formatter="uproot")["limit"].array("limit")[0]
             pval = scipy.stats.norm.sf(sig)

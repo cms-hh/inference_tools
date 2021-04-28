@@ -147,9 +147,14 @@ class MergeGoodnessOfFit(GoodnessOfFitBase):
         data = {"data": None, "toys": []}
 
         # load values
-        for b, inp in self.input()["collection"].targets.items():
+        for branch, inp in self.input()["collection"].targets.items():
+            if not inp.exists():
+                self.logger.warning("input of branch {} at {} does not exist".format(
+                    branch, inp.path))
+                continue
+
             values = inp.load(formatter="uproot")["limit"].array("limit")
-            if b == 0:
+            if branch == 0:
                 data["data"] = float(values[0])
             else:
                 data["toys"].extend(values.tolist())

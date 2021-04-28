@@ -28,11 +28,11 @@ from dhi.config import br_hh
 class EFTBase(MultiDatacardTask):
 
     datacard_pattern = law.CSVParameter(
-        default=("datacard_(.+).txt",),
+        default=(r"datacard_(.+)\.txt",),
         description="one or multiple comma-separated regular expressions for selecting datacards "
         "from each of the sequences passed in --multi-datacards, and for extracting information "
         "with a single regex group; when set on the command line, single quotes should be used; "
-        "default: ('datacard_(.+).txt',)",
+        r"default: ('datacard_(.+)\.txt',)",
     )
     frozen_parameters = law.CSVParameter(
         default=(),
@@ -350,6 +350,11 @@ class MergeEFTUpperLimits(EFTScanBase):
 
         scan_task = self.requires()
         for branch, inp in self.input()["collection"].targets.items():
+            if not inp.exists():
+                self.logger.warning("input of branch {} at {} does not exist".format(
+                    branch, inp.path))
+                continue
+
             limits = UpperLimits.load_limits(inp, unblinded=self.unblinded)
             records.append((scan_task.branch_map[branch],) + limits)
 

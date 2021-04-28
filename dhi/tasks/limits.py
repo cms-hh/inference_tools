@@ -127,6 +127,11 @@ class MergeUpperLimits(UpperLimitsBase):
 
         scan_task = self.requires()
         for branch, inp in self.input()["collection"].targets.items():
+            if not inp.exists():
+                self.logger.warning("input of branch {} at {} does not exist".format(
+                    branch, inp.path))
+                continue
+
             scan_values = scan_task.branch_map[branch]
             limits = UpperLimits.load_limits(inp, unblinded=self.unblinded)
             records.append(scan_values + limits)
@@ -716,6 +721,16 @@ class PlotUpperLimits2D(POIScanTask, POIPlotTask):
         default=False,
         description="apply log scaling to the z-axis; default: False",
     )
+    h_lines = law.CSVParameter(
+        default=tuple(),
+        significant=False,
+        description="comma-separated values for drawing horizontal lines; no default",
+    )
+    v_lines = law.CSVParameter(
+        default=tuple(),
+        significant=False,
+        description="comma-separated values for drawing vertical lines; no default",
+    )
 
     force_n_pois = 1
     force_n_scan_parameters = 2
@@ -783,4 +798,6 @@ class PlotUpperLimits2D(POIScanTask, POIPlotTask):
             z_log=self.z_log,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            h_lines=self.h_lines,
+            v_lines=self.v_lines,
         )

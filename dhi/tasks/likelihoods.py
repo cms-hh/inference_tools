@@ -103,8 +103,12 @@ class MergeLikelihoodScan(LikelihoodBase):
         poi_mins = self.n_pois * [np.nan]
         branch_map = self.requires().branch_map
         for branch, inp in self.input()["collection"].targets.items():
-            scan_values = branch_map[branch]
+            if not inp.exists():
+                self.logger.warning("input of branch {} at {} does not exist".format(
+                    branch, inp.path))
+                continue
 
+            scan_values = branch_map[branch]
             f = inp.load(formatter="uproot")["limit"]
             dnll = f["deltaNLL"].array()
             failed = len(dnll) <= 1

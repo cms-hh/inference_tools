@@ -887,14 +887,14 @@ class ParameterScanTask(AnalysisTask):
             # patches are identified when parameters of scan ranges are repeated multiple times
             # in the exact same order, e.g. for two parameters a and b:
             # (a, b, b) or (a, b, a) or (a, b, b, a)
-            #   -> no patch, fallback to the full product
+            #   -> no patch, fallback to the full product between all a's and b's
             # (a, b, a, b) or (a, b, a, b, a, b)
-            #   -> two or three patches found
+            #   -> two or three (a, b) patches found
             names = tuple(p[0] for p in self.scan_parameters)
             n_patches = len(self.scan_parameters) / float(n_params)
             is_int = lambda n: int(n) == n
             if is_int(n_patches) and names == int(n_patches) * tuple(self.scan_parameter_names):
-                self.logger.info("identified {} unique patches in scan parameter ranges".format(
+                self.logger.debug("identified {} patches in scan parameter ranges".format(
                     int(n_patches)))
                 return [
                     self.scan_parameters[i * n_params:(i + 1) * n_params]
