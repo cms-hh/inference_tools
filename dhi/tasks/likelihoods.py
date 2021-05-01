@@ -173,7 +173,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         output.parent.touch()
 
         # load scan data
-        values, poi_mins = self.load_scan_data(self.input())
+        values, poi_mins = self.load_scan_data(self.input(), merge_scans=self.n_pois == 1)
 
         # call the plot function
         if self.n_pois == 1:
@@ -226,12 +226,13 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
             )
 
-    def load_scan_data(self, inputs):
+    def load_scan_data(self, inputs, merge_scans=True):
         return self._load_scan_data(inputs, self.scan_parameter_names,
-            self.get_scan_parameter_combinations())
+            self.get_scan_parameter_combinations(), merge_scans=merge_scans)
 
     @classmethod
-    def _load_scan_data(cls, inputs, scan_parameter_names, scan_parameter_combinations):
+    def _load_scan_data(cls, inputs, scan_parameter_names, scan_parameter_combinations,
+            merge_scans=True):
         import numpy as np
 
         # load values of each input
@@ -245,10 +246,11 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 for i in range(len(scan_parameter_names))
             ])
 
-        # concatenate values and safely remove duplicates
-        test_fn = lambda kept, removed: kept < 1e-7 or abs((kept - removed) / kept) < 0.001
-        values = unique_recarray(values, cols=scan_parameter_names,
-            test_metric=("dnll2", test_fn))
+        # concatenate values and safely remove duplicates when configured
+        if merge_scans:
+            test_fn = lambda kept, removed: kept < 1e-7 or abs((kept - removed) / kept) < 0.001
+            values = unique_recarray(values, cols=scan_parameter_names,
+                test_metric=("dnll2", test_fn))
 
         # pick the most appropriate poi mins
         poi_mins = cls._select_poi_mins(all_poi_mins, scan_parameter_combinations)

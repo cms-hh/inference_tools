@@ -264,6 +264,36 @@ def find_poly_bin_center(poly_bin, n=1000):
     raise Exception("could not determine poly bin center after {} iterations".format(n))
 
 
+def infer_binning_from_grid(x_values, y_values):
+    # get the smallest difference between two points in each direction and call it bin width
+    x_values = np.array(x_values, dtype=np.float32)
+    y_values = np.array(y_values, dtype=np.float32)
+    ex = np.unique(x_values)
+    ey = np.unique(y_values)
+    x_width = min(ex[1:] - ex[:-1])
+    y_width = min(ey[1:] - ey[:-1])
+
+    # get axis limits
+    x_min = min(ex) - 0.5 * x_width
+    x_max = max(ex) + 0.5 * x_width
+    y_min = min(ey) - 0.5 * y_width
+    y_max = max(ey) + 0.5 * y_width
+
+    # infer the number of bins
+    x_bins = (x_max - x_min) / x_width
+    y_bins = (y_max - y_min) / y_width
+    if round(x_bins, 3) != int(x_bins):
+        raise Exception("x axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
+            x_min, x_max, x_width))
+    if round(y_bins, 3) != int(y_bins):
+        raise Exception("y axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
+            y_min, y_max, y_width))
+    x_bins = int(x_bins)
+    y_bins = int(y_bins)
+
+    return x_width, y_width, x_bins, y_bins, x_min, x_max, y_min, y_max
+
+
 # helper to extract contours
 def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_points=10, **kwargs):
     ROOT = import_ROOT()

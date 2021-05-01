@@ -444,6 +444,42 @@ def unique_recarray(a, cols=None, sort=True, test_metric=None):
     return b
 
 
+def dict_to_recarray(dicts):
+    """
+    Converts one (or multiple) dictionaries into a recarray with arrays fields being interpreted as
+    columns. When multiple dictionaries are given, the resulting recarrays are concatenated if their
+    dtypes are identical.
+    """
+    import numpy as np
+
+    dicts = make_list(dicts)
+    if not dicts:
+        return None
+
+    first_keys = list(dicts[0].keys())
+    dtype = [(key, np.float32) for key in first_keys]
+
+    arrays = []
+    for i, d in enumerate(dicts):
+        # check if keys are identical to first dict
+        if set(d.keys()) != set(first_keys):
+            raise Exception("keys of dictionary {} ({}) do not match those of first dictionary "
+                "({})".format(i, ",".join(d.keys()), ",".join(first_keys)))
+
+        # check if all values (lists) have the same length
+        value_lengths = set(map(len, d.values()))
+        if len(value_lengths) != 1:
+            raise Exception("dictionary {} found to map to lists with unequal lengths: {}".format(
+                value_lengths))
+
+        # construct the recarray
+        records = [tuple(v[i] for v in d.values()) for i in range(list(value_lengths)[0])]
+        arrays.append(np.array(records, dtype=dtype))
+
+    # concatenate
+    return np.concatenate(arrays, axis=0) if len(arrays) > 1 else arrays[0]
+
+
 class TFileCache(object):
 
     def __init__(self, logger=None):

@@ -15,11 +15,11 @@ from dhi.config import (
 )
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, create_tgraph, colored, minimize_1d, unique_recarray,
-    make_list, try_int,
+    make_list, try_int, dict_to_recarray,
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, create_hh_process_label, determine_limit_digits,
-    get_graph_points, get_y_range, get_contours, fill_hist_from_points,
+    get_graph_points, get_y_range, get_contours, fill_hist_from_points, infer_binning_from_grid,
 )
 
 
@@ -320,9 +320,9 @@ def plot_limit_scans(
 
     # set default ranges
     if x_min is None:
-        x_min = min(scan_values)
+        x_min = min(min(ev[scan_parameter]) for ev in expected_values)
     if x_max is None:
-        x_max = max(scan_values)
+        x_max = max(max(ev[scan_parameter]) for ev in expected_values)
 
     # start plotting
     r.setup_style()
@@ -345,18 +345,21 @@ def plot_limit_scans(
     for i, (ev, col, ms) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1],
             marker_sequence[:n_graphs][::-1])):
         mask = ~np.isnan(ev["limit"])
-        g_exp = create_tgraph(mask.sum(), scan_values[mask], ev["limit"][mask])
+        limit_values = ev["limit"][mask]
+        scan_values = ev[scan_parameter][mask]
+
+        g_exp = create_tgraph(mask.sum(), scan_values, limit_values)
         r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
         draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
         name = names[n_graphs - i - 1]
         legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
             "LP" if show_points else "L"))
-        y_max_value = max(y_max_value, max(ev["limit"]))
-        y_min_value = min(y_min_value, min(ev["limit"]))
+        y_max_value = max(y_max_value, max(limit_values))
+        y_min_value = min(y_min_value, min(limit_values))
         print_excluded_ranges(scan_parameter, poi + " " + name,
-            scan_values[mask],
-            ev["limit"][mask],
+            scan_values,
+            limit_values,
             theory_values[scan_parameter] if has_thy else None,
             theory_values["xsec"] if has_thy else None,
         )
@@ -393,7 +396,7 @@ def plot_limit_scans(
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
     legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
-    legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
+    legend = r.routines.create_legend(pad=pad, width=legend_cols * 230, n=legend_rows,
         props={"NColumns": legend_cols, "TextSize": 18})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
@@ -757,21 +760,13 @@ def plot_limit_scan_2d(
         if isinstance(values, list):
             return list(map(check_values, values))
         if isinstance(values, np.ndarray):
-            values = {key: values[key] for key in values.dtype.names}
+            values = {key: np.array(values[key]) for key in values.dtype.names}
         assert(scan_parameter1 in values)
         assert(scan_parameter2 in values)
         return values
 
-    # TOOD: externalize to dhi.utils
     def join_limits(values):
-        rec_arrays = []
-        for _values in values:
-            n = set(len(v) for v in _values.values())
-            assert(len(n) == 1)
-            dtype = [(key, np.float32) for key in _values]
-            records = [tuple(v[i] for v in _values.values()) for i in range(list(n)[0])]
-            rec_arrays.append(np.array(records, dtype=dtype))
-        return unique_recarray(rec_arrays, cols=[scan_parameter1, scan_parameter2])
+        return unique_recarray(dict_to_recarray(values), cols=[scan_parameter1, scan_parameter2])
 
     # prepare inputs
     expected_limits = check_values(make_list(expected_limits))
@@ -823,6 +818,7 @@ def plot_limit_scan_2d(
     canvas, (pad,) = r.routines.create_canvas(pad_props={"RightMargin": 0.17, "Logz": z_log})
     pad.cd()
     draw_objs = []
+    legend_entries = []
 
     # custom palette, requires that the z range is symmetrical around 1
     rvals = np.array([ROOT.gROOT.GetColor(colors.red).GetRed(), 1., 0.])
@@ -831,42 +827,13 @@ def plot_limit_scan_2d(
     lvals = np.array([0.0, 0.5, 1.0])
     ROOT.TColor.CreateGradientColorTable(len(lvals), lvals, rvals, gvals, bvals, 100)
 
-    # helper to extract binning information
-    # TODO: externalize this function to dhi.plots.utils, can be used as well for 2d nll plots
-    def infer_binning(data):
-        # get the smallest difference between two points in each direction and call it bin width
-        scan_values1 = np.array(data[scan_parameter1], dtype=np.float32)
-        scan_values2 = np.array(data[scan_parameter2], dtype=np.float32)
-        ex = np.unique(scan_values1)
-        ey = np.unique(scan_values2)
-        x_width = min(ex[1:] - ex[:-1])
-        y_width = min(ey[1:] - ey[:-1])
-
-        # get axis limits
-        x_min = min(ex) - 0.5 * x_width
-        x_max = max(ex) + 0.5 * x_width
-        y_min = min(ey) - 0.5 * y_width
-        y_max = max(ey) + 0.5 * y_width
-        z_min = data["limit"].min()
-        z_max = data["limit"].max()
-
-        # infer the number of bins
-        x_bins = (x_max - x_min) / x_width
-        y_bins = (y_max - y_min) / y_width
-        if round(x_bins, 3) != int(x_bins):
-            raise Exception("x axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
-                x_min, x_max, x_width))
-        if round(y_bins, 3) != int(y_bins):
-            raise Exception("y axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
-                y_min, y_max, y_width))
-        x_bins = int(x_bins)
-        y_bins = int(y_bins)
-
-        return x_width, y_width, x_bins, y_bins, x_min, x_max, y_min, y_max, z_min, z_max
-
+    # create a histogram for each scan patch
     hists = []
     for i, data in enumerate(shown_limits):
-        _, _, _x_bins, _y_bins, _x_min, _x_max, _y_min, _y_max, _z_min, _z_max = infer_binning(data)
+        _, _, _x_bins, _y_bins, _x_min, _x_max, _y_min, _y_max = infer_binning_from_grid(
+            data[scan_parameter1], data[scan_parameter2])
+        _z_min = np.nanmin(data["limit"])
+        _z_max = np.nanmax(data["limit"])
 
         # get axis limits for the first set of values
         if i == 0:
@@ -934,24 +901,40 @@ def plot_limit_scan_2d(
             draw_objs.append(line)
 
     # exclusion contours
-    for g in exp_contours:
+    for i, g in enumerate(exp_contours):
         r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black, "LineStyle": 2})
         draw_objs.append((g, "SAME,C"))
-    # disabled for the moment
-    # if has_unc:
-    #     for g in exp_p1_contours + exp_m1_contours:
-    #         r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black, "LineStyle": 3})
-    #         draw_objs.append((g, "SAME,C"))
+        if i == 0:
+            legend_entries.append((g, "Excluded (expected)", "L"))
+
+    if has_unc:
+        for i, g in enumerate(exp_p1_contours + exp_m1_contours):
+            r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black, "LineStyle": 3})
+            draw_objs.append((g, "SAME,C"))
+            if i == 0:
+                legend_entries.append((g, r"#pm 1 #sigma expected", "L"))
+
     if has_obs:
-        for g in obs_contours:
+        for i, g in enumerate(obs_contours):
             r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black})
             draw_objs.append((g, "SAME,C"))
+            if i == 0:
+                legend_entries.append((g, "Observed", "L"))
 
     # SM point
     if draw_sm_point:
         g_sm = create_tgraph(1, 1, 1)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.black)
         draw_objs.append((g_sm, "P"))
+        legend_entries.append((g_sm, "Standard model", "P"))
+
+    # legend
+    n_cols = int(math.ceil(len(legend_entries) / 3.))
+    n_rows = min(len(legend_entries), 3)
+    legend = r.routines.create_legend(pad=pad, x2=-20, width=n_cols * 220, n=n_rows,
+        props={"NColumns": n_cols})
+    r.fill_legend(legend, legend_entries)
+    draw_objs.append(legend)
 
     # model parameter labels
     if model_parameters:
