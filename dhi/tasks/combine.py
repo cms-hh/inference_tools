@@ -20,7 +20,7 @@ import six
 
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, LocalFileTarget
 from dhi.config import poi_data, br_hh
-from dhi.util import linspace, try_int
+from dhi.util import linspace, try_int, real_path, expand_path
 from dhi.datacard_tools import bundle_datacard
 from dhi.scripts import remove_processes as remove_processes_script
 
@@ -401,7 +401,7 @@ class DatacardTask(HHModelTask):
 
     @classmethod
     def file_is_workspace(cls, path):
-        return os.path.expandvars(path).endswith(".root")
+        return real_path(path).endswith(".root")
 
     @property
     def input_is_workspace(self):
@@ -453,10 +453,10 @@ class DatacardTask(HHModelTask):
         bin_names = []
         store_dir = None
         has_dcr2 = "DHI_DATACARDS_RUN2" in os.environ \
-            and os.path.isdir(os.path.expandvars("$DHI_DATACARDS_RUN2"))
+            and os.path.isdir(expand_path("$DHI_DATACARDS_RUN2"))
         if has_dcr2:
-            dc_path = os.path.realpath(os.path.expandvars("$DHI_DATACARDS_RUN2"))
-            in_dc_path = dc_path == os.path.realpath(os.getcwd())
+            dc_path = real_path("$DHI_DATACARDS_RUN2")
+            in_dc_path = dc_path == real_path(os.getcwd())
         single_dc_matched = []
 
         # try to resolve all patterns
@@ -475,7 +475,7 @@ class DatacardTask(HHModelTask):
                 continue
 
             # get matching paths
-            pattern = os.path.expandvars(os.path.expanduser(pattern))
+            pattern = expand_path(pattern)
             _paths = [] if has_dcr2 and in_dc_path else list(glob.glob(pattern))
 
             # when the pattern did not match anything, repeat relative to the datacards_run2 dir

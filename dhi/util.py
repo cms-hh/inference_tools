@@ -73,13 +73,20 @@ class DotDict(dict):
         return self.__class__(super(DotDict, self).copy())
 
 
+def expand_path(path):
+    """
+    Takes a *path* and recursively expands all contained environment variables.
+    """
+    while "$" in path or "~" in path:
+        path = os.path.expandvars(os.path.expanduser(path))
+    return path
+
+
 def real_path(path):
     """
     Takes a *path* and returns its real, absolute location with all variables expanded.
     """
-    path = os.path.expandvars(os.path.expanduser(path))
-    path = os.path.realpath(path)
-    return path
+    return os.path.realpath(expand_path(path))
 
 
 def rgb(r, g, b):

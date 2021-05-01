@@ -188,17 +188,17 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         "no default",
     )
     htcondor_flavor = luigi.ChoiceParameter(
-        default="cern",
+        default=os.getenv("DHI_HTCONDOR_FLAVOR", "cern"),
         choices=("cern",),
         significant=False,
-        description="the 'flavor' (i.e. configuration name) of the batch system; choices: cern",
+        description="the 'flavor' (i.e. configuration name) of the batch system; choices: cern; "
+        "default: {}".format(os.getenv("DHI_HTCONDOR_FLAVOR", "cern")),
     )
     htcondor_getenv = luigi.BoolParameter(
         default=False,
         significant=False,
         description="whether to use htcondor's getenv feature to set the job enrivonment to the "
-        "current one, instead of using bundled versions of the repository and software; "
-        "default: False",
+        "current one, instead of using repository and software bundling; default: False",
     )
     htcondor_group = luigi.Parameter(
         default=law.NO_STR,
@@ -284,7 +284,7 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         description="number of replicas to generate; default: 10",
     )
 
-    exclude_files = ["docs", "githooks", "data", ".law", ".setups", "datacards_run2/*"]
+    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2/*"]
 
     version = None
     task_namespace = None
