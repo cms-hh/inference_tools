@@ -121,8 +121,14 @@ class MergeSignificanceScan(SignificanceBase):
                 continue
 
             scan_values = scan_task.branch_map[branch]
-            sig = inp.load(formatter="uproot")["limit"].array("limit")[0]
-            pval = scipy.stats.norm.sf(sig)
+            sig = inp.load(formatter="uproot")["limit"].array("limit")
+            if sig:
+                sig = sig[0]
+                pval = scipy.stats.norm.sf(sig)
+            else:
+                self.logger.warning("significance calculation failed for scan values {}".format(
+                    scan_values))
+                sig, pval = np.nan, np.nan
             records.append(scan_values + (sig, pval))
 
         data = np.array(records, dtype=dtype)

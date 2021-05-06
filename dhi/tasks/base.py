@@ -216,8 +216,8 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 
         # add repo and software bundling as requirements when getenv is not requested
         if not self.htcondor_getenv:
-            reqs["repo"] = BundleRepo.req(self, replicas=1)
-            reqs["software"] = BundleSoftware.req(self, replicas=1)
+            reqs["repo"] = BundleRepo.req(self, replicas=3)
+            reqs["software"] = BundleSoftware.req(self, replicas=3)
 
         return reqs
 

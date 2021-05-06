@@ -55,15 +55,19 @@ def plot_significance_scan(
     def check_values(values):
         if isinstance(values, np.ndarray):
             values = {key: values[key] for key in values.dtype.names}
+        values = {k: np.array(v) for k, v in values.items()}
+        # check fields
         assert(scan_parameter in values)
         assert("significance" in values)
+        # remove nans
+        mask = ~np.isnan(values["significance"])
+        values = {k: v[mask] for k, v in values.items()}
         return values
 
     # input checks
     expected_values = check_values(expected_values)
     scan_values = expected_values[scan_parameter]
     n_points = len(scan_values)
-    assert(all(len(d) == n_points for d in expected_values.values()))
     if observed_values is not None:
         observed_values = check_values(observed_values)
         scan_values_obs = observed_values[scan_parameter]
@@ -81,8 +85,8 @@ def plot_significance_scan(
     pad.cd()
     draw_objs = []
     legend_entries = []
-    y_max_value = -1e5
     y_min_value = 1e5
+    y_max_value = -1e5
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
@@ -97,8 +101,8 @@ def plot_significance_scan(
         "MarkerSize": 0.7})
     draw_objs.append((g_exp, "SAME,C" + ("P" if show_points else "")))
     legend_entries.append((g_exp, "Expected", "L"))
-    y_max_value = max(y_max_value, max(expected_values["significance"]))
     y_min_value = min(y_min_value, min(expected_values["significance"]))
+    y_max_value = max(y_max_value, max(expected_values["significance"]))
 
     # observed values
     if observed_values is not None:
@@ -111,7 +115,7 @@ def plot_significance_scan(
         y_min_value = min(y_min_value, min(observed_values["significance"]))
 
     # set limits
-    y_min, y_max, _ = get_y_range(0 if y_log else y_min_value, y_max_value, y_min, y_max, log=y_log)
+    y_min, y_max, _ = get_y_range(y_min_value if y_log else 0, y_max_value, y_min, y_max, log=y_log)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
@@ -192,6 +196,8 @@ def plot_significance_scans(
     for _ev in expected_values:
         if isinstance(_ev, np.ndarray):
             _ev = {key: _ev[key] for key in _ev.dtype.names}
+        mask = ~np.isnan(_ev["significance"])
+        _ev = {k: np.array(v)[mask] for k, v in _ev.items()}
         _expected_values.append(_ev)
     expected_values = _expected_values
 
@@ -202,8 +208,6 @@ def plot_significance_scans(
     assert(all(scan_parameter in ev for ev in expected_values))
     assert(all("significance" in ev for ev in expected_values))
     scan_values = expected_values[0][scan_parameter]
-    n_points = len(scan_values)
-    assert(all(len(ev["significance"]) == n_points for ev in expected_values))
 
     # set default ranges
     if x_min is None:
@@ -230,7 +234,7 @@ def plot_significance_scans(
     # expected values
     for i, (ev, col, ms) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1],
             marker_sequence[:n_graphs][::-1])):
-        g_exp = create_tgraph(n_points, scan_values, ev["significance"])
+        g_exp = create_tgraph(int(len(scan_values)), scan_values, ev["significance"])
         r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": ms,
             "MarkerSize": 1.2}, color=colors[col])
         draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))

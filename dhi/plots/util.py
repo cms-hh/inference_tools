@@ -120,7 +120,7 @@ def determine_limit_digits(limit, is_xsec=False):
         else:
             return 0
     else:
-        if limit < 50:
+        if limit < 10:
             return 2
         elif limit < 100:
             return 1

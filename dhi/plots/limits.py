@@ -645,23 +645,27 @@ def plot_limit_points(
             r.setup_line(line_obs, props={"NDC": False}, color=12)
             draw_objs.append(line_obs)
 
-    # y axis labels and ticks
+    # determine the number of digits for reported limits
+    if digits is not None:
+        get_digits = lambda v: digits
+    else:
+        get_digits = lambda v: determine_limit_digits(v, is_xsec=bool(xsec_unit))
+
+    # templates and helpers for y axis labels
     y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{Expected %s}}"
     y_label_tmpl_obs = "#splitline{#bf{%s}}{#scale[0.75]{#splitline{Expected %s}{Observed %s}}}"
-    if digits is None:
-        min_limit = min(sum((([d["expected"][0]] + [d.get("observed", 1e7)]) for d in data), []))
-        digits = determine_limit_digits(min_limit, is_xsec=bool(xsec_unit))
 
     def make_y_label(name, exp, obs=None):
         if xsec_unit:
-            fmt = lambda v: "{{:.{}f}} {{}}".format(digits).format(v, xsec_unit)
+            fmt = lambda v: "{{:.{}f}} {{}}".format(get_digits(v)).format(v, xsec_unit)
         else:
-            fmt = lambda v: "{{:.{}f}}".format(digits).format(v)
+            fmt = lambda v: "{{:.{}f}}".format(get_digits(v)).format(v)
         if obs is None:
             return y_label_tmpl % (label, fmt(exp))
         else:
             return y_label_tmpl_obs % (label, fmt(exp), fmt(obs[0]))
 
+    # create y axis labels and ticks
     h_dummy.GetYaxis().SetBinLabel(1, "")
     for i, d in enumerate(data):
         # name labels

@@ -157,7 +157,7 @@ class HHModelTask(AnalysisTask):
             signature_kwargs = set(inspect.getargspec(get_xsec).args)
             has_unc = False
         else:  # r
-            # TODO: vhh_formula disabled at the moment
+            # TODO: contribution from vhh_formula is disabled at the moment
             get_hh_xsec = module.create_hh_xsec_func(model.ggf_formula, model.vbf_formula)
             get_xsec = functools.partial(get_hh_xsec, nnlo=model.doNNLOscaling)
             signature_kwargs = set(inspect.getargspec(get_hh_xsec).args) - {"nnlo"}
@@ -281,7 +281,10 @@ class HHModelTask(AnalysisTask):
                     if isinstance(v, six.string_types):
                         return (k, v.replace("=", "").replace("/", "").replace(",", ""))
                     return (k, v)
-                part += "__" + "_".join("{}{}".format(*fmt(k, v)) for k, v in options.items())
+
+                # sort keys for reproducible paths
+                keys = sorted(options.keys())
+                part += "__" + "_".join("{}{}".format(*fmt(k, options[k])) for k in keys)
             parts["hh_model"] = part
 
         return parts
