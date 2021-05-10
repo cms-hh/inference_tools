@@ -347,15 +347,15 @@ def create_console_logger(name, level="INFO", formatter=None):
 def patch_object(obj, attr, value):
     """
     Context manager that temporarily patches an object *obj* by replacing its attribute *attr* with
-    *value*. The original value is set again when the context is closed.
+    *value*. The original value is recovered again when the context terminates.
     """
     no_value = object()
     orig = getattr(obj, attr, no_value)
 
     try:
         setattr(obj, attr, value)
-
         yield obj
+
     finally:
         try:
             if orig is no_value:
@@ -485,6 +485,24 @@ def dict_to_recarray(dicts):
 
     # concatenate
     return np.concatenate(arrays, axis=0) if len(arrays) > 1 else arrays[0]
+
+
+def dnll2_to_significance(dnll2, n=1, two_sided=False):
+    """
+    Converts a 2∆ln(L) value *dnll2* from a likelihood profile scanning *n* parameters (with its
+    minimum shifted to zero) into a coverage probability expressed in gaussian standard deviations,
+    i.e., a significance. *two_sided* should be set to *True* when the underlying test is
+    two-tailed.
+
+    For reference, see Fig. 40.4 and Tab. 40.2 in
+    https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf.
+    """
+    from scipy import stats
+
+    alpha = 1. - stats.chi2.cdf(dnll2, n)
+    sig = stats.norm.ppf(1. - alpha / (2. if two_sided else 1.))
+
+    return sig
 
 
 class TFileCache(object):
