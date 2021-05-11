@@ -144,15 +144,15 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
 
     xsec = luigi.ChoiceParameter(
         default=law.NO_STR,
-        choices=[law.NO_STR, "", "pb", "fb"],
+        choices=[law.NO_STR, "pb", "fb"],
         description="convert limits to cross sections in this unit; only supported for r POIs; "
-        "choices: '',pb,fb; no default",
+        "choices: pb,fb; no default",
     )
     br = luigi.ChoiceParameter(
         default=law.NO_STR,
-        choices=[law.NO_STR, ""] + list(br_hh.keys()),
+        choices=[law.NO_STR] + list(br_hh.keys()),
         description="name of a branching ratio defined in dhi.config.br_hh to scale the cross "
-        "section when xsec is used; choices: '',{}; no default".format(",".join(br_hh.keys())),
+        "section when xsec is used; choices: {}; no default".format(",".join(br_hh.keys())),
     )
     y_log = luigi.BoolParameter(
         default=False,
@@ -178,8 +178,19 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         self.scan_parameter = self.scan_parameter_names[0]
 
         # scaling to xsec is only supported for r pois
-        if self.xsec not in ("", law.NO_STR) and self.poi not in self.r_pois:
+        if self.xsec != law.NO_STR and self.poi not in self.r_pois:
             raise Exception("{!r}: xsec conversion is only supported for r POIs".format(self))
+
+        # show a hint when xsec and br related nuisances can be frozen
+        if self.xsec != law.NO_STR:
+            if self.br != law.NO_STR:
+                hint = "when calculating limits on 'XS x BR', nuisances related to both signal " \
+                    "cross sections and branch ratios should be frozen (nuisance group " \
+                    "'signal_norm_xsbr' in the combination)"
+            else:
+                hint = "when calculating limits on 'XS', nuisances related to signal cross " \
+                    "sections should be frozen (nuisance group 'signal_norm_xs' in the combination)"
+            self.logger.info("HINT: " + hint)
 
     def requires(self):
         return [
@@ -192,7 +203,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         parts = []
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
-            if self.br and self.br != law.NO_STR:
+            if self.br != law.NO_STR:
                 parts.append(self.br)
         if self.y_log:
             parts.append("log")
@@ -326,7 +337,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         parts = []
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
-            if self.br and self.br != law.NO_STR:
+            if self.br != law.NO_STR:
                 parts.append(self.br)
         if self.y_log:
             parts.append("log")
@@ -440,7 +451,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         parts = []
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
-            if self.br and self.br != law.NO_STR:
+            if self.br != law.NO_STR:
                 parts.append(self.br)
         if self.y_log:
             parts.append("log")
@@ -593,12 +604,22 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         other_pois = [p for p in (self.k_pois + self.r_pois) if p != self.pois[0]]
         self.pseudo_scan_parameter = (pois_with_values + other_pois)[0]
 
+        # show a hint when xsec and br related nuisances can be frozen
+        if self.xsec != law.NO_STR:
+            if self.br != law.NO_STR:
+                hint = "when calculating limits on 'XS x BR', nuisances related to both signal " \
+                    "cross sections and branch ratios should be frozen (nuisance group " \
+                    "'signal_norm_xsbr' in the combination)"
+            else:
+                hint = "when calculating limits on 'XS', nuisances related to signal cross " \
+                    "sections should be frozen (nuisance group 'signal_norm_xs' in the combination)"
+            self.logger.info("HINT: " + hint)
+
     def requires(self):
         scan_parameter_value = self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.0)
         scan_parameter = (self.pseudo_scan_parameter, scan_parameter_value, scan_parameter_value, 1)
         parameter_values = tuple(
-            pv
-            for pv in self.parameter_values
+            pv for pv in self.parameter_values
             if not pv.startswith(self.pseudo_scan_parameter + "=")
         )
         return [
@@ -616,7 +637,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         parts = []
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
-            if self.br and self.br != law.NO_STR:
+            if self.br != law.NO_STR:
                 parts.append(self.br)
         if self.x_log:
             parts.append("log")
@@ -715,7 +736,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         )
 
 
-class PlotUpperLimits2D(POIScanTask, POIPlotTask):
+class PlotUpperLimits2D(UpperLimitsBase, POIPlotTask):
 
     z_log = luigi.BoolParameter(
         default=False,
@@ -734,7 +755,6 @@ class PlotUpperLimits2D(POIScanTask, POIPlotTask):
 
     force_n_pois = 1
     force_n_scan_parameters = 2
-    force_scan_parameters_unequal_pois = True
     sort_scan_parameters = False
     allow_multiple_scan_ranges = True
 

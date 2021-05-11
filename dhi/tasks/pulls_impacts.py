@@ -290,6 +290,19 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         "is a rational number with few digits; when not positive, an automatic value is chosen; "
         "default: -1.0",
     )
+    left_margin = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="left margin of the pad in pixels; uses the default of the plot when empty; no "
+        "default",
+    )
+    entry_height = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="vertical height of each entry in pixels; uses the default of the plot when "
+        "empty; no default",
+    )
+
     x_min = None
     x_max = None
     y_min = None
@@ -350,6 +363,8 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
             order_by_impact=self.order_by_impact,
             pull_range=self.pull_range,
             impact_range=self.impact_range,
+            left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
+            entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             labels=nuisance_labels,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )

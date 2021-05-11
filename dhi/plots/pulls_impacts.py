@@ -33,6 +33,8 @@ def plot_pulls_impacts(
     pull_range=2,
     impact_range=-1,
     best_fit_value=None,
+    left_margin=None,
+    entry_height=None,
     labels=None,
     campaign=None,
 ):
@@ -60,9 +62,11 @@ def plot_pulls_impacts(
 
     *best_fit_value* can be a 3-tuple (central value, unsigned +error, unsigned -error) that is
     shown as a text at the top of the plot. When empty, it is extracted from *data* which contains
-    the value following combine's NLL interpolation. *labels* should be a dictionary or a json file
-    containing a dictionary that maps nuisances names to labels shown in the plot. *campaign* should
-    refer to the name of a campaign label defined in dhi.config.campaign_labels.
+    the value following combine's NLL interpolation. *left_margin* controls the left margin of the
+    pad in pixels, and *entry_height* the vertical height of each entry box. *labels* should be a
+    dictionary or a json file containing a dictionary that maps nuisances names to labels shown in
+    the plot. *campaign* should refer to the name of a campaign label defined in
+    dhi.config.campaign_labels.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/pullsandimpacts.html
     """
@@ -137,8 +141,8 @@ def plot_pulls_impacts(
     canvas_width = 1000  # pixels
     top_margin = 70  # pixels
     bottom_margin = 70  # pixels
-    left_margin = 250  # pixels
-    entry_height = 30  # pixels
+    left_margin = left_margin or 250  # pixels
+    entry_height = entry_height or 30  # pixels
     head_space = 130  # pixels
     x_min, x_max = -pull_range, pull_range
 
