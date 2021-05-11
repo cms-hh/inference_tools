@@ -36,6 +36,7 @@ def plot_pulls_impacts(
     left_margin=None,
     entry_height=None,
     labels=None,
+    label_size=None,
     campaign=None,
 ):
     """
@@ -65,8 +66,8 @@ def plot_pulls_impacts(
     the value following combine's NLL interpolation. *left_margin* controls the left margin of the
     pad in pixels, and *entry_height* the vertical height of each entry box. *labels* should be a
     dictionary or a json file containing a dictionary that maps nuisances names to labels shown in
-    the plot. *campaign* should refer to the name of a campaign label defined in
-    dhi.config.campaign_labels.
+    the plot. *label_size* controls the size of the nuisance labels in pixels. *campaign* should
+    refer to the name of a campaign label defined in dhi.config.campaign_labels.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/pullsandimpacts.html
     """
@@ -228,11 +229,12 @@ def plot_pulls_impacts(
 
         # y axis labels and ticks
         h_dummy.GetYaxis().SetBinLabel(1, "")
+        label_size = label_size or 20
         for i, param in enumerate(_params):
             # parameter labels
             label = to_root_latex(labels.get(param.name, param.name))
             label = ROOT.TLatex(x_min - (x_max - x_min) * 0.0125, n - i - 0.5, label)
-            r.setup_latex(label, props={"NDC": False, "TextAlign": 32, "TextSize": 20})
+            r.setup_latex(label, props={"NDC": False, "TextAlign": 32, "TextSize": label_size})
             draw_objs.append(label)
 
             # left and right ticks

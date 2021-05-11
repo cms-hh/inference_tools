@@ -302,6 +302,12 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         description="vertical height of each entry in pixels; uses the default of the plot when "
         "empty; no default",
     )
+    label_size = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="size of the nuisance labels on the y-axis; uses the default of the plot when "
+        "empty; no default",
+    )
 
     x_min = None
     x_max = None
@@ -366,5 +372,6 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
             left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
             entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             labels=nuisance_labels,
+            label_size=None if self.label_size == law.NO_INT else self.label_size,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
