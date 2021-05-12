@@ -347,6 +347,10 @@ def plot_limit_scans(
         mask = ~np.isnan(ev["limit"])
         limit_values = ev["limit"][mask]
         scan_values = ev[scan_parameter][mask]
+        n_nans = (~mask).sum()
+        if n_nans:
+            print("WARNING: found {} NaN(s) in limit values at index {}".format(n_nans,
+                len(expected_values) - 1 - i))
 
         g_exp = create_tgraph(mask.sum(), scan_values, limit_values)
         r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
@@ -1139,6 +1143,9 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
     limit_values = limit_values[mask]
     interp = scipy.interpolate.interp1d(scan_values, limit_values, kind=interpolation,
         fill_value="extrapolate")
+    n_nans = (~mask).sum()
+    if n_nans:
+        print("WARNING: found {} NaN(s) in limit values for 1d evaluation".format(n_nans))
 
     # same for cross section values when given
     if xsec_scan_values is not None and xsec_values is not None:
@@ -1147,6 +1154,9 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
         xsec_values = xsec_values[mask]
         xsec_interp = scipy.interpolate.interp1d(xsec_scan_values, xsec_values, kind=interpolation,
             fill_value="extrapolate")
+        n_nans = (~mask).sum()
+        if n_nans:
+            print("WARNING: found {} NaN(s) in xsec values for 1d evaluation".format(n_nans))
     else:
         xsec_interp = lambda x: 1.
 
