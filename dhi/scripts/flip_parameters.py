@@ -91,7 +91,7 @@ def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass=
             # get the effects
             effects = param_line[2:]
             if len(effects) != len(bin_names):
-                raise Exception("number of effects of parameter {} ({}) does not match number of "
+                raise Exception("number of effects of parameter {} ({}) does not match number of "
                     "bins and processes ({})".format(param_name, len(effects), len(bin_names)))
 
             # check patterns for each bin-process combination

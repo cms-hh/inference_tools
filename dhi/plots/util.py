@@ -261,7 +261,7 @@ def find_poly_bin_center(poly_bin, n=1000):
         # vary
         raise NotImplementedError("center determination of complex poly bins not implemented yet")
 
-    raise Exception("could not determine poly bin center after {} iterations".format(n))
+    raise Exception("could not determine poly bin center after {} iterations".format(n))
 
 
 def infer_binning_from_grid(x_values, y_values):

@@ -78,7 +78,7 @@ def plot_likelihood_scan_1d(
     dnll2_values = dnll2_values[mask]
     n_nans = (~mask).sum()
     if n_nans:
-        print("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
+        print("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
 
     # set y range
     y_max_value = max(dnll2_values[(poi_values >= x_min) & (poi_values <= x_max)])
@@ -232,7 +232,7 @@ def plot_likelihood_scans_1d(
         d["values"] = values
         n_nans = (~mask).sum()
         if n_nans:
-            print("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
+            print("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
         # check poi minimum
         d.setdefault("poi_min", None)
         # default name
@@ -904,7 +904,7 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     dnll2_values = dnll2_values[mask]
     n_nans = (~mask).sum()
     if n_nans:
-        print("WARNING: found {} NaN(s) in values".format(n_nans))
+        print("WARNING: found {} NaN(s) in values".format(n_nans))
 
     # first, obtain an interpolation function
     # interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="cubic")
@@ -1013,7 +1013,7 @@ def evaluate_likelihood_scan_2d(
     dnll2_values = dnll2_values[mask]
     n_nans = (~mask).sum()
     if n_nans:
-        print("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
+        print("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
 
     # obtain an interpolation function
     # interp = scipy.interpolate.interp2d(poi1_values, poi2_values, dnll2_values)

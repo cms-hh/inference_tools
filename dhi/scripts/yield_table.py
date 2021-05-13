@@ -26,7 +26,7 @@ def yield_table(datacard, bins, tablefmt, data_name, precision):
     dc, sb = create_datacard_instance(datacard, create_shape_builder=True)
     groups = {regex: [b for b in dc.bins if re.compile(regex).match(b)] for regex in bins}
     for group, cats in groups.items():
-        logger.info("Selected {} from {} with regex: '{}'".format(cats, dc.bins, group))
+        logger.info("Selected {} from {} with regex: '{}'".format(cats, dc.bins, group))
     content = []
     use_latex = "latex" in tablefmt
     style = "latex" if use_latex else "plain"

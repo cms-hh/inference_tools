@@ -77,7 +77,7 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
             def sub_fn(match):
                 old_name, rest = match.groups()
                 new_name = renamer.translate(old_name)
-                logger.info("rename parameter {} to {}".format(old_name, new_name))
+                logger.info("rename parameter {} to {}".format(old_name, new_name))
                 return " ".join([new_name, rest])
 
             for i, param_line in enumerate(list(blocks["parameters"])):
@@ -92,7 +92,7 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
             def sub_fn(match):
                 start, old_name, end = match.groups()
                 new_name = renamer.translate(old_name)
-                logger.info("rename parameter {} in group {} to {}".format(old_name,
+                logger.info("rename parameter {} in group {} to {}".format(old_name,
                     start.split()[0], new_name))
                 return " ".join([start, new_name, end]).strip()
 
@@ -107,7 +107,7 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
             def sub_fn(match):
                 old_name, rest = match.groups()
                 new_name = renamer.translate(old_name)
-                logger.info("rename group {} to {}".format(old_name, new_name))
+                logger.info("rename group {} to {}".format(old_name, new_name))
                 return " ".join([new_name, rest])
 
             for i, group_line in enumerate(list(blocks["groups"])):

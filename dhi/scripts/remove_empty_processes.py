@@ -128,28 +128,28 @@ def remove_empty_processes(datacard, rules, skip_signal=False, directory=None, s
                         rate = shape.Integral()
 
                 if rate is not None:
-                    logger.debug("extracted rate {} for process {} in bin {} from shape".format(
+                    logger.debug("extracted rate {} for process {} in bin {} from shape".format(
                         rate, proc_name, bin_name))
                 else:
-                    logger.error("no nominal shape {} found in file {} for process {} in "
+                    logger.error("no nominal shape {} found in file {} for process {} in "
                         "bin {}".format(shape_name, shape_data["path"], proc_name, bin_name))
                 break
             else:
                 # no shape line found, get the rate directly from the datacard
                 rate = content["rates"][bin_name][proc_name]
-                logger.debug("extracted rate for process {} in bin {} from datacard: {}".format(
+                logger.debug("extracted rate for process {} in bin {} from datacard: {}".format(
                     proc_name, bin_name, rate))
 
                 # special case
                 if rate == -1:
                     rate = None
-                    logger.warning("skipped process {} in bin {} as rate is -1 datacard".format(
+                    logger.warning("skipped process {} in bin {} as rate is -1 datacard".format(
                         proc_name, bin_name))
 
             # check the rate
             if rate is not None and rate < threshold:
                 remove_pairs.append((bin_name, proc_name))
-                logger.debug("rate {} of process {} in bin {} below threshold {}".format(
+                logger.debug("rate {} of process {} in bin {} below threshold {}".format(
                     rate, proc_name, bin_name, threshold))
 
     logger.info("found {} bin-process pair(s) to remove".format(len(remove_pairs)))

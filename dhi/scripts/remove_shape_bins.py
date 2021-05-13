@@ -122,8 +122,9 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
             m = re.match(r"^([^\<\>]+)(\<|\>)([\d\.]+)$", expr)
             if m:
                 procs, comp_op, threshold = m.groups()
+                threshold = float(threshold)
                 comp_fn = (lambda v: v < threshold) if comp_op == "<" else (lambda v: v > threshold)
-                rule.append((COMP, procs.split("+"), comp_op, float(threshold), comp_fn))
+                rule.append((COMP, procs.split("+"), comp_op, threshold, comp_fn))
                 continue
 
             # custom function?
@@ -170,7 +171,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
             bin_name: make_unique([name for name in rates if name in all_background_names])
             for bin_name, rates in content["rates"].items()
         }
-        logger.debug("found a total of {} signal and {} background processes".format(
+        logger.debug("found a total of {} signal and {} background processes".format(
             len(all_signal_names), len(all_background_names)))
 
         # check if all processes passed in comparison rules exist
@@ -197,7 +198,8 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
         if not bin_names:
             logger.debug("removal rules do not match any datacard bin")
             return
-        logger.info("going to process {} matched datacard bin(s)".format(len(bin_names)))
+        logger.info("going to process {} matched datacard bin(s): {}".format(
+            len(bin_names), ",".join(bin_names)))
 
         # start a tfile cache for opening and updating shape files
         with TFileCache(logger=logger) as cache:
@@ -224,7 +226,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
 
                         # reject shapes in workspaces
                         if ":" in shape_line.nom_pattern:
-                            raise Exception("shape line for bin {} and process {} refers to "
+                            raise Exception("shape line for bin {} and process {} refers to "
                                 "workspace in nominal pattern {} which is not supported".format(
                                     bin_name, proc_name, shape_line.nom_pattern))
 
@@ -247,7 +249,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
                                 bin_nums[bin_name] = n
                             elif bin_nums[bin_name] != n:
                                 raise Exception("the number of shape bins in datacard bin {} was "
-                                    "set to {} before, but {} bins were found in shape {}".format(
+                                    "set to {} before, but {} bins were found in shape {}".format(
                                         bin_name, bin_nums[bin_name], n, abs_name))
 
                             return tfile, owner, owner.Get(name), name
@@ -280,7 +282,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
                             1 + len(syst_shapes) * 2, bin_name, proc_name))
                         break
 
-                logger.info("loaded shapes of {} process(es) in datacard bin {}".format(
+                logger.debug("loaded shapes of {} process(es) in datacard bin {}".format(
                     len(shapes[bin_name]), bin_name))
 
             # keep sets of shape bin indices per datacard bin to remove
@@ -370,10 +372,12 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
             for bin_name, _shapes in shapes.items():
                 indices = list(sorted({b for b in remove_bin_indices[bin_name] if b > 0}))
                 if not indices:
+                    logger.info("identified no shape bins to drop in datacard bin {}".format(
+                        bin_name))
                     continue
 
-                logger.info("dropping {} shape bin(s) in datacard bin {}".format(
-                    len(indices), bin_name))
+                logger.info("dropping {} of {} shape bin(s) in datacard bin {}".format(
+                    len(indices), bin_nums[bin_name], bin_name))
                 logger.info("shape bin indices to remove in bin {}: {}".format(
                     bin_name, ",".join(map(str, indices))))
 
@@ -408,7 +412,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
                 for bin_name, obs_value in zip(obs_bin_names, obs_values)
             ]
             blocks["observations"][1] = "observation " + " ".join(new_obs_values)
-            logger.info("added new observation line with updated integrals in {} bin(s)".format(
+            logger.info("updated observation line with new values in {} datacard bin(s)".format(
                 len(new_observations)))
 
             # update rates per process
@@ -424,7 +428,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
                 for bin_name, proc_name, rate in zip(rates_bin_names, process_names, rate_values)
             ]
             blocks["rates"][3] = "rate " + " ".join(new_rate_values)
-            logger.info("added new rates line with updated integrals in {} bin(s)".format(
+            logger.info("updated rates line with new values in {} datacard bin(s)".format(
                 len(new_rates)))
 
 

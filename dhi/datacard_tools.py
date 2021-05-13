@@ -196,7 +196,7 @@ class DatacardRenamer(object):
 
         except BaseException as e:
             self.logger.error(
-                "an exception of type {} occurred while renaming the datacard".format(
+                "an exception of type {} occurred while renaming the datacard".format(
                     e.__class__.__name__
                 )
             )
@@ -848,7 +848,7 @@ def update_shape_name(towner, old_name, new_name):
     """
     if not towner:
         raise Exception(
-            "owner object is null pointer, cannot rename shape {} to {}".format(old_name, new_name)
+            "owner object is null pointer, cannot rename shape {} to {}".format(old_name, new_name)
         )
 
     elif towner.InheritsFrom("TDirectoryFile"):
@@ -967,7 +967,7 @@ def update_datacard_count(blocks, key, value, diff=False, logger=None):
                     new_value = value
                     old_value = int(parts[1])
                     new_value = old_value + value
-                    logger.info("set {} from {} to {}".format(key, old_value, new_value))
+                    logger.info("set {} from {} to {}".format(key, old_value, new_value))
                 if new_value is not None:
                     parts[1] = str(new_value)
                     blocks["counts"][i] = " ".join(parts)

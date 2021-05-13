@@ -72,7 +72,7 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
         if self.algorithm == "saturated" and not self.frequentist_toys:
             self.logger.warning("it is recommended for goodness-of-fit tests with the "
                 "'saturated' algorithm to use frequentiest toys, so please consider adding "
-                "--frequentist-toys to the {} task".format(self.__class__.__name__))
+                "--frequentist-toys to the {} task".format(self.__class__.__name__))
 
     def create_branch_map(self):
         # the branch map refers to indices of toys in that branch, with 0 meaning the test on data

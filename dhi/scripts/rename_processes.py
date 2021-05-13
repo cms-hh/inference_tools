@@ -88,7 +88,7 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
             line = blocks["rates"][1] + " "
             for old_name, new_name in renamer.rules.items():
                 if (" " + old_name + " ") in line[len("process"):]:
-                    logger.info("rename process {} to {}".format(old_name, new_name))
+                    logger.info("rename process {} to {}".format(old_name, new_name))
                     line = line.replace(" " + old_name + " ", " " + new_name + " ")
             blocks["rates"][1] = line.strip()
 

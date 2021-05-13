@@ -64,7 +64,7 @@ def plot_significance_scan(
         values = {k: v[mask] for k, v in values.items()}
         n_nans = (~mask).sum()
         if n_nans:
-            print("WARNING: found {} NaN(s) in significance values".format(n_nans))
+            print("WARNING: found {} NaN(s) in significance values".format(n_nans))
         return values
 
     # input checks
@@ -204,7 +204,7 @@ def plot_significance_scans(
         _expected_values.append(_ev)
         n_nans = (~mask).sum()
         if n_nans:
-            print("WARNING: found {} NaN(s) in significance values at index {}".format(n_nans, i))
+            print("WARNING: found {} NaN(s) in significance values at index {}".format(n_nans, i))
     expected_values = _expected_values
 
     # input checks

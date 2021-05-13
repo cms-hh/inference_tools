@@ -612,7 +612,7 @@ class TFileCache(object):
 
                 if not skip_write:
                     data["tfile"].cd()
-                    self.logger.debug("going to write {} objects".format(len(data["objects"])))
+                    self.logger.debug("going to write {} objects".format(len(data["objects"])))
                     for tobj, towner, name in data["objects"]:
                         if towner:
                             towner.cd()

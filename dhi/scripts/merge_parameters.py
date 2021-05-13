@@ -129,13 +129,13 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                 if multi_match(param_name, patterns):
                     if not new_type:
                         if not multi_match(param_type, supported_types):
-                            raise Exception("matched parameter {} has type {} which is currently "
+                            raise Exception("matched parameter {} has type {} which is currently "
                                 "not supported".format(param_name, param_type))
                         logger.info("determined type of new parameter {} to be {}".format(new_name,
                             param_type))
                         new_type = param_type
                     elif param_type != new_type:
-                        raise Exception("matched parameter {} has type {} which is different than "
+                        raise Exception("matched parameter {} has type {} which is different than "
                             "the already determined type {}".format(param_name, param_type,
                             new_type))
 
@@ -163,7 +163,7 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                 shape_lines.sort(key=lambda shape_line: shape_line.sorting_weight)
 
             if not shape_lines:
-                raise Exception("cannot create merged parameter {} of type {} when datacard does "
+                raise Exception("cannot create merged parameter {} of type {} when datacard does "
                     "not contain shape lines".format(new_name, new_type))
 
         # check if all param lines have the same length
@@ -223,7 +223,7 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                     if len(non_unique) <= i + 1:
                         break
                 else:
-                    msg += "\n    ... and {} more".format(len(non_unique) - i - 1)
+                    msg += "\n    ... and {} more".format(len(non_unique) - i - 1)
                 raise Exception(msg)
 
         # loop though bin, process and effects within the context of a tfile cache
@@ -376,8 +376,8 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                         # add the difference
                         merged_d.SetBinContent(b, merged_d.GetBinContent(b) + diff_d)
                         merged_u.SetBinContent(b, merged_u.GetBinContent(b) + diff_u)
-                        # logger.debug("computed down and up variations of {:.3e} and {:.3e} in "
-                        #     "bin {} of new shape in bin {} and process {}".format(diff_d, diff_u,
+                        # logger.debug("computed down and up variations of {:.3e} and {:.3e} in "
+                        #     "bin {} of new shape in bin {} and process {}".format(diff_d, diff_u,
                         #     b, bin_name, process_name))
 
                     # write them to the file

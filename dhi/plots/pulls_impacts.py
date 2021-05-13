@@ -194,7 +194,7 @@ def plot_pulls_impacts(
             # digits, which is especially true for irrational numbers
             n_frac = len(str(float(impact_range) / pull_range).split(".", 1)[1])
             if n_frac > 3:
-                print("{}: the upper impact_range of {} does not seem to match the lower "
+                print("{}: the upper impact_range of {} does not seem to match the lower "
                     "pull_range of {}, which will lead to a mismatch between numbers and ticks of "
                     "the top x-axis or longish decimal numbers".format(
                         colored("WARNING", "red"), impact_range, pull_range

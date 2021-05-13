@@ -853,7 +853,7 @@ class ParameterScanTask(AnalysisTask):
         if not isinstance(step_sizes, (list, tuple)):
             step_sizes = len(ranges) * [step_sizes]
         elif len(step_sizes) != len(ranges):
-            raise Exception("number of step_sizes {} must match number of ranges {}".format(
+            raise Exception("number of step_sizes {} must match number of ranges {}".format(
                 len(step_sizes), len(ranges)))
 
         def get_points(r, step_size):

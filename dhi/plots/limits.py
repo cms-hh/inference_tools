@@ -349,7 +349,7 @@ def plot_limit_scans(
         scan_values = ev[scan_parameter][mask]
         n_nans = (~mask).sum()
         if n_nans:
-            print("WARNING: found {} NaN(s) in limit values at index {}".format(n_nans,
+            print("WARNING: found {} NaN(s) in limit values at index {}".format(n_nans,
                 len(expected_values) - 1 - i))
 
         g_exp = create_tgraph(mask.sum(), scan_values, limit_values)
@@ -1145,7 +1145,7 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
         fill_value="extrapolate")
     n_nans = (~mask).sum()
     if n_nans:
-        print("WARNING: found {} NaN(s) in limit values for 1d evaluation".format(n_nans))
+        print("WARNING: found {} NaN(s) in limit values for 1d evaluation".format(n_nans))
 
     # same for cross section values when given
     if xsec_scan_values is not None and xsec_values is not None:
@@ -1156,7 +1156,7 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
             fill_value="extrapolate")
         n_nans = (~mask).sum()
         if n_nans:
-            print("WARNING: found {} NaN(s) in xsec values for 1d evaluation".format(n_nans))
+            print("WARNING: found {} NaN(s) in xsec values for 1d evaluation".format(n_nans))
     else:
         xsec_interp = lambda x: 1.
 
@@ -1239,7 +1239,7 @@ def _print_excluded_ranges(param_name, scan_name, scan_values, ranges):
     # helper to format a range
     def format_range(start, stop):
         if abs(start - scan_values.min()) < 1e-4:
-            r = "{} < {:.5f}".format(param_name, stop)
+            r = "{} < {:.5f}".format(param_name, stop)
             # check = granularity_check(stop)
         elif abs(stop - scan_values.max()) < 1e-4:
             r = "{} > {:.5f}".format(param_name, start)
