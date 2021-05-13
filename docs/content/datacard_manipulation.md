@@ -701,6 +701,90 @@ optional arguments:
 ```
 
 
+## Plotting
+
+### Plot systematic shifts of datacard shapes
+
+```shell hl_lines="1"
+> plot_datacard_shapes.py --help
+
+usage: plot_datacard_shapes.py [-h] [--directory DIRECTORY]
+                               [--nom-format NOM_FORMAT]
+                               [--syst-format SYST_FORMAT] [--mass MASS]
+                               [--binning {original,numbers,numbers_width}]
+                               [--x-title X_TITLE] [--y-min Y_MIN]
+                               [--y-max Y_MAX] [--y-log] [--campaign CAMPAIGN]
+                               [--log-level LOG_LEVEL] [--log-name LOG_NAME]
+                               DATACARD BIN,PROCESS[,SYSTEMATIC]
+                               [BIN,PROCESS[,SYSTEMATIC] ...]
+
+Script to plot histogram shapes of a datacard using configurable rules.
+Shapes stored in workspaces are not supported. Example usage:
+
+# plot all nominal shapes in a certain datacard bin
+# (note the quotes)
+> plot_datacard_shapes.py datacard.txt 'ee_2018,*'
+
+# plot all nominal shapes of a certain process in all datacard bins
+# (note the quotes)
+> plot_datacard_shapes.py datacard.txt '*,ttbar'
+
+# plot all systematic shapes of a certain process in all datacard bins
+# (note the quotes)
+> plot_datacard_shapes.py datacard.txt '*,ttbar,*'
+
+# plot all systematic shapes of all signals in all datacard bins
+# (note the quotes)
+> plot_datacard_shapes.py datacard.txt '*,S,*'
+
+# plot all systematic shapes of all backgrounds in a certain datacard bin
+# (note the quotes)
+> plot_datacard_shapes.py datacard.txt 'ee_2018,B,*'
+
+positional arguments:
+  DATACARD              the datacard to read
+  BIN,PROCESS[,SYSTEMATIC]
+                        rules defining which shapes to plot; 'BIN' and
+                        'PROCESS' support patterns with prepending '!'
+                        negating their meaning; special process names are 'S',
+                        'B', and 'SB' which are interpreted as combined
+                        signal, background, and signal+background; when no
+                        'SYSTEMATIC' is given, only nominal shapes are
+                        plotted; patterns are supported with special
+                        systematic names 'S' and 'R' being interpreted as all
+                        shape and all rate systematics; this parameter also
+                        supports files that contain the rules in the described
+                        format line by line
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --directory DIRECTORY, -d DIRECTORY
+                        directory in which produced plots are saved; defaults
+                        to the current directory
+  --nom-format NOM_FORMAT, -n NOM_FORMAT
+                        format for created files when plotting only nominal
+                        shapes; default: {bin}__{process}.pdf
+  --syst-format SYST_FORMAT, -s SYST_FORMAT
+                        format for created files when plotting only nominal
+                        shapes; default: {bin}__{process}__{syst}.pdf
+  --mass MASS, -m MASS  mass hypothesis; default: 125
+  --binning {original,numbers,numbers_width}, -b {original,numbers,numbers_width}
+                        the binning strategy; 'original': use original bin
+                        edges; 'numbers': equidistant edges using bin numbers;
+                        'numbers_width': same as 'numbers' and divide by bin
+                        widths
+  --x-title X_TITLE     x-axis label; default: 'Datacard shape'
+  --y-min Y_MIN         minimum y-axis value; no default
+  --y-max Y_MAX         maximum y-axis value; no default
+  --y-log               transform y-axis to log scale
+  --campaign CAMPAIGN   label to be shown at the top right; no default
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        plot_datacard_shapes
+```
+
+
 ## Miscellaneous
 
 ### Extract datacard content as json
