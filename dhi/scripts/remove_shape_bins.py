@@ -48,7 +48,7 @@ from dhi.util import TFileCache, create_console_logger, patch_object, multi_matc
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
-def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="125"):
+def remove_shape_bins(datacard, rules, directory=None, mass="125"):
     """
     Reads a *datacard* and remove shape bins from histgrams according to certain *rules*. A rule
     should be a tuple consisting of a datacard bin and at least one removal expression. Bin names
@@ -78,8 +78,6 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
     When *directory* is *None*, the input *datacard* and all shape files it refers to are updated
     in-place. Otherwise, both the changed datacard and its shape files are stored in the specified
     directory. For consistency, this will also update the location of shape files in the datacard.
-    When *skip_shapes* is *True*, all shape files remain unchanged (the shape lines in the datacard
-    itself are still changed).
 
     .. note::
 
@@ -146,7 +144,7 @@ def remove_shape_bins(datacard, rules, directory=None, skip_shapes=False, mass="
     # into that directory and continue working on copies
     if directory:
         logger.info("bundle datacard files into directory {}".format(directory))
-        datacard = bundle_datacard(datacard, directory, skip_shapes=skip_shapes)
+        datacard = bundle_datacard(datacard, directory, skip_shapes=False)
 
     # nothing to do when no rules exist
     if not rules:
@@ -493,8 +491,6 @@ if __name__ == "__main__":
         "'BIN,EXPRESSION[,EXPRESSION]' values line by line")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
-    parser.add_argument("--no-shapes", "-n", action="store_true", help="do not change process "
-        "names in shape files")
     parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
     parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
@@ -506,5 +502,4 @@ if __name__ == "__main__":
 
     # run the renaming
     with patch_object(logger, "name", args.log_name):
-        remove_shape_bins(args.input, args.rules, directory=args.directory,
-            skip_shapes=args.no_shapes, mass=args.mass)
+        remove_shape_bins(args.input, args.rules, directory=args.directory, mass=args.mass)

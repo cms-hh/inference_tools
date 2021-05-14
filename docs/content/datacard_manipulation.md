@@ -628,11 +628,10 @@ optional arguments:
 ```shell hl_lines="1"
 > remove_shape_bins.py --help
 
-usage: remove_shape_bins.py [-h] [--directory [DIRECTORY]] [--no-shapes]
-                            [--mass MASS] [--log-level LOG_LEVEL]
-                            [--log-name LOG_NAME]
-                            DATACARD BIN,EXPRESSION[,EXPRESSION[,...]]
-                            [BIN,EXPRESSION[,EXPRESSION[,...]] ...]
+usage: remove_shape_bins.py [-h] [--directory [DIRECTORY]] [--mass MASS]
+                            [--log-level LOG_LEVEL] [--log-name LOG_NAME]
+                            DATACARD BIN,EXPRESSION[,EXPRESSION]
+                            [BIN,EXPRESSION[,EXPRESSION] ...]
 
 Script to remove histogram bins from datacard shapes using configurable rules.
 Shapes stored in workspaces are not supported. The bins to remove can be hard
@@ -666,7 +665,7 @@ Note: The use of an output directory is recommended to keep input files
 positional arguments:
   DATACARD              the datacard to read and possibly update (see
                         --directory)
-  BIN,EXPRESSION[,EXPRESSION[,...]]
+  BIN,EXPRESSION[,EXPRESSION]
                         removal rules for shape bins in a datacard bin 'BIN',
                         which supports patterns; prepending '!' to a bin
                         pattern negates its meaning; an 'EXPRESSION' can
@@ -680,11 +679,12 @@ positional arguments:
                         signal/sqrt(background)), or the location of a
                         function in the format 'module.func_name' with
                         signature (datacard_content, datacard_bin, histograms)
-                        that should return indices of bins to remove; multiple
+                        that should return indices of bins to remove; mutliple
                         rules passed in the same expression are AND
                         concatenated; the rules of multiple arguments are OR
                         concatenated; each argument can also be a file
-                        containing 'BIN,EXPRESSION,...' values line by line
+                        containing 'BIN,EXPRESSION[,EXPRESSION]' values line
+                        by line
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -692,12 +692,78 @@ optional arguments:
                         directory in which the updated datacard and shape
                         files are stored; when not set, the input files are
                         changed in-place
-  --no-shapes, -n       do not change process names in shape files
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
   --log-name LOG_NAME   name of the logger on the command line; default:
                         remove_shape_bins
+```
+
+
+### Update
+
+```shell hl_lines="1"
+> update_shape_bins.py --help
+
+usage: update_shape_bins.py [-h] [--batch-processes] [--directory [DIRECTORY]]
+                            [--mass MASS] [--log-level LOG_LEVEL]
+                            [--log-name LOG_NAME]
+                            DATACARD BIN,PROCESS,FUNCTION
+                            [BIN,PROCESS,FUNCTION ...]
+
+Script to update histogram bins in datacard shapes using configurable rules.
+Shapes stored in workspaces are not supported. Histograms can be updated
+in-place using a referenceable function that is called with the signature
+(bin_name, process_name, nominal_shape, systematic_shapes), where the latter
+is a dictionary mapping systematic names to down and up varied shapes. Example
+usage:
+
+# file my_code.py
+# ---------------
+def func(bin_name, process_name, nominal_shape, systematic_shapes):
+    for b in range(1, nominal_shape.GetNbinsX() + 1):
+        nominal_shape.SetBinContent(b, ...)
+# ---------------
+
+# apply a function in all datacard bins to a specific process
+# (note the quotes)
+> update_shape_bins.py datacard.txt '*,ttbar,my_code.func' -d output_directory
+
+# apply a function to all process in in all but one specific datacard bins
+# (note the quotes)
+> update_shape_bins.py datacard.txt '!CR,*,my_code.func' -d output_directory
+
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
+
+positional arguments:
+  DATACARD              the datacard to read and possibly update (see
+                        --directory)
+  BIN,PROCESS,FUNCTION  rules for updating datacard shape bins; 'BIN' and
+                        'PROCESS' support patterns where a prepended '!'
+                        negates their meaning; 'FUNCTION' should have the
+                        format <MODULE_NAME>.<FUNCTION_NAME> to import a
+                        function 'FUNCTION_NAME' from the module
+                        'MODULE_NAME'; the function should have the signature
+                        (bin_name, process_name, nominal_hist, syst_hists);
+                        this parameter also supports files that contain the
+                        rules in the described format line by line
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --batch-processes, -b
+                        handle all processes in a bin by a single call to the
+                        passed function; 'process_name', 'nominal_hist' and
+                        'syst_hists' will be lists of the same length
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --mass MASS, -m MASS  mass hypothesis; default: 125
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        update_shape_bins
 ```
 
 
