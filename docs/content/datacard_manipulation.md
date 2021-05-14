@@ -708,7 +708,7 @@ optional arguments:
 ```shell hl_lines="1"
 > plot_datacard_shapes.py --help
 
-usage: plot_datacard_shapes.py [-h] [--directory DIRECTORY]
+usage: plot_datacard_shapes.py [-h] [--stack] [--directory DIRECTORY]
                                [--nom-format NOM_FORMAT]
                                [--syst-format SYST_FORMAT] [--mass MASS]
                                [--binning {original,numbers,numbers_width}]
@@ -737,34 +737,37 @@ Shapes stored in workspaces are not supported. Example usage:
 # (note the quotes)
 > plot_datacard_shapes.py datacard.txt '*,S,*'
 
-# plot all systematic shapes of all backgrounds in a certain datacard bin
+# plot all systematic shapes of two stacked processes in all bins
 # (note the quotes)
-> plot_datacard_shapes.py datacard.txt 'ee_2018,B,*'
+> plot_datacard_shapes.py datacard.txt --stack '*,ttbar+singlet,*'
 
 positional arguments:
   DATACARD              the datacard to read
   BIN,PROCESS[,SYSTEMATIC]
-                        rules defining which shapes to plot; 'BIN' and
-                        'PROCESS' support patterns with prepending '!'
-                        negating their meaning; special process names are 'S',
-                        'B', and 'SB' which are interpreted as combined
-                        signal, background, and signal+background; when no
+                        rules defining which shapes to plot; 'BIN', 'PROCESS'
+                        and 'SYSTEMATIC' support patterns where a prepended
+                        '!' negates their meaning; special process names are
+                        'S', 'B', and 'SB' which are interpreted as combined
+                        signal, background, and signal+background; multiple
+                        process patterns can be concatenated with '+'; when no
                         'SYSTEMATIC' is given, only nominal shapes are
-                        plotted; patterns are supported with special
-                        systematic names 'S' and 'R' being interpreted as all
-                        shape and all rate systematics; this parameter also
-                        supports files that contain the rules in the described
-                        format line by line
+                        plotted; special systematic names 'S' and 'R' are
+                        interpreted as all shape and all rate systematics;
+                        this parameter also supports files that contain the
+                        rules in the described format line by line
 
 optional arguments:
   -h, --help            show this help message and exit
+  --stack, -s           instead of creating separate plots per process machted
+                        by a rule, stack distributions and create a single
+                        plot
   --directory DIRECTORY, -d DIRECTORY
                         directory in which produced plots are saved; defaults
                         to the current directory
-  --nom-format NOM_FORMAT, -n NOM_FORMAT
+  --nom-format NOM_FORMAT
                         format for created files when plotting only nominal
                         shapes; default: {bin}__{process}.pdf
-  --syst-format SYST_FORMAT, -s SYST_FORMAT
+  --syst-format SYST_FORMAT
                         format for created files when plotting only nominal
                         shapes; default: {bin}__{process}__{syst}.pdf
   --mass MASS, -m MASS  mass hypothesis; default: 125

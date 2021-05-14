@@ -21,9 +21,9 @@ Shapes stored in workspaces are not supported. Example usage:
 # (note the quotes)
 > plot_datacard_shapes.py datacard.txt '*,S,*'
 
-# plot all systematic shapes of all backgrounds in a certain datacard bin
+# plot all systematic shapes of two stacked processes in all bins
 # (note the quotes)
-> plot_datacard_shapes.py datacard.txt 'ee_2018,B,*'
+> plot_datacard_shapes.py datacard.txt --stack '*,ttbar+singlet,*'
 """
 
 import os
@@ -43,18 +43,22 @@ from dhi.config import colors
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
-def plot_datacard_shapes(datacard, rules, directory=".", nom_format="{bin}__{process}.pdf",
-        syst_format="{bin}__{process}__{syst}.pdf", mass="125", **plot_kwargs):
+def plot_datacard_shapes(datacard, rules, stack=False, directory=".",
+        nom_format="{bin}__{process}.pdf", syst_format="{bin}__{process}__{syst}.pdf", mass="125",
+        **plot_kwargs):
     """
     Reads a *datacard* and plots its histogram shapes according to certain *rules*. A rule should
     be a tuple consisting of a datacard bin, a datacard process and an optional name of a systematic
     uncertainty. When the latter is missing, only the nominal shape is plotted. All elements support
-    patterns with prepending '!' negating their meaning.
+    patterns, where a prepended '!' negates their meaning. Multiple process patterns can be
+    concatenated with '+'. By default, a separate plot is created per process matched by any of the
+    process name patterns of a rule. When *stack* is *True*, the distributions for all matched
+    processes are stacked and a single plot is created.
 
     Certain values of process and systematic names are interpreted in a special way. Processes 'S',
-    'B' and 'SB' are interpreted as combined signal, background and signal+background. Systematics
-    'S' and 'R' denote all shape changing (type 'shape*') and all rate changing nuisances (types
-    'lnN' and 'lnU').
+    'B' and 'SB' are interpreted as combined signal, background and signal+background (using the
+    *stack* feature). Systematics 'S' and 'R' denote all shape changing (type 'shape*') and all rate
+    changing nuisances (types 'lnN' and 'lnU').
 
     The binning strategy can be adjust using the *binning* argument:
     - ``"original"``: Use original bin edges.
@@ -63,7 +67,8 @@ def plot_datacard_shapes(datacard, rules, directory=".", nom_format="{bin}__{pro
 
     Plots are stored in a specificed *directory* using *nom_format* when plotting only nominal
     shapes, and *syst_format* otherwise. The *mass* hypothesis is used to expand the '$MASS' field
-    in shape line patterns.
+    in shape line patterns. All additional *plot_kwargs* are forwarded to
+    :py:func:`create_shape_plot`.
 
     .. note::
 
@@ -118,41 +123,46 @@ def plot_datacard_shapes(datacard, rules, directory=".", nom_format="{bin}__{pro
 
         # expand bin and process patterns in rules
         expanded_rules = []
-        for bin_pattern, proc_pattern, syst_pattern in rules:
+        for bin_pattern, proc_patterns, syst_pattern in rules:
             for bin_name in content["rates"]:
                 neg = bin_pattern.startswith("!")
                 if multi_match(bin_name, bin_pattern[int(neg):]) == neg:
                     continue
 
-                # handle special process names
-                if proc_pattern == "S":
-                    expanded_rules.append([
-                        bin_name,
-                        ("Signal", signal_names[bin_name]),
-                        syst_pattern,
-                    ])
-                    continue
-                if proc_pattern == "B":
-                    expanded_rules.append([
-                        bin_name,
-                        ("Background", background_names[bin_name]),
-                        syst_pattern,
-                    ])
-                    continue
-                if proc_pattern == "SB":
-                    expanded_rules.append([
-                        bin_name,
-                        ("Signal+Background", signal_names[bin_name] + background_names[bin_name]),
-                        syst_pattern,
-                    ])
-                    continue
+                # strategy: collect matching processes and check if they enter the expanded rules
+                # separately or stacked
+                matched_procs = []
+                for proc_pattern in proc_patterns.split("+"):
+                    # handle special process names
+                    if proc_pattern == "S":
+                        matched_procs.append(("Signal", signal_names[bin_name]))
+                        continue
+                    if proc_pattern == "B":
+                        matched_procs.append(("Background", background_names[bin_name]))
+                        continue
+                    if proc_pattern == "SB":
+                        matched_procs.append(("Signal+Background",
+                            signal_names[bin_name] + background_names[bin_name]))
+                        continue
 
-                # match process patterns
-                # (arbitrary stacking of processes is not supported yet, needs re-parameterization)
-                for proc_name in signal_names[bin_name] + background_names[bin_name]:
-                    neg = proc_pattern.startswith("!")
-                    if multi_match(proc_name, bin_pattern[int(neg):]) != neg:
-                        expanded_rules.append([bin_name, (proc_name, [proc_name]), syst_pattern])
+                    # match process patterns
+                    for proc_name in signal_names[bin_name] + background_names[bin_name]:
+                        neg = proc_pattern.startswith("!")
+                        if multi_match(proc_name, proc_pattern[int(neg):]) != neg:
+                            matched_procs.append((proc_name, [proc_name]))
+
+                # add to expanded rules
+                if stack:
+                    expanded_rules.append((
+                        bin_name,
+                        (proc_patterns, list(set(sum((procs for _, procs in matched_procs), [])))),
+                        syst_pattern,
+                    ))
+                else:
+                    expanded_rules.extend([
+                        (bin_name, (proc_label, procs), syst_pattern)
+                        for proc_label, procs in matched_procs
+                    ])
 
         # expand systematic patterns in rules
         _expanded_rules = []
@@ -279,6 +289,7 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, nom_f
         path = syst_format.format(bin=bin_name, process=proc_label, syst=param["name"])
     else:
         path = nom_format.format(bin=bin_name, process=proc_label)
+    path = path.replace("*", "X").replace("?", "Y").replace("!", "N")
     path = os.path.join(directory, path)
     logger.debug("going to create plot at {} for shapes in bin {} and process {}, stacking {} "
         "processes".format(path, bin_name, proc_label, len(proc_shapes)))
@@ -477,7 +488,7 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, nom_f
 def transform_binning(hist, binning):
     def clone_hist(*args, **kwargs):
         clone = hist.__class__(
-            hist.GetName() + "__bin_transformed",
+            hist.GetName() + "__transformed",
             ";".join([hist.GetTitle(), hist.GetXaxis().GetTitle(), hist.GetYaxis().GetTitle()]),
             *args, **kwargs
         )
@@ -521,19 +532,21 @@ if __name__ == "__main__":
 
     parser.add_argument("input", metavar="DATACARD", help="the datacard to read")
     parser.add_argument("rules", nargs="+", metavar="BIN,PROCESS[,SYSTEMATIC]", help="rules "
-        "defining which shapes to plot; 'BIN' and 'PROCESS' support patterns with prepending '!' "
-        "negating their meaning; special process names are 'S', 'B', and 'SB' which are "
-        "interpreted as combined signal, background, and signal+background; when no 'SYSTEMATIC' "
-        "is given, only nominal shapes are plotted; patterns are supported with special systematic "
-        "names 'S' and 'R' being interpreted as all shape and all rate systematics; this parameter "
-        "also supports files that contain the rules in the described format line by line")
+        "defining which shapes to plot; 'BIN', 'PROCESS' and 'SYSTEMATIC' support patterns where a "
+        "prepended '!' negates their meaning; special process names are 'S', 'B', and 'SB' which "
+        "are interpreted as combined signal, background, and signal+background; multiple process "
+        "patterns can be concatenated with '+'; when no 'SYSTEMATIC' is given, only nominal shapes "
+        "are plotted; special systematic names 'S' and 'R' are interpreted as all shape and all "
+        "rate systematics; this parameter also supports files that contain the rules in the "
+        "described format line by line")
+    parser.add_argument("--stack", "-s", action="store_true", help="instead of creating separate "
+        "plots per process machted by a rule, stack distributions and create a single plot")
     parser.add_argument("--directory", "-d", default=".", help="directory in which produced plots "
         "are saved; defaults to the current directory")
-    parser.add_argument("--nom-format", "-n", default="{bin}__{process}.pdf", help="format for "
-        "created files when plotting only nominal shapes; default: {bin}__{process}.pdf")
-    parser.add_argument("--syst-format", "-s", default="{bin}__{process}__{syst}.pdf",
-        help="format for created files when plotting only nominal shapes; default: "
-        "{bin}__{process}__{syst}.pdf")
+    parser.add_argument("--nom-format", default="{bin}__{process}.pdf", help="format for created "
+        "files when plotting only nominal shapes; default: {bin}__{process}.pdf")
+    parser.add_argument("--syst-format", default="{bin}__{process}__{syst}.pdf", help="format for "
+        "created files when plotting only nominal shapes; default: {bin}__{process}__{syst}.pdf")
     parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
     parser.add_argument("--binning", "-b", default="original", choices=["original", "numbers",
         "numbers_width"], help="the binning strategy; 'original': use original bin edges; "
@@ -555,7 +568,7 @@ if __name__ == "__main__":
 
     # run the renaming
     with patch_object(logger, "name", args.log_name):
-        plot_datacard_shapes(args.input, args.rules, directory=args.directory,
+        plot_datacard_shapes(args.input, args.rules, stack=args.stack, directory=args.directory,
             nom_format=args.nom_format, syst_format=args.syst_format, mass=args.mass,
             binning=args.binning, x_title=args.x_title, y_min=args.y_min, y_max=args.y_max,
             y_log=args.y_log, campaign_label=args.campaign)
