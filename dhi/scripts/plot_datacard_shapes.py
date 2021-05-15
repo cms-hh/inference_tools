@@ -278,8 +278,8 @@ def plot_datacard_shapes(datacard, rules, stack=False, directory=".",
 
 @use_style("dhi_default")
 def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, nom_format, syst_format,
-        binning="original", x_title="Datacard shape", y_min=None, y_max=None, y_log=False,
-        campaign_label=None):
+        binning="original", x_title="Datacard shape", y_min=None, y_max=None, y_min2=None,
+        y_max2=None, y_log=False, campaign_label=None):
     import plotlib.root as r
     ROOT = import_ROOT()
 
@@ -445,10 +445,14 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, nom_f
         norm(hist_u_trans2)
 
         # set y limits
-        y_min2 = min(hist_d_trans2.GetMinimum(), hist_u_trans2.GetMinimum())
-        y_max2 = max(hist_d_trans2.GetMaximum(), hist_u_trans2.GetMaximum())
-        h_dummy2.SetMinimum(min(-0.059, max(-59., y_min2 * 1.5)))
-        h_dummy2.SetMaximum(max(0.059, min(59., y_max2 * 1.5)))
+        if y_min2 is None:
+            y_min2 = min(hist_d_trans2.GetMinimum(), hist_u_trans2.GetMinimum())
+            y_min2 = min(-0.059, max(-59., y_min2 * 1.5))
+        if y_max2 is None:
+            y_max2 = max(hist_d_trans2.GetMaximum(), hist_u_trans2.GetMaximum())
+            y_max2 = max(0.059, min(59., y_max2 * 1.5))
+        h_dummy2.SetMinimum(y_min2)
+        h_dummy2.SetMaximum(y_max2)
 
         # add to plots
         draw_objs2.append((hist_d_trans2, "SAME,HIST"))
@@ -554,8 +558,10 @@ if __name__ == "__main__":
         "divide by bin widths")
     parser.add_argument("--x-title", default="Datacard shape", help="x-axis label; default: "
         "'Datacard shape'")
-    parser.add_argument("--y-min", type=float, help="minimum y-axis value; no default")
-    parser.add_argument("--y-max", type=float, help="maximum y-axis value; no default")
+    parser.add_argument("--y-min", type=float, help="min y value of the top pad; no default")
+    parser.add_argument("--y-max", type=float, help="max y value of the top pad; no default")
+    parser.add_argument("--y-min2", type=float, help="min y value of the bottom pad; no default")
+    parser.add_argument("--y-max2", type=float, help="max y value of the bottom pad; no default")
     parser.add_argument("--y-log", action="store_true", help="transform y-axis to log scale")
     parser.add_argument("--campaign", help="label to be shown at the top right; no default")
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
@@ -571,4 +577,4 @@ if __name__ == "__main__":
         plot_datacard_shapes(args.input, args.rules, stack=args.stack, directory=args.directory,
             nom_format=args.nom_format, syst_format=args.syst_format, mass=args.mass,
             binning=args.binning, x_title=args.x_title, y_min=args.y_min, y_max=args.y_max,
-            y_log=args.y_log, campaign_label=args.campaign)
+            y_min2=args.y_min2, y_max2=args.y_max2, y_log=args.y_log, campaign_label=args.campaign)

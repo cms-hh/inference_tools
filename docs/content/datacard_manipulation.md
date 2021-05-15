@@ -779,8 +779,10 @@ usage: plot_datacard_shapes.py [-h] [--stack] [--directory DIRECTORY]
                                [--syst-format SYST_FORMAT] [--mass MASS]
                                [--binning {original,numbers,numbers_width}]
                                [--x-title X_TITLE] [--y-min Y_MIN]
-                               [--y-max Y_MAX] [--y-log] [--campaign CAMPAIGN]
-                               [--log-level LOG_LEVEL] [--log-name LOG_NAME]
+                               [--y-max Y_MAX] [--y-min2 Y_MIN2]
+                               [--y-max2 Y_MAX2] [--y-log]
+                               [--campaign CAMPAIGN] [--log-level LOG_LEVEL]
+                               [--log-name LOG_NAME]
                                DATACARD BIN,PROCESS[,SYSTEMATIC]
                                [BIN,PROCESS[,SYSTEMATIC] ...]
 
@@ -843,8 +845,10 @@ optional arguments:
                         'numbers_width': same as 'numbers' and divide by bin
                         widths
   --x-title X_TITLE     x-axis label; default: 'Datacard shape'
-  --y-min Y_MIN         minimum y-axis value; no default
-  --y-max Y_MAX         maximum y-axis value; no default
+  --y-min Y_MIN         min y value of the top pad; no default
+  --y-max Y_MAX         max y value of the top pad; no default
+  --y-min2 Y_MIN2       min y value of the bottom pad; no default
+  --y-max2 Y_MAX2       max y value of the bottom pad; no default
   --y-log               transform y-axis to log scale
   --campaign CAMPAIGN   label to be shown at the top right; no default
   --log-level LOG_LEVEL, -l LOG_LEVEL
