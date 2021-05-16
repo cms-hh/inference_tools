@@ -203,7 +203,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.significances.plot_significance_scan",
+            "dhi.plots.significances.plot_significance_scan_1d",
             path=output.path,
             poi=self.pois[0],
             scan_parameter=scan_parameter,
@@ -293,7 +293,7 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.significances.plot_significance_scans",
+            "dhi.plots.significances.plot_significance_scans_1d",
             path=output.path,
             poi=self.pois[0],
             scan_parameter=self.scan_parameter_names[0],

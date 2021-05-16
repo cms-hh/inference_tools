@@ -519,3 +519,104 @@ def temporary_canvas(*args, **kwargs):
     finally:
         if c and not c.IsZombie():
             c.Close()
+
+
+def locate_contour_labels(graphs, level, label_width, pad_width, pad_height, x_min, x_max, y_min,
+        y_max, other_positions=None, min_points=10):
+    positions = []
+    other_positions = other_positions or []
+
+    # conversions from values in x or y (depending on the axis range) to values in pixels
+    x_width = x_max - x_min
+    y_width = y_max - y_min
+    x_to_px = lambda x: x * pad_width / x_width
+    y_to_px = lambda y: y * pad_height / y_width
+
+    # define visible ranges
+    x_min_vis = x_min + 0.02 * x_width
+    x_max_vis = x_max - 0.02 * x_width
+    y_min_vis = y_min + 0.02 * y_width
+    y_max_vis = y_max - 0.02 * y_width
+
+    # helper to get the ellipse-transformed distance between two points, normalized to pad dimension
+    pad_dist = lambda x, y, x0, y0: (((x - x0) / pad_width)**2 + ((y - y0) / pad_height)**2)**0.5
+
+    # helper to check if two points are too close in terms of the label width
+    too_close = lambda x, y, x0, y0: pad_dist(x, y, x0, y0) < 1.1 * (label_width / pad_width)
+
+    for g in graphs:
+        # get graph points
+        x_values, y_values = get_graph_points(g)
+        n_points = len(x_values)
+
+        # skip when there are not enough points
+        if n_points < min_points:
+            continue
+
+        # compute the line contour and number of blocks
+        line_contour = np.array([x_values, y_values]).T
+        n_blocks = int(np.ceil(n_points / label_width)) if label_width > 1 else 1
+        block_size = n_points if n_blocks == 1 else int(round(label_width))
+
+        # split contour into blocks of length block_size, filling the last block by cycling the
+        # contour start (per np.resize semantics)
+        # due to cycling, the index returned is taken modulo n_points
+        xx = np.resize(line_contour[:, 0], (n_blocks, block_size))
+        yy = np.resize(line_contour[:, 1], (n_blocks, block_size))
+        yfirst = yy[:, :1]
+        ylast = yy[:, -1:]
+        xfirst = xx[:, :1]
+        xlast = xx[:, -1:]
+        s = (yfirst - yy) * (xlast - xfirst) - (xfirst - xx) * (ylast - yfirst)
+        l = np.hypot(xlast - xfirst, ylast - yfirst)
+
+        # ignore warning that divide by zero throws, as this is a valid option
+        with np.errstate(divide="ignore", invalid="ignore"):
+            distances = (abs(s) / l).sum(axis=-1)
+
+        # labels are drawn in the middle of the block (hb_size) where the contour is the closest
+        # to a straight line, but not too close to a preexisting label
+        hb_size = block_size // 2
+        adist = np.argsort(distances)
+
+        # get the best initial position by only checking if were close to the visible window
+        for idx1 in np.append(adist, adist[0]):
+            x, y = xx[idx1, hb_size], yy[idx1, hb_size]
+            if (x_min_vis <= x <= x_max_vis) and (y_min_vis <= y <= y_max_vis):
+                break
+        else:
+            idx1 = 0
+
+        # get the best position by checking the distance to other labels and the roration
+        # use idx1 when no position was found
+        rot = 0.
+        for idx2 in np.append(adist, idx1):
+            x, y = xx[idx2, hb_size], yy[idx2, hb_size]
+            if not (x_min_vis <= x <= x_max_vis) or not (y_min_vis <= y <= y_max_vis):
+                continue
+            elif any(too_close(x, y, x0, y0) for x0, y0, _ in positions + other_positions):
+                continue
+
+            # rotation
+            ind = (idx2 * block_size + hb_size) % n_points
+            dx, dy = np.gradient(line_contour, axis=0)[ind]
+            dx = x_to_px(dx)
+            dy = y_to_px(dy)
+            if dx or dy:
+                rot = np.rad2deg(np.arctan2(dy, dx))
+                rot = (rot + 90) % 180 - 90
+            else:
+                rot = 0.
+
+            # avoid large rotations
+            if abs(rot) > 70:
+                continue
+
+            # at this point, a good position was found
+            break
+
+        # store when visible
+        if (x_min_vis <= x <= x_max_vis) and (y_min_vis <= y <= y_max_vis):
+            positions.append((x, y, rot))
+
+    return positions

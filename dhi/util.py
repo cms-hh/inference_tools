@@ -192,9 +192,9 @@ def get_neighbor_coordinates(shape, i, j):
 
 def minimize_1d(objective, bounds, start=None, **kwargs):
     """
-    Performs a 1D minimization of an *objective* using scipy.optimize.basinhoppingiterations
-    (fowarding all *kwargs*) within certain parameter *bounds*. When *start* is *None*, these bounds
-    are used initially to get a good starting point. The optimizer result of the lowest optimization
+    Performs a 1D minimization of an *objective* using scipy.optimize.basinhopping (fowarding all
+    *kwargs*) within certain parameter *bounds* provided as a 2-tuple. When *start* is *None*, these
+    bounds are used initially to get a good starting point. The result of the best optimization
     iteration is returned.
     """
     import numpy as np
@@ -210,6 +210,35 @@ def minimize_1d(objective, bounds, start=None, **kwargs):
     kwargs.setdefault("niter", 50)
     minimizer_kwargs = kwargs.setdefault("minimizer_kwargs", {})
     minimizer_kwargs["bounds"] = [bounds]
+    minimizer_kwargs.setdefault("tol", 0.00001)
+    res = scipy.optimize.basinhopping(objective, start, **kwargs)
+
+    return res.lowest_optimization_result
+
+
+def minimize_2d(objective, bounds, start=None, **kwargs):
+    """
+    Performs a 2D minimization of an *objective* using scipy.optimize.basinhopping (fowarding all
+    *kwargs*) within certain parameter *bounds* provided as two 2-tuples in a list. When *start* is
+    *None*, these bounds are used initially to get a good starting point. The result of the best
+    optimization iteration is returned.
+    """
+    import numpy as np
+    import scipy.optimize
+
+    # get the minimal starting point from a simple scan within bounds
+    if start is None:
+        x = np.array(np.meshgrid(
+            np.linspace(bounds[0][0], bounds[0][1], 100),
+            np.linspace(bounds[1][0], bounds[1][1], 100),
+        )).T.reshape(-1, 2)
+        y = objective(x).flatten()
+        start = tuple(x[np.argmin(y)].tolist())
+
+    # minimization using basin hopping
+    kwargs.setdefault("niter", 50)
+    minimizer_kwargs = kwargs.setdefault("minimizer_kwargs", {})
+    minimizer_kwargs["bounds"] = bounds
     minimizer_kwargs.setdefault("tol", 0.00001)
     res = scipy.optimize.basinhopping(objective, start, **kwargs)
 
@@ -477,7 +506,7 @@ def dict_to_recarray(dicts):
         value_lengths = set(map(len, d.values()))
         if len(value_lengths) != 1:
             raise Exception("dictionary {} found to map to lists with unequal lengths: {}".format(
-                value_lengths))
+                d, value_lengths))
 
         # construct the recarray
         records = [tuple(v[i] for v in d.values()) for i in range(list(value_lengths)[0])]

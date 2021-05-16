@@ -19,7 +19,7 @@ colors = colors.root
 
 
 @use_style("dhi_default")
-def plot_significance_scan(
+def plot_significance_scan_1d(
     path,
     poi,
     scan_parameter,
@@ -162,7 +162,7 @@ def plot_significance_scan(
 
 
 @use_style("dhi_default")
-def plot_significance_scans(
+def plot_significance_scans_1d(
     path,
     poi,
     scan_parameter,
