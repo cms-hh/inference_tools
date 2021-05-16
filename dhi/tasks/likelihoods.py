@@ -132,12 +132,18 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
     y_log = luigi.BoolParameter(
         default=False,
-        description="apply log scaling to the y-axis when the plot is 1D; default: False",
+        description="apply log scaling to the y-axis; 1D only; default: False",
     )
     show_points = luigi.BoolParameter(
         default=False,
         significant=False,
-        description="show points of central likelihood values when the plot is 1D; default: False",
+        description="show points of central likelihood values; 1D only; default: False",
+    )
+    show_box = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="draw a box around the 1 sigma error contour and estimate a standard error "
+        "from its dimensions; 2D only; default: False",
     )
 
     force_n_pois = (1, 2)
@@ -216,6 +222,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 values=values,
                 poi1_min=poi_mins[0],
                 poi2_min=poi_mins[1],
+                draw_box=self.show_box,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),

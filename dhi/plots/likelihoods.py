@@ -20,7 +20,7 @@ from dhi.util import (
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, fill_hist_from_points, get_contours, get_y_range,
-    infer_binning_from_grid,
+    infer_binning_from_grid, get_contour_box,
 )
 
 
@@ -353,6 +353,7 @@ def plot_likelihood_scan_2d(
     poi1_min=None,
     poi2_min=None,
     draw_sm_point=True,
+    draw_box=False,
     x_min=None,
     x_max=None,
     y_min=None,
@@ -368,6 +369,10 @@ def plot_likelihood_scan_2d(
     "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be the values of
     the POIs that lead to the best likelihood. Otherwise, they are  estimated from the interpolated
     curve. The standard model point at (1, 1) as drawn as well unless *draw_sm_point* is *False*.
+    The best fit value is drawn with uncertainties on one POI being estimated while setting the
+    other POI to its best value. When *draw_box* is *True*, a box containing the 1 sigma contour is
+    shown and used to estimate the dimensions of the standard error following the prescription at
+    https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf (see e.g. Fig. 40.5).
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
     and default to the ranges of the poi values. *z_min* and *z_max* limit the range of the z-axis.
@@ -392,13 +397,13 @@ def plot_likelihood_scan_2d(
     # join values for contour calculation
     joined_values = unique_recarray(dict_to_recarray(values), cols=[poi1, poi2])
 
-    # evaluate the scan, run interpolation and error estimation
-    scan = evaluate_likelihood_scan_2d(joined_values[poi1], joined_values[poi2],
-        joined_values["dnll2"], poi1_min=poi1_min, poi2_min=poi2_min)
-
     # determine contours independent of plotting
     contours = get_contours(joined_values[poi1], joined_values[poi2], joined_values["dnll2"],
         levels=[chi2_levels[2][1], chi2_levels[2][2]], frame_kwargs=[{"mode": "edge", "width": 1.}])
+
+    # evaluate the scan, run interpolation and error estimation
+    scan = evaluate_likelihood_scan_2d(joined_values[poi1], joined_values[poi2],
+        joined_values["dnll2"], poi1_min=poi1_min, poi2_min=poi2_min, contours=contours[:1])
 
     # start plotting
     r.setup_style()
@@ -449,6 +454,7 @@ def plot_likelihood_scan_2d(
             r.setup_z_axis(h.GetZaxis(), pad=pad, props={"Title": z_title, "TitleSize": 24,
                 "TitleOffset": 1.5})
         draw_objs.append((h, "SAME,COLZ"))
+        # for debugging purposes
         # draw_objs.append((h, "SAME,TEXT"))
 
     # 1 and 2 sigma contours
@@ -459,13 +465,24 @@ def plot_likelihood_scan_2d(
         r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.yellow})
         draw_objs.append((g, "SAME,C"))
 
+    # draw the first contour box
+    if draw_box:
+        box_num1, box_num2 = scan.box_nums[0]
+        box_t = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("up"), box_num2("up"))
+        box_b = ROOT.TLine(box_num1("down"), box_num2("down"), box_num1("up"), box_num2("down"))
+        box_r = ROOT.TLine(box_num1("up"), box_num2("up"), box_num1("up"), box_num2("down"))
+        box_l = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("down"), box_num2("down"))
+        for box_line in [box_t, box_r, box_b, box_l]:
+            r.setup_line(box_line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
+            draw_objs.append(box_line)
+
     # SM point
     if draw_sm_point:
         g_sm = create_tgraph(1, 1, 1)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
 
-    # best fit point
+    # central best fit point
     g_fit = ROOT.TGraphAsymmErrors(1)
     g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
     if scan.num1_min.uncertainties:
@@ -477,16 +494,21 @@ def plot_likelihood_scan_2d(
     r.setup_graph(g_fit, color=colors.black)
     draw_objs.append((g_fit, "PEZ"))
 
-    # measurement and best fit value labels
-    fit_label1 = "{} = {}".format(to_root_latex(poi_data[poi1].label),
-        scan.num1_min.str(format="%.2f", style="root"))
-    fit_label2 = "{} = {}".format(to_root_latex(poi_data[poi2].label),
-        scan.num2_min.str(format="%.2f", style="root"))
-    labels = [fit_label1, fit_label2]
-    for i, l in enumerate(labels):
-        l = r.routines.create_top_right_label(l, pad=pad, x_offset=160, y_offset=30 + i * 34,
-            props={"TextAlign": 13})
-        draw_objs.append(l)
+    # legend
+    def make_bf_label(num1, num2):
+        return "{} = {} ,  {} = {}".format(
+            to_root_latex(poi_data[poi1].label),
+            num1.str(format="%.2f", style="root"),
+            to_root_latex(poi_data[poi2].label),
+            num2.str(format="%.2f", style="root"),
+        )
+
+    legend_entries = [(g_fit, make_bf_label(scan.num1_min, scan.num2_min), "L")]
+    if draw_box:
+        legend_entries.append((box_t, make_bf_label(box_num1, box_num2), "L"))
+    legend = r.routines.create_legend(pad=pad, width=340, n=len(legend_entries))
+    r.fill_legend(legend, legend_entries)
+    draw_objs.append(legend)
 
     # model parameter labels
     if model_parameters:
@@ -962,7 +984,7 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
 
 
 def evaluate_likelihood_scan_2d(
-    poi1_values, poi2_values, dnll2_values, poi1_min=None, poi2_min=None
+    poi1_values, poi2_values, dnll2_values, poi1_min=None, poi2_min=None, contours=None,
 ):
     """
     Takes the results of a 2D likelihood profiling scan given by *poi1_values*, *poi2_values* and
@@ -970,6 +992,8 @@ def evaluate_likelihood_scan_2d(
     of the scan in a dict. The two lists of poi values should represent an expanded grid, so that
     *poi1_values*, *poi2_values* and *dnll2_values* should all be 1D with the same length. When
     *poi1_min* and *poi2_min* are *None*, they are estimated from the interpolated curve.
+    When *contours* are given, it should be a nested list of graph objects, where each contained
+    list represents the graphs that constitute a contour. The
 
     The returned fields are:
 
@@ -994,6 +1018,8 @@ def evaluate_likelihood_scan_2d(
       calculation failed.
     - ``num1_min``: A Number instance representing the poi1 minimum and its 1 sigma uncertainty.
     - ``num2_min``: A Number instance representing the poi2 minimum and its 1 sigma uncertainty.
+    - ``box_nums``: A list of Number instance pairs, each one representing the two box dimensions of
+      a passed  contour with uncertainties denoting edges.
     """
     # ensure we are dealing with arrays
     poi1_values = np.array(poi1_values)
@@ -1033,8 +1059,9 @@ def evaluate_likelihood_scan_2d(
         poi1_min = res.x[0]
         poi2_min = res.x[1]
 
-    # helper to get the outermost intersection of the nll curve with a certain value
-    def get_intersections(v, n_poi):
+    # helper to get the outermost intersection of the dnll2 curve with a certain value of a poi,
+    # while fixing the other poi at its best fit value
+    def get_central_intersections(v, n_poi):
         if n_poi == 1:
             poi_values_min, poi_values_max = poi1_values_min, poi1_values_max
             poi_min = poi1_min
@@ -1064,10 +1091,10 @@ def evaluate_likelihood_scan_2d(
 
     # get the intersections with values corresponding to 1 and 2 sigma
     # (taken from solving chi2_1_cdf(x) = 1 or 2 sigma gauss intervals)
-    poi1_p1, poi1_m1 = get_intersections(chi2_levels[2][1], 1)
-    poi2_p1, poi2_m1 = get_intersections(chi2_levels[2][1], 2)
-    poi1_p2, poi1_m2 = get_intersections(chi2_levels[2][2], 1)
-    poi2_p2, poi2_m2 = get_intersections(chi2_levels[2][2], 2)
+    poi1_p1, poi1_m1 = get_central_intersections(chi2_levels[2][1], 1)
+    poi2_p1, poi2_m1 = get_central_intersections(chi2_levels[2][1], 2)
+    poi1_p2, poi1_m2 = get_central_intersections(chi2_levels[2][2], 1)
+    poi2_p2, poi2_m2 = get_central_intersections(chi2_levels[2][2], 2)
 
     # create Number objects wrapping the best fit values and their 1 sigma error when given
     unc1 = None
@@ -1078,6 +1105,19 @@ def evaluate_likelihood_scan_2d(
         unc2 = (poi2_p1 - poi2_min, poi2_min - poi2_m1)
     num1_min = Number(poi1_min, unc1)
     num2_min = Number(poi2_min, unc2)
+
+    # build contour boxes
+    box_nums = None
+    if contours:
+        box_nums = []
+        for graphs in contours:
+            box1_m, box1_p, box2_m, box2_p = get_contour_box(graphs)
+            unc1, unc2 = None, None
+            if abs(box1_m - poi1_values_min) > 1e-3 and abs(box1_p - poi1_values_max) > 1e-3:
+                unc1 = (box1_p - poi1_min, poi1_min - box1_m)
+            if abs(box2_m - poi2_values_min) > 1e-3 and abs(box2_p - poi2_values_max) > 1e-3:
+                unc2 = (box2_p - poi2_min, poi2_min - box2_m)
+            box_nums.append((Number(poi1_min, unc1), Number(poi2_min, unc2)))
 
     return DotDict(
         interp=interp,
@@ -1093,4 +1133,5 @@ def evaluate_likelihood_scan_2d(
         poi2_m2=poi2_m2,
         num1_min=num1_min,
         num2_min=num2_min,
+        box_nums=box_nums,
     )
