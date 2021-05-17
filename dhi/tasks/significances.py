@@ -205,7 +205,6 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
         self.call_plot_func(
             "dhi.plots.significances.plot_significance_scan_1d",
             path=output.path,
-            poi=self.pois[0],
             scan_parameter=scan_parameter,
             expected_values=exp_values,
             observed_values=obs_values,
@@ -276,10 +275,10 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
         output.parent.touch()
 
         # load significances
-        exp_values = []
+        values = []
         names = []
         for i, inps in enumerate(self.input()):
-            exp_values.append(self.load_scan_data(inps))
+            values.append(self.load_scan_data(inps))
             names.append("datacards {}".format(i + 1))
 
         # set names if requested
@@ -288,16 +287,15 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
 
         # reoder if requested
         if self.datacard_order:
-            exp_values = [exp_values[i] for i in self.datacard_order]
+            values = [values[i] for i in self.datacard_order]
             names = [names[i] for i in self.datacard_order]
 
         # call the plot function
         self.call_plot_func(
             "dhi.plots.significances.plot_significance_scans_1d",
             path=output.path,
-            poi=self.pois[0],
             scan_parameter=self.scan_parameter_names[0],
-            expected_values=exp_values,
+            values=values,
             names=names,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),

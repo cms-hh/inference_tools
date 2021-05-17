@@ -422,7 +422,7 @@ def plot_likelihood_scan_2d(
         _z_min = np.nanmin(dnll2[dnll2 > 0]) or 1e-2
         _z_max = np.nanmax(dnll2)
 
-        # get axis limits for the first set of values
+        # infer axis limits from the first set of values
         if i == 0:
             x_min = _x_min if x_min is None else x_min
             x_max = _x_max if x_max is None else x_max
@@ -430,11 +430,9 @@ def plot_likelihood_scan_2d(
             y_max = _y_max if y_max is None else y_max
             z_min = _z_min if z_min is None else z_min
             z_max = _z_max if z_max is None else z_max
-            h = ROOT.TH2F("h" + str(i), "", _x_bins, x_min, x_max, _y_bins, y_min, y_max)
-        else:
-            h = ROOT.TH2F("h" + str(i), "", _x_bins, _x_min, _x_max, _y_bins, _y_min, _y_max)
 
         # fill and store the histogram
+        h = ROOT.TH2F("h" + str(i), "", _x_bins, _x_min, _x_max, _y_bins, _y_min, _y_max)
         fill_hist_from_points(h, _values[poi1], _values[poi2], dnll2, z_min=z_min, z_max=z_max)
         hists.append(h)
 

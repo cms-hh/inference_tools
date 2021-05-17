@@ -358,6 +358,7 @@ def plot_exclusion_and_bestfit_2d(
     pad_width = canvas.GetWindowWidth() * (1. - pad.GetLeftMargin() - pad.GetRightMargin())
     pad_height = canvas.GetWindowHeight() * (1. - pad.GetTopMargin() - pad.GetBottomMargin())
     px_to_x = (x_max - x_min) / pad_width
+    py_to_y = (y_max - y_min) / pad_height
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter1].label)
@@ -438,11 +439,14 @@ def plot_exclusion_and_bestfit_2d(
             text = str(try_int(level))
             if xsec_unit:
                 text = "{} {}".format(text, xsec_unit)
-            label_width = get_text_extent(text, 12, 43)[0] * px_to_x
+            label_width, label_height = get_text_extent(text, 12, 43)
+            label_width *= px_to_x
+            label_height *= py_to_y
 
             # calculate and store the position
-            label_positions = locate_contour_labels(graphs, level, label_width, pad_width,
-                pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions)
+            label_positions = locate_contour_labels(graphs, level, label_width, label_height,
+                pad_width, pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions,
+                label_offset=1.2)
             all_positions.extend(label_positions)
 
             # draw them

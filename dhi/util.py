@@ -516,20 +516,34 @@ def dict_to_recarray(dicts):
     return np.concatenate(arrays, axis=0) if len(arrays) > 1 else arrays[0]
 
 
-def dnll2_to_significance(dnll2, n=1, two_sided=False, fill_inf=None):
+def extend_recarray(a, *columns, **kwargs):
     """
-    Converts a 2∆ln(L) value *dnll2* from a likelihood profile scanning *n* parameters (with its
-    minimum shifted to zero) into a coverage probability expressed in gaussian standard deviations,
-    i.e., a significance. *two_sided* should be set to *True* when the underlying test is
-    two-tailed.
+    Extends a recarray *a* by one or more additional *columns*. A column should be a 3-tuple
+    containing the name, the dtype and the data of the column to add. Additional *kwargs* are
+    forwarded to numpy.lib.recfunctions.append_fields. The new recarray is returned.
+    """
+    import numpy.lib.recfunctions as rf
+
+    names = [col[0] for col in columns]
+    dtypes = [col[1] for col in columns]
+    data = [col[2] for col in columns]
+
+    return rf.append_fields(a, names, data=data, dtypes=dtypes, **kwargs)
+
+
+def dnll2_to_significance(dnll2, n=1, two_sided=True, fill_inf=None):
+    """
+    Converts a -2∆ln(L) value *dnll2* from a likelihood profile scanning *n* parameters (with its
+    minimum shifted to zero) into a significance in gaussian standard deviations. *two_sided* should
+    be set to *True* when the underlying test is two-tailed.
 
     For reference, see Fig. 40.4 and Tab. 40.2 in
     https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf.
 
-    For very large *dnll2* values, the conversion might result in an infinite significance as float
-    precision starts to play a role in regions with almost vanishing tails. *fill_inf* can be a
-    value that is inserted in these cases, with the *dnll2* threshold depending on the number of
-    degrees of freedom:
+    For very large *dnll2* values, the conversion might result in an infinite significance as
+    limited float precision starts to play a role in regions with almost vanishing tails. *fill_inf*
+    can be a value that is inserted in these cases, with the *dnll2* threshold depending on the
+    number of degrees of freedom:
 
         - 67 for n = 1
         - 72 for n = 2
@@ -547,10 +561,10 @@ def dnll2_to_significance(dnll2, n=1, two_sided=False, fill_inf=None):
     alpha = 1. - stats.chi2.cdf(dnll2, n)
     sig = stats.norm.ppf(1. - alpha / (2. if two_sided else 1.))
 
-    # replace values (probably nan) where dnll2 is <= 0 by 0
+    # replace values where dnll2 is <= 0 by 0 (probably nan)
     sig[dnll2 <= 0] = 0.
 
-    # replace values (probably inf) where dnll2 is above an n-dependent threshold
+    # replace values where dnll2 is above an n-dependent threshold (probably inf)
     if fill_inf is not None:
         threshold = {1: 76, 2: 72, 3: 76}.get(n, 80)
         sig[dnll2 >= threshold] = fill_inf

@@ -536,8 +536,8 @@ def temporary_canvas(*args, **kwargs):
             c.Close()
 
 
-def locate_contour_labels(graphs, level, label_width, pad_width, pad_height, x_min, x_max, y_min,
-        y_max, other_positions=None, min_points=10):
+def locate_contour_labels(graphs, level, label_width, label_height, pad_width, pad_height, x_min,
+        x_max, y_min, y_max, other_positions=None, min_points=10, label_offset=None):
     positions = []
     other_positions = other_positions or []
 
@@ -570,8 +570,8 @@ def locate_contour_labels(graphs, level, label_width, pad_width, pad_height, x_m
 
         # compute the line contour and number of blocks
         line_contour = np.array([x_values, y_values]).T
-        n_blocks = int(np.ceil(n_points / label_width)) if label_width > 1 else 1
-        block_size = n_points if n_blocks == 1 else int(round(label_width))
+        n_blocks = int(np.ceil(n_points / (label_width * 0.5))) if label_width > 1 else 1
+        block_size = n_points if n_blocks == 1 else int(round(label_width * 0.5))
 
         # split contour into blocks of length block_size, filling the last block by cycling the
         # contour start (per np.resize semantics)
@@ -606,29 +606,35 @@ def locate_contour_labels(graphs, level, label_width, pad_width, pad_height, x_m
         # use idx1 when no position was found
         rot = 0.
         for idx2 in np.append(adist, idx1):
+            # rotation
+            ind = (idx2 * block_size + hb_size) % n_points
+            dx, dy = np.gradient(line_contour, axis=0, edge_order=1)[ind]
+            dx = x_to_px(dx)
+            dy = y_to_px(dy)
+            if dx or dy:
+                rot = np.rad2deg(np.arctan2(dy, dx))
+                # ensure that the rotation is between -90 and 90 deg
+                rot = (rot + 90) % 180 - 90
+            else:
+                rot = 0.
+
+            # position
             x, y = xx[idx2, hb_size], yy[idx2, hb_size]
+
+            # check positioning
             if not (x_min_vis <= x <= x_max_vis) or not (y_min_vis <= y <= y_max_vis):
                 continue
             elif any(too_close(x, y, x0, y0) for x0, y0, _ in positions + other_positions):
                 continue
 
-            # rotation
-            ind = (idx2 * block_size + hb_size) % n_points
-            dx, dy = np.gradient(line_contour, axis=0)[ind]
-            dx = x_to_px(dx)
-            dy = y_to_px(dy)
-            if dx or dy:
-                rot = np.rad2deg(np.arctan2(dy, dx))
-                rot = (rot + 90) % 180 - 90
-            else:
-                rot = 0.
-
-            # avoid large rotations
-            if abs(rot) > 70:
-                continue
-
             # at this point, a good position was found
             break
+
+        # apply a relative label offset
+        if label_offset:
+            s = label_height * label_offset
+            x += s * math.sin(np.deg2rad(rot))
+            y += s * math.cos(np.deg2rad(rot))
 
         # store when visible
         if (x_min_vis <= x <= x_max_vis) and (y_min_vis <= y <= y_max_vis):

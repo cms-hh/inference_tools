@@ -11,8 +11,14 @@ import numpy as np
 from dhi.config import (
     poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence,
 )
-from dhi.util import import_ROOT, to_root_latex, create_tgraph
-from dhi.plots.util import use_style, create_model_parameters, get_y_range
+from dhi.util import (
+    import_ROOT, to_root_latex, create_tgraph, make_list, unique_recarray, dict_to_recarray,
+    try_int,
+)
+from dhi.plots.util import (
+    use_style, create_model_parameters, get_y_range, infer_binning_from_grid, get_contours,
+    fill_hist_from_points, get_text_extent, locate_contour_labels,
+)
 
 
 colors = colors.root
@@ -21,9 +27,8 @@ colors = colors.root
 @use_style("dhi_default")
 def plot_significance_scan_1d(
     path,
-    poi,
     scan_parameter,
-    expected_values,
+    expected_values=None,
     observed_values=None,
     x_min=None,
     x_max=None,
@@ -35,9 +40,9 @@ def plot_significance_scan_1d(
     show_points=False,
 ):
     """
-    Creates a plot for the significance scan of a *poi* over a *scan_parameter* and saves it at
-    *path*. *expected_values* should be a mapping to lists of values or a record array with keys
-    "<poi_name>" and "significance". When *observed_values* is given, it should have the same
+    Creates a plot for the significance scan over a *scan_parameter* and saves it at *path*.
+    *expected_values* should be a mapping to lists of values or a record array with keys
+    "<scan_parameter>" and "significance". When *observed_values* is given, it should have the same
     structure as *expected_values*.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
@@ -68,13 +73,20 @@ def plot_significance_scan_1d(
         return values
 
     # input checks
-    expected_values = check_values(expected_values)
-    scan_values = expected_values[scan_parameter]
-    n_points = len(scan_values)
+    if expected_values is None and observed_values is None:
+        raise Exception("either expected_values or observed_values must be set")
+
+    scan_values = None
+    if expected_values is not None:
+        expected_values = check_values(expected_values)
+        scan_values_exp = expected_values[scan_parameter]
+        n_points_exp = len(scan_values_exp)
+        scan_values = scan_values_exp
     if observed_values is not None:
         observed_values = check_values(observed_values)
         scan_values_obs = observed_values[scan_parameter]
         n_points_obs = len(scan_values_obs)
+        scan_values = scan_values_obs if scan_values is None else scan_values
 
     # set default ranges
     if x_min is None:
@@ -93,19 +105,20 @@ def plot_significance_scan_1d(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "Significance over background-only / #sigma"
+    y_title = "Significance / #sigma"
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
     # expected values
-    g_exp = create_tgraph(n_points, scan_values, expected_values["significance"])
-    r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-        "MarkerSize": 0.7})
-    draw_objs.append((g_exp, "SAME,C" + ("P" if show_points else "")))
-    legend_entries.append((g_exp, "Expected", "L"))
-    y_min_value = min(y_min_value, min(expected_values["significance"]))
-    y_max_value = max(y_max_value, max(expected_values["significance"]))
+    if expected_values is not None:
+        g_exp = create_tgraph(n_points_exp, scan_values_exp, expected_values["significance"])
+        r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
+            "MarkerSize": 0.7})
+        draw_objs.append((g_exp, "SAME,C" + ("P" if show_points else "")))
+        legend_entries.append((g_exp, "Expected", "L"))
+        y_min_value = min(y_min_value, min(expected_values["significance"]))
+        y_max_value = max(y_max_value, max(expected_values["significance"]))
 
     # observed values
     if observed_values is not None:
@@ -164,9 +177,8 @@ def plot_significance_scan_1d(
 @use_style("dhi_default")
 def plot_significance_scans_1d(
     path,
-    poi,
     scan_parameter,
-    expected_values,
+    values,
     names,
     x_min=None,
     x_max=None,
@@ -178,10 +190,10 @@ def plot_significance_scans_1d(
     show_points=True,
 ):
     """
-    Creates a plot showing multiple significance scans of a *poi* over a *scan_parameter* and saves
-    it at *path*. *expected_values* should be a list of mappings to lists of values or a record
-    array with keys "<poi_name>" and "significance". Each mapping in *expected_values* will result
-    in a different curve. *names* denote the names of significance curves shown in the legend.
+    Creates a plot showing multiple significance scans over a *scan_parameter* and saves it at
+    *path*. *values* should be a list of mappings to lists of values or a record array with keys
+    "<scan_parameter>" and "significance". Each mapping in *values* will result in a different
+    curve. *names* denote the names of significance curves shown in the legend.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
     given values. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
@@ -195,25 +207,25 @@ def plot_significance_scans_1d(
     ROOT = import_ROOT()
 
     # convert record arrays to dicts mapping to arrays
-    _expected_values = []
-    for i, _ev in enumerate(expected_values):
-        if isinstance(_ev, np.ndarray):
-            _ev = {key: _ev[key] for key in _ev.dtype.names}
-        mask = ~np.isnan(_ev["significance"])
-        _ev = {k: np.array(v)[mask] for k, v in _ev.items()}
-        _expected_values.append(_ev)
+    _values = []
+    for i, _vals in enumerate(values):
+        if isinstance(_vals, np.ndarray):
+            _vals = {key: _vals[key] for key in _vals.dtype.names}
+        mask = ~np.isnan(_vals["significance"])
+        _vals = {k: np.array(v)[mask] for k, v in _vals.items()}
+        _values.append(_vals)
         n_nans = (~mask).sum()
         if n_nans:
             print("WARNING: found {} NaN(s) in significance values at index {}".format(n_nans, i))
-    expected_values = _expected_values
+    values = _values
 
     # input checks
-    n_graphs = len(expected_values)
+    n_graphs = len(values)
     assert(n_graphs >= 1)
     assert(len(names) == n_graphs)
-    assert(all(scan_parameter in ev for ev in expected_values))
-    assert(all("significance" in ev for ev in expected_values))
-    scan_values = expected_values[0][scan_parameter]
+    assert(all(scan_parameter in vals for vals in values))
+    assert(all("significance" in vals for vals in values))
+    scan_values = values[0][scan_parameter]
 
     # set default ranges
     if x_min is None:
@@ -232,23 +244,23 @@ def plot_significance_scans_1d(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "Significance over background-only / #sigma"
+    y_title = "Significance / #sigma"
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
     # expected values
-    for i, (ev, col, ms) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1],
+    for i, (vals, col, ms) in enumerate(zip(values[::-1], color_sequence[:n_graphs][::-1],
             marker_sequence[:n_graphs][::-1])):
-        g_exp = create_tgraph(int(len(scan_values)), scan_values, ev["significance"])
+        g_exp = create_tgraph(int(len(scan_values)), scan_values, vals["significance"])
         r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": ms,
             "MarkerSize": 1.2}, color=colors[col])
         draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
         name = names[n_graphs - i - 1]
         legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
             "LP" if show_points else "L"))
-        y_max_value = max(y_max_value, max(ev["significance"]))
-        y_min_value = min(y_min_value, min(ev["significance"]))
+        y_max_value = max(y_max_value, max(vals["significance"]))
+        y_min_value = min(y_min_value, min(vals["significance"]))
 
     # set limits
     y_min, y_max, _ = get_y_range(0 if y_log else y_min_value, y_max_value, y_min, y_max, log=y_log)
