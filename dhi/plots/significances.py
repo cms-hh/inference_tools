@@ -307,3 +307,168 @@ def plot_significance_scans_1d(
     # save
     r.update_canvas(canvas)
     canvas.SaveAs(path)
+
+
+@use_style("dhi_default")
+def plot_significance_scan_2d(
+    path,
+    scan_parameter1,
+    scan_parameter2,
+    values,
+    draw_sm_point=True,
+    x_min=None,
+    x_max=None,
+    y_min=None,
+    y_max=None,
+    z_min=None,
+    z_max=None,
+    z_log=True,
+    model_parameters=None,
+    campaign=None,
+):
+    """
+    Creates a significance plot of the 2D scan of two parameters *scan_parameter1* and
+    *scan_parameter2*, and saves it at *path*. *values* should be a mapping to lists of values or a
+    record array with keys "<scan_parameter1_name>", "<scan_parameter2_name>" and "significance".
+    The standard model point at (1, 1) as drawn as well unless *draw_sm_point* is *False*.
+
+    *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *scan_parameter1* and
+    *scan_parameter2*, respectively, and default to the ranges of the poi values. *z_min* and
+    *z_max* limit the range of the z-axis. When *z_log* is *True*, the z-axis is plotted with a
+    logarithmic scale. *model_parameters* can be a dictionary of key-value pairs of model
+    parameters. *campaign* should refer to the name of a campaign label defined in
+    *dhi.config.campaign_labels*.
+    """
+    import plotlib.root as r
+    ROOT = import_ROOT()
+
+    # check values
+    values = make_list(values)
+    for i, _values in enumerate(list(values)):
+        if isinstance(_values, np.ndarray):
+            _values = {key: np.array(_values[key]) for key in _values.dtype.names}
+        assert(scan_parameter1 in _values)
+        assert(scan_parameter2 in _values)
+        assert("significance" in _values)
+        values[i] = _values
+
+    # join values for contour calculation
+    joined_values = unique_recarray(dict_to_recarray(values),
+        cols=[scan_parameter1, scan_parameter2])
+
+    # determine contours independent of plotting
+    contour_levels = [1, 2, 3, 4, 5]  # sigma
+    contours = get_contours(joined_values[scan_parameter1], joined_values[scan_parameter2],
+        joined_values["significance"], levels=contour_levels,
+        frame_kwargs=[{"mode": "edge", "width": 1.}])
+
+    # start plotting
+    r.setup_style()
+    canvas, (pad,) = r.routines.create_canvas(pad_props={"RightMargin": 0.17, "Logz": z_log})
+    pad.cd()
+    draw_objs = []
+
+    # create a histogram for each scan patch
+    hists = []
+    for i, _values in enumerate(values):
+        _, _, _x_bins, _y_bins, _x_min, _x_max, _y_min, _y_max = infer_binning_from_grid(
+            _values[scan_parameter1], _values[scan_parameter2])
+
+        # get the z range
+        z_vals = np.array(_values["significance"])
+        _z_max = np.nanmax(z_vals[z_vals < 8.2])
+        _z_min = 1e-2 if z_log else 0
+
+        # infer axis limits from the first set of values
+        if i == 0:
+            x_min = _x_min if x_min is None else x_min
+            x_max = _x_max if x_max is None else x_max
+            y_min = _y_min if y_min is None else y_min
+            y_max = _y_max if y_max is None else y_max
+            z_min = _z_min if z_min is None else z_min
+            z_max = _z_max if z_max is None else z_max
+
+        # fill and store the histogram
+        h = ROOT.TH2F("h" + str(i), "", _x_bins, _x_min, _x_max, _y_bins, _y_min, _y_max)
+        z_vals[z_vals < z_min] = z_min + 1e-5
+        fill_hist_from_points(h, _values[scan_parameter1], _values[scan_parameter2], z_vals,
+            z_min=z_min, z_max=z_max)
+        hists.append(h)
+
+    # dummy histogram to control axes
+    x_title = to_root_latex(poi_data[scan_parameter1].label)
+    y_title = to_root_latex(poi_data[scan_parameter2].label)
+    z_title = "Significance / #sigma"
+    h_dummy = ROOT.TH2F("h_sig", ";{};{};{}".format(x_title, y_title, z_title),
+        1, x_min, x_max, 1, y_min, y_max)
+    r.setup_hist(h_dummy, pad=pad, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
+    draw_objs.append((h_dummy, ""))
+
+    # setup actual histograms
+    for i, h in enumerate(hists):
+        r.setup_hist(h, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
+        if i == 0:
+            r.setup_z_axis(h.GetZaxis(), pad=pad, props={"Title": z_title, "TitleSize": 24,
+                "TitleOffset": 1.5})
+        draw_objs.append((h, "SAME,COLZ"))
+        # for debugging purposes
+        # draw_objs.append((h, "SAME,TEXT"))
+
+    # draw contours
+    for graphs, level in zip(contours, contour_levels):
+        for g in graphs:
+            r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black})
+            draw_objs.append((g, "SAME,C"))
+
+    # draw contour labels at automatic positions
+    pad_width = canvas.GetWindowWidth() * (1. - pad.GetLeftMargin() - pad.GetRightMargin())
+    pad_height = canvas.GetWindowHeight() * (1. - pad.GetTopMargin() - pad.GetBottomMargin())
+    px_to_x = (x_max - x_min) / pad_width
+    py_to_y = (y_max - y_min) / pad_height
+    all_positions = []
+    for graphs, level in zip(contours, contour_levels):
+        # get the approximate label width
+        text = "{}#sigma".format(try_int(level))
+        label_width, label_height = get_text_extent(text, 12, 43)
+        label_width *= px_to_x
+        label_height *= py_to_y
+
+        # calculate and store the position
+        label_positions = locate_contour_labels(graphs, level, label_width, label_height, pad_width,
+            pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions, label_offset=1.1)
+        all_positions.extend(label_positions)
+
+        # draw them
+        for x, y, rot in label_positions:
+            xsec_label = ROOT.TLatex(0., 0., text)
+            r.setup_latex(xsec_label, props={"NDC": False, "TextSize": 16, "TextAlign": 22,
+                "TextColor": colors.black, "TextAngle": rot, "X": x, "Y": y})
+            draw_objs.append((xsec_label, "SAME"))
+
+    # SM point
+    if draw_sm_point:
+        g_sm = create_tgraph(1, 1, 1)
+        r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
+        draw_objs.insert(-1, (g_sm, "P"))
+
+    # model parameter labels
+    if model_parameters:
+        draw_objs.extend(create_model_parameters(model_parameters, pad))
+
+    # cms label
+    cms_labels = r.routines.create_cms_labels(pad=pad)
+    draw_objs.extend(cms_labels)
+
+    # campaign label
+    if campaign:
+        campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
+        campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad)
+        draw_objs.append(campaign_label)
+
+    # draw all objects
+    pad.cd()
+    r.routines.draw_objects(draw_objs)
+
+    # save
+    r.update_canvas(canvas)
+    canvas.SaveAs(path)
