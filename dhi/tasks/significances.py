@@ -137,6 +137,11 @@ class MergeSignificanceScan(SignificanceBase):
 
 class PlotSignificanceScan(SignificanceBase, POIPlotTask):
 
+    convert = luigi.ChoiceParameter(
+        default=law.NO_STR,
+        choices=[law.NO_STR, "pvalue"],
+        description="convert dnll2 values to 'pvalue'; no default",
+    )
     y_log = luigi.BoolParameter(
         default=False,
         description="apply log scaling to the y-axis; default: False",
@@ -175,7 +180,8 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
         if self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(["significances", self.get_output_postfix(), parts])
+        prefix = "significance" if self.convert == law.NO_STR else self.convert
+        name = self.create_plot_name([prefix, self.get_output_postfix(), parts])
         return self.local_target(name)
 
     @law.decorator.log
@@ -208,6 +214,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
             scan_parameter=scan_parameter,
             expected_values=exp_values,
             observed_values=obs_values,
+            show_p_values=self.convert == "pvalue",
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
@@ -262,7 +269,8 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
         if self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(["multisignificances", self.get_output_postfix(), parts])
+        prefix = "significance" if self.convert == law.NO_STR else self.convert
+        name = self.create_plot_name(["multi{}s".format(prefix), self.get_output_postfix(), parts])
         return self.local_target(name)
 
     @law.decorator.log
@@ -297,6 +305,7 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
             scan_parameter=self.scan_parameter_names[0],
             values=values,
             names=names,
+            show_p_values=self.convert == "pvalue",
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),

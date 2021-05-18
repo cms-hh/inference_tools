@@ -7,6 +7,8 @@ Significance plots using ROOT.
 import math
 
 import numpy as np
+import scipy as sp
+import scipy.stats
 
 from dhi.config import (
     poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence,
@@ -30,6 +32,7 @@ def plot_significance_scan_1d(
     scan_parameter,
     expected_values=None,
     observed_values=None,
+    show_p_values=False,
     x_min=None,
     x_max=None,
     y_min=None,
@@ -43,7 +46,8 @@ def plot_significance_scan_1d(
     Creates a plot for the significance scan over a *scan_parameter* and saves it at *path*.
     *expected_values* should be a mapping to lists of values or a record array with keys
     "<scan_parameter>" and "significance". When *observed_values* is given, it should have the same
-    structure as *expected_values*.
+    structure as *expected_values*. When *show_p_values* is *True*, p-values are obtained from
+    significances and shown instead.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
     given values. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
@@ -105,43 +109,64 @@ def plot_significance_scan_1d(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "Significance / #sigma"
+    y_title = "p-value" if show_p_values else "Significance / #sigma"
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
     # expected values
     if expected_values is not None:
-        g_exp = create_tgraph(n_points_exp, scan_values_exp, expected_values["significance"])
+        y_values = expected_values["significance"]
+        if show_p_values:
+            y_values = sp.stats.norm.sf(y_values)
+        g_exp = create_tgraph(n_points_exp, scan_values_exp, y_values)
         r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
             "MarkerSize": 0.7})
         draw_objs.append((g_exp, "SAME,C" + ("P" if show_points else "")))
         legend_entries.append((g_exp, "Expected", "L"))
-        y_min_value = min(y_min_value, min(expected_values["significance"]))
-        y_max_value = max(y_max_value, max(expected_values["significance"]))
+        y_min_value = min(y_min_value, min(y_values))
+        y_max_value = max(y_max_value, max(y_values))
 
     # observed values
     if observed_values is not None:
-        g_obs = create_tgraph(n_points_obs, scan_values_obs, observed_values["significance"])
+        y_values = observed_values["significance"]
+        if show_p_values:
+            y_values = sp.stats.norm.sf(y_values)
+        g_obs = create_tgraph(n_points_obs, scan_values_obs, y_values)
         r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
             "MarkerSize": 0.7}, color=colors.red)
         draw_objs.append((g_obs, "SAME,PL"))
         legend_entries.append((g_obs, "Observed", "PL"))
-        y_max_value = max(y_max_value, max(observed_values["significance"]))
-        y_min_value = min(y_min_value, min(observed_values["significance"]))
+        y_max_value = max(y_max_value, max(y_values))
+        y_min_value = min(y_min_value, min(y_values))
 
     # set limits
     y_min, y_max, _ = get_y_range(y_min_value if y_log else 0, y_max_value, y_min, y_max, log=y_log)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
-    # horizontal lines at full integers up to 5
-    for y in range(1, max(5, int(math.floor(y_max_value))) + 1):
+    # horizontal lines at up to 5 integer significances
+    sig_line_labels = np.arange(1, 5 + 1)
+    sig_line_values = sp.stats.norm.sf(sig_line_labels) if show_p_values else sig_line_labels
+    for y, sig in zip(sig_line_values, sig_line_labels):
         if not (y_min < y < y_max):
             continue
-        line = ROOT.TLine(x_min, y, x_max, y)
-        r.setup_line(line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
-        draw_objs.insert(1, line)
+        if show_p_values and not y_log:
+            continue
+        sig_line = ROOT.TLine(x_min, y, x_max, y)
+        r.setup_line(sig_line, props={"NDC": False, "LineWidth": 1}, color=colors.grey)
+        draw_objs.insert(1, sig_line)
+
+        # extra labels when showing p-values
+        if show_p_values:
+            # convert y to a value relative to the pad height
+            label_y = math.log(y / y_min) / math.log(y_max / y_min)
+            label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
+            label_y += pad.GetBottomMargin() + 0.005
+            # from IPython import embed; embed()
+            sig_label = r.routines.create_top_left_label("{}#sigma".format(sig), pad=pad,
+                x_offset=8, y=label_y, props={"TextSize": 18, "TextColor": colors.grey})
+            draw_objs.insert(1, sig_label)
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=160, y2=-20, n=len(legend_entries))
@@ -180,6 +205,7 @@ def plot_significance_scans_1d(
     scan_parameter,
     values,
     names,
+    show_p_values=False,
     x_min=None,
     x_max=None,
     y_min=None,
@@ -193,7 +219,8 @@ def plot_significance_scans_1d(
     Creates a plot showing multiple significance scans over a *scan_parameter* and saves it at
     *path*. *values* should be a list of mappings to lists of values or a record array with keys
     "<scan_parameter>" and "significance". Each mapping in *values* will result in a different
-    curve. *names* denote the names of significance curves shown in the legend.
+    curve. *names* denote the names of significance curves shown in the legend. When *show_p_values*
+    is *True*, p-values are obtained from significances and shown instead.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis ranges and default to the range of the
     given values. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
@@ -244,7 +271,7 @@ def plot_significance_scans_1d(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "Significance / #sigma"
+    y_title = "p-value" if show_p_values else "Significance / #sigma"
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
@@ -252,28 +279,46 @@ def plot_significance_scans_1d(
     # expected values
     for i, (vals, col, ms) in enumerate(zip(values[::-1], color_sequence[:n_graphs][::-1],
             marker_sequence[:n_graphs][::-1])):
-        g_exp = create_tgraph(int(len(scan_values)), scan_values, vals["significance"])
+        y_vals = vals["significance"]
+        if show_p_values:
+            y_vals = sp.stats.norm.sf(y_vals)
+        g_exp = create_tgraph(int(len(scan_values)), scan_values, y_vals)
         r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": ms,
             "MarkerSize": 1.2}, color=colors[col])
         draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
         name = names[n_graphs - i - 1]
         legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
             "LP" if show_points else "L"))
-        y_max_value = max(y_max_value, max(vals["significance"]))
-        y_min_value = min(y_min_value, min(vals["significance"]))
+        y_max_value = max(y_max_value, max(y_vals))
+        y_min_value = min(y_min_value, min(y_vals))
 
     # set limits
     y_min, y_max, _ = get_y_range(0 if y_log else y_min_value, y_max_value, y_min, y_max, log=y_log)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
-    # horizontal lines at full integers up to 5
-    for y in range(1, max(5, int(math.floor(y_max_value))) + 1):
+    # horizontal lines at up to 5 integer significances
+    sig_line_labels = np.arange(1, 5 + 1)
+    sig_line_values = sp.stats.norm.sf(sig_line_labels) if show_p_values else sig_line_labels
+    for y, sig in zip(sig_line_values, sig_line_labels):
         if not (y_min < y < y_max):
             continue
-        line = ROOT.TLine(x_min, y, x_max, y)
-        r.setup_line(line, props={"NDC": False, "LineWidth": 1}, color=colors.light_grey)
-        draw_objs.insert(1, line)
+        if show_p_values and not y_log:
+            continue
+        sig_line = ROOT.TLine(x_min, y, x_max, y)
+        r.setup_line(sig_line, props={"NDC": False, "LineWidth": 1}, color=colors.grey)
+        draw_objs.insert(1, sig_line)
+
+        # extra labels when showing p-values
+        if show_p_values:
+            # convert y to a value relative to the pad height
+            label_y = math.log(y / y_min) / math.log(y_max / y_min)
+            label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
+            label_y += pad.GetBottomMargin() + 0.005
+            # from IPython import embed; embed()
+            sig_label = r.routines.create_top_left_label("{}#sigma".format(sig), pad=pad,
+                x_offset=8, y=label_y, props={"TextSize": 18, "TextColor": colors.grey})
+            draw_objs.insert(1, sig_label)
 
     # legend
     legend_cols = int(math.ceil(len(legend_entries) / 4.))
@@ -315,6 +360,7 @@ def plot_significance_scan_2d(
     scan_parameter1,
     scan_parameter2,
     values,
+    show_p_values=False,
     draw_sm_point=True,
     x_min=None,
     x_max=None,
@@ -330,7 +376,8 @@ def plot_significance_scan_2d(
     Creates a significance plot of the 2D scan of two parameters *scan_parameter1* and
     *scan_parameter2*, and saves it at *path*. *values* should be a mapping to lists of values or a
     record array with keys "<scan_parameter1_name>", "<scan_parameter2_name>" and "significance".
-    The standard model point at (1, 1) as drawn as well unless *draw_sm_point* is *False*.
+    When *show_p_values* is *True*, p-values are obtained from significances and shown instead. The
+    standard model point at (1, 1) as drawn as well unless *draw_sm_point* is *False*.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *scan_parameter1* and
     *scan_parameter2*, respectively, and default to the ranges of the poi values. *z_min* and
@@ -359,8 +406,7 @@ def plot_significance_scan_2d(
     # determine contours independent of plotting
     contour_levels = [1, 2, 3, 4, 5]  # sigma
     contours = get_contours(joined_values[scan_parameter1], joined_values[scan_parameter2],
-        joined_values["significance"], levels=contour_levels,
-        frame_kwargs=[{"mode": "edge", "width": 1.}])
+        joined_values["significance"], levels=contour_levels)
 
     # start plotting
     r.setup_style()
@@ -376,8 +422,11 @@ def plot_significance_scan_2d(
 
         # get the z range
         z_vals = np.array(_values["significance"])
-        _z_max = np.nanmax(z_vals[z_vals < 8.2])
         _z_min = 1e-2 if z_log else 0
+        _z_max = np.nanmax(z_vals[z_vals < 8.2])
+        if show_p_values:
+            z_vals = sp.stats.norm.sf(z_vals)
+            _z_min, _z_max = sp.stats.norm.sf(_z_max), sp.stats.norm.sf(_z_min)
 
         # infer axis limits from the first set of values
         if i == 0:
@@ -390,7 +439,6 @@ def plot_significance_scan_2d(
 
         # fill and store the histogram
         h = ROOT.TH2F("h" + str(i), "", _x_bins, _x_min, _x_max, _y_bins, _y_min, _y_max)
-        z_vals[z_vals < z_min] = z_min + 1e-5
         fill_hist_from_points(h, _values[scan_parameter1], _values[scan_parameter2], z_vals,
             z_min=z_min, z_max=z_max)
         hists.append(h)
@@ -398,7 +446,7 @@ def plot_significance_scan_2d(
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter1].label)
     y_title = to_root_latex(poi_data[scan_parameter2].label)
-    z_title = "Significance / #sigma"
+    z_title = "p-value" if show_p_values else "Significance / #sigma"
     h_dummy = ROOT.TH2F("h_sig", ";{};{};{}".format(x_title, y_title, z_title),
         1, x_min, x_max, 1, y_min, y_max)
     r.setup_hist(h_dummy, pad=pad, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
@@ -417,7 +465,7 @@ def plot_significance_scan_2d(
     # draw contours
     for graphs, level in zip(contours, contour_levels):
         for g in graphs:
-            r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black})
+            r.setup_graph(g, props={"LineWidth": 1, "LineColor": colors.black})
             draw_objs.append((g, "SAME,C"))
 
     # draw contour labels at automatic positions
@@ -435,7 +483,7 @@ def plot_significance_scan_2d(
 
         # calculate and store the position
         label_positions = locate_contour_labels(graphs, level, label_width, label_height, pad_width,
-            pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions, label_offset=1.1)
+            pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions, label_offset=1.3)
         all_positions.extend(label_positions)
 
         # draw them

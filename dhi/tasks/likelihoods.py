@@ -133,9 +133,10 @@ class MergeLikelihoodScan(LikelihoodBase):
 
 class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
-    significance = luigi.BoolParameter(
-        default=False,
-        description="convert dnll2 values to (two-sided) significances; default: False",
+    convert = luigi.ChoiceParameter(
+        default=law.NO_STR,
+        choices=[law.NO_STR, "significance", "pvalue"],
+        description="convert dnll2 values to either a 'significance' or 'pvalue'; no default",
     )
     y_log = luigi.BoolParameter(
         default=False,
@@ -171,7 +172,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
-        prefix = "sig" if self.significance else "nll"
+        prefix = "nll" if self.convert == law.NO_STR else self.convert
         name = self.create_plot_name(
             ["{}{}d".format(prefix, self.n_pois), self.get_output_postfix(), parts]
         )
@@ -190,7 +191,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         values, poi_mins = self.load_scan_data(self.input(), merge_scans=self.n_pois == 1)
 
         # use significance plots if requested
-        if self.significance:
+        if self.convert in ["significance", "pvalue"]:
             if self.n_pois == 1:
                 sig = convert_dnll2(values["dnll2"], n=1)[1]
                 values = extend_recarray(values, ("significance", float, sig))
@@ -200,6 +201,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                     scan_parameter=self.pois[0],
                     expected_values=None if self.unblinded else values,
                     observed_values=values if self.unblinded else None,
+                    show_p_values=self.convert == "pvalue",
                     x_min=self.get_axis_limit("x_min"),
                     x_max=self.get_axis_limit("x_max"),
                     y_min=self.get_axis_limit("y_min"),
@@ -221,6 +223,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                     scan_parameter1=self.pois[0],
                     scan_parameter2=self.pois[1],
                     values=values,
+                    show_p_values=self.convert == "pvalue",
                     x_min=self.get_axis_limit("x_min"),
                     x_max=self.get_axis_limit("x_max"),
                     y_min=self.get_axis_limit("y_min"),
@@ -338,7 +341,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
 class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
-    significance = None
+    convert = law.NO_STR
     z_min = None
     z_max = None
     z_log = None
@@ -448,7 +451,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
 class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
 
-    significance = None
+    convert = law.NO_STR
     z_min = None
     z_max = None
     z_log = None
