@@ -32,7 +32,7 @@ def plot_pulls_impacts(
     order_by_impact=False,
     pull_range=2,
     impact_range=-1,
-    best_fit_value=None,
+    best_fit_value=True,
     left_margin=None,
     entry_height=None,
     labels=None,
@@ -62,11 +62,11 @@ def plot_pulls_impacts(
     automatic value is chosen per page.
 
     *best_fit_value* can be a 3-tuple (central value, unsigned +error, unsigned -error) that is
-    shown as a text at the top of the plot. When empty, it is extracted from *data* which contains
-    the value following combine's NLL interpolation. *left_margin* controls the left margin of the
-    pad in pixels, and *entry_height* the vertical height of each entry box. *labels* should be a
-    dictionary or a json file containing a dictionary that maps nuisances names to labels shown in
-    the plot. *label_size* controls the size of the nuisance labels in pixels. *campaign* should
+    shown as a text at the top of the plot. When just *True*, it is extracted from *data* which
+    contains the value following combine's NLL interpolation. *left_margin* controls the left margin
+    of the pad in pixels, and *entry_height* the vertical height of each entry box. *labels* should
+    be a dictionary or a json file containing a dictionary that maps nuisances names to labels shown
+    in the plot. *label_size* controls the size of the nuisance labels in pixels. *campaign* should
     refer to the name of a campaign label defined in dhi.config.campaign_labels.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/pullsandimpacts.html
@@ -314,7 +314,7 @@ def plot_pulls_impacts(
         draw_objs.insert(-1, legend_box)
 
         # best fit value label
-        if not best_fit_value:
+        if best_fit_value is True:
             for p in data["POIs"]:
                 if p["name"] == poi:
                     d, n, u = p["fit"]

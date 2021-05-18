@@ -257,6 +257,12 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
 class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
 
+    hide_best_fit = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="do not show the label of the best fit value; should be considered when also "
+        "using --unblinded; default: False",
+    )
     parameters_per_page = luigi.IntParameter(
         default=-1,
         description="number of parameters per page; creates a single page when < 1; only applied "
@@ -369,6 +375,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
             order_by_impact=self.order_by_impact,
             pull_range=self.pull_range,
             impact_range=self.impact_range,
+            best_fit_value=not self.hide_best_fit,
             left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
             entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             labels=nuisance_labels,
