@@ -531,24 +531,12 @@ def extend_recarray(a, *columns, **kwargs):
     return rf.append_fields(a, names, data=data, dtypes=dtypes, **kwargs)
 
 
-def dnll2_to_significance(dnll2, n=1, two_sided=True, fill_inf=None):
+def convert_dnll2(dnll2, n=1):
     """
     Converts a -2∆ln(L) value *dnll2* from a likelihood profile scanning *n* parameters (with its
-    minimum shifted to zero) into a significance in gaussian standard deviations. *two_sided* should
-    be set to *True* when the underlying test is two-tailed.
-
-    For reference, see Fig. 40.4 and Tab. 40.2 in
+    minimum shifted to zero) into a p-value and the corresponding significance in gaussian standard
+    deviations, returned in a 2-tuple. For reference, see Fig. 40.4 and Tab. 40.2 in
     https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf.
-
-    For very large *dnll2* values, the conversion might result in an infinite significance as
-    limited float precision starts to play a role in regions with almost vanishing tails. *fill_inf*
-    can be a value that is inserted in these cases, with the *dnll2* threshold depending on the
-    number of degrees of freedom:
-
-        - 67 for n = 1
-        - 72 for n = 2
-        - 76 for n = 3
-        - 80 for n >= 4
     """
     import numpy as np
     from scipy import stats
@@ -558,22 +546,21 @@ def dnll2_to_significance(dnll2, n=1, two_sided=True, fill_inf=None):
     dnll2 = np.array([dnll2] if single_value else dnll2)
 
     # compute the significance
-    alpha = 1. - stats.chi2.cdf(dnll2, n)
-    sig = stats.norm.ppf(1. - alpha / (2. if two_sided else 1.))
+    # the precision of pdf/ppf can't handle very high dnll2 (== low p-values)
+    # so using (inverse) survival function instead
+    alpha = stats.chi2.sf(dnll2, n)  # same as 1 - chi2.cdf(dnll2)
+    p_value = alpha / 2.
+    sig = stats.norm.isf(p_value)  # same as chi2.ppf(1 - p_value)
 
     # replace values where dnll2 is <= 0 by 0 (probably nan)
     sig[dnll2 <= 0] = 0.
 
-    # replace values where dnll2 is above an n-dependent threshold (probably inf)
-    if fill_inf is not None:
-        threshold = {1: 76, 2: 72, 3: 76}.get(n, 80)
-        sig[dnll2 >= threshold] = fill_inf
-
     # optionally convert back to a single value
     if single_value:
+        p_value = float(p_value)
         sig = float(sig)
 
-    return sig
+    return p_value, sig
 
 
 class TFileCache(object):

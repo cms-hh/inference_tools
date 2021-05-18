@@ -18,7 +18,7 @@ from dhi.tasks.combine import (
     POIPlotTask,
     CreateWorkspace,
 )
-from dhi.util import unique_recarray, extend_recarray, dnll2_to_significance
+from dhi.util import unique_recarray, extend_recarray, convert_dnll2
 
 
 class LikelihoodBase(POIScanTask):
@@ -192,7 +192,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         # use significance plots if requested
         if self.significance:
             if self.n_pois == 1:
-                sig = dnll2_to_significance(values["dnll2"], n=1, fill_inf=10.)
+                sig = convert_dnll2(values["dnll2"], n=1)[1]
                 values = extend_recarray(values, ("significance", float, sig))
                 self.call_plot_func(
                     "dhi.plots.significances.plot_significance_scan_1d",
@@ -212,7 +212,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             else:  # 2
                 values = [
                     extend_recarray(vals, ("significance", float,
-                        dnll2_to_significance(vals["dnll2"], n=2, fill_inf=10.)))
+                        convert_dnll2(vals["dnll2"], n=2)[1]))
                     for vals in values
                 ]
                 self.call_plot_func(
