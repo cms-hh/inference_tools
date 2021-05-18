@@ -172,7 +172,7 @@ def frame_histogram(hist, x_width, y_width, mode="edge", frame_value=None, conto
         pad_kwargs = {"mode": "edge"}
     data = np.pad(data, pad_width=[1, 1], **pad_kwargs)
 
-    # update frame values
+    # update frame values in contour mode
     if mode in ["contour+", "contour-"]:
         # close contours depending on the mode
         idxs = list(itertools.product((0, data.shape[0] - 1), range(0, data.shape[1])))
@@ -229,9 +229,9 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
     # helper for limiting z values
     def cap_z(z):
         if z_min is not None and z < z_min:
-            return z_min
+            return z_min * (1 + 1e-5)
         if z_max is not None and z > z_max:
-            return z_max
+            return z_max * (1 - 1e-5)
         return z
 
     # then, fill histogram bins
@@ -298,6 +298,11 @@ def infer_binning_from_grid(x_values, y_values):
 def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_points=10, **kwargs):
     ROOT = import_ROOT()
 
+    if frame_kwargs is None:
+        frame_kwargs = [{"mode": "edge"}]
+    elif not isinstance(frame_kwargs, (list, tuple)):
+        frame_kwargs = [frame_kwargs]
+
     # remove nans in z_values
     nan_indices = np.argwhere(np.isnan(np.array(z_values)))
     x_values = [x for i, x in enumerate(x_values) if i not in nan_indices]
@@ -309,24 +314,28 @@ def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_po
         return [[] for _ in range(len(levels))]
 
     # to extract contours, we need a 2D histogram with optimized bin widths, edges and padding
-    def get_min_diff(values):
+    def get_diffs(values):
         values = sorted(set(values))
         diffs = [(values[i + 1] - values[i]) for i in range(len(values) - 1)]
-        return min(diffs)
+        return min(diffs), max(diffs)
 
     # x axis
     x_min = min(x_values)
     x_max = max(x_values)
-    x_width = get_min_diff(x_values)
-    x_n = (x_max - x_min) / x_width
+    x_width_min, x_width_max = get_diffs(x_values)
+    x_n = (x_max - x_min) / x_width_min
     x_n = int(x_n + 1) if try_int(x_n) else int(math.ceil(x_n))
+    x_min -= 0.5 * x_width_min
+    x_max += 0.5 * x_width_min
 
     # y axis
     y_min = min(y_values)
     y_max = max(y_values)
-    y_width = get_min_diff(y_values)
-    y_n = (y_max - y_min) / y_width
+    y_width_min, y_width_max = get_diffs(y_values)
+    y_n = (y_max - y_min) / y_width_min
     y_n = int(y_n + 1) if try_int(y_n) else int(math.ceil(y_n))
+    y_min -= 0.5 * y_width_min
+    y_max += 0.5 * y_width_min
 
     # create and fill a hist
     with temporary_canvas() as c:
@@ -336,13 +345,13 @@ def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_po
 
         # get contours in a nested list of graphs
         contours = []
-        frame_kwargs = frame_kwargs if isinstance(frame_kwargs, (list, tuple)) else [frame_kwargs]
         for l in levels:
             # frame the histogram
             _h = h
             for fk in filter(bool, frame_kwargs):
-                w = fk.pop("width", 0.01)
-                _h = frame_histogram(_h, x_width * w, y_width * w, contour_level=l, **fk)
+                xw = fk.pop("x_width", x_width_max)
+                yw = fk.pop("x_width", y_width_max)
+                _h = frame_histogram(_h, xw, yw, contour_level=l, **fk)
 
             # get the contour graphs and filter by the number of points
             graphs = _get_contour(_h, l)
@@ -570,8 +579,8 @@ def locate_contour_labels(graphs, level, label_width, label_height, pad_width, p
 
         # compute the line contour and number of blocks
         line_contour = np.array([x_values, y_values]).T
-        n_blocks = int(np.ceil(n_points / (label_width * 0.5))) if label_width > 1 else 1
-        block_size = n_points if n_blocks == 1 else int(round(label_width * 0.5))
+        n_blocks = int(np.ceil(n_points / label_width)) if label_width > 1 else 1
+        block_size = n_points if n_blocks == 1 else int(round(label_width))
 
         # split contour into blocks of length block_size, filling the last block by cycling the
         # contour start (per np.resize semantics)
