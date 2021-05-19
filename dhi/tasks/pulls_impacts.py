@@ -184,12 +184,18 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         fit_results = {}
         fail_info = []
         for b, name in branch_map.items():
-            tree = inputs[b].load(formatter="uproot")["limit"]
+            inp = inputs[b]
+            if not inp.exists():
+                self.logger.warning("input of branch {} at {} does not exist".format(
+                    b, inp.path))
+                continue
+
+            tree = inp.load(formatter="uproot")["limit"]
             values = tree.arrays([poi] if b == 0 else [poi, name])
             # the fit converged when there are 3 values in the parameter array
             converged = values[poi if b == 0 else name].size == 3
             if not converged:
-                fail_info.append((b, name, inputs[b].path))
+                fail_info.append((b, name, inp.path))
             else:
                 fit_results[b] = values
 
@@ -228,13 +234,13 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
         # load and store parameter results
         data["params"] = []
-        for b, name in branch_map.items():
+        for b, vals in fit_results.items():
             # skip the nominal fit
             if b == 0:
                 continue
 
-            vals = fit_results[b]
             d = OrderedDict()
+            name = branch_map[b]
             d["name"] = name
             d["type"] = params[name]["type"]
             d["groups"] = params[name]["groups"]
@@ -265,6 +271,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
     )
     parameters_per_page = luigi.IntParameter(
         default=-1,
+        significant=False,
         description="number of parameters per page; creates a single page when < 1; only applied "
         "for file type 'pdf'; default: -1",
     )
@@ -275,11 +282,13 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
     )
     order_parameters = law.CSVParameter(
         default=(),
+        significant=False,
         description="list of parameters or files containing parameters line-by-line for ordering; "
         "supports patterns; no default",
     )
     order_by_impact = luigi.BoolParameter(
         default=False,
+        significant=False,
         description="when True, --parameter-order is neglected and parameters are ordered by "
         "absolute maximum impact; default: False",
     )
@@ -331,6 +340,10 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
                 "parameters_per_page is not supported for file_type {}".format(self.file_type)
             )
             self.parameters_per_page = -1
+
+        # show a warning when unblinded and not hiding the best fit value
+        if self.unblinded and not self.hide_best_fit:
+            self.logger.warning("running unblinded but not hiding the best fit value")
 
     def requires(self):
         return MergePullsAndImpacts.req(self)
