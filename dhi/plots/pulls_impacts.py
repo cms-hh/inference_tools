@@ -398,7 +398,7 @@ def read_patterns(patterns):
     _patterns = []
     for pattern in patterns:
         path = os.path.expandvars(os.path.expanduser(pattern))
-        if os.path.exists(path):
+        if os.path.isfile(path):
             with open(path, "r") as f:
                 lines = [line.strip() for line in f.readlines() if line.strip()]
             _patterns.extend(lines)

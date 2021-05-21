@@ -177,7 +177,7 @@ optional arguments:
 
 ### Merge
 
-```shell hl_lines="1 24-28"
+```shell hl_lines="1 25-29"
 > merge_parameters.py --help
 
 usage: merge_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]

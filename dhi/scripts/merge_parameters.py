@@ -454,12 +454,12 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                                             "variations of parameter {} with effect {} in bin {} "
                                             "and process {} are mixed and automatic flipping is "
                                             "not enabled".format(
-                                            d, u, name, f, bin_name, process_name))
+                                                d, u, name, f, bin_name, process_name))
 
                                     add_unc(d=u, u=d)
                                     logger.warning("automatically flipped down ({}) and up ({}) "
                                         "variations of parameter {} in bin {} and process {}".format(
-                                        d, u, name, bin_name, process_name))
+                                            d, u, name, bin_name, process_name))
 
                             else:
                                 # both effects are either negative or positive

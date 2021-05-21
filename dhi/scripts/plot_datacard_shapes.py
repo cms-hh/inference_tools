@@ -405,10 +405,14 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, nom_f
     if plot_syst:
         label_d, label_u = "Down", "Up"
         if hist_n.Integral():
+            def fmt(v):
+                sign = 1. if v > 0 else -1.
+                prefix = "" if round(v, 2) else {1: "< ", -1: "> "}[sign]
+                return prefix + "{:+.2f}".format({1: max, -1: min}[sign](v, 0.01 * sign))
             change_d = 100 * (hist_d.Integral() - hist_n.Integral()) / hist_n.Integral()
             change_u = 100 * (hist_u.Integral() - hist_n.Integral()) / hist_n.Integral()
-            label_d += "   ({:+.2f}%)".format(change_d)
-            label_u += "      #scale[0.775]{{ }}({:+.2f}%)".format(change_u)
+            label_d += "   ({}%)".format(fmt(change_d))
+            label_u += "      #scale[0.775]{{ }}({}%)".format(fmt(change_u))
         r.setup_hist(hist_u_trans, props={"LineWidth": 2, "LineColor": colors.root.green})
         draw_objs1.insert(-1, (hist_u_trans, "SAME,HIST,E"))
         legend_entries.append((hist_u_trans, label_u, "L"))
@@ -445,12 +449,17 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, nom_f
         norm(hist_u_trans2)
 
         # set y limits
+        no_yrange2_set = y_min2 is None and y_max2 is None
         if y_min2 is None:
             y_min2 = min(hist_d_trans2.GetMinimum(), hist_u_trans2.GetMinimum())
             y_min2 = min(-0.059, max(-59., y_min2 * 1.5))
         if y_max2 is None:
             y_max2 = max(hist_d_trans2.GetMaximum(), hist_u_trans2.GetMaximum())
             y_max2 = max(0.059, min(59., y_max2 * 1.5))
+        # when no limit was requested, ensure it is symmetric
+        if no_yrange2_set:
+            y_min2 = min(y_min2, -y_max2)
+            y_max2 = max(y_max2, -y_min2)
         h_dummy2.SetMinimum(y_min2)
         h_dummy2.SetMaximum(y_max2)
 
