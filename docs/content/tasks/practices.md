@@ -56,12 +56,12 @@ The current default is `HHModelPinv:model_default`, referring to a model located
 
 Almost all inference tasks have a parameter `--version STR`.
 This string is encoded deterministically in the paths of output targets which effectively introduces a simple versioning mechanism.
-Changing the value will result in different targets being written and thus, allow for the creating of several sets of results in parallel (also for development and testing purposes).
+Changing the value will result in different targets being written and thus, allow for the creation of several sets of results in parallel (also for development and testing purposes).
 
 
 #### `--mass` parameter
 
-Most of the inference tasks have a parameter `--mass` whichd defaults to `125.0`.
+Most of the inference tasks have a parameter `--mass` which defaults to `125.0`.
 This value is used in `text2workspace.py` and all `combine` commands to select the underlying mass hypothesis.
 As we currently use only one hypothesis, changing the paramter has no effect but might become relevant once resonant searches are covered.
 
@@ -83,7 +83,7 @@ class MyTask(law.Task):
     i = law.CSVParameter(cls=luigi.IntParameter, unique=True)
 ```
 
-`luigi`, as the underlying core package behind law, already provides plenty of objects for defining task workflows.
+`luigi`, as the underlying core package behind law, already provides plenty of objects for defining task parameters.
 In the above example, we use the standard string `Parameter` as well as the `FloatParameter` from luigi, whereas the `CSVParameter` is shipped with law.
 The two former have a straight forward behavior for decoding from and encoding to values on the command line.
 The `CSVParameter` interprets strings such as `1,2,3` as a python tuple `(1, 2, 3)` to be used in the task.
@@ -111,6 +111,7 @@ def __init__(self, *args, **kwargs):
 ```
 
 the *instance members* `:::python self.s`, `:::python self.f` and `:::python self.i` will, as expected, refer to actual parameter *values*, rather than `Parameter` instances defined in the block above.
+However, note that the class-level instances can still by accessed through (e.g.) `:::python self.__class__.s`.
 
 
 #### Passing parameters upstream
@@ -145,7 +146,7 @@ law run TaskB --x foo --z bar
 will also invoke `TaskA`.
 The tasks share the parameter `x` so it seems only natural to pass the *value* of `x` from `TaskB` on to `TaskA` when the requirement is defined.
 ==This is achieved by calling `:::python Task.req()` which is defined on all classes inheriting from `law.Task`.==
-The method determines the intersection of parameters between a task class and a task instance, and creates an instance of `TaskA` with parameter values taken from the `TaskB` instance.
+The method determines the intersection of parameters between a task class (`TaskA`) and a task instance (`:::python self`), and creates an instance of `TaskA` with parameter values taken from the `TaskB` instance.
 Thus, `:::python TaskA.req(self)` is identical to `:::python TaskA(x=self.x)` in the example above.
 The intersection of common parameters is often larger, so the benefit of using `:::python Task.req()` becomes more obvious. Opposed to that, the parameteter `TaskB.z` is not *forwarded*.
 Similarly, `TaskA.y` will use its default value `"y_value"`.
@@ -178,7 +179,7 @@ law provides a type of task, called *workflow*, that allows to parallelize a col
 An example is the extraction of limits, scanned over the range of another parameter as described [here](limits.md).
 The way the limit is computed is always the same, independent on the (changing) value of the scan parameter.
 
-The differences between each of these tasks is defined in the so-called *branch map* of a workflow, which is defined in `:::python create_branch_map()`.
+The differences between each of these tasks is defined in the so-called *branch map* of a workflow, which needs to be provided in `:::python create_branch_map()`.
 This dictionary maps integer numbers (the *branch*), starting at zero, to an arbitrary payload (the *branch_data*) which contains the data to process, e.g. a particular value of a scan parameter.
 
 Using the example of upper limit calculation,
@@ -256,6 +257,18 @@ law run PlotUpperLimits \
 ```
 
 the `UpperLimits` is configured to run on HTCondor.
+Throughout this documentation, you see depenceny trees such as
+
+```mermaid
+graph LR;
+    A(PlotUpperLimits) --> B(MergeUpperLimits);
+    B --> C([UpperLimits]);
+    C --> D(CreateWorkspace);
+    D --> E(CombineDatacards);
+```
+
+where a task visualized by a box with rounded corners is capable of job submission.
+As you can see in this particular example, `PlotUpperLimits` is plotting task running locally, whereas `UpperLimits` can run jobs on HTCondor.
 
 Remote workflows provide additional parameters to control job submission and status polling.
 
