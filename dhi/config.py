@@ -111,7 +111,7 @@ poi_data = DotDict(
     r_vhh=DotDict(range=(-20.0, 20.0), label="r_{vhh}"),
     kl=DotDict(range=(-30.0, 30.0), label=r"\kappa_{\lambda}"),
     kt=DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}"),
-    C2V=DotDict(range=(-10.0, 10.0), label=r"\kappa_{VV}"),
+    C2V=DotDict(range=(-10.0, 10.0), label=r"\kappa_{2V}"),
     CV=DotDict(range=(-10.0, 10.0), label=r"\kappa_{V}"),
     c2=DotDict(range=(-2.0, 3.0), label=r"c_{2}"),
     cg=DotDict(range=(-2.0, 2.0), label=r"c_{g}"),
