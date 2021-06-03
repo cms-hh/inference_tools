@@ -121,7 +121,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             " --mass {self.mass}"
             " {self.blinded_args}"
             " --redefineSignalPOIs {self.pois[0]}"
-            " --setParameterRanges {self.pois[0]}={start},{stop}"
+            " --setParameterRanges {self.joined_parameter_ranges}"
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
@@ -135,8 +135,6 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             self=self,
             workspace=self.input().path,
             output=self.output().path,
-            start=poi_data[self.pois[0]].range[0],
-            stop=poi_data[self.pois[0]].range[1],
             branch_opts=branch_opts,
         )
 
