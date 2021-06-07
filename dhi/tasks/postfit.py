@@ -16,7 +16,12 @@ from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWo
 class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     SAVE_FLAGS = (
-        "Shapes", "WithUncertainties", "Normalizations", "Workspace", "Toys", "NLL",
+        "Shapes",
+        "WithUncertainties",
+        "Normalizations",
+        "Workspace",
+        "Toys",
+        "NLL",
         "OverallShapes",
     )
 
@@ -99,12 +104,13 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
             " {self.combine_optimization_args}"
             " {self.custom_args}"
             " && "
-            "mv higgsCombineTest.FitDiagnostics.mH{self.mass_int}.123456.root {output_result}"
+            "mv higgsCombineTest.FitDiagnostics.mH{self.mass_int}{postfix}.root {output_result}"
             " && "
             "mv fitDiagnosticsTest.root {output_diagnostics}"
         ).format(
             self=self,
             workspace=self.input().path,
+            postfix="" if "Toys" in self.skip_save else ".123456",
             output_result=outputs["result"].path,
             output_diagnostics=outputs["diagnostics"].path,
             flags=" ".join(flags),
@@ -183,8 +189,8 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
 
     x_min = copy.copy(POIPlotTask.x_min)
     x_max = copy.copy(POIPlotTask.x_max)
-    x_min._default = -2.
-    x_max._default = 2.
+    x_min._default = -2.0
+    x_max._default = 2.0
     y_log = luigi.BoolParameter(
         default=False,
         description="apply log scaling to the y-axis; default: False",
