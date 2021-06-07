@@ -93,6 +93,8 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
             postfix = "b0_data"
         else:
             postfix = "b{}_toy{}To{}".format(self.branch, self.branch_data[0], self.branch_data[-1])
+        if self.frequentist_toys:
+            postfix += "_freq"
         name = self.join_postfix(["gof", self.get_output_postfix(), postfix])
         return self.local_target(name + ".root")
 
