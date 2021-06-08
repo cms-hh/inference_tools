@@ -5,6 +5,7 @@ Tasks for working with postfit results.
 """
 
 import copy
+import enum
 
 import law
 import luigi
@@ -13,17 +14,21 @@ from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
 
 
-class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+class SAVEFLAGS(str, enum.Enum):
+    Shapes = "Shapes"
+    WithUncertainties = "WithUncertainties"
+    Normalizations = "Normalizations"
+    Workspace = "Workspace"
+    Toys = "Toys"
+    NLL = "NLL"
+    OverallShapes = "OverallShapes"
 
-    SAVE_FLAGS = (
-        "Shapes",
-        "WithUncertainties",
-        "Normalizations",
-        "Workspace",
-        "Toys",
-        "NLL",
-        "OverallShapes",
-    )
+    @classmethod
+    def tolist(cls):
+        return list(map(lambda x: x.value, cls))
+
+
+class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     pois = law.CSVParameter(
         default=("r",),
@@ -38,10 +43,10 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
     )
     skip_save = law.CSVParameter(
         default=tuple(),
-        choices=SAVE_FLAGS,
+        choices=SAVEFLAGS.tolist(),
         sort=True,
         description="comma-separated flags to skip passing to combine as '--save<flag>'; "
-        "choices: {}; no default".format(",".join(SAVE_FLAGS)),
+        "choices: {}; no default".format(",".join(SAVEFLAGS)),
     )
 
     force_n_pois = 1
@@ -87,7 +92,7 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
         flags = []
         if self.skip_b_only:
             flags.append("--skipBOnlyFit")
-        for save_flag in self.SAVE_FLAGS:
+        for save_flag in SAVEFLAGS:
             if save_flag not in self.skip_save:
                 flags.append("--save{}".format(save_flag))
 
@@ -110,7 +115,7 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
         ).format(
             self=self,
             workspace=self.input().path,
-            postfix="" if "Toys" in self.skip_save else ".123456",
+            postfix="" if SAVEFLAGS.Toys in self.skip_save else ".123456",
             output_result=outputs["result"].path,
             output_diagnostics=outputs["diagnostics"].path,
             flags=" ".join(flags),
