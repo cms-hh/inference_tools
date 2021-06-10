@@ -29,7 +29,7 @@ colors = colors.root
 
 @use_style("dhi_default")
 def plot_likelihood_scan_1d(
-    path,
+    paths,
     poi,
     values,
     theory_value=None,
@@ -44,7 +44,7 @@ def plot_likelihood_scan_1d(
     show_points=False,
 ):
     """
-    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *path*. *values* should be a
+    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *paths*. *values* should be a
     mapping to lists of values or a record array with keys "<poi_name>" and "dnll2". *theory_value*
     can be a 3-tuple denoting the nominal theory prediction of the POI and its up and down
     uncertainties which is drawn as a vertical bar. When *poi_min* is set, it should be the value of
@@ -172,12 +172,13 @@ def plot_likelihood_scan_1d(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 @use_style("dhi_default")
 def plot_likelihood_scans_1d(
-    path,
+    paths,
     poi,
     data,
     theory_value=None,
@@ -191,7 +192,7 @@ def plot_likelihood_scans_1d(
     show_points=True,
 ):
     """
-    Plots multiple curves of 1D likelihood scans of a POI *poi1* and *poi2*, and saves it at *path*.
+    Plots multiple curves of 1D likelihood scans of a POI *poi1* and *poi2*, and saves it at *paths*.
     All information should be passed as a list *data*. Entries must be dictionaries with the
     following content:
 
@@ -341,12 +342,13 @@ def plot_likelihood_scans_1d(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 @use_style("dhi_default")
 def plot_likelihood_scan_2d(
-    path,
+    paths,
     poi1,
     poi2,
     values,
@@ -364,7 +366,7 @@ def plot_likelihood_scan_2d(
     campaign=None,
 ):
     """
-    Creates a likelihood plot of the 2D scan of two POIs *poi1* and *poi2*, and saves it at *path*.
+    Creates a likelihood plot of the 2D scan of two POIs *poi1* and *poi2*, and saves it at *paths*.
     *values* should be a mapping to lists of values or a record array with keys "<poi1_name>",
     "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be the values of
     the POIs that lead to the best likelihood. Otherwise, they are  estimated from the interpolated
@@ -527,12 +529,13 @@ def plot_likelihood_scan_2d(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 @use_style("dhi_default")
 def plot_likelihood_scans_2d(
-    path,
+    paths,
     poi1,
     poi2,
     data,
@@ -546,7 +549,7 @@ def plot_likelihood_scans_2d(
 ):
     """
     Creates the likelihood contour plots of multiple 2D scans of two POIs *poi1* and *poi2*, and
-    saves it at *path*. All information should be passed as a list *data*. Entries must be
+    saves it at *paths*. All information should be passed as a list *data*. Entries must be
     dictionaries with the following content:
 
         - "values": A mapping to lists of values or a record array with keys "<poi1_name>",
@@ -692,11 +695,12 @@ def plot_likelihood_scans_2d(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 def plot_nuisance_likelihood_scans(
-    path,
+    paths,
     poi,
     workspace,
     dataset,
@@ -717,7 +721,7 @@ def plot_nuisance_likelihood_scans(
 ):
     """
     Creates a plot showing the change of the negative log-likelihood, obtained *poi*, when varying
-    values of nuisance paramaters and saves it at *path*. The calculation of the likelihood change
+    values of nuisance paramaters and saves it at *paths*. The calculation of the likelihood change
     requires the RooFit *workspace* to read the model config, a RooDataSet *dataset* to construct
     the functional likelihood, and the output file *fit_diagnostics_path* of the combine fit
     diagnostics for reading pre- and post-fit parameters for the fit named *fit_name*, defaulting
@@ -816,7 +820,7 @@ def plot_nuisance_likelihood_scans(
 
         # start the multi pdf file
         if first_canvas:
-            canvas.Print(path + "[")
+            canvas.Print(paths[0] + "[")
 
         # get y range
         y_min_value = min(min(curve_data[name][1]) for name in names)
@@ -883,11 +887,11 @@ def plot_nuisance_likelihood_scans(
         # draw objects, update and save
         r.routines.draw_objects(draw_objs)
         r.update_canvas(canvas)
-        canvas.Print(path)
+        canvas.Print(paths[0])
 
     # finish the pdf
     if canvas:
-        canvas.Print(path + "]")
+        canvas.Print(paths[0] + "]")
 
 
 def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):

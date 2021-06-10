@@ -158,8 +158,8 @@ class PlotPostfitSOverB(POIPlotTask):
         return FitDiagnostics.req(self)
 
     def output(self):
-        name = self.create_plot_name(["postfitsoverb", self.get_output_postfix()])
-        return self.local_target(name)
+        names = self.create_plot_names(["postfitsoverb", self.get_output_postfix()])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -227,7 +227,7 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
 
     mc_stats_patterns = ["*prop_bin*"]
 
-    file_type = "pdf"
+    file_types = ("pdf",)
     z_min = None
     z_max = None
 
@@ -243,7 +243,8 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
         if self.sort_max:
             parts.append("sorted")
 
-        return self.local_target(self.create_plot_name(parts))
+        names = self.create_plot_names(parts)
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -251,8 +252,8 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
     @law.decorator.safe_output
     def run(self):
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # get input targets
         inputs = self.input()
@@ -275,7 +276,7 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
             # call the plot function
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_nuisance_likelihood_scans",
-                path=output.path,
+                paths=[out.path for out in outputs],
                 poi=self.pois[0],
                 workspace=w,
                 dataset=dataset,

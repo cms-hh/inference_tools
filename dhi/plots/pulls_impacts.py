@@ -22,7 +22,7 @@ colors = colors.root
 
 @use_style("dhi_default")
 def plot_pulls_impacts(
-    path,
+    paths,
     data,
     poi=None,
     parameters_per_page=-1,
@@ -41,7 +41,7 @@ def plot_pulls_impacts(
     campaign=None,
 ):
     """
-    Creates a plot containing both pulls and impacts and saves it at *path*. *data* should either
+    Creates a plot containing both pulls and impacts and saves it at *paths*. *data* should either
     be a path to a json file or the content of a json file in the structure provided by
     CombineHarvester's combineTool.py. For more info, see
     https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/nonstandard. *poi* should be
@@ -352,11 +352,12 @@ def plot_pulls_impacts(
         # update and save
         # when there is more than one page, use roots "logic" to write multiple pages
         r.update_canvas(canvas)
-        if selected_page < 0 and n_pages > 1 and path.endswith(".pdf"):
-            flag = {0: "(", n_pages - 1: ")"}.get(page, "")
-            canvas.Print(path + flag)
-        else:
-            canvas.SaveAs(path)
+        for path in paths:
+            if selected_page < 0 and n_pages > 1 and path.endswith(".pdf"):
+                flag = {0: "(", n_pages - 1: ")"}.get(page, "")
+                canvas.Print(path + flag)
+            else:
+                canvas.SaveAs(path)
 
 
 class Parameter(object):

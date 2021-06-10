@@ -51,8 +51,10 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         return self.join_postfix(parts) if join else parts
 
     def output(self):
-        name = self.create_plot_name(["morphingfractions", self.signal, self.get_output_postfix()])
-        return self.local_target(name)
+        names = self.create_plot_names(
+            ["morphingfractions", self.signal, self.get_output_postfix()]
+        )
+        return [self.local_target(name) for name in names]
 
     @view_output_plots
     @law.decorator.safe_output
@@ -118,9 +120,10 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         draw_objs.append((h_dummy, "HIST"))
 
         # write graphs
-        for graph, label, col in zip(graphs, labels, color_sequence[:len(graphs)]):
-            r.setup_graph(graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5},
-                color=col)
+        for graph, label, col in zip(graphs, labels, color_sequence[: len(graphs)]):
+            r.setup_graph(
+                graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5}, color=col
+            )
             draw_objs.append((graph, "SAME,PL"))
             legend_entries.append((graph, label))
 
@@ -185,11 +188,12 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
             parts.append("log")
 
         return {
-            b: self.local_target(
-                self.create_plot_name(
+            b: [
+                self.local_target(name)
+                for name in self.create_plot_names(
                     ["morpheddiscr", self.signal, b, self.get_output_postfix()] + parts
                 )
-            )
+            ]
             for b in self.bins
         }
 
@@ -270,7 +274,7 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
     def run(self):
         # prepare the output
         output = self.output()
-        list(output.values())[0].parent.touch()
+        list(output.values())[0][0].parent.touch()
 
         # create the morphing data
         morphing_data = self.prepare_morphing_data()
@@ -283,9 +287,9 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
                 shapes[model_name] = self.create_morphed_shape(hists_and_scale_fns)
 
             # plot
-            self.create_plot(output[bin_name], bin_name, shapes)
+            self.create_plot([out.path for out in output[bin_name]], bin_name, shapes)
 
-    def create_plot(self, output, bin_name, shapes):
+    def create_plot(self, paths, bin_name, shapes):
         import plotlib.root as r
 
         ROOT = import_ROOT()
@@ -317,7 +321,7 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
         draw_objs.append((h_dummy, "HIST"))
 
         # write histograms
-        for hist, label, col in zip(hists, labels, color_sequence[:len(hists)]):
+        for hist, label, col in zip(hists, labels, color_sequence[: len(hists)]):
             r.setup_hist(hist, props={"LineWidth": 1}, color=col, color_flags="lm")
             draw_objs.append((hist, "SAME,HIST,E"))
             legend_entries.append((hist, label))
@@ -347,7 +351,8 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
 
         # save
         r.update_canvas(canvas)
-        canvas.SaveAs(output.path)
+        for path in paths:
+            canvas.SaveAs(path)
 
 
 class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
@@ -363,9 +368,12 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
 
     def output(self):
         return {
-            b: self.local_target(
-                self.create_plot_name(["staterror", self.signal, b, self.get_output_postfix()])
-            )
+            b: [
+                self.local_target(name)
+                for name in self.create_plot_names(
+                    ["staterror", self.signal, b, self.get_output_postfix()]
+                )
+            ]
             for b in self.bins
         }
 
@@ -379,7 +387,7 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
 
         # prepare the output
         output = self.output()
-        list(output.values())[0].parent.touch()
+        list(output.values())[0][0].parent.touch()
 
         # create the morphing data
         scan_parameter = self.scan_parameter_names[0]
@@ -405,9 +413,9 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
                 graphs[model_name] = create_tgraph(n_points, x_values, itg_errors)
 
             # plot
-            self.create_plot(output[bin_name], bin_name, graphs)
+            self.create_plot([out.path for out in output[bin_name]], bin_name, graphs)
 
-    def create_plot(self, output, bin_name, graphs):
+    def create_plot(self, paths, bin_name, graphs):
         import plotlib.root as r
 
         ROOT = import_ROOT()
@@ -438,9 +446,10 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
         draw_objs.append((h_dummy, "HIST"))
 
         # write graphs
-        for graph, label, col in zip(graphs, labels, color_sequence[:len(graphs)]):
-            r.setup_graph(graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5},
-                color=col)
+        for graph, label, col in zip(graphs, labels, color_sequence[: len(graphs)]):
+            r.setup_graph(
+                graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5}, color=col
+            )
             draw_objs.append((graph, "SAME,PL"))
             legend_entries.append((graph, label))
 
@@ -469,4 +478,5 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
 
         # save
         r.update_canvas(canvas)
-        canvas.SaveAs(output.path)
+        for path in paths:
+            canvas.SaveAs(path)

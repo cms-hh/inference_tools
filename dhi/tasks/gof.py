@@ -182,8 +182,8 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
         return MergeGoodnessOfFit.req(self)
 
     def output(self):
-        name = self.create_plot_name(["gofs", self.get_output_postfix(), self.toys_postfix])
-        return self.local_target(name)
+        names = self.create_plot_names(["gofs", self.get_output_postfix(), self.toys_postfix])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -191,8 +191,8 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
     @law.decorator.safe_output
     def run(self):
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load input data
         gof_data = self.input().load(formatter="json")
@@ -200,7 +200,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.gof.plot_gof_distribution",
-            path=output.path,
+            paths=[out.path for out in outputs],
             data=gof_data["data"],
             toys=gof_data["toys"],
             algorithm=self.algorithm,
@@ -273,8 +273,8 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
         ]
 
     def output(self):
-        name = self.create_plot_name(["multigofs", self.get_output_postfix(), self.toys_postfix])
-        return self.local_target(name)
+        names = self.create_plot_names(["multigofs", self.get_output_postfix(), self.toys_postfix])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -282,8 +282,8 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
     @law.decorator.safe_output
     def run(self):
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load input data
         data = []
@@ -307,7 +307,7 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.gof.plot_gofs",
-            path=output.path,
+            paths=[out.path for out in outputs],
             data=data,
             algorithm=self.algorithm,
             n_bins=self.n_bins,

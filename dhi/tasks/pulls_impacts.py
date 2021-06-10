@@ -352,9 +352,9 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         super(PlotPullsAndImpacts, self).__init__(*args, **kwargs)
 
         # complain when parameters_per_page is set for non pdf file types
-        if self.parameters_per_page > 0 and self.file_type != "pdf":
+        if self.parameters_per_page > 0 and self.file_types != ("pdf",):
             self.logger.warning(
-                "parameters_per_page is not supported for file_type {}".format(self.file_type)
+                "parameters_per_page is only supported for file_type 'pdf', got: {}".format(self.file_types)
             )
             self.parameters_per_page = -1
 
@@ -377,8 +377,8 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         if self.page >= 0:
             parts.append("page{}".format(self.page))
 
-        name = self.create_plot_name(["pulls_impacts", self.get_output_postfix(), parts])
-        return self.local_target(name)
+        names = self.create_plot_names(["pulls_impacts", self.get_output_postfix(), parts])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -386,8 +386,8 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
     @law.decorator.safe_output
     def run(self):
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load input data
         data = self.input().load(formatter="json")
@@ -395,7 +395,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.pulls_impacts.plot_pulls_impacts",
-            path=output.path,
+            paths=[out.path for out in outputs],
             data=data,
             parameters_per_page=self.parameters_per_page,
             selected_page=self.page,

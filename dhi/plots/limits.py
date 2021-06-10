@@ -28,7 +28,7 @@ colors = colors.root
 
 @use_style("dhi_default")
 def plot_limit_scan(
-    path,
+    paths,
     poi,
     scan_parameter,
     expected_values,
@@ -47,7 +47,7 @@ def plot_limit_scan(
 ):
     """
     Creates a plot for the upper limit scan of a *poi* over a *scan_parameter* and saves it at
-    *path*. *expected_values* should be a mapping to lists of values or a record array with keys
+    *paths*. *expected_values* should be a mapping to lists of values or a record array with keys
     "<scan_parameter>" and "limit", and optionally "limit_p1" (plus 1 sigma), "limit_m1" (minus 1
     sigma), "limit_p2" and "limit_m2". When the variations by 1 or 2 sigma are missing, the plot is
     created without them. When *observed_values* is set, it should have a similar format with keys
@@ -246,12 +246,13 @@ def plot_limit_scan(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 @use_style("dhi_default")
 def plot_limit_scans(
-    path,
+    paths,
     poi,
     scan_parameter,
     names,
@@ -270,7 +271,7 @@ def plot_limit_scans(
 ):
     """
     Creates a plot showing multiple upper limit scans of a *poi* over a *scan_parameter* and saves
-    it at *path*. *expected_values* should be a list of mappings to lists of values or a record
+    it at *paths*. *expected_values* should be a list of mappings to lists of values or a record
     array with keys "<scan_parameter>" and "limit". Each mapping in *expected_values* will result in
     a different curve. When *theory_values* is set, it should have a similar format with keys
     "<scan_parameter>" and "xsec", and optionally "xsec_p1" and "xsec_m1". *names* denote the names
@@ -427,12 +428,13 @@ def plot_limit_scans(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 @use_style("dhi_default")
 def plot_limit_points(
-    path,
+    paths,
     poi,
     data,
     sort_by=None,
@@ -450,7 +452,7 @@ def plot_limit_points(
 ):
     """
     Creates a plot showing a comparison of limits of multiple analysis (or channels) on a *poi* and
-    saves it at *path*. *data* should be a list of dictionaries with fields
+    saves it at *paths*. *data* should be a list of dictionaries with fields
 
     - "expected", a sequence of five values, i.e., central limit, and +1 sigma, -1 sigma, +2 sigma,
       and -2 sigma variations (absolute values, not errors!),
@@ -465,7 +467,7 @@ def plot_limit_points(
     .. code-block:: python
 
         plot_limit_points(
-            path="plot.pdf",
+            paths=["plot.pdf", "plot.png"],
             poi="r",
             data=[{
                 "expected": (40., 50., 28., 58., 18.),
@@ -718,12 +720,13 @@ def plot_limit_points(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 @use_style("dhi_default")
 def plot_limit_scan_2d(
-    path,
+    paths,
     poi,
     scan_parameter1,
     scan_parameter2,
@@ -744,7 +747,7 @@ def plot_limit_scan_2d(
 ):
     """
     Creates a plot for the upper limit scan of a *poi* in two dimensions over *scan_parameter1* and
-    *scan_parameter2*, and saves it at *path*. *expected_limits* should be a mapping to lists of
+    *scan_parameter2*, and saves it at *paths*. *expected_limits* should be a mapping to lists of
     values or a record array with keys "<scan_parameter1>", "<scan_parameter2>" and "limit", and
     optionally "limit_p1" (plus 1 sigma) and "limit_m1" (minus 1 sigma). When the variations are
     missing, the plot is created without them. When *observed_limits* is set, it should have a
@@ -961,12 +964,13 @@ def plot_limit_scan_2d(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 @use_style("dhi_default")
 def plot_benchmark_limits(
-    path,
+    paths,
     data,
     poi,
     y_min=None,
@@ -978,7 +982,7 @@ def plot_benchmark_limits(
     bar_width=0.6,
 ):
     """
-    Creates a plot showing a the limits of BSM benchmarks for a *poi* and saves it at *path*. *data*
+    Creates a plot showing a the limits of BSM benchmarks for a *poi* and saves it at *paths*. *data*
     should be a list of dictionaries with fields
 
     - "expected", a sequence of five values, i.e., central limit, and +1 sigma, -1 sigma, +2 sigma,
@@ -992,7 +996,7 @@ def plot_benchmark_limits(
     .. code-block:: python
 
         plot_benchmark_limits(
-            path="plot.pdf",
+            paths=["plot.pdf", "plot.png"],
             data=[{
                 "expected": (40., 50., 28., 58., 18.),
                 "observed": 45.,
@@ -1117,7 +1121,8 @@ def plot_benchmark_limits(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xsec_values=None,

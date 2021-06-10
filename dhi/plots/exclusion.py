@@ -23,7 +23,7 @@ colors = colors.root
 
 @use_style("dhi_default")
 def plot_exclusion_and_bestfit_1d(
-    path,
+    paths,
     data,
     poi,
     scan_parameter,
@@ -37,7 +37,7 @@ def plot_exclusion_and_bestfit_1d(
 ):
     """
     Creates a plot showing exluded regions of a *poi* over a *scan_parameter* for multiple analysis
-    (or channels) as well as best fit values and saves it at *path*. *data* should be a list of
+    (or channels) as well as best fit values and saves it at *paths*. *data* should be a list of
     dictionaries with fields "name", "expected_limits" and "nll_values", and optionally
     *observed_limits*, and "scan_min". Limits and NLL values should be given as either dictionaries
     or numpy record arrays containing fields *poi* and "limit", or *poi* and "dnll2". When a value
@@ -48,7 +48,7 @@ def plot_exclusion_and_bestfit_1d(
     .. code-block:: python
 
         plot_exclusion_and_bestfit_1d(
-            path="plot.pdf",
+            paths=["plot.pdf", "plot.png"],
             poi="r",
             scan_parameter="kl",
             data=[{
@@ -244,12 +244,13 @@ def plot_exclusion_and_bestfit_1d(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 @use_style("dhi_default")
 def plot_exclusion_and_bestfit_2d(
-    path,
+    paths,
     poi,
     scan_parameter1,
     scan_parameter2,
@@ -270,7 +271,7 @@ def plot_exclusion_and_bestfit_2d(
 ):
     """
     Creates a 2D plot showing excluded regions of two paramters *scan_parameter1* and
-    *scan_parameter2* extracted from limits on a *poi* and saves it at *path*. The limit values must
+    *scan_parameter2* extracted from limits on a *poi* and saves it at *paths*. The limit values must
     be passed via *expected_limits* which should be a mapping to lists of values or a record array
     with keys "<scan_parameter1>", "<scan_parameter2>", "limit", and optionally "limit_p1",
     "limit_m1", "limit_p2" and "limit_m2" to denote uncertainties at 1 and 2 sigma. When
@@ -544,7 +545,8 @@ def plot_exclusion_and_bestfit_2d(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 def get_auto_contour_levels(values, steps=(1,)):

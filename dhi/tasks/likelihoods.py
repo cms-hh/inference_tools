@@ -173,10 +173,10 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             parts.append("log")
 
         prefix = "nll" if self.convert == law.NO_STR else self.convert
-        name = self.create_plot_name(
+        names = self.create_plot_names(
             ["{}{}d".format(prefix, self.n_pois), self.get_output_postfix(), parts]
         )
-        return self.local_target(name)
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -184,8 +184,8 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
     @law.decorator.safe_output
     def run(self):
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load scan data
         values, poi_mins = self.load_scan_data(self.input(), merge_scans=self.n_pois == 1)
@@ -197,7 +197,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 values = extend_recarray(values, ("significance", float, sig))
                 self.call_plot_func(
                     "dhi.plots.significances.plot_significance_scan_1d",
-                    path=output.path,
+                    paths=[out.path for out in outputs],
                     scan_parameter=self.pois[0],
                     expected_values=None if self.unblinded else values,
                     observed_values=values if self.unblinded else None,
@@ -219,7 +219,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 ]
                 self.call_plot_func(
                     "dhi.plots.significances.plot_significance_scan_2d",
-                    path=output.path,
+                    paths=[out.path for out in outputs],
                     scan_parameter1=self.pois[0],
                     scan_parameter2=self.pois[1],
                     values=values,
@@ -253,7 +253,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scan_1d",
-                path=output.path,
+                paths=[out.path for out in outputs],
                 poi=self.pois[0],
                 values=values,
                 theory_value=theory_value,
@@ -270,7 +270,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         else:  # 2
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scan_2d",
-                path=output.path,
+                paths=[out.path for out in outputs],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 values=values,
@@ -367,10 +367,10 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(
+        names = self.create_plot_names(
             ["multinll{}d".format(self.n_pois), self.get_output_postfix(), parts]
         )
-        return self.local_target(name)
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -378,8 +378,8 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
     @law.decorator.safe_output
     def run(self):
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs.parent.touch()
 
         # load scan data
         data = []
@@ -420,7 +420,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_1d",
-                path=output.path,
+                paths=[out.path for out in outputs],
                 poi=self.pois[0],
                 data=data,
                 theory_value=theory_value,
@@ -436,7 +436,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
         else:  # 2
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_2d",
-                path=output.path,
+                paths=[out.path for out in outputs],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 data=data,
@@ -471,10 +471,10 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(
+        names = self.create_plot_names(
             ["multinllbymodel{}d".format(self.n_pois), self.get_output_postfix(), parts]
         )
-        return self.local_target(name)
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -482,8 +482,8 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
     @law.decorator.safe_output
     def run(self):
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load scan data
         data = []
@@ -530,7 +530,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
 
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_1d",
-                path=output.path,
+                paths=[out.path for out in outputs],
                 poi=self.pois[0],
                 data=data,
                 theory_value=theory_value,
@@ -546,7 +546,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
         else:  # 2
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_2d",
-                path=output.path,
+                paths=[out.path for out in outputs],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 data=data,
