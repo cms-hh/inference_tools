@@ -20,7 +20,7 @@ colors = colors.root
 
 @use_style("dhi_default")
 def plot_s_over_b(
-    path,
+    paths,
     poi,
     fit_diagnostics_path,
     bins=8,
@@ -34,7 +34,7 @@ def plot_s_over_b(
 ):
     """
     Creates a postfit signal-over-background plot combined over all bins in the fit of a *poi* and
-    saves it at *path*. The plot is based on the fit diagnostics file *fit_diagnostics_path*
+    saves it at *paths*. The plot is based on the fit diagnostics file *fit_diagnostics_path*
     produced by combine. *bins* can either be a single number of bins to use, or a list of n+1 bin
     edges. *y1_min*, *y1_max*, *y2_min* and *y2_max* define the ranges of the y-axes of the upper
     pad and ratio pad, respectively. The signal can optionally be scaled by *signal_scale* for
@@ -218,7 +218,8 @@ def plot_s_over_b(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 def load_bin_data(fit_diagnostics_path):

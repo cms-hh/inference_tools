@@ -76,7 +76,7 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         for sample, scale_fn in scale_fns.items():
             x, y = [], []
             for v in self.get_scan_linspace():
-                subs = {self.scan_parameter_names[0]: v[0]}
+                subs = {self.scan_parameter_names[0]:v[0]}
                 subs.update(self.parameter_values_dict)
 
                 # check if all symbols are substituted
@@ -121,21 +121,16 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
 
         # write graphs
         for graph, label, col in zip(graphs, labels, color_sequence[: len(graphs)]):
-            r.setup_graph(
-                graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5}, color=col
-            )
+            r.setup_graph(graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5},
+                color=col)
             draw_objs.append((graph, "SAME,PL"))
             legend_entries.append((graph, label))
 
         # legend
         legend_cols = min(int(math.ceil(len(legend_entries) / 4.0)), 3)
         legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
-        legend = r.routines.create_legend(
-            pad=pad,
-            width=legend_cols * 280,
-            n=legend_rows,
-            props={"NColumns": legend_cols, "FillStyle": 1001},
-        )
+        legend = r.routines.create_legend(pad=pad, width=legend_cols * 280, n=legend_rows,
+            props={"NColumns": legend_cols, "FillStyle": 1001})
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
 
@@ -218,9 +213,8 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
                         signal_names.append(signal_name)
                         break
                 else:
-                    raise Exception(
-                        "no signal found for sample {} in model {}".format(sample.label, model.name)
-                    )
+                    raise Exception("no signal found for sample {} in model {}".format(
+                        sample.label, model.name))
 
             # store shapes
             for bin_name in self.bins:
@@ -252,10 +246,8 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
             # check if all symbols are substituted
             missing_symbols = set(map(str, scale_fn.free_symbols)) - set(parameter_values.keys())
             if missing_symbols:
-                raise Exception(
-                    "scaling function misses substitutions for symbol(s) '{}', please "
-                    "add them via --pois".format(",".join(missing_symbols))
-                )
+                raise Exception("scaling function misses substitutions for symbol(s) '{}', please "
+                    "add them via --pois".format(",".join(missing_symbols)))
 
             # perform the scaling
             scale = scale_fn.evalf(subs=parameter_values)
@@ -287,7 +279,7 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
                 shapes[model_name] = self.create_morphed_shape(hists_and_scale_fns)
 
             # plot
-            self.create_plot([out.path for out in output[bin_name]], bin_name, shapes)
+            self.create_plot([outp.path for outp in output[bin_name]], bin_name, shapes)
 
     def create_plot(self, paths, bin_name, shapes):
         import plotlib.root as r
@@ -329,12 +321,8 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
         # legend
         legend_cols = min(int(math.ceil(len(legend_entries) / 4.0)), 3)
         legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
-        legend = r.routines.create_legend(
-            pad=pad,
-            width=legend_cols * 210,
-            n=legend_rows,
-            props={"NColumns": legend_cols, "FillStyle": 1001},
-        )
+        legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
+            props={"NColumns": legend_cols, "FillStyle": 1001})
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
 
@@ -437,9 +425,8 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
         legend_entries = []
 
         # dummy histogram to control axes
-        x_title = "{} ({})".format(
-            to_root_latex(poi_data[scan_parameter].label), self.joined_parameter_values
-        )
+        x_title = "{} ({})".format(to_root_latex(poi_data[scan_parameter].label),
+            self.joined_parameter_values)
         y_title = "Relative statistical error of {} discriminant".format(self.signal)
         h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
         r.setup_hist(h_dummy, pad=pad, props={"Minimum": 0, "Maximum": y_max, "LineWidth": 0})
@@ -447,21 +434,16 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
 
         # write graphs
         for graph, label, col in zip(graphs, labels, color_sequence[: len(graphs)]):
-            r.setup_graph(
-                graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5}, color=col
-            )
+            r.setup_graph(graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5},
+                color=col)
             draw_objs.append((graph, "SAME,PL"))
             legend_entries.append((graph, label))
 
         # legend
         legend_cols = min(int(math.ceil(len(legend_entries) / 4.0)), 3)
         legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
-        legend = r.routines.create_legend(
-            pad=pad,
-            width=legend_cols * 210,
-            n=legend_rows,
-            props={"NColumns": legend_cols, "FillStyle": 1001},
-        )
+        legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
+            props={"NColumns": legend_cols, "FillStyle": 1001})
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
 

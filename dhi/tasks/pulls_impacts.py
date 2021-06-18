@@ -198,16 +198,17 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             values = tree.arrays([poi] if b == 0 else [poi, name])
             # the fit converged when there are 3 values in the parameter array
             converged = values[poi if b == 0 else name].size == 3
-            if not converged:
-                if self.keep_failures:
-                    fit_results[b] = {
-                        name: np.array([np.nan, np.nan, np.nan]),
-                        "r": np.array([np.nan, np.nan, np.nan]),
-                    }
-                else:
-                    fail_info.append((b, name, inp.path))
-            else:
+            # when not converged but failures should be kept, change the result
+            if not converged and self.keep_failures:
+                values = {
+                    name: np.array([np.nan, np.nan, np.nan]),
+                    "r": np.array([np.nan, np.nan, np.nan]),
+                }
+            # store either in fit results or fail infos
+            if converged:
                 fit_results[b] = values
+            else:
+                fail_info.append((b, name, inp.path))
 
         # throw an error with instructions when a fit failed
         if fail_info:
@@ -224,16 +225,13 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             for _, _, path in fail_info:
                 msg += "       rm {}\n".format(path)
             msg += "\n     and then add different options such as\n\n"
-            msg += c(
-                "       --PullsAndImpacts-custom-args='--X-rtd MINIMIZER_no_analytic'\n",
-                style="bright",
-            )
+            msg += c("       --PullsAndImpacts-custom-args='--X-rtd MINIMIZER_no_analytic'\n",
+                style="bright")
             msg += "\n     to your 'law run ...' command.\n\n"
             msg += "  " + c("2.", "magenta")
             msg += " You can proceed with the converging fits only by adding\n\n"
-            msg += c(
-                "       --PullsAndImpacts-branches {}\n\n".format(working_branches), style="bright"
-            )
+            msg += c("       --PullsAndImpacts-branches {}\n\n".format(working_branches),
+                style="bright")
             msg += "     which effectively skips all failing fits.\n"
             raise Exception(msg)
 
@@ -277,7 +275,6 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
 
     keep_failures = MergePullsAndImpacts.keep_failures
-
     hide_best_fit = luigi.BoolParameter(
         default=False,
         significant=False,
@@ -350,10 +347,9 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         super(PlotPullsAndImpacts, self).__init__(*args, **kwargs)
 
         # complain when parameters_per_page is set for non pdf file types
-        if self.parameters_per_page > 0 and self.file_types != ("pdf",):
-            self.logger.warning(
-                "parameters_per_page is only supported for file_type 'pdf', got: {}".format(self.file_types)
-            )
+        if self.parameters_per_page > 0 and "pdf" not in self.file_types:
+            self.logger.warning("parameters_per_page is only supported for file_type 'pdf', but "
+                "got {}".format(self.file_types))
             self.parameters_per_page = -1
 
         # show a warning when unblinded and not hiding the best fit value
@@ -393,7 +389,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.pulls_impacts.plot_pulls_impacts",
-            paths=[out.path for out in outputs],
+            paths=[outp.path for outp in outputs],
             data=data,
             parameters_per_page=self.parameters_per_page,
             selected_page=self.page,

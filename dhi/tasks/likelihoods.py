@@ -197,7 +197,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 values = extend_recarray(values, ("significance", float, sig))
                 self.call_plot_func(
                     "dhi.plots.significances.plot_significance_scan_1d",
-                    paths=[out.path for out in outputs],
+                    paths=[outp.path for outp in outputs],
                     scan_parameter=self.pois[0],
                     expected_values=None if self.unblinded else values,
                     observed_values=values if self.unblinded else None,
@@ -219,7 +219,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 ]
                 self.call_plot_func(
                     "dhi.plots.significances.plot_significance_scan_2d",
-                    paths=[out.path for out in outputs],
+                    paths=[outp.path for outp in outputs],
                     scan_parameter1=self.pois[0],
                     scan_parameter2=self.pois[1],
                     values=values,
@@ -253,7 +253,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scan_1d",
-                paths=[out.path for out in outputs],
+                paths=[outp.path for outp in outputs],
                 poi=self.pois[0],
                 values=values,
                 theory_value=theory_value,
@@ -270,7 +270,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         else:  # 2
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scan_2d",
-                paths=[out.path for out in outputs],
+                paths=[outp.path for outp in outputs],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 values=values,
@@ -379,7 +379,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs.parent.touch()
+        outputs[0].parent.touch()
 
         # load scan data
         data = []
@@ -420,7 +420,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_1d",
-                paths=[out.path for out in outputs],
+                paths=[outp.path for outp in outputs],
                 poi=self.pois[0],
                 data=data,
                 theory_value=theory_value,
@@ -436,7 +436,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
         else:  # 2
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_2d",
-                paths=[out.path for out in outputs],
+                paths=[outp.path for outp in outputs],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 data=data,
@@ -530,7 +530,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
 
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_1d",
-                paths=[out.path for out in outputs],
+                paths=[outp.path for outp in outputs],
                 poi=self.pois[0],
                 data=data,
                 theory_value=theory_value,
@@ -546,7 +546,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
         else:  # 2
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_2d",
-                paths=[out.path for out in outputs],
+                paths=[outp.path for outp in outputs],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 data=data,

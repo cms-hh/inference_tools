@@ -13,15 +13,11 @@ import six
 
 from dhi.tasks.base import AnalysisTask, PlotTask, view_output_plots
 from dhi.tasks.limits import (
-    PlotUpperLimits,
-    PlotMultipleUpperLimits,
-    PlotMultipleUpperLimitsByModel,
+    PlotUpperLimits, PlotMultipleUpperLimits, PlotMultipleUpperLimitsByModel,
     PlotUpperLimitsAtPoint,
 )
 from dhi.tasks.likelihoods import (
-    PlotLikelihoodScan,
-    PlotMultipleLikelihoodScans,
-    PlotMultipleLikelihoodScansByModel,
+    PlotLikelihoodScan, PlotMultipleLikelihoodScans, PlotMultipleLikelihoodScansByModel,
 )
 from dhi.tasks.significances import PlotSignificanceScan, PlotMultipleSignificanceScans
 from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
@@ -30,9 +26,7 @@ from dhi.tasks.postfit import PlotPostfitSOverB, PlotNuisanceLikelihoodScans
 from dhi.tasks.gof import PlotGoodnessOfFit, PlotMultipleGoodnessOfFits
 from dhi.tasks.eft import PlotEFTBenchmarkLimits, PlotEFTUpperLimits
 from dhi.tasks.studies.model_selection import (
-    PlotMorphingScales,
-    PlotMorphedDiscriminant,
-    PlotStatErrorScan,
+    PlotMorphingScales, PlotMorphedDiscriminant, PlotStatErrorScan,
 )
 
 

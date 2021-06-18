@@ -168,8 +168,8 @@ class PlotPostfitSOverB(POIPlotTask):
     @law.decorator.safe_output
     def run(self):
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # get the path to the fit diagnostics file
         fit_diagnostics_path = self.input()["collection"][0]["diagnostics"].path
@@ -177,7 +177,7 @@ class PlotPostfitSOverB(POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.postfit_shapes.plot_s_over_b",
-            path=output.path,
+            path=[outp.path for outp in outputs],
             poi=self.pois[0],
             fit_diagnostics_path=fit_diagnostics_path,
             bins=self.bins if len(self.bins) > 1 else int(self.bins[0]),
@@ -277,7 +277,7 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
             # call the plot function
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_nuisance_likelihood_scans",
-                paths=[out.path for out in outputs],
+                paths=[outp.path for outp in outputs],
                 poi=self.pois[0],
                 workspace=w,
                 dataset=dataset,

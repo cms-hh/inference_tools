@@ -472,8 +472,8 @@ class CommandTask(AnalysisTask):
 class PlotTask(AnalysisTask):
 
     file_types = law.CSVParameter(
-        default=("pdf", "png"),
-        description="the types of the output plot files; default: ('pdf', 'png')",
+        default=("pdf",),
+        description="comma-separated types of the output plot files; default: pdf",
     )
     plot_postfix = luigi.Parameter(
         default=law.NO_STR,
@@ -530,12 +530,11 @@ class PlotTask(AnalysisTask):
 
     def create_plot_names(self, *parts):
         if len(parts) == 1:
-            parts = law.util.make_list(parts[0])
+            parts = (law.util.make_list(parts[0]),)
         if self.plot_postfix and self.plot_postfix != law.NO_STR:
             parts += (self.plot_postfix,)
 
-        assert set(self.file_types) <= set(("pdf", "png")), "Only supported file formats are 'pdf' and 'png'!"
-        return ["{}.{}".format(self.join_postfix(parts), file_type) for file_type in self.file_types]
+        return ["{}.{}".format(self.join_postfix(parts), ext) for ext in self.file_types]
 
     def get_plot_func(self, func_id):
         if "." not in func_id:

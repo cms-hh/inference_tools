@@ -201,7 +201,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.gof.plot_gof_distribution",
-            paths=[out.path for out in outputs],
+            paths=[outp.path for outp in outputs],
             data=gof_data["data"],
             toys=gof_data["toys"],
             algorithm=self.algorithm,
@@ -308,7 +308,7 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.gof.plot_gofs",
-            paths=[out.path for out in outputs],
+            paths=[outp.path for outp in outputs],
             data=data,
             algorithm=self.algorithm,
             n_bins=self.n_bins,

@@ -36,7 +36,7 @@ def plot_exclusion_and_bestfit_1d(
     campaign=None,
 ):
     """
-    Creates a plot showing exluded regions of a *poi* over a *scan_parameter* for multiple analysis
+    Creates a plot showing exluded regions of a *poi* over a *scan_parameter* for multiple analyses
     (or channels) as well as best fit values and saves it at *paths*. *data* should be a list of
     dictionaries with fields "name", "expected_limits" and "nll_values", and optionally
     *observed_limits*, and "scan_min". Limits and NLL values should be given as either dictionaries

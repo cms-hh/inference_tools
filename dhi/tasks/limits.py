@@ -278,7 +278,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scan",
-            paths=[out.path for out in outputs],
+            paths=[outp.path for outp in outputs],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
             expected_values=limit_values,
@@ -413,7 +413,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scans",
-            paths=[out.path for out in outputs],
+            paths=[outp.path for outp in outputs],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
             names=names,
@@ -534,7 +534,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scans",
-            paths=[out.path for out in outputs],
+            paths=[outp.path for outp in outputs],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
             names=names,
@@ -720,7 +720,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_points",
-            paths=[out.path for out in outputs],
+            paths=[outp.path for outp in outputs],
             poi=self.poi,
             data=data,
             x_min=self.get_axis_limit("x_min"),
@@ -804,7 +804,7 @@ class PlotUpperLimits2D(UpperLimitsBase, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scan_2d",
-            paths=[out.path for out in outputs],
+            paths=[outp.path for outp in outputs],
             poi=self.pois[0],
             scan_parameter1=self.scan_parameter_names[0],
             scan_parameter2=self.scan_parameter_names[1],
