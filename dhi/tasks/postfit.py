@@ -177,7 +177,7 @@ class PlotPostfitSOverB(POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.postfit_shapes.plot_s_over_b",
-            path=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs],
             poi=self.pois[0],
             fit_diagnostics_path=fit_diagnostics_path,
             bins=self.bins if len(self.bins) > 1 else int(self.bins[0]),
