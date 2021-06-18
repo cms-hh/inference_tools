@@ -182,8 +182,8 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
             parts.append("log")
 
         prefix = "significance" if self.convert == law.NO_STR else self.convert
-        name = self.create_plot_name([prefix, self.get_output_postfix(), parts])
-        return self.local_target(name)
+        names = self.create_plot_names([prefix, self.get_output_postfix(), parts])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -191,8 +191,8 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
     @law.decorator.safe_output
     def run(self):
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load significances
         inputs = self.input()
@@ -211,7 +211,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.significances.plot_significance_scan_1d",
-            path=output.path,
+            paths=[out.path for out in outputs],
             scan_parameter=scan_parameter,
             expected_values=exp_values,
             observed_values=obs_values,
@@ -271,8 +271,8 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
             parts.append("log")
 
         prefix = "significance" if self.convert == law.NO_STR else self.convert
-        name = self.create_plot_name(["multi{}s".format(prefix), self.get_output_postfix(), parts])
-        return self.local_target(name)
+        names = self.create_plot_names(["multi{}s".format(prefix), self.get_output_postfix(), parts])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -280,8 +280,8 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
     @law.decorator.safe_output
     def run(self):
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load significances
         values = []
@@ -302,7 +302,7 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.significances.plot_significance_scans_1d",
-            path=output.path,
+            paths=[out.path for out in outputs],
             scan_parameter=self.scan_parameter_names[0],
             values=values,
             names=names,

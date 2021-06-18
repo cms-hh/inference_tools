@@ -397,8 +397,8 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
         if self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(["eftbenchmarks", self.get_output_postfix(), parts])
-        return self.local_target(name)
+        names = self.create_plot_names(["eftbenchmarks", self.get_output_postfix(), parts])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -406,8 +406,8 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
     @law.decorator.safe_output
     def run(self):
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load limit values
         limit_values = self.input().load(formatter="numpy")["data"]
@@ -432,7 +432,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_benchmark_limits",
-            path=output.path,
+            paths=[out.path for out in outputs],
             data=data,
             poi=self.poi,
             y_min=self.get_axis_limit("y_min"),
@@ -478,8 +478,8 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
         if self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(["eftlimits", self.get_output_postfix(), parts])
-        return self.local_target(name)
+        names = self.create_plot_names(["eftlimits", self.get_output_postfix(), parts])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -489,8 +489,8 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
         import numpy as np
 
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load limit values, given in fb
         limit_values = self.input().load(formatter="numpy")["data"]
@@ -552,7 +552,7 @@ class PlotEFTUpperLimits(EFTScanBase, PlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scan",
-            path=output.path,
+            paths=[out.path for out in outputs],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
             expected_values=limit_values,

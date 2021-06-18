@@ -10,6 +10,7 @@ import math
 import array
 
 import six
+import numpy as np
 
 from dhi.config import poi_data, campaign_labels, colors
 from dhi.util import import_ROOT, multi_match, to_root_latex, linspace, colored
@@ -21,7 +22,7 @@ colors = colors.root
 
 @use_style("dhi_default")
 def plot_pulls_impacts(
-    path,
+    paths,
     data,
     poi=None,
     parameters_per_page=-1,
@@ -40,7 +41,7 @@ def plot_pulls_impacts(
     campaign=None,
 ):
     """
-    Creates a plot containing both pulls and impacts and saves it at *path*. *data* should either
+    Creates a plot containing both pulls and impacts and saves it at *paths*. *data* should either
     be a path to a json file or the content of a json file in the structure provided by
     CombineHarvester's combineTool.py. For more info, see
     https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/nonstandard. *poi* should be
@@ -113,7 +114,9 @@ def plot_pulls_impacts(
     # apply ordering
     params.sort(key=lambda param: param.name)
     if order_by_impact:
-        params.sort(key=lambda param: -param.max_impact)
+        # failures to np.inf
+        v = lambda x: np.inf if np.isnan(x) else x
+        params.sort(key=lambda param: -v(param.max_impact))
     elif order_parameters:
         patterns = read_patterns(order_parameters) + ["*"]
         indices = []
@@ -172,7 +175,7 @@ def plot_pulls_impacts(
         # define the impact_range and derive the x_ratio
         if auto_impact_range:
             # get the maximum absolute impact on this page
-            max_impact = max(max(abs(v) for v in p.impact) for p in _params)
+            max_impact = max(max(abs(v) if np.isfinite(v) else 0.0 for v in p.impact) for p in _params)
             # determine possible ratios and pick the one that is slightly larger (using a threshold)
             ratios = sum(([round(f * 10**x, 4) for f in range(1, 6)] for x in range(-4, 4)), [])
             for ratio in ratios:
@@ -233,6 +236,8 @@ def plot_pulls_impacts(
         for i, param in enumerate(_params):
             # parameter labels
             label = to_root_latex(labels.get(param.name, param.name))
+            if param.invalid:
+                label = "#bf{{{label}}}".format(label=label)
             label = ROOT.TLatex(x_min - (x_max - x_min) * 0.0125, n - i - 0.5, label)
             r.setup_latex(label, props={"NDC": False, "TextAlign": 32, "TextSize": label_size})
             draw_objs.append(label)
@@ -294,13 +299,16 @@ def plot_pulls_impacts(
         # plain post-fit intervals as texts for rateParam's
         rate_label_tmpl = "%.2f^{ +%.2f}_{ -%.2f}"
         for i, param in enumerate(_params):
-            if not param.is_rate_param:
-                continue
-            down, nominal, up = param.postfit
-            rate_label = rate_label_tmpl % (nominal, up - nominal, nominal - down)
-            rate_label = ROOT.TLatex(0, n - i - 0.5, rate_label)
-            r.setup_latex(rate_label, props={"NDC": False, "TextAlign": 22, "TextSize": 16})
-            draw_objs.append(rate_label)
+            if param.is_rate_param:
+                down, nominal, up = param.postfit
+                rate_label = rate_label_tmpl % (nominal, up - nominal, nominal - down)
+                rate_label = ROOT.TLatex(0, n - i - 0.5, rate_label)
+                r.setup_latex(rate_label, props={"NDC": False, "TextAlign": 22, "TextSize": 16})
+                draw_objs.append(rate_label)
+            if param.invalid:
+                rate_label = ROOT.TLatex(0, n - i - 0.5, "#bf{Invalid - Failed Fit}")
+                r.setup_latex(rate_label, props={"NDC": False, "TextAlign": 22, "TextSize": label_size})
+                draw_objs.append(rate_label)
 
         # legend
         legend = r.routines.create_legend(pad=pad, width=170, n=3)
@@ -344,11 +352,12 @@ def plot_pulls_impacts(
         # update and save
         # when there is more than one page, use roots "logic" to write multiple pages
         r.update_canvas(canvas)
-        if selected_page < 0 and n_pages > 1 and path.endswith(".pdf"):
-            flag = {0: "(", n_pages - 1: ")"}.get(page, "")
-            canvas.Print(path + flag)
-        else:
-            canvas.SaveAs(path)
+        for path in paths:
+            if selected_page < 0 and n_pages > 1 and path.endswith(".pdf"):
+                flag = {0: "(", n_pages - 1: ")"}.get(page, "")
+                canvas.Print(path + flag)
+            else:
+                canvas.SaveAs(path)
 
 
 class Parameter(object):
@@ -368,6 +377,7 @@ class Parameter(object):
         self.max_impact = data["impact_" + poi]
         self.type = data["type"]
         self.groups = data["groups"]
+        self.invalid = np.any(np.isnan(self.poi))
 
         # compute two sided impacts, store as [low, high] preserving signs
         self.impact = [

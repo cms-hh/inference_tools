@@ -209,8 +209,8 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         if self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(["limits", self.get_output_postfix(), parts])
-        return self.local_target(name)
+        names = self.create_plot_names(["limits", self.get_output_postfix(), parts])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -220,8 +220,8 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         import numpy as np
 
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load limit values
         limit_values = self.load_scan_data(self.input())
@@ -278,7 +278,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scan",
-            path=output.path,
+            paths=[out.path for out in outputs],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
             expected_values=limit_values,
@@ -343,8 +343,8 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         if self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(["multilimits", self.get_output_postfix(), parts])
-        return self.local_target(name)
+        names = self.create_plot_names(["multilimits", self.get_output_postfix(), parts])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -354,8 +354,8 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         import numpy as np
 
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load limit values
         limit_values = []
@@ -413,7 +413,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scans",
-            path=output.path,
+            paths=[out.path for out in outputs],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
             names=names,
@@ -457,8 +457,8 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         if self.y_log:
             parts.append("log")
 
-        name = self.create_plot_name(["multilimitsbymodel", self.get_output_postfix(), parts])
-        return self.local_target(name)
+        names = self.create_plot_names(["multilimitsbymodel", self.get_output_postfix(), parts])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -468,8 +468,8 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         import numpy as np
 
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load limit values
         limit_values = []
@@ -534,7 +534,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scans",
-            path=output.path,
+            paths=[out.path for out in outputs],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
             names=names,
@@ -643,8 +643,8 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         if self.x_log:
             parts.append("log")
 
-        name = self.create_plot_name(["limitsatpoint", self.get_output_postfix(), parts])
-        return self.local_target(name)
+        names = self.create_plot_names(["limitsatpoint", self.get_output_postfix(), parts])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -654,8 +654,8 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         import numpy as np
 
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load limit values
         names = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
@@ -720,7 +720,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_points",
-            path=output.path,
+            paths=[out.path for out in outputs],
             poi=self.poi,
             data=data,
             x_min=self.get_axis_limit("x_min"),
@@ -771,8 +771,8 @@ class PlotUpperLimits2D(UpperLimitsBase, POIPlotTask):
         if self.z_log:
             parts.append("log")
 
-        name = self.create_plot_name(["limits2d", self.get_output_postfix(), parts])
-        return self.local_target(name)
+        names = self.create_plot_names(["limits2d", self.get_output_postfix(), parts])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -780,8 +780,8 @@ class PlotUpperLimits2D(UpperLimitsBase, POIPlotTask):
     @law.decorator.safe_output
     def run(self):
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load limit scan data
         limits = []
@@ -804,7 +804,7 @@ class PlotUpperLimits2D(UpperLimitsBase, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scan_2d",
-            path=output.path,
+            paths=[out.path for out in outputs],
             poi=self.pois[0],
             scan_parameter1=self.scan_parameter_names[0],
             scan_parameter2=self.scan_parameter_names[1],

@@ -8,6 +8,7 @@ from collections import OrderedDict
 
 import law
 import luigi
+import numpy as np
 
 from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
@@ -113,7 +114,8 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         else:
             # nuisance fits
             branch_opts = "--algo impact -P {} --floatOtherPOIs 1 --saveInactivePOI 1".format(
-                self.branch_data)
+                self.branch_data
+            )
 
         return (
             "combine -M MultiDimFit {workspace}"
@@ -153,6 +155,11 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
 
 class MergePullsAndImpacts(PullsAndImpactsBase):
 
+    keep_failures = luigi.BoolParameter(
+        default=False,
+        description="When True keep failed fits, proceed with plotting without restrictions. Failures will be marked as 'Invalid'. default: False",
+    )
+
     def requires(self):
         return PullsAndImpacts.req(self)
 
@@ -184,8 +191,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         for b, name in branch_map.items():
             inp = inputs[b]
             if not inp.exists():
-                self.logger.warning("input of branch {} at {} does not exist".format(
-                    b, inp.path))
+                self.logger.warning("input of branch {} at {} does not exist".format(b, inp.path))
                 continue
 
             tree = inp.load(formatter="uproot")["limit"]
@@ -193,7 +199,13 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             # the fit converged when there are 3 values in the parameter array
             converged = values[poi if b == 0 else name].size == 3
             if not converged:
-                fail_info.append((b, name, inp.path))
+                if self.keep_failures:
+                    fit_results[b] = {
+                        name: np.array([np.nan, np.nan, np.nan]),
+                        "r": np.array([np.nan, np.nan, np.nan]),
+                    }
+                else:
+                    fail_info.append((b, name, inp.path))
             else:
                 fit_results[b] = values
 
@@ -212,13 +224,16 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             for _, _, path in fail_info:
                 msg += "       rm {}\n".format(path)
             msg += "\n     and then add different options such as\n\n"
-            msg += c("       --PullsAndImpacts-custom-args='--X-rtd MINIMIZER_no_analytic'\n",
-                style="bright")
+            msg += c(
+                "       --PullsAndImpacts-custom-args='--X-rtd MINIMIZER_no_analytic'\n",
+                style="bright",
+            )
             msg += "\n     to your 'law run ...' command.\n\n"
             msg += "  " + c("2.", "magenta")
             msg += " You can proceed with the converging fits only by adding\n\n"
-            msg += c("       --PullsAndImpacts-branches {}\n\n".format(working_branches),
-                style="bright")
+            msg += c(
+                "       --PullsAndImpacts-branches {}\n\n".format(working_branches), style="bright"
+            )
             msg += "     which effectively skips all failing fits.\n"
             raise Exception(msg)
 
@@ -260,6 +275,8 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
 
 class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
+
+    keep_failures = MergePullsAndImpacts.keep_failures
 
     hide_best_fit = luigi.BoolParameter(
         default=False,
@@ -333,9 +350,9 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         super(PlotPullsAndImpacts, self).__init__(*args, **kwargs)
 
         # complain when parameters_per_page is set for non pdf file types
-        if self.parameters_per_page > 0 and self.file_type != "pdf":
+        if self.parameters_per_page > 0 and self.file_types != ("pdf",):
             self.logger.warning(
-                "parameters_per_page is not supported for file_type {}".format(self.file_type)
+                "parameters_per_page is only supported for file_type 'pdf', got: {}".format(self.file_types)
             )
             self.parameters_per_page = -1
 
@@ -358,8 +375,8 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         if self.page >= 0:
             parts.append("page{}".format(self.page))
 
-        name = self.create_plot_name(["pulls_impacts", self.get_output_postfix(), parts])
-        return self.local_target(name)
+        names = self.create_plot_names(["pulls_impacts", self.get_output_postfix(), parts])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -367,8 +384,8 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
     @law.decorator.safe_output
     def run(self):
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load input data
         data = self.input().load(formatter="json")
@@ -376,7 +393,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.pulls_impacts.plot_pulls_impacts",
-            path=output.path,
+            paths=[out.path for out in outputs],
             data=data,
             parameters_per_page=self.parameters_per_page,
             selected_page=self.page,

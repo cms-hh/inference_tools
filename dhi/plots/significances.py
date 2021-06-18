@@ -28,7 +28,7 @@ colors = colors.root
 
 @use_style("dhi_default")
 def plot_significance_scan_1d(
-    path,
+    paths,
     scan_parameter,
     expected_values=None,
     observed_values=None,
@@ -43,7 +43,7 @@ def plot_significance_scan_1d(
     show_points=False,
 ):
     """
-    Creates a plot for the significance scan over a *scan_parameter* and saves it at *path*.
+    Creates a plot for the significance scan over a *scan_parameter* and saves it at *paths*.
     *expected_values* should be a mapping to lists of values or a record array with keys
     "<scan_parameter>" and "significance". When *observed_values* is given, it should have the same
     structure as *expected_values*. When *show_p_values* is *True*, p-values are obtained from
@@ -196,12 +196,13 @@ def plot_significance_scan_1d(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 @use_style("dhi_default")
 def plot_significance_scans_1d(
-    path,
+    paths,
     scan_parameter,
     values,
     names,
@@ -217,7 +218,7 @@ def plot_significance_scans_1d(
 ):
     """
     Creates a plot showing multiple significance scans over a *scan_parameter* and saves it at
-    *path*. *values* should be a list of mappings to lists of values or a record array with keys
+    *paths*. *values* should be a list of mappings to lists of values or a record array with keys
     "<scan_parameter>" and "significance". Each mapping in *values* will result in a different
     curve. *names* denote the names of significance curves shown in the legend. When *show_p_values*
     is *True*, p-values are obtained from significances and shown instead.
@@ -351,12 +352,13 @@ def plot_significance_scans_1d(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 @use_style("dhi_default")
 def plot_significance_scan_2d(
-    path,
+    paths,
     scan_parameter1,
     scan_parameter2,
     values,
@@ -374,7 +376,7 @@ def plot_significance_scan_2d(
 ):
     """
     Creates a significance plot of the 2D scan of two parameters *scan_parameter1* and
-    *scan_parameter2*, and saves it at *path*. *values* should be a mapping to lists of values or a
+    *scan_parameter2*, and saves it at *paths*. *values* should be a mapping to lists of values or a
     record array with keys "<scan_parameter1_name>", "<scan_parameter2_name>" and "significance".
     When *show_p_values* is *True*, p-values are obtained from significances and shown instead. The
     standard model point at (1, 1) as drawn as well unless *draw_sm_point* is *False*.
@@ -519,4 +521,5 @@ def plot_significance_scan_2d(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)

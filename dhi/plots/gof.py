@@ -19,7 +19,7 @@ colors = colors.root
 
 @use_style("dhi_default")
 def plot_gof_distribution(
-    path,
+    paths,
     data,
     toys,
     algorithm,
@@ -33,7 +33,7 @@ def plot_gof_distribution(
 ):
     """
     Creates a plot showing the goodness-of-fit value *data* between simulated events and real data
-    alognside those values computed for *toys* and saves it at *path*. The name of the *algorithm*
+    alognside those values computed for *toys* and saves it at *paths*. The name of the *algorithm*
     used for the test is shown in the legend.
 
     The toy histogram is drawn with *n_bins* bins. *x_min*, *x_max*, *y_min* and *y_max* define the
@@ -125,12 +125,13 @@ def plot_gof_distribution(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 @use_style("dhi_default")
 def plot_gofs(
-    path,
+    paths,
     data,
     algorithm,
     n_bins=30,
@@ -141,7 +142,7 @@ def plot_gofs(
     campaign=None,
 ):
     """
-    Creates a plot showing the results of multiple goodness-of-fit tests and saves it at *path*.
+    Creates a plot showing the results of multiple goodness-of-fit tests and saves it at *paths*.
     Each entry in *data* should contain the fields "name", "data" (the test statistic value
     corresponding to real data) and "toys" (a list of test statistic values for toys). The name of
     the *algorithm* used for the test is shown in the legend.
@@ -306,7 +307,8 @@ def plot_gofs(
 
     # save
     r.update_canvas(canvas)
-    canvas.SaveAs(path)
+    for path in paths:
+        canvas.SaveAs(path)
 
 
 def remove_nans(toys):

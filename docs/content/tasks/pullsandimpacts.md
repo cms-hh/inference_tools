@@ -25,6 +25,7 @@ Output:
 
     It might happen that some parameter fits fail to converge.
     When this is the case, you will see an error thrown by `MergePullsAndImpacts`, suggesting that you should either remove the outputs of the failed fits and try again with different fit stability options ([fit options in combine](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/nonstandard/#fit-options)), or that you can also proceed without the failed parameters.
+    Alternatively you can use the `--keep-failures` parameter in order to keep failed fits and continue. In the resulting plot failures are marked as such.
 
 
 #### Dependencies

@@ -68,8 +68,8 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
         return reqs
 
     def output(self):
-        name = self.create_plot_name(["exclusionbestfit", self.get_output_postfix()])
-        return self.local_target(name)
+        names = self.create_plot_names(["exclusionbestfit", self.get_output_postfix()])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -79,8 +79,8 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
         import numpy as np
 
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load input data
         data = []
@@ -121,7 +121,7 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.exclusion.plot_exclusion_and_bestfit_1d",
-            path=output.path,
+            paths=[out.path for out in outputs],
             data=data,
             poi=self.pois[0],
             scan_parameter=self.scan_parameter_names[0],
@@ -194,8 +194,8 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         return reqs
 
     def output(self):
-        name = self.create_plot_name(["exclusionbestfit2d", self.get_output_postfix()])
-        return self.local_target(name)
+        names = self.create_plot_names(["exclusionbestfit2d", self.get_output_postfix()])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -205,8 +205,8 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         import numpy as np
 
         # prepare the output
-        output = self.output()
-        output.parent.touch()
+        outputs = self.output()
+        outputs[0].parent.touch()
 
         # load limit scan data
         inputs = self.input()
@@ -263,7 +263,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.exclusion.plot_exclusion_and_bestfit_2d",
-            path=output.path,
+            path=[out.path for out in outputs],
             poi=self.pois[0],
             scan_parameter1=self.scan_parameter_names[0],
             scan_parameter2=self.scan_parameter_names[1],
