@@ -102,6 +102,7 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
             " --mass {self.mass}"
             " {self.blinded_args}"
             " --redefineSignalPOIs {self.joined_pois}"
+            " --setParameterRanges {self.joined_parameter_ranges}"
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"

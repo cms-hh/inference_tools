@@ -18,7 +18,7 @@ import law
 import luigi
 import six
 
-from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, LocalFileTarget
+from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, LocalFileTarget, ModelParameters
 from dhi.config import poi_data, br_hh
 from dhi.util import linspace, try_int, real_path, expand_path
 from dhi.datacard_tools import bundle_datacard
@@ -660,27 +660,42 @@ class MultiDatacardTask(DatacardTask):
 
 class ParameterValuesTask(AnalysisTask):
 
-    parameter_values = law.CSVParameter(
+    parameter_values = ModelParameters(
         default=(),
-        description="comma-separated parameter names and values to be set; the accepted format is "
-        "'name1=value1,name2=value2,...'",
+        min_len=1,
+        max_len=1,
+        description="colon-separated parameter names and values to be set; the accepted format is "
+        "'name1=value1:name2=value2:...'",
+    )
+    parameter_ranges = ModelParameters(
+        default=(),
+        min_len=2,
+        max_len=2,
+        significant=False,
+        description="colon-separated parameter names and ranges to be set; the accepted format is "
+        "'name1=min1,max1:name2=min2,max2:...'",
     )
 
     sort_parameter_values = True
+    sort_parameter_ranges = True
 
     @classmethod
     def modify_param_values(cls, params):
         params = super(ParameterValuesTask, cls).modify_param_values(params)
 
-        # sort parameters
+        # sort parameters values
         if "parameter_values" in params:
             parameter_values = params["parameter_values"]
-            for p in parameter_values:
-                if "=" not in p:
-                    raise ValueError("invalid parameter value format '{}'".format(p))
             if cls.sort_parameter_values:
-                parameter_values = sorted(parameter_values, key=lambda p: p.split("=", 1)[0])
+                parameter_values = sorted(parameter_values, key=lambda p: p[0])
             params["parameter_values"] = tuple(parameter_values)
+
+        # sort parameters ranges
+        if "parameter_ranges" in params:
+            parameter_ranges = params["parameter_ranges"]
+            if cls.sort_parameter_ranges:
+                parameter_ranges = sorted(parameter_ranges, key=lambda p: p[0])
+            params["parameter_ranges"] = tuple(parameter_ranges)
 
         return params
 
@@ -690,10 +705,16 @@ class ParameterValuesTask(AnalysisTask):
         # store parameter values in a dict, check for duplicates
         self.parameter_values_dict = OrderedDict()
         for p in self.parameter_values:
-            name, value = p.split("=", 1)
-            if name in self.parameter_values_dict:
-                raise ValueError("{!r}: duplicate parameter value '{}'".format(self, name))
-            self.parameter_values_dict[name] = float(value)
+            if p[0] in self.parameter_values_dict:
+                raise ValueError("{!r}: duplicate parameter value '{}'".format(self, p[0]))
+            self.parameter_values_dict[p[0]] = float(p[1])
+
+        # store parameter ranges in a dict, check for duplicates
+        self.parameter_ranges_dict = OrderedDict()
+        for p in self.parameter_ranges:
+            if p[0] in self.parameter_ranges_dict:
+                raise ValueError("{!r}: duplicate parameter range '{}'".format(self, p[0]))
+            self.parameter_ranges_dict[p[0]] = (float(p[1]), float(p[2]))
 
     def get_output_postfix(self, join=True):
         parts = []
@@ -710,13 +731,22 @@ class ParameterValuesTask(AnalysisTask):
 
     @property
     def joined_parameter_values(self):
-        return self._joined_parameter_values()
+        return self._joined_parameter_values() or '""'
+
+    def _joined_parameter_ranges(self, join=True):
+        values = OrderedDict(self.parameter_ranges_dict)
+        return ":".join("{}={},{}".format(k, *v) for k, v in values.items()) if join else values
+
+    @property
+    def joined_parameter_ranges(self):
+        return self._joined_parameter_ranges() or '""'
 
 
 class ParameterScanTask(AnalysisTask):
 
-    scan_parameters = law.MultiCSVParameter(
+    scan_parameters = ModelParameters(
         default=(("kl",),),
+        max_len=3,
         description="colon-separated parameters to scan, each in the format "
         "'name[,start,stop[,points]]'; defaults for start and stop values are taken from the used "
         "physics model; the default number of points is inferred from that range so that there is "
@@ -781,19 +811,19 @@ class ParameterScanTask(AnalysisTask):
         self.scan_parameters_dict = OrderedDict()
         for p in self.scan_parameters:
             if len(p) < 4:
-                raise Exception("{!r}: invalid scan parameter size '{}'".format(self, p))
+                raise Exception("invalid scan parameter size '{}'".format(p))
             self.scan_parameters_dict.setdefault(p[0], []).append(p[1:])
 
         # check the number of scan parameters if restricted
         n = self.force_n_scan_parameters
         if isinstance(n, six.integer_types):
             if self.n_scan_parameters != n:
-                raise Exception("{!r}: exactly {} scan parameters required but got '{}'".format(
-                    self, n, self.joined_scan_parameter_names))
+                raise Exception("exactly {} scan parameters required but got '{}'".format(
+                    n, self.joined_scan_parameter_names))
         elif isinstance(n, tuple) and len(n) == 2:
             if not (n[0] <= self.n_scan_parameters <= n[1]):
-                raise Exception("{!r}: between {} and {} scan parameters required but got "
-                    "'{}'".format(self, n[0], n[1], self.joined_scan_parameter_names))
+                raise Exception("between {} and {} scan parameters required but got "
+                    "'{}'".format(n[0], n[1], self.joined_scan_parameter_names))
 
     def has_multiple_scan_ranges(self):
         return any(len(ranges) > 1 for ranges in self.scan_parameters_dict.values())
@@ -801,8 +831,8 @@ class ParameterScanTask(AnalysisTask):
     def _assert_single_scan_range(self, attr):
         for name, ranges in self.scan_parameters_dict.items():
             if len(ranges) > 1:
-                raise Exception("{!r}: {} is only available for scan parameters with one range, "
-                    "but {} has {} ranges".format(self, attr, name, len(ranges)))
+                raise Exception("{} is only available for scan parameters with one range, "
+                    "but {} has {} ranges".format(attr, name, len(ranges)))
 
     def get_output_postfix(self, join=True):
         parts = [["scan"] + [
@@ -835,13 +865,14 @@ class ParameterScanTask(AnalysisTask):
             "{}={}".format(*tpl) for tpl in zip(self.scan_parameter_names, self.branch_data)
         )
 
+    def _joined_scan_ranges(self, join=True):
+        self._assert_single_scan_range("joined_scan_ranges")
+        vals = OrderedDict((name, r[0][:2]) for name, r in self.scan_parameters_dict.items())
+        return ":".join("{}={},{}".format(name, *r) for name, r in vals.items()) if join else vals
+
     @property
     def joined_scan_ranges(self):
-        self._assert_single_scan_range("joined_scan_ranges")
-        return ":".join(
-            "{}={},{}".format(name, ranges[0][0], ranges[0][1])
-            for name, ranges in self.scan_parameters_dict.items()
-        )
+        return self._joined_scan_ranges()
 
     @property
     def joined_scan_points(self):
@@ -963,14 +994,12 @@ class POITask(DatacardTask, ParameterValuesTask):
         if "parameter_values" in params:
             parameter_values = []
             for p in params["parameter_values"]:
-                if "=" not in p:
-                    raise ValueError("invalid parameter value format '{}'".format(p))
-                name, value = p.split("=", 1)
+                name, value = p
                 if name in cls.all_pois and float(value) == 1:
                     continue
                 parameter_values.append(p)
             if cls.sort_parameter_values:
-                parameter_values = sorted(parameter_values, key=lambda p: p.split("=", 1)[0])
+                parameter_values = sorted(parameter_values, key=lambda p: p[0])
             params["parameter_values"] = tuple(parameter_values)
 
         # remove r and k pois from frozen parameters as they are frozen by default, sort the rest
@@ -1134,25 +1163,31 @@ class POIScanTask(POITask, ParameterScanTask):
         if self.force_scan_parameters_equal_pois:
             missing = set(self.pois) - set(self.scan_parameter_names)
             if missing:
-                raise Exception("{!r}: scan parameters {} must match POIs {} or vice versa".format(
-                    self, self.joined_scan_parameter_names, self.joined_pois))
+                raise Exception("scan parameters {} must match POIs {} or vice versa".format(
+                    self.joined_scan_parameter_names, self.joined_pois))
             unknown = set(self.scan_parameter_names) - set(self.pois)
             if unknown:
-                raise Exception("{!r}: scan parameters {} must match POIs {} or vice versa".format(
-                    self, self.joined_scan_parameter_names, self.joined_pois))
+                raise Exception("scan parameters {} must match POIs {} or vice versa".format(
+                    self.joined_scan_parameter_names, self.joined_pois))
 
         # check if scan parameters and pois diverge
         if self.force_scan_parameters_unequal_pois:
             if set(self.pois).intersection(set(self.scan_parameter_names)):
-                raise Exception("{!r}: scan parameters {} and POIs {} must not overlap".format(
-                    self, self.joined_scan_parameter_names, self.joined_pois))
+                raise Exception("scan parameters {} and POIs {} must not overlap".format(
+                    self.joined_scan_parameter_names, self.joined_pois))
 
         # check if parameter values are in scan parameters
         if not self.allow_parameter_values_in_scan_parameters:
             for p in self.parameter_values_dict:
                 if p in self.scan_parameter_names:
-                    raise Exception("{!r}: parameter values are not allowed to be in scan "
-                        "parameters, but found {}".format(self, p))
+                    raise Exception("parameter values are not allowed to be in scan "
+                        "parameters, but found {}".format(p))
+
+        # check if no scan parameter is in custom parameter ranges
+        for p in self.scan_parameter_names:
+            if p in self.parameter_ranges_dict:
+                raise Exception("scan parameters are not allowed to be in parameter ranges, "
+                    "but found {}".format(p))
 
     def get_output_postfix_pois(self):
         use_all_pois = self.allow_parameter_values_in_pois or self.force_scan_parameters_equal_pois

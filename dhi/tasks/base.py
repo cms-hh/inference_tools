@@ -562,6 +562,96 @@ class PlotTask(AnalysisTask):
         return kwargs
 
 
+class ModelParameters(luigi.Parameter):
+
+    def __init__(self, *args, **kwargs):
+        self._unique = kwargs.pop("unique", False)
+        self._sort = kwargs.pop("sort", False)
+        self._min_len = kwargs.pop("min_len", None)
+        self._max_len = kwargs.pop("max_len", None)
+
+        # ensure that the default value is a tuple
+        if "default" in kwargs:
+            kwargs["default"] = law.util.make_tuple(kwargs["default"])
+
+        super(ModelParameters, self).__init__(*args, **kwargs)
+
+    def _make_unique(self, value):
+        if not self._unique:
+            return value
+
+        # keep only the first occurence of a parameter, identified by name
+        _value = []
+        names = set()
+        for v in value:
+            if v[0] not in names:
+                value.append(v)
+                names.add(v[0])
+
+        return tuple(_value)
+
+    def _sort_by_name(self, value):
+        if not self._sort:
+            return value
+
+        _value = sorted(value, key=lambda v: v[0])
+
+        return tuple(_value)
+
+    def _check_len(self, value):
+        s = lambda v: str(v[0]) if len(v) == 1 else "{}={}".format(v[0], ",".join(map(str, v[1:])))
+
+        for v in value:
+            if self._min_len is not None and len(v) - 1 < self._min_len:
+                raise ValueError("the parameter '{}' contains {} value(s), but a minimum of {} is "
+                    "required".format(s(v), len(v) - 1, self._min_len))
+
+            if self._max_len is not None and len(v) - 1 > self._max_len:
+                raise ValueError("the parameter '{}' contains {} value(s), but a maximum of {} is "
+                    "required".format(s(v), len(v) - 1, self._max_len))
+
+    def parse(self, inp):
+        if not inp or inp == law.NO_STR:
+            value = tuple()
+        elif isinstance(inp, (tuple, list)) or law.util.is_lazy_iterable(inp):
+            value = law.util.make_tuple(inp)
+        elif isinstance(inp, six.string_types):
+            value = []
+            for s in inp.split(":"):
+                v = []
+                if "=" in s:
+                    name, s = s.split("=", 1)
+                    v.append(name)
+                v.extend(s.split(","))
+                value.append(tuple(v))
+            value = tuple(value)
+        else:
+            value = (inp,)
+
+        # apply uniqueness, sort, length and choices checks
+        value = self._make_unique(value)
+        value = self._sort_by_name(value)
+        self._check_len(value)
+
+        return value
+
+    def serialize(self, value):
+        if not value:
+            value = tuple()
+
+        value = law.util.make_tuple(value)
+
+        # apply uniqueness, sort, length and choices checks
+        value = self._make_unique(value)
+        value = self._sort_by_name(value)
+        self._check_len(value)
+
+        return ":".join(
+            str(v[0]) if len(v) == 1 else ("{}={}".format(v[0], ",".join(map(str, v[1:]))))
+            for v in value
+        )
+
+
 @law.decorator.factory(accept_generator=True)
 def view_output_plots(fn, opts, task, *args, **kwargs):
     def before_call():

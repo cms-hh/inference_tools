@@ -114,6 +114,7 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
             " --seed {self.branch}"
             " --algo {self.algorithm}"
             " --redefineSignalPOIs {self.joined_pois}"
+            " --setParameterRanges {self.joined_parameter_ranges}"
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
