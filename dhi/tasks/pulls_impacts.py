@@ -252,11 +252,17 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
             d = OrderedDict()
             name = branch_map[b]
+            # parameter name
             d["name"] = name
+            # parameter pdf type
             d["type"] = params[name]["type"]
+            # list of groups
             d["groups"] = params[name]["groups"]
+            # prefit values in a harvester-compatible format, i.e., down, nominal, up
             d["prefit"] = params[name]["prefit"]
+            # postfit values in a harvester-compatible format, i.e., down, nominal, up
             d["fit"] = vals[name][[1, 0, 2]].tolist()
+            # POI impact values
             d[poi] = vals[poi][[1, 0, 2]].tolist()
             d["impacts"] = {
                 poi: [
@@ -264,6 +270,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
                     d[poi][2] - d[poi][1],
                 ]
             }
+            # maximum impact on that POI
             d["impact_" + poi] = max(map(abs, d["impacts"][poi]))
 
             data["params"].append(d)

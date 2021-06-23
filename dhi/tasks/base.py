@@ -528,11 +528,9 @@ class PlotTask(AnalysisTask):
             value = getattr(self, value)
         return None if value == -1000.0 else value
 
-    def create_plot_names(self, *parts):
-        if len(parts) == 1:
-            parts = (law.util.make_list(parts[0]),)
+    def create_plot_names(self, parts):
         if self.plot_postfix and self.plot_postfix != law.NO_STR:
-            parts += (self.plot_postfix,)
+            parts.append((self.plot_postfix,))
 
         return ["{}.{}".format(self.join_postfix(parts), ext) for ext in self.file_types]
 
