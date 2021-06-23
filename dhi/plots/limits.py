@@ -246,7 +246,7 @@ def plot_limit_scan(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 
@@ -428,7 +428,7 @@ def plot_limit_scans(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 
@@ -720,7 +720,7 @@ def plot_limit_points(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 
@@ -964,7 +964,7 @@ def plot_limit_scan_2d(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 
@@ -1121,7 +1121,7 @@ def plot_benchmark_limits(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 

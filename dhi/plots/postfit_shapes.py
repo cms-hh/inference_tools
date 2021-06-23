@@ -11,7 +11,9 @@ import six
 import uproot
 
 from dhi.config import poi_data, campaign_labels, colors
-from dhi.util import import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors
+from dhi.util import (
+    import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors, make_list,
+)
 from dhi.plots.util import use_style, create_model_parameters
 
 
@@ -218,7 +220,7 @@ def plot_s_over_b(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 

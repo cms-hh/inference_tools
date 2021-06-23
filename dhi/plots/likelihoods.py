@@ -172,7 +172,7 @@ def plot_likelihood_scan_1d(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 
@@ -342,7 +342,7 @@ def plot_likelihood_scans_1d(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 
@@ -529,7 +529,7 @@ def plot_likelihood_scan_2d(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 
@@ -695,7 +695,7 @@ def plot_likelihood_scans_2d(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 
@@ -820,7 +820,8 @@ def plot_nuisance_likelihood_scans(
 
         # start the multi pdf file
         if first_canvas:
-            canvas.Print(paths[0] + "[")
+            for path in make_list(paths):
+                canvas.Print(path + ("[" if path.endswith(".pdf") else ""))
 
         # get y range
         y_min_value = min(min(curve_data[name][1]) for name in names)
@@ -887,11 +888,13 @@ def plot_nuisance_likelihood_scans(
         # draw objects, update and save
         r.routines.draw_objects(draw_objs)
         r.update_canvas(canvas)
-        canvas.Print(paths[0])
+        for path in make_list(paths):
+            canvas.Print(path)
 
     # finish the pdf
     if canvas:
-        canvas.Print(paths[0] + "]")
+        for path in make_list(paths):
+            canvas.Print(path + ("]" if path.endswith(".pdf") else ""))
 
 
 def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):

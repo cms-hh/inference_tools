@@ -196,7 +196,7 @@ def plot_significance_scan_1d(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 
@@ -352,7 +352,7 @@ def plot_significance_scans_1d(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 
@@ -521,5 +521,5 @@ def plot_significance_scan_2d(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)

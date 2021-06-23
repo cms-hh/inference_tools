@@ -10,7 +10,7 @@ import numpy as np
 import scipy.stats
 
 from dhi.config import campaign_labels, colors, br_hh_names
-from dhi.util import import_ROOT, to_root_latex, create_tgraph
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, make_list
 from dhi.plots.util import use_style, create_model_parameters, get_y_range
 
 
@@ -125,7 +125,7 @@ def plot_gof_distribution(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 
@@ -307,7 +307,7 @@ def plot_gofs(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 

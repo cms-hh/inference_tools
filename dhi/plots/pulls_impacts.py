@@ -13,7 +13,7 @@ import six
 import numpy as np
 
 from dhi.config import poi_data, campaign_labels, colors
-from dhi.util import import_ROOT, multi_match, to_root_latex, linspace, colored
+from dhi.util import import_ROOT, multi_match, to_root_latex, linspace, colored, make_list
 from dhi.plots.util import use_style
 
 
@@ -352,7 +352,7 @@ def plot_pulls_impacts(
         # update and save
         # when there is more than one page, use roots "logic" to write multiple pages
         r.update_canvas(canvas)
-        for path in paths:
+        for path in make_list(paths):
             if selected_page < 0 and n_pages > 1 and path.endswith(".pdf"):
                 flag = {0: "(", n_pages - 1: ")"}.get(page, "")
                 canvas.Print(path + flag)

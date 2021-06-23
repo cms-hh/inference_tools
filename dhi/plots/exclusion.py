@@ -9,7 +9,7 @@ import math
 import numpy as np
 
 from dhi.config import poi_data, campaign_labels, colors, br_hh_names
-from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, make_list
 from dhi.plots.limits import evaluate_limit_scan_1d, _print_excluded_ranges
 from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
 from dhi.plots.util import (
@@ -244,7 +244,7 @@ def plot_exclusion_and_bestfit_1d(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 
@@ -545,7 +545,7 @@ def plot_exclusion_and_bestfit_2d(
 
     # save
     r.update_canvas(canvas)
-    for path in paths:
+    for path in make_list(paths):
         canvas.SaveAs(path)
 
 
