@@ -528,11 +528,9 @@ class PlotTask(AnalysisTask):
             value = getattr(self, value)
         return None if value == -1000.0 else value
 
-    def create_plot_names(self, *parts):
-        if len(parts) == 1:
-            parts = (law.util.make_list(parts[0]),)
+    def create_plot_names(self, parts):
         if self.plot_postfix and self.plot_postfix != law.NO_STR:
-            parts += (self.plot_postfix,)
+            parts.append((self.plot_postfix,))
 
         return ["{}.{}".format(self.join_postfix(parts), ext) for ext in self.file_types]
 
@@ -559,6 +557,40 @@ class PlotTask(AnalysisTask):
 
     def update_plot_kwargs(self, kwargs):
         return kwargs
+
+
+class BoxPlotTask(PlotTask):
+
+    pad_width = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="width of the pad in pixels; uses the default of the plot when empty; no "
+        "default",
+    )
+    left_margin = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="left margin of the pad in pixels; uses the default of the plot when empty; no "
+        "default",
+    )
+    right_margin = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="right margin of the pad in pixels; uses the default of the plot when empty; no "
+        "default",
+    )
+    entry_height = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="vertical height of each entry in pixels; uses the default of the plot when "
+        "empty; no default",
+    )
+    label_size = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="size of the nuisance labels on the y-axis; uses the default of the plot when "
+        "empty; no default",
+    )
 
 
 class ModelParameters(luigi.Parameter):

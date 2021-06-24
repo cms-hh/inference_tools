@@ -1019,6 +1019,28 @@ def expand_file_lines(paths, skip_comments=True):
     return lines
 
 
+def prepare_prefit_var(var, pdf, epsilon=0.001):
+    """
+    Prepares a RooRealVar *var* for the extraction of its prefit values using the corresponding
+    *pdf* object. Internally, this is done using a made-up fit with precision *epsilon* following a
+    recipe in the CombineHarvester (see https://github.com/cms-analysis/CombineHarvester/blob/f1029e160701140ce3a1c1f44a991315fd272886/CombineTools/python/combine/utils.py#L87-L95).
+    *var* is returned.
+    """
+    ROOT = import_ROOT()
+
+    if var and pdf:
+        nll = ROOT.RooConstraintSum("NLL", "", ROOT.RooArgSet(pdf), ROOT.RooArgSet(var))
+        minimizer = ROOT.RooMinimizer(nll)
+        minimizer.setEps(epsilon)
+        minimizer.setErrorLevel(0.5)
+        minimizer.setPrintLevel(-1)
+        minimizer.setVerbose(False)
+        minimizer.minimize("Minuit2", "migrad")
+        minimizer.minos(ROOT.RooArgSet(var))
+
+    return var
+
+
 def get_workspace_parameters(workspace, workspace_name="w", config_name="ModelConfig"):
     """
     Takes a workspace stored in a ROOT file *workspace* with the name *workspace_name* and gathers
@@ -1027,11 +1049,13 @@ def get_workspace_parameters(workspace, workspace_name="w", config_name="ModelCo
     functionality is loosely based on ``CombineHarvester.CombineTools.combine.utils``.
     """
     ROOT = import_ROOT()
+    from HiggsAnalysis.CombinedLimit.RooAddPdfFixer import FixAll
 
     # read the workspace
     workspace = real_path(workspace)
     f = ROOT.TFile.Open(workspace)
     w = f.Get(workspace_name)
+    FixAll(w)
 
     # get all model parameters
     config = w.genobj(config_name)
@@ -1071,11 +1095,12 @@ def get_workspace_parameters(workspace, workspace_name="w", config_name="ModelCo
         groups = [attr.replace(start, "") for attr in param.attributes() if attr.startswith(start)]
 
         # prefit values
-        nom = param.getVal()
+        var = prepare_prefit_var(param, pdf)
+        nom = var.getVal()
         if pdf_type == "Unconstrained":
             prefit = [nom, nom, nom]
         else:
-            prefit = [nom + param.getErrorLo(), nom, nom + param.getErrorHi()]
+            prefit = [nom + var.getErrorLo(), nom, nom + var.getErrorHi()]
 
         # store it
         params[param.GetName()] = {

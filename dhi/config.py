@@ -121,9 +121,6 @@ poi_data = DotDict(
 for poi, data in poi_data.items():
     data["label_math"] = "${}$".format(data.label)
 
-# nuisance parameters labels
-nuisance_labels = {}
-
 # colors
 colors = DotDict(
     root=ROOTColorGetter(

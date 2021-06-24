@@ -61,6 +61,30 @@ def import_ROOT():
     return _ROOT
 
 
+def import_file(path, attr=None):
+    """
+    Loads the content of a python file located at *path* and returns its package content as a
+    dictionary. When *attr* is set, only the attribute with that name is returned.
+
+    The file is not required to be importable as its content is loaded directly into the
+    interpreter. While this approach is not necessarily clean, it can be useful in places where
+    custom user code must be loaded.
+    """
+    # load the package contents (do not try this at home)
+    path = os.path.expandvars(os.path.expanduser(path))
+    pkg = {}
+    with open(path, "r") as f:
+        exec(f.read(), pkg)
+
+    # extract a particular attribute
+    if attr:
+        if attr not in pkg:
+            raise AttributeError("no local member '{}' found in file {}".format(attr, path))
+        return pkg[attr]
+
+    return pkg
+
+
 class DotDict(dict):
     """
     Dictionary providing item access via attributes.

@@ -10,9 +10,9 @@ import law
 import luigi
 import numpy as np
 
-from dhi.tasks.base import HTCondorWorkflow, view_output_plots
+from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
-from dhi.config import poi_data, nuisance_labels
+from dhi.config import poi_data
 from dhi.datacard_tools import get_workspace_parameters
 
 
@@ -252,11 +252,17 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
             d = OrderedDict()
             name = branch_map[b]
+            # parameter name
             d["name"] = name
+            # parameter pdf type
             d["type"] = params[name]["type"]
+            # list of groups
             d["groups"] = params[name]["groups"]
+            # prefit values in a harvester-compatible format, i.e., down, nominal, up
             d["prefit"] = params[name]["prefit"]
+            # postfit values in a harvester-compatible format, i.e., down, nominal, up
             d["fit"] = vals[name][[1, 0, 2]].tolist()
+            # POI impact values
             d[poi] = vals[poi][[1, 0, 2]].tolist()
             d["impacts"] = {
                 poi: [
@@ -264,6 +270,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
                     d[poi][2] - d[poi][1],
                 ]
             }
+            # maximum impact on that POI
             d["impact_" + poi] = max(map(abs, d["impacts"][poi]))
 
             data["params"].append(d)
@@ -272,7 +279,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         self.output().dump(data, indent=4, formatter="json")
 
 
-class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
+class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
 
     keep_failures = MergePullsAndImpacts.keep_failures
     hide_best_fit = luigi.BoolParameter(
@@ -317,23 +324,15 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         "is a rational number with few digits; when not positive, an automatic value is chosen; "
         "default: -1.0",
     )
-    left_margin = luigi.IntParameter(
-        default=law.NO_INT,
+    labels = luigi.Parameter(
+        default=law.NO_STR,
         significant=False,
-        description="left margin of the pad in pixels; uses the default of the plot when empty; no "
-        "default",
-    )
-    entry_height = luigi.IntParameter(
-        default=law.NO_INT,
-        significant=False,
-        description="vertical height of each entry in pixels; uses the default of the plot when "
-        "empty; no default",
-    )
-    label_size = luigi.IntParameter(
-        default=law.NO_INT,
-        significant=False,
-        description="size of the nuisance labels on the y-axis; uses the default of the plot when "
-        "empty; no default",
+        description="a python file containing a function 'rename_nuisance' taking a single "
+        "argument, or a json file containing a mapping 'name' -> 'new_name' to translate nuisance "
+        "parameter names with (ROOT) latex support; key-value pairs support pattern replacement "
+        r"with regular expressions, e.g. '^prefix_(.*)$' -> 'new_\1', where keys are forced to "
+        r"start with '^' and end with '$', and '\n' in values are replaced with the n-th match; "
+        "no default",
     )
 
     x_min = None
@@ -347,7 +346,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         super(PlotPullsAndImpacts, self).__init__(*args, **kwargs)
 
         # complain when parameters_per_page is set for non pdf file types
-        if self.parameters_per_page > 0 and "pdf" not in self.file_types:
+        if self.parameters_per_page > 0 and self.page < 0 and "pdf" not in self.file_types:
             self.logger.warning("parameters_per_page is only supported for file_type 'pdf', but "
                 "got {}".format(self.file_types))
             self.parameters_per_page = -1
@@ -400,9 +399,11 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
             pull_range=self.pull_range,
             impact_range=self.impact_range,
             best_fit_value=not self.hide_best_fit,
-            left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
-            entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
-            labels=nuisance_labels,
+            labels=None if self.labels == law.NO_STR else self.labels,
             label_size=None if self.label_size == law.NO_INT else self.label_size,
+            pad_width=None if self.pad_width == law.NO_INT else self.pad_width,
+            left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
+            right_margin=None if self.right_margin == law.NO_INT else self.right_margin,
+            entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )

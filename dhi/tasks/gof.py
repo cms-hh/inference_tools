@@ -7,7 +7,7 @@ Tasks related to significance calculation.
 import law
 import luigi
 
-from dhi.tasks.base import HTCondorWorkflow, view_output_plots
+from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, view_output_plots
 from dhi.tasks.combine import (
     MultiDatacardTask,
     CombineCommandTask,
@@ -215,7 +215,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
         )
 
 
-class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
+class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask, BoxPlotTask):
 
     toys = law.CSVParameter(
         cls=luigi.IntParameter,
@@ -230,12 +230,6 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
         description="comma-separated list of numbers per datacard sequence in --multi-datacards to "
         "define the amount of toys to generate per task; when one value is given, it is used for "
         "all datacard sequences; default: (1,)",
-    )
-    left_margin = luigi.IntParameter(
-        default=law.NO_INT,
-        significant=False,
-        description="the left margin of the pad in pixels; uses the default of the plot when "
-        "empty; no default"
     )
 
     y_min = None
@@ -314,7 +308,11 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask):
             n_bins=self.n_bins,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
+            pad_width=None if self.pad_width == law.NO_INT else self.pad_width,
             left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
+            right_margin=None if self.right_margin == law.NO_INT else self.right_margin,
+            entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
+            label_size=None if self.label_size == law.NO_INT else self.label_size,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )

@@ -7,14 +7,14 @@ Tasks for obtaining exclusion plots.
 import law
 import luigi
 
-from dhi.tasks.base import view_output_plots
+from dhi.tasks.base import BoxPlotTask, view_output_plots
 from dhi.tasks.combine import MultiDatacardTask, POIScanTask, POIPlotTask
 from dhi.tasks.limits import MergeUpperLimits, PlotUpperLimits
 from dhi.tasks.likelihoods import MergeLikelihoodScan, PlotLikelihoodScan
 from dhi.config import br_hh
 
 
-class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
+class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, BoxPlotTask):
 
     best_fit = luigi.BoolParameter(
         default=True,
@@ -26,18 +26,6 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
         default=tuple(),
         significant=False,
         description="comma-separated vertical positions of horizontal lines; no default",
-    )
-    left_margin = luigi.IntParameter(
-        default=law.NO_INT,
-        significant=False,
-        description="left margin of the pad in pixels; uses the default of the plot when empty; no "
-        "default",
-    )
-    entry_height = luigi.IntParameter(
-        default=law.NO_INT,
-        significant=False,
-        description="vertical height of each entry in pixels; uses the default of the plot when "
-        "empty; no default",
     )
 
     y_min = None
@@ -127,8 +115,11 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask):
             scan_parameter=self.scan_parameter_names[0],
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
+            pad_width=None if self.pad_width == law.NO_INT else self.pad_width,
             left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
+            right_margin=None if self.right_margin == law.NO_INT else self.right_margin,
             entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
+            label_size=None if self.label_size == law.NO_INT else self.label_size,
             model_parameters=self.get_shown_parameters(),
             h_lines=self.h_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
