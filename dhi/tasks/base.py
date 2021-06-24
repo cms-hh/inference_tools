@@ -559,6 +559,40 @@ class PlotTask(AnalysisTask):
         return kwargs
 
 
+class BoxPlotTask(PlotTask):
+
+    pad_width = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="width of the pad in pixels; uses the default of the plot when empty; no "
+        "default",
+    )
+    left_margin = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="left margin of the pad in pixels; uses the default of the plot when empty; no "
+        "default",
+    )
+    right_margin = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="right margin of the pad in pixels; uses the default of the plot when empty; no "
+        "default",
+    )
+    entry_height = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="vertical height of each entry in pixels; uses the default of the plot when "
+        "empty; no default",
+    )
+    label_size = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="size of the nuisance labels on the y-axis; uses the default of the plot when "
+        "empty; no default",
+    )
+
+
 class ModelParameters(luigi.Parameter):
 
     def __init__(self, *args, **kwargs):
