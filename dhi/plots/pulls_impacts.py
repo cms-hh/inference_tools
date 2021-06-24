@@ -41,6 +41,10 @@ def plot_pulls_impacts(
     right_margin=None,
     entry_height=None,
     label_size=None,
+    pad_width=None,
+    left_margin=None,
+    right_margin=None,
+    entry_height=None,
     campaign=None,
 ):
     """
