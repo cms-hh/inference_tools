@@ -327,10 +327,12 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
     labels = luigi.Parameter(
         default=law.NO_STR,
         significant=False,
-        description="a json file containing a mapping 'name' -> 'new_name' to translate nuisance "
-        "parameter names with (ROOT) latex support; also supports pattern replacement with regular "
-        r"expressions, e.g. '^prefix_(.*)$' -> 'new_\1', where keys are forced to start with '^' "
-        r"and end with '$', and '\n' in values are replaced with the n-th match; no default",
+        description="a python file containing a function 'rename_nuisance' taking a single "
+        "argument, or a json file containing a mapping 'name' -> 'new_name' to translate nuisance "
+        "parameter names with (ROOT) latex support; key-value pairs support pattern replacement "
+        r"with regular expressions, e.g. '^prefix_(.*)$' -> 'new_\1', where keys are forced to "
+        r"start with '^' and end with '$', and '\n' in values are replaced with the n-th match; "
+        "no default",
     )
 
     x_min = None
