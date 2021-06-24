@@ -36,6 +36,10 @@ def plot_pulls_impacts(
     impact_range=-1,
     best_fit_value=True,
     labels=None,
+    pad_width=None,
+    left_margin=None,
+    right_margin=None,
+    entry_height=None,
     label_size=None,
     pad_width=None,
     left_margin=None,
@@ -71,8 +75,8 @@ def plot_pulls_impacts(
     be a dictionary or a json file containing a dictionary that maps nuisances names to labels shown
     in the plot. When a key starts with "^" and ends with "$" it is interpreted as a regular
     expression. Matched groups can be reused in the substituted name via '\n' to reference the n-th
-    group (following the common re.sub format). *label_size*, *pad_width*, *left_margin*,
-    *right_margin* and *entry_height* can be set to a size in pixels to overwrite internal defaults.
+    group (following the common re.sub format). *pad_width*, *left_margin*, *right_margin*,
+    *entry_height* and *label_size* can be set to a size in pixels to overwrite internal defaults.
     *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/pullsandimpacts.html
@@ -179,7 +183,7 @@ def plot_pulls_impacts(
         _params = params[page * parameters_per_page:(page + 1) * parameters_per_page]
         n = len(_params)
 
-        # get the canvas height
+        # get the pad height
         pad_height = n * entry_height + head_space + top_margin + bottom_margin
 
         # get relative pad margins
@@ -300,7 +304,7 @@ def plot_pulls_impacts(
             if not (x_min < x < x_max):
                 continue
             l = ROOT.TLine(x, 0, x, y_max)
-            c = colors.light_grey_trans_50 if x % 1. else colors.dark_grey
+            c = colors.light_grey if x % 1. else colors.dark_grey
             r.setup_line(l, props={"NDC": False, "LineWidth": 1, "LineColor": c, "LineStyle": 3})
             draw_objs.append(l)
 

@@ -29,8 +29,11 @@ def plot_exclusion_and_bestfit_1d(
     scan_parameter,
     x_min=None,
     x_max=None,
+    pad_width=None,
     left_margin=None,
+    right_margin=None,
     entry_height=None,
+    label_size=None,
     model_parameters=None,
     h_lines=None,
     campaign=None,
@@ -63,11 +66,11 @@ def plot_exclusion_and_bestfit_1d(
         )
 
     *x_min* and *x_max* define the range of the x-axis and default to the maximum range of poi
-    values passed in data. *left_margin* controls the left margin of the pad in pixels, and
-    *entry_height* the vertical height of each entry box. *model_parameters* can be a dictionary of
-    key-value pairs of model parameters. *h_lines* can be a list of integers denoting positions
-    where additional horizontal lines are drawn for visual guidance. *campaign* should refer to the
-    name of a campaign label defined in *dhi.config.campaign_labels*.
+    values passed in data. *pad_width*, *left_margin*, *right_margin*, *entry_height* and
+    *label_size* can be set to a size in pixels to overwrite internal defaults. *model_parameters*
+    can be a dictionary of key-value pairs of model parameters. *h_lines* can be a list of integers
+    denoting positions where additional horizontal lines are drawn for visual guidance. *campaign*
+    should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/exclusion.html#comparison-of-exclusion-performance
     """
@@ -89,29 +92,32 @@ def plot_exclusion_and_bestfit_1d(
         x_max = max(scan_values)
 
     # some constants for plotting
-    canvas_width = 800  # pixels
+    pad_width = pad_width or 800  # pixels
     top_margin = 35  # pixels
     bottom_margin = 70  # pixels
     left_margin = left_margin or 150  # pixels
+    right_margin = right_margin or 20  # pixels
     entry_height = entry_height or 90  # pixels
     head_space = 130  # pixels
+    label_size = label_size or 22
 
-    # get the canvas height
-    canvas_height = n * entry_height + head_space + top_margin + bottom_margin
+    # get the pad height
+    pad_height = n * entry_height + head_space + top_margin + bottom_margin
 
     # get relative pad margins and fill into props
     pad_margins = {
-        "TopMargin": float(top_margin) / canvas_height,
-        "BottomMargin": float(bottom_margin) / canvas_height,
-        "LeftMargin": float(left_margin) / canvas_width,
+        "TopMargin": float(top_margin) / pad_height,
+        "BottomMargin": float(bottom_margin) / pad_height,
+        "LeftMargin": float(left_margin) / pad_width,
+        "RightMargin": float(right_margin) / pad_width,
     }
 
     # get the y maximum
-    y_max = (canvas_height - top_margin - bottom_margin) / float(entry_height)
+    y_max = (pad_height - top_margin - bottom_margin) / float(entry_height)
 
     # setup the default style and create canvas and pad
     r.setup_style()
-    canvas, (pad,) = r.routines.create_canvas(width=canvas_width, height=canvas_height,
+    canvas, (pad,) = r.routines.create_canvas(width=pad_width, height=pad_height,
         pad_props=pad_margins)
     pad.cd()
     draw_objs = []
@@ -208,7 +214,7 @@ def plot_exclusion_and_bestfit_1d(
         label_x = r.get_x(10, canvas)
         label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
         label = ROOT.TLatex(label_x, label_y, label)
-        r.setup_latex(label, props={"NDC": True, "TextAlign": 12, "TextSize": 22})
+        r.setup_latex(label, props={"NDC": True, "TextAlign": 12, "TextSize": label_size})
         draw_objs.append(label)
 
         # left and right ticks

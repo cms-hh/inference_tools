@@ -7,7 +7,7 @@ Tasks related to upper limits.
 import law
 import luigi
 
-from dhi.tasks.base import HTCondorWorkflow, view_output_plots
+from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, view_output_plots
 from dhi.tasks.combine import (
     MultiDatacardTask,
     MultiHHModelTask,
@@ -553,7 +553,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         )
 
 
-class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
+class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask, BoxPlotTask):
 
     xsec = PlotUpperLimits.xsec
     br = PlotUpperLimits.br
@@ -573,18 +573,6 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
         default=tuple(),
         significant=False,
         description="comma-separated vertical positions of horizontal lines; no default",
-    )
-    left_margin = luigi.IntParameter(
-        default=law.NO_INT,
-        significant=False,
-        description="left margin of the pad in pixels; uses the default of the plot when empty; no "
-        "default",
-    )
-    entry_height = luigi.IntParameter(
-        default=law.NO_INT,
-        significant=False,
-        description="vertical height of each entry in pixels; uses the default of the plot when "
-        "empty; no default",
     )
 
     y_min = None
@@ -729,8 +717,11 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask):
             x_log=self.x_log,
             xsec_unit=xsec_unit,
             hh_process=self.br if xsec_unit and self.br in br_hh else None,
+            pad_width=None if self.pad_width == law.NO_INT else self.pad_width,
             left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
+            right_margin=None if self.right_margin == law.NO_INT else self.right_margin,
             entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
+            label_size=None if self.label_size == law.NO_INT else self.label_size,
             model_parameters=self.get_shown_parameters(),
             h_lines=self.h_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
