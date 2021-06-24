@@ -35,10 +35,12 @@ def plot_pulls_impacts(
     pull_range=2,
     impact_range=-1,
     best_fit_value=True,
-    left_margin=None,
-    entry_height=None,
     labels=None,
     label_size=None,
+    pad_width=None,
+    left_margin=None,
+    right_margin=None,
+    entry_height=None,
     campaign=None,
 ):
     """
@@ -65,11 +67,13 @@ def plot_pulls_impacts(
 
     *best_fit_value* can be a 3-tuple (central value, unsigned +error, unsigned -error) that is
     shown as a text at the top of the plot. When just *True*, it is extracted from *data* which
-    contains the value following combine's NLL interpolation. *left_margin* controls the left margin
-    of the pad in pixels, and *entry_height* the vertical height of each entry box. *labels* should
+    contains the value following combine's NLL interpolation. *labels* should
     be a dictionary or a json file containing a dictionary that maps nuisances names to labels shown
-    in the plot. *label_size* controls the size of the nuisance labels in pixels. *campaign* should
-    refer to the name of a campaign label defined in dhi.config.campaign_labels.
+    in the plot. When a key starts with "^" and ends with "$" it is interpreted as a regular
+    expression. Matched groups can be reused in the substituted name via '\n' to reference the n-th
+    group (following the common re.sub format). *label_size*, *pad_width*, *left_margin*,
+    *right_margin* and *entry_height* can be set to a size in pixels to overwrite internal defaults.
+    *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/pullsandimpacts.html
     """
@@ -157,10 +161,11 @@ def plot_pulls_impacts(
     n_pages = int(math.ceil(float(len(params)) / parameters_per_page))
 
     # some constants for plotting
-    canvas_width = 1000  # pixels
+    pad_width = pad_width or 1000  # pixels
     top_margin = 70  # pixels
     bottom_margin = 70  # pixels
     left_margin = left_margin or 250  # pixels
+    right_margin = right_margin or 20  # pixels
     entry_height = entry_height or 30  # pixels
     head_space = 130  # pixels
     x_min, x_max = -pull_range, pull_range
@@ -175,17 +180,18 @@ def plot_pulls_impacts(
         n = len(_params)
 
         # get the canvas height
-        canvas_height = n * entry_height + head_space + top_margin + bottom_margin
+        pad_height = n * entry_height + head_space + top_margin + bottom_margin
 
         # get relative pad margins
         pad_margins = {
-            "TopMargin": float(top_margin) / canvas_height,
-            "BottomMargin": float(bottom_margin) / canvas_height,
-            "LeftMargin": float(left_margin) / canvas_width,
+            "TopMargin": float(top_margin) / pad_height,
+            "BottomMargin": float(bottom_margin) / pad_height,
+            "LeftMargin": float(left_margin) / pad_width,
+            "RightMargin": float(right_margin) / pad_width,
         }
 
         # get the y maximum
-        y_max = (canvas_height - top_margin - bottom_margin) / float(entry_height)
+        y_max = (pad_height - top_margin - bottom_margin) / float(entry_height)
 
         # define the impact_range and derive the x_ratio
         if auto_impact_range:
@@ -222,7 +228,7 @@ def plot_pulls_impacts(
 
         # setup the default style and create canvas and pad
         r.setup_style()
-        canvas, (pad,) = r.routines.create_canvas(width=canvas_width, height=canvas_height,
+        canvas, (pad,) = r.routines.create_canvas(width=pad_width, height=pad_height,
             pad_props=pad_margins)
         pad.cd()
         draw_objs = []

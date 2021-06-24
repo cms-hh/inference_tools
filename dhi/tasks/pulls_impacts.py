@@ -10,7 +10,7 @@ import law
 import luigi
 import numpy as np
 
-from dhi.tasks.base import HTCondorWorkflow, view_output_plots
+from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
 from dhi.config import poi_data
 from dhi.datacard_tools import get_workspace_parameters
@@ -279,7 +279,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         self.output().dump(data, indent=4, formatter="json")
 
 
-class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
+class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
 
     keep_failures = MergePullsAndImpacts.keep_failures
     hide_best_fit = luigi.BoolParameter(
@@ -331,24 +331,6 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
         "parameter names with (ROOT) latex support; also supports pattern replacement with regular "
         r"expressions, e.g. '^prefix_(.*)$' -> 'new_\1', where keys are forced to start with '^' "
         r"and end with '$', and '\n' in values are replaced with the n-th match; no default",
-    )
-    left_margin = luigi.IntParameter(
-        default=law.NO_INT,
-        significant=False,
-        description="left margin of the pad in pixels; uses the default of the plot when empty; no "
-        "default",
-    )
-    entry_height = luigi.IntParameter(
-        default=law.NO_INT,
-        significant=False,
-        description="vertical height of each entry in pixels; uses the default of the plot when "
-        "empty; no default",
-    )
-    label_size = luigi.IntParameter(
-        default=law.NO_INT,
-        significant=False,
-        description="size of the nuisance labels on the y-axis; uses the default of the plot when "
-        "empty; no default",
     )
 
     x_min = None
@@ -415,9 +397,11 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask):
             pull_range=self.pull_range,
             impact_range=self.impact_range,
             best_fit_value=not self.hide_best_fit,
-            left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
-            entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             labels=None if self.labels == law.NO_STR else self.labels,
             label_size=None if self.label_size == law.NO_INT else self.label_size,
+            pad_width=None if self.pad_width == law.NO_INT else self.pad_width,
+            left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
+            right_margin=None if self.right_margin == law.NO_INT else self.right_margin,
+            entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
