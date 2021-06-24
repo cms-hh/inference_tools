@@ -282,7 +282,7 @@ def plot_pulls_impacts(
             label = to_root_latex(labels.get(param.name, param.name))
             if param.invalid:
                 label = "#bf{{{}}}".format(label)
-            label = ROOT.TLatex(x_min - (x_max - x_min) * 0.0125, n - i - 0.5, label)
+            label = ROOT.TLatex(x_min - (x_max - x_min) * 0.01, n - i - 0.5, label)
             r.setup_latex(label, props={"NDC": False, "TextAlign": 32, "TextSize": label_size})
             draw_objs.append(label)
 
@@ -323,7 +323,7 @@ def plot_pulls_impacts(
             if not (x_min < x < x_max):
                 continue
             l = ROOT.TLine(x, 0, x, y_max)
-            c = colors.light_grey if x % 1. else colors.dark_grey
+            c = colors.dark_grey_trans_30 if x % 1. else colors.dark_grey
             r.setup_line(l, props={"NDC": False, "LineWidth": 1, "LineColor": c, "LineStyle": 3})
             draw_objs.append(l)
 
