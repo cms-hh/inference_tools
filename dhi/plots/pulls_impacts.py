@@ -6,6 +6,7 @@ Pull and impact plots using ROOT.
 
 import os
 import json
+import re
 import math
 import array
 
@@ -135,6 +136,20 @@ def plot_pulls_impacts(
             labels = json.load(f)
     elif not labels:
         labels = {}
+
+    # expand regular expressions through eager interpolation using parameter names
+    for k, v in labels.items():
+        if not k.startswith("^") or not k.endswith("$"):
+            continue
+        for param in params:
+            # skip explicit translations, effectively giving them priority
+            if param.name in labels:
+                continue
+            # apply the pattern
+            new_name = re.sub(k, v, param.name)
+            # store a translation label when the name has changed
+            if new_name != param.name:
+                labels[param.name] = new_name
 
     # determine the number of pages
     if parameters_per_page < 1:
