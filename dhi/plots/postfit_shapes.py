@@ -164,7 +164,7 @@ def plot_s_over_b(
         d = hist_d1.GetBinContent(i + 1)
         d_err = poisson_asym_errors(d)
         # zero safe b value, leading to almost 0 when used as denominator
-        d_safe = d or 1e15
+        b_safe = b or 1e15
         # signal and background
         hist_s_post2.SetBinContent(i + 1, s / b_safe)
         hist_b_post2.SetBinContent(i + 1, 1.)
