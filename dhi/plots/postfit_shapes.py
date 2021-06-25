@@ -173,7 +173,7 @@ def plot_s_over_b(
         graph_d1.SetPointError(i, 0., 0., d_err[1], d_err[0])
         # data points in the ratio
         graph_d2.SetPoint(i, x, d / b_safe)
-        graph_d2.SetPointError(i, 0., 0., d_err[1] / b, d_err[0] / b_safe)
+        graph_d2.SetPointError(i, 0., 0., d_err[1] / b_safe, d_err[0] / b_safe)
         # uncertainty in the ratio
         graph_b_err2.SetPoint(i, x, 1.)
         graph_b_err2.SetPointError(i, 0.5 * w, 0.5 * w, b_err_down / b_safe, b_err_up / b_safe)
