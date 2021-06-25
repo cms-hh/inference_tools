@@ -163,18 +163,20 @@ def plot_s_over_b(
         b_err_down = hist_b_err_down1.GetBinContent(i + 1)
         d = hist_d1.GetBinContent(i + 1)
         d_err = poisson_asym_errors(d)
+        # zero safe b value, leading to almost 0 when used as denominator
+        d_safe = d or 1e15
         # signal and background
-        hist_s_post2.SetBinContent(i + 1, s / b)
+        hist_s_post2.SetBinContent(i + 1, s / b_safe)
         hist_b_post2.SetBinContent(i + 1, 1.)
         # data points at the top
         graph_d1.SetPoint(i, x, d)
         graph_d1.SetPointError(i, 0., 0., d_err[1], d_err[0])
         # data points in the ratio
-        graph_d2.SetPoint(i, x, d / b)
-        graph_d2.SetPointError(i, 0., 0., d_err[1] / b, d_err[0] / b)
+        graph_d2.SetPoint(i, x, d / b_safe)
+        graph_d2.SetPointError(i, 0., 0., d_err[1] / b, d_err[0] / b_safe)
         # uncertainty in the ratio
         graph_b_err2.SetPoint(i, x, 1.)
-        graph_b_err2.SetPointError(i, 0.5 * w, 0.5 * w, b_err_down / b, b_err_up / b)
+        graph_b_err2.SetPointError(i, 0.5 * w, 0.5 * w, b_err_down / b_safe, b_err_up / b_safe)
 
     # set y ranges in both pads
     if y1_min is None:
