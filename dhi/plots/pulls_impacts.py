@@ -349,7 +349,7 @@ def plot_pulls_impacts(
             if param.is_rate_param or outside(param.pull[1]):
                 attr = "postfit" if param.is_rate_param else "pull"
                 down, nominal, up = getattr(param, attr)
-                rate_label = rate_label_tmpl % (nominal, up - nominal, nominal - down)
+                rate_label = rate_label_tmpl % (nominal, up - nominal, nominal - down if param.is_rate_param else down - nominal)
                 rate_label = ROOT.TLatex(0, n - i - 0.5, rate_label)
                 r.setup_latex(rate_label, props={"NDC": False, "TextAlign": 22, "TextSize": 16})
                 draw_objs.append(rate_label)
