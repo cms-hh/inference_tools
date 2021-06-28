@@ -346,7 +346,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
         super(PlotPullsAndImpacts, self).__init__(*args, **kwargs)
 
         # complain when parameters_per_page is set for non pdf file types
-        if self.parameters_per_page > 0 and self.page < 0 and self.file_types != ("pdf",):
+        if self.parameters_per_page > 0 and self.page < 0 and "pdf" not in self.file_types:
             self.logger.warning("parameters_per_page is only supported for file_type 'pdf', but "
                 "got {}".format(self.file_types))
             self.parameters_per_page = -1
