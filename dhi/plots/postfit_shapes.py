@@ -30,7 +30,9 @@ def plot_s_over_b(
     y1_max=None,
     y2_min=None,
     y2_max=None,
-    signal_scale=100.,
+    signal_superimposed=False,
+    signal_scale=1.,
+    signal_scale_ratio=1.,
     model_parameters=None,
     campaign=None
 ):
@@ -39,8 +41,12 @@ def plot_s_over_b(
     saves it at *paths*. The plot is based on the fit diagnostics file *fit_diagnostics_path*
     produced by combine. *bins* can either be a single number of bins to use, or a list of n+1 bin
     edges. *y1_min*, *y1_max*, *y2_min* and *y2_max* define the ranges of the y-axes of the upper
-    pad and ratio pad, respectively. The signal can optionally be scaled by *signal_scale* for
-    visualization purposes. *model_parameters* can be a dictionary of key-value pairs of model
+    pad and ratio pad, respectively. When *signal_superimposed* is *True*, the signal at the top pad
+    is not drawn stacked on top of the background but as a separate histogram. For visualization
+    purposes, the fitted signal can be scaled by *signal_scale*, and, when drawing the signal
+    superimposed, by *signal_scale_ratio* at the bottom ratio pad. When *signal_superimposed* is
+    *True*, the signal at the top pad is not drawn stacked on top of the background but as a
+    separate histogram. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
     *dhi.config.campaign_labels*.
 
@@ -48,6 +54,12 @@ def plot_s_over_b(
     """
     import plotlib.root as r
     ROOT = import_ROOT()
+
+    # input checks
+    assert signal_scale > 0
+    assert signal_scale_ratio > 0
+    if not signal_superimposed:
+        signal_scale_ratio = signal_scale
 
     # load the shape data from the fit diagnostics file
     bin_data = load_bin_data(fit_diagnostics_path)
@@ -91,20 +103,36 @@ def plot_s_over_b(
     draw_objs1.append((h_dummy1, "HIST"))
     draw_objs2.append((h_dummy2, "HIST"))
 
+    # helper to create a signal label
+    def signal_label(scale):
+        scale_text = "" if scale == 1 else " x {}".format(try_int(scale))
+        return "Signal{} ({} = {:.2f})".format(scale_text, to_root_latex(poi_data[poi].label),
+            signal_strength)
+
+    # superimposed postfit signal histogram at the top
+    hist_s_post1 = ROOT.TH1F("s_post1", "", len(bins) - 1, array.array("f", bins))
+    r.setup_hist(hist_s_post1, props={"LineColor": colors.blue_signal})
+    if signal_superimposed:
+        draw_objs1.append((hist_s_post1, "SAME,HIST"))
+        legend_entries.append((hist_s_post1, signal_label(signal_scale), "L"))
+
     # postfit signal histogram at the top
-    hist_sb_post1 = ROOT.TH1F("s_post1", "", len(bins) - 1, array.array("f", bins))
+    hist_sb_post1 = ROOT.TH1F("sb_post1", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_sb_post1, props={"FillColor": colors.blue_signal})
-    draw_objs1.append((hist_sb_post1, "SAME,HIST"))
-    scale_text = "" if signal_scale == 1 else " x {}".format(try_int(signal_scale))
-    signal_label = "Signal ({} = {:.2f}){}".format(to_root_latex(poi_data[poi].label),
-        signal_strength, scale_text)
-    legend_entries.append((hist_sb_post1, signal_label, "AF"))
+    if signal_superimposed:
+        legend_entries.append((hist_sb_post1, signal_label(signal_scale_ratio), "AF"))
+    else:
+        legend_entries.append((hist_sb_post1, signal_label(signal_scale), "AF"))
+        draw_objs1.append((hist_sb_post1, "SAME,HIST"))
 
     # postfit B histogram at the top
     hist_b_post1 = ROOT.TH1F("b_post1", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_b_post1, props={"FillColor": colors.white})
-    draw_objs1.append((hist_b_post1, "SAME,HIST"))
     legend_entries.insert(0, (hist_b_post1, "Background (postfit)", "L"))
+    if signal_superimposed:
+        draw_objs1.insert(-1, (hist_b_post1, "SAME,HIST"))
+    else:
+        draw_objs1.append((hist_b_post1, "SAME,HIST"))
 
     # dummy data histogram to handle binning
     hist_d1 = ROOT.TH1F("d1", "", len(bins) - 1, array.array("f", bins))
@@ -131,7 +159,7 @@ def plot_s_over_b(
     graph_b_err2 = ROOT.TGraphAsymmErrors(len(bins) - 1)
     r.setup_hist(graph_b_err2, props={"FillColor": colors.black, "FillStyle": 3345, "LineWidth": 0})
     draw_objs2.append((graph_b_err2, "SAME,2"))
-    legend_entries.insert(-1, (graph_b_err2, "Uncertainty (postfit)", "F"))
+    legend_entries.insert(2, (graph_b_err2, "Uncertainty (postfit)", "F"))
 
     # data graph in the ratio
     graph_d2 = ROOT.TGraphAsymmErrors(len(bins) - 1)
@@ -143,6 +171,7 @@ def plot_s_over_b(
         s_over_b = min(x_max - 1e-5, max(_bin.get("pre_s_over_b", x_min), x_min + 1e-5))
         # signal and background
         hist_b_post1.Fill(s_over_b, _bin.post_background)
+        hist_s_post1.Fill(s_over_b, _bin.post_signal * signal_scale)
         hist_sb_post1.Fill(s_over_b, _bin.post_background + _bin.post_signal * signal_scale)
         # data histogram for binning
         hist_d1.Fill(s_over_b, _bin.data)
@@ -153,9 +182,9 @@ def plot_s_over_b(
     # fill remaining objects
     for i in range(hist_sb_post1.GetNbinsX()):
         # get values from top histograms
-        x = hist_sb_post1.GetBinCenter(i + 1)
-        w = hist_sb_post1.GetBinWidth(i + 1)
-        sb = hist_sb_post1.GetBinContent(i + 1)
+        s = hist_s_post1.GetBinContent(i + 1) / signal_scale
+        x = hist_b_post1.GetBinCenter(i + 1)
+        w = hist_b_post1.GetBinWidth(i + 1)
         b = hist_b_post1.GetBinContent(i + 1)
         b_err_up = hist_b_err_up1.GetBinContent(i + 1)
         b_err_down = hist_b_err_down1.GetBinContent(i + 1)
@@ -164,6 +193,7 @@ def plot_s_over_b(
         # zero safe b value, leading to almost 0 when used as denominator
         b_safe = b or 1e15
         # bottom signal + background histogram and mask
+        sb = b + s * signal_scale_ratio
         hist_sb_post2.SetBinContent(i + 1, max(sb / b_safe, 1.))
         hist_mask_post2.SetBinContent(i + 1, min(sb / b_safe, 1.))
         # data points at the top

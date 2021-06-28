@@ -133,10 +133,21 @@ class PlotPostfitSOverB(POIPlotTask):
         description="comma-separated list of bin edges to use; when a single number is passed, a "
         "automatic binning is applied with that number of bins; default: (8,)",
     )
-    signal_scale = luigi.FloatParameter(
-        default=100.0,
+    signal_superimposed = luigi.BoolParameter(
+        default=False,
         significant=False,
-        description="scale the postfit signal by this value; default: 100.",
+        description="when True, draw the signal at the top pad superimposed; default: False",
+    )
+    signal_scale = luigi.FloatParameter(
+        default=1.0,
+        significant=False,
+        description="scale the postfit signal by this value; default: 1.0",
+    )
+    signal_scale_ratio = luigi.FloatParameter(
+        default=1.0,
+        significant=False,
+        description="scale the postfit signal in the ratio plot by this value; only considered "
+        "when drawing the signal superimposed; default: 1.0",
     )
     ratio_min = luigi.FloatParameter(
         default=-1000.0,
@@ -185,7 +196,9 @@ class PlotPostfitSOverB(POIPlotTask):
             y1_max=self.get_axis_limit("y_max"),
             y2_min=self.get_axis_limit("ratio_min"),
             y2_max=self.get_axis_limit("ratio_max"),
+            signal_superimposed=self.signal_superimposed,
             signal_scale=self.signal_scale,
+            signal_scale_ratio=self.signal_scale_ratio,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )
