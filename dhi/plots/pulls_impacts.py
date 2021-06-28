@@ -329,8 +329,10 @@ def plot_pulls_impacts(
 
         # pull graph
         arr = lambda vals: array.array("f", vals)
+        outside = lambda n: not (x_min <= n <= x_max)
+        # rate param or not in x-range
         g_pull = ROOT.TGraphAsymmErrors(n,
-            arr([(-1e5 if param.is_rate_param else param.pull[1]) for param in _params]),
+            arr([(-1e5 if param.is_rate_param or outside(param.pull[1]) else param.pull[1]) for param in _params]),
             arr([n - i - 0.5 for i in range(n)]),
             arr([-param.pull[0] for param in _params]),
             arr([param.pull[2] for param in _params]),
@@ -343,12 +345,15 @@ def plot_pulls_impacts(
         # plain post-fit intervals as texts for rateParam's
         rate_label_tmpl = "%.2f^{ +%.2f}_{ -%.2f}"
         for i, param in enumerate(_params):
-            if param.is_rate_param:
-                down, nominal, up = param.postfit
+            # rate param or outside of x-range
+            if param.is_rate_param or outside(param.pull[1]):
+                attr = "postfit" if param.is_rate_param else "pull"
+                down, nominal, up = getattr(param, attr)
                 rate_label = rate_label_tmpl % (nominal, up - nominal, nominal - down)
                 rate_label = ROOT.TLatex(0, n - i - 0.5, rate_label)
                 r.setup_latex(rate_label, props={"NDC": False, "TextAlign": 22, "TextSize": 16})
                 draw_objs.append(rate_label)
+            # failed fit
             if param.invalid:
                 rate_label = ROOT.TLatex(0, n - i - 0.5, "#bf{Invalid - Failed Fit}")
                 r.setup_latex(rate_label, props={"NDC": False, "TextAlign": 22, "TextSize": label_size})
