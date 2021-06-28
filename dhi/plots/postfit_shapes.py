@@ -56,8 +56,8 @@ def plot_s_over_b(
     ROOT = import_ROOT()
 
     # input checks
-    assert signal_scale > 0
-    assert signal_scale_ratio > 0
+    assert signal_scale != 0
+    assert signal_scale_ratio != 0
     if not signal_superimposed:
         signal_scale_ratio = signal_scale
 
