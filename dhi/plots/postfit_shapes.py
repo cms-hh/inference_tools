@@ -92,15 +92,15 @@ def plot_s_over_b(
     draw_objs2.append((h_dummy2, "HIST"))
 
     # postfit signal histogram at the top
-    hist_s_post1 = ROOT.TH1F("s_post1", "", len(bins) - 1, array.array("f", bins))
-    r.setup_hist(hist_s_post1, props={"FillColor": colors.blue_signal})
-    draw_objs1.append((hist_s_post1, "SAME,HIST"))
+    hist_sb_post1 = ROOT.TH1F("s_post1", "", len(bins) - 1, array.array("f", bins))
+    r.setup_hist(hist_sb_post1, props={"FillColor": colors.blue_signal})
+    draw_objs1.append((hist_sb_post1, "SAME,HIST"))
     scale_text = "" if signal_scale == 1 else " x {}".format(try_int(signal_scale))
     signal_label = "Signal ({} = {:.2f}){}".format(to_root_latex(poi_data[poi].label),
         signal_strength, scale_text)
-    legend_entries.append((hist_s_post1, signal_label, "AF"))
+    legend_entries.append((hist_sb_post1, signal_label, "AF"))
 
-    # postfit background histogram at the top
+    # postfit B histogram at the top
     hist_b_post1 = ROOT.TH1F("b_post1", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_b_post1, props={"FillColor": colors.white})
     draw_objs1.append((hist_b_post1, "SAME,HIST"))
@@ -115,15 +115,13 @@ def plot_s_over_b(
     draw_objs1.append((graph_d1, "PEZ,SAME"))
     legend_entries.insert(0, (graph_d1, "Data", "LP"))
 
-    # postfit signal histogram in the ratio
-    hist_s_post2 = ROOT.TH1F("s_post2", "", len(bins) - 1, array.array("f", bins))
-    r.setup_hist(hist_s_post2, props={"FillColor": colors.blue_signal})
-    draw_objs2.append((hist_s_post2, "SAME,HIST"))
-
-    # postfit background histogram in the ratio (all ones)
-    hist_b_post2 = ROOT.TH1F("b_post2", "", len(bins) - 1, array.array("f", bins))
-    r.setup_hist(hist_b_post2, props={"FillColor": colors.white})
-    draw_objs2.append((hist_b_post2, "SAME,HIST"))
+    # postfit S+B ratio histogram and a mask histogram to mimic errors
+    hist_sb_post2 = ROOT.TH1F("sb_post2", "", len(bins) - 1, array.array("f", bins))
+    r.setup_hist(hist_sb_post2, props={"FillColor": colors.blue_signal})
+    draw_objs2.append((hist_sb_post2, "SAME,HIST"))
+    hist_mask_post2 = ROOT.TH1F("mask_post2", "", len(bins) - 1, array.array("f", bins))
+    r.setup_hist(hist_mask_post2, props={"FillColor": colors.white})
+    draw_objs2.append((hist_mask_post2, "SAME,HIST"))
 
     # dummy histograms to handle binning of background uncertainties
     hist_b_err_up1 = ROOT.TH1F("b_err_up1", "", len(bins) - 1, array.array("f", bins))
@@ -141,23 +139,23 @@ def plot_s_over_b(
     draw_objs2.append((graph_d2, "SAME,PEZ"))
 
     # fill histograms by traversing bin data
-    for b in bin_data:
-        s_over_b = min(x_max - 1e-5, max(b.get("pre_s_over_b", x_min), x_min + 1e-5))
+    for _bin in bin_data:
+        s_over_b = min(x_max - 1e-5, max(_bin.get("pre_s_over_b", x_min), x_min + 1e-5))
         # signal and background
-        hist_b_post1.Fill(s_over_b, b.post_background)
-        hist_s_post1.Fill(s_over_b, b.post_background + b.post_signal * signal_scale)
+        hist_b_post1.Fill(s_over_b, _bin.post_background)
+        hist_sb_post1.Fill(s_over_b, _bin.post_background + _bin.post_signal * signal_scale)
         # data histogram for binning
-        hist_d1.Fill(s_over_b, b.data)
+        hist_d1.Fill(s_over_b, _bin.data)
         # background uncertainty histogram for binning
-        hist_b_err_up1.Fill(s_over_b, b.post_background_err_up)
-        hist_b_err_down1.Fill(s_over_b, b.post_background_err_down)
+        hist_b_err_up1.Fill(s_over_b, _bin.post_background_err_up)
+        hist_b_err_down1.Fill(s_over_b, _bin.post_background_err_down)
 
     # fill remaining objects
-    for i in range(hist_s_post1.GetNbinsX()):
-        # get values
-        x = hist_s_post1.GetBinCenter(i + 1)
-        w = hist_s_post1.GetBinWidth(i + 1)
-        s = hist_s_post1.GetBinContent(i + 1)
+    for i in range(hist_sb_post1.GetNbinsX()):
+        # get values from top histograms
+        x = hist_sb_post1.GetBinCenter(i + 1)
+        w = hist_sb_post1.GetBinWidth(i + 1)
+        sb = hist_sb_post1.GetBinContent(i + 1)
         b = hist_b_post1.GetBinContent(i + 1)
         b_err_up = hist_b_err_up1.GetBinContent(i + 1)
         b_err_down = hist_b_err_down1.GetBinContent(i + 1)
@@ -165,9 +163,9 @@ def plot_s_over_b(
         d_err = poisson_asym_errors(d)
         # zero safe b value, leading to almost 0 when used as denominator
         b_safe = b or 1e15
-        # signal and background
-        hist_s_post2.SetBinContent(i + 1, s / b_safe)
-        hist_b_post2.SetBinContent(i + 1, 1.)
+        # bottom signal + background histogram and mask
+        hist_sb_post2.SetBinContent(i + 1, max(sb / b_safe, 1.))
+        hist_mask_post2.SetBinContent(i + 1, min(sb / b_safe, 1.))
         # data points at the top
         graph_d1.SetPoint(i, x, d)
         graph_d1.SetPointError(i, 0., 0., d_err[1], d_err[0])
