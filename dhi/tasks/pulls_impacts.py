@@ -198,17 +198,18 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             values = tree.arrays([poi] if b == 0 else [poi, name])
             # the fit converged when there are 3 values in the parameter array
             converged = values[poi if b == 0 else name].size == 3
-            # when not converged but failures should be kept, change the result
-            if not converged and self.keep_failures:
-                values = {
-                    name: np.array([np.nan, np.nan, np.nan]),
-                    "r": np.array([np.nan, np.nan, np.nan]),
-                }
-            # store either in fit results or fail infos
-            if converged:
-                fit_results[b] = values
+            if not converged:
+                # when not converged and failures should be kept, change the result
+                if self.keep_failures:
+                    fit_results[b] = {
+                        name: np.array([np.nan, np.nan, np.nan]),
+                        "r": np.array([np.nan, np.nan, np.nan]),
+                    }
+                # when not converged and failures should not be kept, raise fail info
+                else:
+                    fail_info.append((b, name, inp.path))
             else:
-                fail_info.append((b, name, inp.path))
+                fit_results[b] = values
 
         # throw an error with instructions when a fit failed
         if fail_info:
