@@ -345,6 +345,13 @@ def plot_pulls_impacts(
         # plain post-fit intervals as texts for rateParam's
         rate_label_tmpl = "%.2f^{ +%.2f}_{ -%.2f}"
         for i, param in enumerate(_params):
+            # failed fit
+            if param.invalid:
+                rate_label = ROOT.TLatex(0, n - i - 0.5, "#bf{Invalid - Failed Fit}")
+                r.setup_latex(rate_label, props={"NDC": False, "TextAlign": 22,
+                    "TextSize": label_size})
+                draw_objs.append(rate_label)
+                continue
             # rate param or outside of x-range
             if param.is_rate_param or outside(param.pull[1]):
                 attr = "postfit" if param.is_rate_param else "pull"
@@ -353,12 +360,6 @@ def plot_pulls_impacts(
                 rate_label = rate_label_tmpl % (nominal, up - nominal, flip * (down - nominal))
                 rate_label = ROOT.TLatex(0, n - i - 0.5, rate_label)
                 r.setup_latex(rate_label, props={"NDC": False, "TextAlign": 22, "TextSize": 16})
-                draw_objs.append(rate_label)
-            # failed fit
-            if param.invalid:
-                rate_label = ROOT.TLatex(0, n - i - 0.5, "#bf{Invalid - Failed Fit}")
-                r.setup_latex(rate_label, props={"NDC": False, "TextAlign": 22,
-                    "TextSize": label_size})
                 draw_objs.append(rate_label)
 
         # legend
