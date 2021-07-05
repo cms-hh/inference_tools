@@ -66,7 +66,7 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             " --firstPoint {self.branch}"
             " --lastPoint {self.branch}"
             " --alignEdges 1"
-            " --setParameterRanges {self.joined_parameter_ranges}"
+            " --setParameterRanges {self.joined_scan_ranges}:{self.joined_parameter_ranges}"
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"

@@ -660,7 +660,7 @@ class ModelParameters(luigi.Parameter):
         else:
             value = (inp,)
 
-        # apply uniqueness, sort, length and choices checks
+        # make unique, sort and apply length checks
         value = self._make_unique(value)
         value = self._sort_by_name(value)
         self._check_len(value)
@@ -673,7 +673,7 @@ class ModelParameters(luigi.Parameter):
 
         value = law.util.make_tuple(value)
 
-        # apply uniqueness, sort, length and choices checks
+        # make unique, sort and apply length checks
         value = self._make_unique(value)
         value = self._sort_by_name(value)
         self._check_len(value)

@@ -12,7 +12,6 @@ import numpy as np
 
 from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
-from dhi.config import poi_data
 from dhi.datacard_tools import get_workspace_parameters
 
 
