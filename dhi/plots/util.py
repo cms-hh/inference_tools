@@ -349,8 +349,9 @@ def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_po
             # frame the histogram
             _h = h
             for fk in filter(bool, frame_kwargs):
-                xw = fk.pop("x_width", x_width_max)
-                yw = fk.pop("x_width", y_width_max)
+                fk = dict(fk)
+                xw = fk.pop("x_width", fk.get("width", x_width_max))
+                yw = fk.pop("y_width", fk.pop("width", y_width_max))
                 _h = frame_histogram(_h, xw, yw, contour_level=l, **fk)
 
             # get the contour graphs and filter by the number of points
