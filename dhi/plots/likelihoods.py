@@ -468,13 +468,15 @@ def plot_likelihood_scan_2d(
     # draw the first contour box
     if draw_box:
         box_num1, box_num2 = scan.box_nums[0]
-        box_t = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("up"), box_num2("up"))
-        box_b = ROOT.TLine(box_num1("down"), box_num2("down"), box_num1("up"), box_num2("down"))
-        box_r = ROOT.TLine(box_num1("up"), box_num2("up"), box_num1("up"), box_num2("down"))
-        box_l = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("down"), box_num2("down"))
-        for box_line in [box_t, box_r, box_b, box_l]:
-            r.setup_line(box_line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
-            draw_objs.append(box_line)
+        if box_num1 and box_num2:
+            box_t = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("up"), box_num2("up"))
+            box_b = ROOT.TLine(box_num1("down"), box_num2("down"), box_num1("up"), box_num2("down"))
+            box_r = ROOT.TLine(box_num1("up"), box_num2("up"), box_num1("up"), box_num2("down"))
+            box_l = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("down"), box_num2("down"))
+            for box_line in [box_t, box_r, box_b, box_l]:
+                r.setup_line(box_line, props={"LineColor": colors.black, "LineStyle": 2,
+                    "NDC": False})
+                draw_objs.append(box_line)
 
     # SM point
     if draw_sm_point:
@@ -498,9 +500,9 @@ def plot_likelihood_scan_2d(
     def make_bf_label(num1, num2):
         return "{} = {} ,  {} = {}".format(
             to_root_latex(poi_data[poi1].label),
-            num1.str(format="%.2f", style="root"),
+            num1.str(format="%.2f", style="root") if num1 else "-",
             to_root_latex(poi_data[poi2].label),
-            num2.str(format="%.2f", style="root"),
+            num2.str(format="%.2f", style="root") if num2 else "-",
         )
 
     legend_entries = [(g_fit, make_bf_label(scan.num1_min, scan.num2_min), "L")]
@@ -1116,6 +1118,11 @@ def evaluate_likelihood_scan_2d(
     if contours:
         box_nums = []
         for graphs in contours:
+            if not graphs:
+                # when graphs is empty, store None's instead of actual Number's with uncertainties
+                box_nums.append((None, None))
+                continue
+
             box1_m, box1_p, box2_m, box2_p = get_contour_box(graphs)
             unc1, unc2 = None, None
             if abs(box1_m - poi1_values_min) > 1e-3 and abs(box1_p - poi1_values_max) > 1e-3:
