@@ -77,29 +77,24 @@ class UpperLimits(UpperLimitsBase, CombineCommandTask, law.LocalWorkflow, HTCond
         import numpy as np
 
         # load raw values
-        limits = target.load(formatter="uproot")["limit"].array("limit")
+        data = target.load(formatter="uproot")["limit"].arrays(["limit", "quantileExpected"])
+        limits = data["limit"]
+        quantiles = data["quantileExpected"]
 
-        # convert to (nominal, err1_up, err1_down, err2_up, err2_down)
-        if len(limits) == 0:
-            # no values, fit failed completely
-            values = (np.nan, np.nan, np.nan, np.nan, np.nan)
-        elif len(limits) == 1:
-            # only nominal value
-            values = (limits[0], np.nan, np.nan, np.nan, np.nan)
-        elif len(limits) == 3:
-            # 1 sigma variations exist, but not 2 sigma
-            values = (limits[1], limits[2], limits[0], np.nan, np.nan)
-        else:
-            # both 1 and 2 sigma variations exist
-            values = (limits[2], limits[3], limits[1], limits[4], limits[0])
+        # prepare limit values in the format (nominal, err1_up, err1_down, err2_up, err2_down)
+        # and extend by the observed value if requested
+        indices = {0.5: 0, 0.84: 1, 0.16: 2, 0.975: 3, 0.025: 4}
+        values = [np.nan] * len(indices)
+        for l, q in zip(limits, quantiles)[:len(indices)]:
+            q = round(float(q), 3)
+            if q in indices:
+                values[indices[q]] = l
 
         # when unblinded, append the observed value
         if unblinded:
-            # get the observed value
-            obs = limits[5] if len(limits) == 6 else np.nan
-            values += (obs,)
+            values.append(limits[5] if len(limits) == 6 else np.nan)
 
-        return values
+        return tuple(values)
 
 
 class MergeUpperLimits(UpperLimitsBase):
