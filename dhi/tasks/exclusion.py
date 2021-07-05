@@ -254,7 +254,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.exclusion.plot_exclusion_and_bestfit_2d",
-            path=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs],
             poi=self.pois[0],
             scan_parameter1=self.scan_parameter_names[0],
             scan_parameter2=self.scan_parameter_names[1],
