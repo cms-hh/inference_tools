@@ -94,7 +94,10 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
 
     for i, (names, value) in enumerate(model_parameters.items()):
         # each parameter key can be a list
-        labels = [poi_data.get(name, {}).get("label", name) for name in make_list(names)]
+        labels = [
+            to_root_latex(poi_data.get(name, {}).get("label", name))
+            for name in make_list(names)
+        ]
         label = "{} = {}".format(" = ".join(labels), try_int(value))
         label = r.routines.create_top_left_label(label, pad=pad, props=props, x_offset=x_offset,
             y_offset=y_offset + i * dy)
