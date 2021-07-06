@@ -34,7 +34,20 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
     run_command_in_tmp = True
 
     def create_branch_map(self):
-        return self.get_scan_linspace()
+        linspace = self.get_scan_linspace()
+
+        # when blinded and the expected best fit values of r and k POIs (== 1) are not contained
+        # in the grid points, log an error as this leads to a scenario where the global minimum nll
+        # is not computed and the deltas to all other nll values become arbitrary and incomparable
+        if self.blinded:
+            for i, poi in enumerate(self.pois):
+                values = [tpl[i] for tpl in linspace]
+                if poi in self.all_pois and 1 not in values:
+                    self.logger.error("the expected best fit value of 1 is not contained in the "
+                        "values to scan for POI {}, leading to dnll values being computed relative "
+                        "to an arbitrary minimum".format(poi))
+
+        return linspace
 
     def workflow_requires(self):
         reqs = super(LikelihoodScan, self).workflow_requires()

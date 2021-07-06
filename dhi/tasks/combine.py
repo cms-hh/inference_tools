@@ -1140,6 +1140,10 @@ class POITask(DatacardTask, ParameterValuesTask):
     def joined_frozen_groups(self):
         return ",".join(self.frozen_groups) or '""'
 
+    @property
+    def blinded(self):
+        return not self.unblinded
+
     def htcondor_output_postfix(self):
         return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
 
