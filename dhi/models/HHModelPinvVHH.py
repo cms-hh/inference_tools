@@ -490,8 +490,8 @@ class HHModel(PhysicsModel):
 
         self.modelBuilder.doVar("%s[-7,7]" % self.klUncName)
 
-        self.modelBuilder.factory_('expr::%s_kappaHi("max(72.0744-51.7362*@0+11.3712*@0*@0,70.9286-51.5708*@0+11.4497*@0*@0) / (70.3874 - 50.4111*@0 + 11.0595*@0*@0)",kl)' % self.klUncName)
-        self.modelBuilder.factory_('expr::%s_kappaLo("min(66.0621-46.7458*@0+10.1673*@0*@0,66.7581-47.721*@0+10.4535*@0*@0)  / (70.3874 - 50.4111*@0 + 11.0595*@0*@0)",kl)'  % self.klUncName)
+        self.modelBuilder.factory_('expr::%s_kappaHi("max(76.6075-56.4818*@0+12.6350*@0*@0,75.4617-56.3164*@0+12.7135*@0*@0) / (70.3874 - 50.4111*@0 + 11.0595*@0*@0)",kl)' % self.klUncName)
+        self.modelBuilder.factory_('expr::%s_kappaLo("min(57.6809-42.9905*@0+9.58474*@0*@0,58.3769-43.9657*@0+9.87094*@0*@0)  / (70.3874 - 50.4111*@0 + 11.0595*@0*@0)",kl)'  % self.klUncName)
 
         self.makeInterpolation("%s_kappa" % self.klUncName, "%s_kappaHi" % self.klUncName, "%s_kappaLo" % self.klUncName , self.klUncName)
 
