@@ -388,8 +388,8 @@ class HHModel(PhysicsModel):
 
         self.modelBuilder.doVar("%s[-7,7]" % self.klUncName)
 
-        self.modelBuilder.factory_('expr::%s_kappaHi("max(72.0744-51.7362*@0+11.3712*@0*@0,70.9286-51.5708*@0+11.4497*@0*@0) / (70.3874 - 50.4111*@0 + 11.0595*@0*@0)",kl)' % self.klUncName)
-        self.modelBuilder.factory_('expr::%s_kappaLo("min(66.0621-46.7458*@0+10.1673*@0*@0,66.7581-47.721*@0+10.4535*@0*@0)  / (70.3874 - 50.4111*@0 + 11.0595*@0*@0)",kl)'  % self.klUncName)
+        self.modelBuilder.factory_('expr::%s_kappaHi("max(76.6075 - 56.4818 * @0 + 12.6350 *@0 * @0,75.4617 - 56.3164 * @0 + 12.7135 * @0 * @0) / (70.3874 - 50.4111 * @0 + 11.0595 * @0 * @0)", kl)' % self.klUncName)
+        self.modelBuilder.factory_('expr::%s_kappaLo("min(57.6809 - 42.9905 * @0 + 9.58474 * @0 * @0,58.3769 - 43.9657 * @0 + 9.87094 * @0 * @0)  / (70.3874-50.4111 * @0 + 11.0595 * @0 * @0)", kl)' % self.klUncName)
 
         self.makeInterpolation("%s_kappa" % self.klUncName, "%s_kappaHi" % self.klUncName, "%s_kappaLo" % self.klUncName , self.klUncName)
 
@@ -762,7 +762,7 @@ def create_ggf_xsec_func(formula=None):
     the constant k-factor is still applied. Otherwise, the returned value is in full
     next-to-next-to-leading order. In this case, *unc* can be set to eiher "up" or "down" to return
     the up / down varied cross section instead where the uncertainty is composed of a *kl* dependent
-    scale uncertainty and an independent PDF uncertainty of 3%.
+    scale + mtop uncertainty and an independent PDF uncertainty of 3%.
 
     Example:
 
@@ -779,7 +779,7 @@ def create_ggf_xsec_func(formula=None):
         print(get_ggf_xsec(kl=2., unc="up"))
         # -> 0.014305...
 
-    Formulas are taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=65.
+    Formulas are taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?rev=70.
     """
     if formula is None:
         formula = model_default.ggf_formula
@@ -794,14 +794,14 @@ def create_ggf_xsec_func(formula=None):
     xsec_nnlo = lambda kl: 0.001 * (70.3874 - 50.4111 * kl + 11.0595 * kl**2.)
     nlo2nnlo = lambda xsec, kl: xsec * xsec_nnlo(kl) / xsec_nlo(kl)
 
-    # uncertainty application in case unc is set
+    # scale+mtop uncertainty in case unc is set
     xsec_nnlo_scale_up = lambda kl: 0.001 * max(
-        72.0744 - 51.7362 * kl + 11.3712 * kl**2.,
-        70.9286 - 51.5708 * kl + 11.4497 * kl**2.,
+        76.6075 - 56.4818 * kl + 12.635 * kl**2,
+        75.4617 - 56.3164 * kl + 12.7135 * kl**2,
     )
     xsec_nnlo_scale_down = lambda kl: 0.001 * min(
-        66.0621 - 46.7458 * kl + 10.1673 * kl**2.,
-        66.7581 - 47.7210 * kl + 10.4535 * kl**2.,
+        57.6809 - 42.9905 * kl + 9.58474 * kl**2,
+        58.3769 - 43.9657 * kl + 9.87094 * kl**2,
     )
 
     def apply_uncertainty_nnlo(kl, xsec_nom, unc):
@@ -809,11 +809,11 @@ def create_ggf_xsec_func(formula=None):
         # are quoted for different kl values but otherwise fully SM parameters, esp. kt=1;
         # however, the nominal cross section *xsec_nom* might be subject to a different kt value
         # and thus, the following implementation assumes that the relative uncertainties according
-        # to the SM recommendation are preserved; for instance, if the the scale uncertainty for
-        # kl=2,kt=1 would be 10%, then the code below will assume an uncertainty for kl=2,kt!=1 of
-        # 10% as well
+        # to the SM recommendation are preserved; for instance, if the the scale+mtop uncertainty
+        # for kl=2,kt=1 would be 10%, then the code below will assume an uncertainty for kl=2,kt!=1
+        # of 10% as well
 
-        # compute the relative, signed scale uncertainty
+        # compute the relative, signed scale+mtop uncertainty
         if unc.lower() not in ("up", "down"):
             raise ValueError("unc must be 'up' or 'down', got '{}'".format(unc))
         scale_func = {"up": xsec_nnlo_scale_up, "down": xsec_nnlo_scale_down}[unc.lower()]
@@ -865,7 +865,7 @@ def create_vbf_xsec_func(formula=None):
         print(get_vbf_xsec(C2V=2.))
         # -> 0.014218... (or similar)
 
-    Uncertainties taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=65.
+    Uncertainties taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=70.
     """
     if formula is None:
         formula = model_default.vbf_formula
@@ -899,14 +899,15 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None):
     pb given appropriate *ggf_formula* and *vbf_formula* objects, which default to
     *model_default.ggf_formula* and *model_default.vbf_formula*, respectively. When a forumla is set
     explicitely to *False*, the corresponding process is not considered in the inclusive calculation.
-    The returned function has the signature ``(kl=1.0, kt=1.0, C2V=1.0, CV=1.0, nnlo=True, unc=None)``.
+    The returned function has the signature
+    ``(kl=1.0, kt=1.0, C2V=1.0, CV=1.0, nnlo=True, unc=None)``.
 
     The *nnlo* setting only affects the ggF component of the cross section. When *nnlo* is *False*,
     the constant k-factor of the ggf calculation is still applied. Otherwise, the returned value is
     in full next-to-next-to-leading order for ggF. *unc* can be set to eiher "up" or "down" to
     return the up / down varied cross section instead where the uncertainty is composed of a *kl*
-    dependent scale uncertainty and an independent PDF uncertainty of 3% for ggF, and a scale and
-    pdf+alpha_s uncertainty for VBF. The uncertainties of the ggF and VBF processes are treated as
+    dependent scale + mtop uncertainty and an independent PDF uncertainty of 3% for ggF, and a scale
+    and pdf+alpha_s uncertainty for VBF. The uncertainties of the ggF and VBF processes are treated as
     uncorrelated.
 
     Example:
