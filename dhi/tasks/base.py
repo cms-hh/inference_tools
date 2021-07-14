@@ -314,7 +314,7 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         # log the size
         self.publish_message(
             "bundled repository archive, size is {:.2f} {}".format(
-                *law.util.human_bytes(bundle.stat.st_size)
+                *law.util.human_bytes(bundle.stat().st_size)
             )
         )
 
@@ -375,7 +375,7 @@ class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile):
         # log the size
         self.publish_message(
             "bundled software archive, size is {:.2f} {}".format(
-                *law.util.human_bytes(bundle.stat.st_size)
+                *law.util.human_bytes(bundle.stat().st_size)
             )
         )
 
