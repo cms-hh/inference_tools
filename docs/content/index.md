@@ -205,4 +205,4 @@ More detailed information on the different scans & fits can be found in the foll
   <div style="clear: both;"></div>
 </div>
 
-An experimental [interactive datacard viewer](view_datacard.html) exists too (thanks to [B. Fischer](https://git.rwth-aachen.de/3pia/cms_analyses/common/-/blob/master/view_datacard.html)).
+An experimental [interactive datacard viewer](view_datacard.html) and [interactive covariance viewer](view_cov_json.html) exists too (thanks to [B. Fischer](https://git.rwth-aachen.de/3pia/cms_analyses/common/-/blob/master/view_datacard.html)).

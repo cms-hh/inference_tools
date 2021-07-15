@@ -113,6 +113,8 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
             "mv higgsCombineTest.FitDiagnostics.mH{self.mass_int}{postfix}.root {output_result}"
             " && "
             "mv fitDiagnosticsTest.root {output_diagnostics}"
+            " && "
+            "extract_fitresult_cov.json.py {output_diagnostics}"
         ).format(
             self=self,
             workspace=self.input().path,

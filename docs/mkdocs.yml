@@ -98,3 +98,4 @@ nav:
   - Datacard manipulation: datacard_manipulation.md
   - Useful scripts: scripts.md
   - Interactive datacard viewer: view_datacard.html
+  - Interactive covariance viewer: view_cov_json.html
