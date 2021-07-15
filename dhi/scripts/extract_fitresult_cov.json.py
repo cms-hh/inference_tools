@@ -16,9 +16,10 @@ def matrix2array(matrix):
 
 
 def fit_result2cov_json(fit_result):
+    pars = fit_result.floatParsFinal()
     return dict(
         qual=int(fit_result.covQual()),
-        labels=[par.GetName() for par in fit_result.floatParsFinal()],
+        labels=[pars[i].GetName() for i in range(len(pars))],
         cov=matrix2array(fit_result.covarianceMatrix()).tolist(),
         cor=matrix2array(fit_result.correlationMatrix()).tolist(),
     )
