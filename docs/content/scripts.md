@@ -39,3 +39,32 @@ optional arguments:
   --data-name DATA_NAME
                         Name of observation. Default: 'data_obs'.
 ```
+
+
+## Generate JSON for interactive covariance viewer
+
+Generate a [interactive covariance viewer](view_cov_json.html)-compatiable JSON file.
+
+```shell hl_lines="1"
+> extract_fitresult_cov.json.py --help
+usage: extract_fitresult_cov.json.py [-h] [-s SKIP] filename [filename ...]
+
+Produces a .cov.json for every `RooFitResult` within the ROOT file given by
+`filename`. This includes covariance and correlation Matrix, column/row
+labels, and covariance quality. These files can be explored via the
+`view_cov_json.html` viewer. The output filenames are automatically produced
+by joining `filename` without extension (i.e. ".root"), the name of the
+`RooFitResult`, and the "cov.json" extension using the ".". Example:
+folder/input_file.root -> folder/input_file.result_name.cov.json If `skip`
+(default "prefit") is given and not empty, all `RooFitResult`s with their name
+containing `skip`are skipped. Multiple `filename`s can be given
+simultaneously.
+
+positional arguments:
+  filename
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s SKIP, --skip SKIP  skip results containing this non-empty string,
+                        default: prefit
+```
