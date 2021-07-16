@@ -105,17 +105,17 @@ campaign_labels.update(br_hh_names)
 # poi defaults (value, range, points, taken from physics model) and labels
 # note: C2V and CV are not following kappa notation and are upper case to be consistent to the model
 poi_data = DotDict(
-    r=DotDict(range=(-20.0, 20.0), label="r"),
-    r_gghh=DotDict(range=(-20.0, 20.0), label="r_{gghh}"),
-    r_qqhh=DotDict(range=(-20.0, 20.0), label="r_{qqhh}"),
-    r_vhh=DotDict(range=(-20.0, 20.0), label="r_{vhh}"),
-    kl=DotDict(range=(-30.0, 30.0), label=r"\kappa_{\lambda}"),
-    kt=DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}"),
-    C2V=DotDict(range=(-10.0, 10.0), label=r"\kappa_{2V}"),
-    CV=DotDict(range=(-10.0, 10.0), label=r"\kappa_{V}"),
-    c2=DotDict(range=(-2.0, 3.0), label=r"c_{2}"),
-    cg=DotDict(range=(-2.0, 2.0), label=r"c_{g}"),
-    c2g=DotDict(range=(-2.0, 2.0), label=r"c_{2g}"),
+    r=DotDict(range=(-20.0, 20.0), label="r", sm_value=1.0),
+    r_gghh=DotDict(range=(-20.0, 20.0), label="r_{gghh}", sm_value=1.0),
+    r_qqhh=DotDict(range=(-20.0, 20.0), label="r_{qqhh}", sm_value=1.0),
+    r_vhh=DotDict(range=(-20.0, 20.0), label="r_{vhh}", sm_value=1.0),
+    kl=DotDict(range=(-30.0, 30.0), label=r"\kappa_{\lambda}", sm_value=1.0),
+    kt=DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}", sm_value=1.0),
+    C2V=DotDict(range=(-10.0, 10.0), label=r"\kappa_{2V}", sm_value=1.0),
+    CV=DotDict(range=(-10.0, 10.0), label=r"\kappa_{V}", sm_value=1.0),
+    C2=DotDict(range=(-2.0, 3.0), label=r"c_{2}", sm_value=0.0),
+    CG=DotDict(range=(-2.0, 2.0), label=r"c_{g}", sm_value=0.0),
+    C2G=DotDict(range=(-2.0, 2.0), label=r"c_{2g}", sm_value=0.0),
 )
 # add "$" embedded labels
 for poi, data in poi_data.items():
@@ -156,7 +156,7 @@ color_sequence = ["blue", "red", "green", "grey", "pink", "cyan", "orange", "lig
 color_sequence += 10 * ["black"]
 
 # marker sequence for plots with multiple elements
-marker_sequence = [21, 22, 23, 24, 25, 26, 32, 27, 33, 28, 34, 29, 30]
+marker_sequence = [20, 21, 22, 23, 24, 25, 26, 32, 27, 33, 28, 34, 29, 30]
 marker_sequence += 10 * [20]
 
 # cumulative, inverse chi2 values in a mapping "n_dof -> n_sigma -> level"

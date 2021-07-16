@@ -480,7 +480,7 @@ def plot_likelihood_scan_2d(
 
     # SM point
     if draw_sm_point:
-        g_sm = create_tgraph(1, 1, 1)
+        g_sm = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
 

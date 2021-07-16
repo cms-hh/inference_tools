@@ -525,6 +525,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         # reoder if requested
         if self.hh_model_order:
             limit_values = [limit_values[i] for i in self.hh_model_order]
+            names = [names[i] for i in self.hh_model_order]
 
         # call the plot function
         self.call_plot_func(
@@ -658,7 +659,11 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask, BoxPlotTask):
         if self.poi in self.r_pois:
             if self.xsec in ["pb", "fb"]:
                 limit_values = self.convert_to_xsecs(
-                    self.poi, limit_values, self.xsec, self.br, xsec_kwargs=self.parameter_values_dict
+                    self.poi,
+                    limit_values,
+                    self.xsec,
+                    self.br,
+                    xsec_kwargs=self.parameter_values_dict,
                 )
                 thy_value = self.get_theory_xsecs(
                     self.poi,

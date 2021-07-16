@@ -5,6 +5,7 @@ Limit plots using ROOT.
 """
 
 import math
+import traceback
 
 import six
 import numpy as np
@@ -155,12 +156,19 @@ def plot_limit_scan(
     legend_entries[3] = (g_exp, "Median expected", "L")
     y_max_value = max(y_max_value, max(expected_values["limit"]))
     y_min_value = min(y_min_value, min(expected_values["limit"]))
-    print_excluded_ranges(scan_parameter, poi + " expected",
-        expected_values[scan_parameter],
-        expected_values["limit"],
-        theory_values[scan_parameter] if has_thy else None,
-        theory_values["xsec"] if has_thy else None,
-    )
+
+    # print the excluded ranges when there is a sufficient amount of points
+    if len(expected_values[scan_parameter]) >= 5:
+        try:
+            print_excluded_ranges(scan_parameter, poi + " expected",
+                expected_values[scan_parameter],
+                expected_values["limit"],
+                theory_values[scan_parameter] if has_thy else None,
+                theory_values["xsec"] if has_thy else None,
+            )
+        except Exception:
+            print("1D limit scan evaluation failed")
+            traceback.print_exc()
 
     # observed values
     if observed_values is not None:

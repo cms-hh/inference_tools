@@ -1,24 +1,25 @@
-The tasks documented below produce and visualize limits of two different EFT workflows, i.e., different (discrete) [EFT benchmarks](#benchmark-limits) and a [scan of the *c2* (*ffHH*) coupling](#scan-of-c2).
-Compared to the [other tasks for obtaining limits](limits.md) which rely on the HH physics model for inter- and extrapolating the effect of variations of the *kappa* values, the EFT limit tasks extract information of the benchmark name or *c2* value directly from the name of the datacard files.
+The tasks documented below can be used to produce and visualize the limits corresponding to certain discrete EFT benchmark.
+Compared to the [other tasks for obtaining limits](limits.md) which rely on the HH physics model for inter- and extrapolating the effect of variations of the *kappa* values, the EFT benchmark tasks extract information of the particular benchmarks directly from the name of the used datacard files.
 This entails two major differences in the preparation of datacards and the steering of the tasks via parameters.
 
 **Datacards**
 
-The datacards for the various EFT benchmarks and *c2* values should be prepared according to the central [EFT documentation](https://gitlab.cern.ch/hh/eft-benchmarks).
+The datacards for the various EFT benchmarks should be prepared according to the central [EFT documentation](https://gitlab.cern.ch/hh/eft-benchmarks).
 In particular, please make sure that your ggF signal is normalized to a hypothetical cross section of 1fb times the branching ratio of your channel, and that VBF processes (`qqHH_*`) are marked as background by attributing them a positive process id.
-Names of datacard files should have the following format:
+Names of EFT benchmark datacard files should have the format
 
-- Benchmarks: `datacard_<NAME>.txt`, where `NAME` is the name of the particular benchmark.
-- *c2* scan: `datacard_c2_<VALUE>.txt`, where `VALUE` is the corresponding value of *c2*. The value parsing accepts two different formats, i.e. `1.5` or `1d5` for positive, and `-1.5` or `m1d5` for negative numbers.
+`datacard_<NAME>.txt`,
 
-When working with the provided law tasks, the accepted datacard naming scheme can be slightly adapted to cover scenarios where several datacards of the same EFT benchmark or *c2* value are located in the same directory.
+where `NAME` is the name of the particular benchmark.
+
+When working with the provided law tasks, the accepted datacard naming scheme can be slightly adapted to cover scenarios where several datacards of the same EFT benchmark are located in the same directory.
 See the **task parameters** section below for more information.
 
 ==If your datacards contribute to the HH combination==, please make sure to use the ==exact same== naming scheme for processes, bins and parameters as the other datacards provided by your channel.
 
 **Task parameters**
 
-As benchmark names and *c2* values are extracted from names of the datacard files, the usual `--datacards` parameter cannot be used as it would not support the combination of cards across multiple channels.
+As benchmark names are extracted from names of the datacard files, the usual `--datacards` parameter cannot be used as it would not support the combination of cards across multiple channels.
 
 The tasks below use the `--multi-datacards` parameter instead, allowing multiple sequences of files, separated by `:`, to be passed in the format `ch1/cardA,ch1/cardB:ch2/cardA,ch2/cardB`.
 In this example, the different sequences `ch1/cardA,ch1/cardB` and `ch2/cardA,ch2/cardB` could correspond to different analysis channels.
@@ -26,43 +27,43 @@ In this example, the different sequences `ch1/cardA,ch1/cardB` and `ch2/cardA,ch
 Therefore, a valid example is
 
 ```shell
---multi-datacards 'my_cards/datacard_c2_*.txt'
+--multi-datacards 'my_cards/datacard_bm*.txt'
 ```
 
 for a **single channel**, and
 
 ```shell
---multi-datacards 'bbbb/datacard_c2_*.txt:bbgg/datacard_c2_*.txt'
+--multi-datacards 'bbbb/datacard_bm*.txt:bbgg/datacard_bm*.txt'
 ```
 
-for **multiple channels**, where datacards corresponding to the same *c2* value will be combined across the channels.
+for **multiple channels**, where datacards corresponding to the same benchmark (name) will be combined across the channels.
 
-When datacards of the same EFT benchmark or *c2* value are located in the same directory (unlike the example above which assumes that files are placed in different subdirectories), you can use the `--datacard-pattern` parameter to select the datacards per sequence and to extract either the benchmark name or *c2* value.
+When datacards of the same EFT benchmark are located in the same directory (unlike the example above which assumes that files are placed in different subdirectories), you can use the `--datacard-pattern` parameter to select the datacards per sequence and to extract either the benchmark name.
 
 Consider a directory that contains 6 files
 
 ```
-datacard_c2_0.5_A.txt
-datacard_c2_1.0_A.txt
-datacard_c2_1.5_A.txt
-datacard_c2_0.5_B.txt
-datacard_c2_1.0_B.txt
-datacard_c2_1.5_B.txt
+datacard_bm1_A.txt
+datacard_bm2_A.txt
+datacard_bm3_A.txt
+datacard_bm1_B.txt
+datacard_bm2_B.txt
+datacard_bm3_B.txt
 ```
 
-and you want to perform the *c2* scan **only** for datacards `A`.
-In case, one can use
+and you want to compute the benchmark limits **only** for datacards `A`.
+In this case, one can use
 
 ```shell
---multi-datacards 'datacard_c2_*.txt' --datacard-pattern 'datacard_c2_(.*)_A.txt'
+--multi-datacards 'datacard_bm*.txt' --datacard-pattern 'datacard_bm(.*)_A.txt'
 ```
 
-where the pattern `datacard_c2_(.*)_A.txt` is used both to select files from all matches of `--multi-datacards` and to extract the corresponding *c2* value via the regex group `(.*)`.
+where the pattern `datacard_bm(.*)_A.txt` is used both to select files from all matches of `--multi-datacards` and to extract the corresponding benchmark name via the regex group `(.*)`.
 
-If you like to perform the scan for `A` **and* `B`, with datacards of the same *c2* value being combined first, you can add another pattern separated by comma,
+If you like to perform the scan for `A` **and* `B`, with datacards of the same benchmark being combined first, you can add another pattern separated by comma,
 
 ```shell
---multi-datacards 'datacard_c2_*.txt' --datacard-pattern 'datacard_c2_(.*)_A.txt,datacard_c2_(.*)_B.txt'
+--multi-datacards 'datacard_bm*.txt' --datacard-pattern 'datacard_bm(.*)_A.txt,datacard_bm(.*)_B.txt'
 ```
 
 
@@ -143,85 +144,4 @@ law run PlotEFTBenchmarkLimits \
     --xsec fb \
     --br bbgg \
     --EFTBenchmarkLimits-workflow htcondor
-```
-
-
-### Scan of `c2`
-
-The `PlotEFTUpperLimits` task shows the upper limits on the rate of HH production via gluon-gluon fusion (POI `r_gghh`) obtained for several EFT coupling values at NLO.
-As described above, datacard names should have the format `datacard_c2_<VALUE>.txt`.
-
-- [Quick example](#quick-example_1)
-- [Dependencies](#dependencies_1)
-- [Parameters](#parameters_1)
-- [Example commands](#example-commands_1)
-
-
-#### Quick example
-
-```shell
-law run PlotEFTUpperLimits \
-    --version dev \
-    --multi-datacards $DHI_EXAMPLE_CARDS_EFT_C2 \
-    --xsec fb
-```
-
-As described above, the `--multi-datacards` parameter should be used to identify different sequences of datacards.
-
-Output:
-
-![EFT c2 scan](../images/limits__eft__c2.png)
-
-
-#### Dependencies
-
-```mermaid
-graph LR;
-    A(PlotEFTUpperLimits) --> B(MergeEFTUpperLimits);
-    B --> C([EFTUpperLimits]);
-    C --> D1(CreateWorkspace);
-    C --> D2(CreateWorkspace);
-    C --> ...;
-    D1 --> E1(CombineDatacards);
-    D2 --> E2(CombineDatacards);
-```
-
-Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
-
-
-#### Parameters
-
-=== "PlotEFTUpperLimits"
-
-    --8<-- "content/snippets/ploteftupperlimits_param_tab.md"
-
-=== "MergeEFTUpperLimits"
-
-    --8<-- "content/snippets/mergeeftupperlimits_param_tab.md"
-
-=== "EFTUpperLimits"
-
-    --8<-- "content/snippets/eftupperlimits_param_tab.md"
-
-=== "CreateWorkspace"
-
-    --8<-- "content/snippets/createworkspace_param_tab.md"
-
-=== "CombineDatacards"
-
-    --8<-- "content/snippets/combinedatacards_param_tab.md"
-
-
-#### Example commands
-
-**1.** Execute `EFTUpperLimits` tasks on HTCondor, apply the branching ratio of the `bbgg` channel to extracted limits, and limit the scan range to values between -1 and 1 (inclusive):
-
-```shell hl_lines="5-7"
-law run PlotEFTUpperLimits \
-    --version dev \
-    --multi-datacards $DHI_EXAMPLE_CARDS_EFT_BM \
-    --xsec fb \
-    --br bbgg \
-    --scan-range=-1,1 \
-    --EFTUpperLimits-workflow htcondor
 ```

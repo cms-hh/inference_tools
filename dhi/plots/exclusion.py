@@ -192,7 +192,8 @@ def plot_exclusion_and_bestfit_1d(
 
     # theory prediction
     if x_min < 1:
-        line_thy = ROOT.TLine(1., 0., 1., n)
+        sm_value = poi_data[scan_parameter].sm_value
+        line_thy = ROOT.TLine(sm_value, 0., sm_value, n)
         r.setup_line(line_thy, props={"NDC": False, "LineStyle": 1}, color=colors.red)
         draw_objs.insert(-1, line_thy)
         legend_entries.append((line_thy, "Theory prediction", "l"))
@@ -518,7 +519,10 @@ def plot_exclusion_and_bestfit_2d(
 
     # SM point
     if draw_sm_point:
-        g_sm = create_tgraph(1, 1, 1)
+        g_sm = create_tgraph(1,
+            poi_data.get(scan_parameter1, {}).get("sm_value", 1.0),
+            poi_data.get(scan_parameter2, {}).get("sm_value", 1.0),
+        )
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
         legend_entries[1 + 2 * has_uncs + has_obs + has_best_fit] = (g_sm, "Standard model", "P")
