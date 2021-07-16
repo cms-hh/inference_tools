@@ -42,8 +42,8 @@ class HHModelTask(AnalysisTask):
     """
 
     valid_hh_model_options = {
-        "noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc", "doProfilekl",
-        "doProfilekt", "doProfileCV", "doProfileC2V",
+        "noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc",
+        "doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V", "doProfileC2",
     }
 
     hh_model = luigi.Parameter(
@@ -62,12 +62,15 @@ class HHModelTask(AnalysisTask):
         if self.hh_model_empty and not self.allow_empty_hh_model:
             raise Exception("{!r}: hh_model is not allowed to be empty".format(self))
 
-        # store whether certain kappas are profiled when a model is set
+        # store whether certain POIs are profiled when a model is set
         if not self.hh_model_empty:
             options = self.split_hh_model()[2]
-            for k in ["kl", "kt", "CV", "C2V"]:
-                flag = options.get("doProfile{}".format(k), "").lower() not in ("", "none")
+            for k in ["kl", "kt", "CV", "C2V", "C2"]:
+                flag = options.get("doProfile{}".format(k), "").lower() not in ("", "none", "false")
                 setattr(self, "profile_{}".format(k), flag)
+
+        # cached hh model instance
+        self._cached_model = None
 
     @property
     def hh_model_empty(self):
@@ -117,16 +120,24 @@ class HHModelTask(AnalysisTask):
                     # then, try relative to dhi.models
                     mod = importlib.import_module("dhi.models." + module_id)
 
-        # get the model and build physics options
+        # get the model
         model = getattr(mod, model_name)
-        model.doNNLOscaling = not options.get("noNNLOscaling", False)
-        model.doBRscaling = not options.get("noBRscaling", False)
-        model.doHscaling = not options.get("noHscaling", False)
-        model.doklDependentUnc = not options.get("noklDependentUnc", False)
-        model.doProfilekl = options.get("doProfilekl")
-        model.doProfilekt = options.get("doProfilekt")
-        model.doProfileCV = options.get("doProfileCV")
-        model.doProfileC2V = options.get("doProfileC2V")
+
+        # helper to set options when existing
+        def set_opt(name, value):
+            if name in model.KNOWN_PARAMS or name in model.KNOWN_FLAGS:
+                setattr(model, name, value)
+
+        # set physics options
+        set_opt("doNNLOscaling", not options.get("noNNLOscaling", False))
+        set_opt("doBRscaling", not options.get("noBRscaling", False))
+        set_opt("doHscaling", not options.get("noHscaling", False))
+        set_opt("doklDependentUnc", not options.get("noklDependentUnc", False))
+        set_opt("doProfilekl", options.get("doProfilekl"))
+        set_opt("doProfilekt", options.get("doProfilekt"))
+        set_opt("doProfileCV", options.get("doProfileCV"))
+        set_opt("doProfileC2V", options.get("doProfileC2V"))
+        set_opt("doProfileC2", options.get("doProfileC2"))
 
         return mod, model
 
@@ -141,6 +152,10 @@ class HHModelTask(AnalysisTask):
 
         # get the module and the hh model object
         module, model = cls._load_hh_model(hh_model)
+
+        # check that the r POI is handled by the model
+        if r_poi not in model.R_POIS:
+            raise ValueError("r POI {} is not covered by the HH model {}".format(r_poi, hh_model))
 
         # get the proper xsec getter, based on poi
         if r_poi == "r_gghh":
@@ -158,7 +173,7 @@ class HHModelTask(AnalysisTask):
             has_unc = False
         else:  # r
             # TODO: contribution from vhh_formula is disabled at the moment
-            get_hh_xsec = module.create_hh_xsec_func(model.ggf_formula, model.vbf_formula)
+            get_hh_xsec = module.create_hh_xsec_func(**model.get_formulae())
             get_xsec = functools.partial(get_hh_xsec, nnlo=model.doNNLOscaling)
             signature_kwargs = set(inspect.getargspec(get_hh_xsec).args) - {"nnlo"}
             has_unc = True
@@ -250,7 +265,9 @@ class HHModelTask(AnalysisTask):
 
     @require_hh_model
     def load_hh_model(self):
-        return self._load_hh_model(self.hh_model)
+        if self._cached_model is None:
+            self._cached_model = self._load_hh_model(self.hh_model)
+        return self._cached_model
 
     @require_hh_model
     def create_xsec_func(self, *args, **kwargs):
@@ -948,7 +965,7 @@ class ParameterScanTask(AnalysisTask):
 class POITask(DatacardTask, ParameterValuesTask):
 
     r_pois = ("r", "r_qqhh", "r_gghh", "r_vhh")
-    k_pois = ("kl", "kt", "CV", "C2V")
+    k_pois = ("kl", "kt", "CV", "C2V", "C2")
     all_pois = r_pois + k_pois
 
     pois = law.CSVParameter(
@@ -990,12 +1007,12 @@ class POITask(DatacardTask, ParameterValuesTask):
             if cls.sort_pois:
                 params["pois"] = tuple(sorted(params["pois"]))
 
-        # remove r and k pois from parameter values that are one, sort the rest
+        # remove r and k pois with SM values from parameters, sort the rest
         if "parameter_values" in params:
             parameter_values = []
             for p in params["parameter_values"]:
                 name, value = p
-                if name in cls.all_pois and float(value) == 1:
+                if name in cls.all_pois and float(value) == poi_data[name].sm_value:
                     continue
                 parameter_values.append(p)
             if cls.sort_parameter_values:
@@ -1017,13 +1034,17 @@ class POITask(DatacardTask, ParameterValuesTask):
     def __init__(self, *args, **kwargs):
         super(POITask, self).__init__(*args, **kwargs)
 
-        # store available pois on task level and potentially update them according the the model
+        # store available pois on task level and potentially update them according to the model
         r_pois = list(self.r_pois)
         k_pois = list(self.k_pois)
         if not self.hh_model_empty:
-            for k in self.k_pois:
-                if getattr(self, "profile_{}".format(k)) and k in k_pois:
-                    k_pois.remove(k)
+            model = self.load_hh_model()[1]
+            for p in self.r_pois:
+                if p not in model.R_POIS:
+                    r_pois.remove(p)
+            for p in self.k_pois:
+                if p not in model.K_POIS:
+                    k_pois.remove(p)
         self.r_pois = tuple(r_pois)
         self.k_pois = tuple(k_pois)
         self.all_pois = self.r_pois + self.k_pois
@@ -1071,7 +1092,7 @@ class POITask(DatacardTask, ParameterValuesTask):
         parts.append(["poi"] + list(self.pois))
 
         # add parameters, taking into account excluded and included ones
-        params = OrderedDict((p, 1.0) for p in self.get_output_postfix_pois())
+        params = OrderedDict((p, poi_data[p].sm_value) for p in self.get_output_postfix_pois())
         params.update(self.parameter_values_dict)
         if exclude_params:
             params = OrderedDict((p, v) for p, v in params.items() if p not in exclude_params)
@@ -1106,8 +1127,7 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     def _joined_parameter_values(self, join=True):
         # all unused pois with a value of one
-        values = OrderedDict((p, 1.0) for p in self._joined_parameter_values_pois())
-
+        values = OrderedDict((p, poi_data[p].sm_value) for p in self._joined_parameter_values_pois())
         # manually set parameters
         values.update(self.parameter_values_dict)
 
@@ -1251,7 +1271,7 @@ class POIPlotTask(PlotTask, POITask):
 
         # add remaining ones
         for name, value in list(parameter_values.items()):
-            if value != 1:
+            if name in poi_data and value != poi_data[name].sm_value:
                 shown_parameters[(name,)] = value
 
         return shown_parameters
@@ -1378,11 +1398,20 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         # remove ggf and vbf processes that are not covered by the physics model
         if not self.hh_model_empty:
             mod, model = self.load_hh_model()
-            all_hh_processes = {sample.label for sample in mod.ggf_samples.values()}
-            all_hh_processes |= {sample.label for sample in mod.vbf_samples.values()}
-            model_hh_processes = {sample.label for sample in model.ggf_formula.sample_list}
-            model_hh_processes |= {sample.label for sample in model.vbf_formula.sample_list}
-            to_remove = all_hh_processes - model_hh_processes
+
+            # build two sets of all available hh processes and those actually used in the model
+            all_procs = set()
+            model_procs = set()
+            for r_poi, proc in [("r_gghh", "ggf"), ("r_qqhh", "vbf"), ("r_vhh", "vhh")]:
+                all_samples = getattr(mod, proc + "_samples", None)
+                formula = getattr(model, proc + "_formula", None)
+                if not all_samples or not formula:
+                    continue
+                all_procs |= {s.label for s in all_samples.values()}
+                model_procs |= {s.label for s in formula.sample_list}
+
+            # subtract the sets to see which processes to remove
+            to_remove = all_procs - model_procs
             if to_remove:
                 self.logger.info("trying to remove processe(s) '{}' from the combined datacard as "
                     "they are not part of the phyics model {}".format(
@@ -1425,18 +1454,29 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
         # build physics model arguments when not empty
         model_args = ""
         if not self.hh_model_empty:
-            model_args = (
-                " --physics-model {model.__module__}:{model.name}"
-                " --physics-option doNNLOscaling={model.doNNLOscaling}"
-                " --physics-option doBRscaling={model.doBRscaling}"
-                " --physics-option doHscaling={model.doHscaling}"
-                " --physics-option doklDependentUnc={model.doklDependentUnc}"
-                " --physics-option doProfilekl={model.doProfilekl}"
-                " --physics-option doProfilekt={model.doProfilekt}"
-                " --physics-option doProfileCV={model.doProfileCV}"
-                " --physics-option doProfileC2V={model.doProfileC2V}"
-            ).format(model=self.load_hh_model()[1])
+            model = self.load_hh_model()[1]
+            model_args = ["--physics-model {model.__module__}:{model.name}"]
 
+            # helper to set options
+            def set_opt(name, value):
+                if name in model.KNOWN_PARAMS + model.KNOWN_FLAGS:
+                    model_args.append("--physics-option {}={}".format(name, value))
+
+            # set options
+            set_opt("doNNLOscaling", "{model.doNNLOscaling}")
+            set_opt("doBRscaling", "{model.doBRscaling}")
+            set_opt("doHscaling", "{model.doHscaling}")
+            set_opt("doklDependentUnc", "{model.doklDependentUnc}")
+            set_opt("doProfilekl", "{model.doProfilekl}")
+            set_opt("doProfilekt", "{model.doProfilekt}")
+            set_opt("doProfileCV", "{model.doProfileCV}")
+            set_opt("doProfileC2V", "{model.doProfileC2V}")
+            set_opt("doProfileC2", "{model.doProfileC2}")
+
+            # format
+            model_args = " ".join(model_args).format(model=model)
+
+        # build and return the full command
         return (
             "text2workspace.py {datacard}"
             " --out workspace.root"

@@ -273,21 +273,6 @@ class EFTBenchmarkLimits(EFTBenchmarkBase, EFTLimitBase):
         return self.local_target("eftlimit__{}.root".format(self.join_postfix(parts)))
 
 
-class EFTUpperLimits(EFTScanBase, EFTLimitBase):
-
-    run_command_in_tmp = True
-
-    def create_branch_map(self):
-        return list(self.scan_datacards.keys())
-
-    def requires(self):
-        return CreateWorkspace.req(self, datacards=self.scan_datacards[self.branch_data],
-            hh_model=law.NO_STR)
-
-    def output(self):
-        return self.local_target("eftlimit__{}.root".format(self.get_output_postfix()))
-
-
 class MergeEFTBenchmarkLimits(EFTBenchmarkBase):
 
     def requires(self):
@@ -318,45 +303,6 @@ class MergeEFTBenchmarkLimits(EFTBenchmarkBase):
         for branch, inp in self.input()["collection"].targets.items():
             limits = UpperLimits.load_limits(inp, unblinded=self.unblinded)
             records.append(limits)
-
-        data = np.array(records, dtype=dtype)
-        self.output().dump(data=data, formatter="numpy")
-
-
-class MergeEFTUpperLimits(EFTScanBase):
-
-    def requires(self):
-        return EFTUpperLimits.req(self)
-
-    def output(self):
-        return self.local_target("eftlimits__{}.npz".format(self.get_output_postfix()))
-
-    @law.decorator.log
-    @law.decorator.safe_output
-    def run(self):
-        import numpy as np
-
-        records = []
-        dtype = [
-            (self.scan_parameter, np.float32),
-            ("limit", np.float32),
-            ("limit_p1", np.float32),
-            ("limit_m1", np.float32),
-            ("limit_p2", np.float32),
-            ("limit_m2", np.float32),
-        ]
-        if self.unblinded:
-            dtype.append(("observed", np.float32))
-
-        scan_task = self.requires()
-        for branch, inp in self.input()["collection"].targets.items():
-            if not inp.exists():
-                self.logger.warning("input of branch {} at {} does not exist".format(
-                    branch, inp.path))
-                continue
-
-            limits = UpperLimits.load_limits(inp, unblinded=self.unblinded)
-            records.append((scan_task.branch_map[branch],) + limits)
 
         data = np.array(records, dtype=dtype)
         self.output().dump(data=data, formatter="numpy")
@@ -440,131 +386,5 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
             y_log=self.y_log,
             xsec_unit=self.xsec,
             hh_process=self.br if self.br in br_hh else None,
-            campaign=self.campaign if self.campaign != law.NO_STR else None,
-        )
-
-
-class PlotEFTUpperLimits(EFTScanBase, PlotTask):
-
-    xsec = luigi.ChoiceParameter(
-        default=law.NO_STR,
-        choices=[law.NO_STR, "", "pb", "fb"],
-        description="convert limits to cross sections in this unit; choices: '',pb,fb; no default",
-    )
-    br = luigi.ChoiceParameter(
-        default=law.NO_STR,
-        choices=[law.NO_STR, ""] + list(br_hh.keys()),
-        description="name of a branching ratio defined in dhi.config.br_hh to scale the cross "
-        "section when xsec is used; choices: '',{}; no default".format(",".join(br_hh.keys())),
-    )
-    y_log = luigi.BoolParameter(
-        default=False,
-        description="apply log scaling to the y-axis; default: False",
-    )
-
-    z_min = None
-    z_max = None
-
-    def requires(self):
-        return MergeEFTUpperLimits.req(self)
-
-    def output(self):
-        # additional postfix
-        parts = []
-        if self.xsec in ["pb", "fb"]:
-            parts.append(self.xsec)
-            if self.br not in (law.NO_STR, ""):
-                parts.append(self.br)
-        if self.y_log:
-            parts.append("log")
-
-        names = self.create_plot_names(["eftlimits", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
-
-    @law.decorator.log
-    @law.decorator.notify
-    @view_output_plots
-    @law.decorator.safe_output
-    def run(self):
-        import numpy as np
-
-        # prepare the output
-        outputs = self.output()
-        outputs[0].parent.touch()
-
-        # load limit values, given in fb
-        limit_values = self.input().load(formatter="numpy")["data"]
-
-        # get nnlo cross sections in pb
-        xsecs = OrderedDict(
-            (v, get_eft_ggf_xsec_nnlo(**{self.scan_parameter: v}))
-            for v in limit_values[self.scan_parameter]
-        )
-
-        # prepare the br value
-        br_value = br_hh.get(self.br, 1.)
-
-        # get scaling factors for xsec and limit values
-        n = len(xsecs)
-        if self.xsec == "fb":
-            xsec_unit = "fb"
-            limit_scales = n * [br_value]
-            xsec_scales = n * [1000. * br_value]
-        elif self.xsec == "pb":
-            xsec_unit = "pb"
-            limit_scales = n * [0.001 * br_value]
-            xsec_scales = n * [br_value]
-        else:
-            xsec_unit = None
-            limit_scales = (np.array(xsecs.values()) * 1000.)**-1
-            xsec_scales = [xsec**-1 for xsec in xsecs.values()]
-
-        # apply scales per element
-        for name in limit_values.dtype.names:
-            if name in ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2", "observed"]:
-                limit_values[name] *= limit_scales
-        xsecs = OrderedDict((v, xsec * s) for (v, xsec), s in zip(xsecs.items(), xsec_scales))
-
-        # some printing
-        for v in np.linspace(-0.5, 0.5, 11):
-            if v in limit_values[self.scan_parameter]:
-                record = limit_values[limit_values[self.scan_parameter] == v][0]
-                self.publish_message("{} = {} -> {} {}".format(self.scan_parameter, v,
-                    record["limit"], xsec_unit or "({})".format(self.poi)))
-
-        # prepare theory values in the structure expected by the plot function
-        thy_values = {
-            self.scan_parameter: limit_values[self.scan_parameter],
-            "xsec": list(xsecs.values()),
-        }
-
-        # prepare observed values
-        obs_values = None
-        if self.unblinded:
-            obs_values = {
-                self.scan_parameter: limit_values[self.scan_parameter],
-                "limit": limit_values["observed"],
-            }
-
-        # fixed model parameters
-        model_parameters = OrderedDict([(("kl", "kt"), 1.), (("cg", "c2g"), 1.)])
-
-        # call the plot function
-        self.call_plot_func(
-            "dhi.plots.limits.plot_limit_scan",
-            paths=[outp.path for outp in outputs],
-            poi=self.poi,
-            scan_parameter=self.scan_parameter,
-            expected_values=limit_values,
-            observed_values=obs_values,
-            theory_values=thy_values,
-            x_min=self.get_axis_limit("x_min"),
-            x_max=self.get_axis_limit("x_max"),
-            y_min=self.get_axis_limit("y_min"),
-            y_max=self.get_axis_limit("y_max"),
-            y_log=self.y_log,
-            xsec_unit=xsec_unit,
-            hh_process=self.br if xsec_unit and self.br in br_hh else None,
-            model_parameters=model_parameters,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
         )

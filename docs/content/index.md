@@ -191,17 +191,6 @@ More detailed information on the different scans & fits can be found in the foll
     </div>
   </a>
 
-  <a href="tasks/eft.html#scan-of-c2">
-    <div class="dhi_image_box">
-      <div>
-        <img src="images/limits__eft__c2.png" />
-      </div>
-      <div>
-        Limit scan of EFT c2 coupling
-      </div>
-    </div>
-  </a>
-
   <div style="clear: both;"></div>
 </div>
 

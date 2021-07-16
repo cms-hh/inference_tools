@@ -43,9 +43,10 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             for i, poi in enumerate(self.pois):
                 values = [tpl[i] for tpl in linspace]
                 if poi in self.all_pois and 1 not in values:
+                    scan = "start: {}, stop: {}, points: {}".format(*self.scan_parameters[i][1:])
                     self.logger.error("the expected best fit value of 1 is not contained in the "
-                        "values to scan for POI {}, leading to dnll values being computed relative "
-                        "to an arbitrary minimum".format(poi))
+                        "values to scan for POI {} ({}), leading to dnll values being computed "
+                        "relative to an arbitrary minimum".format(poi, scan))
 
         return linspace
 
