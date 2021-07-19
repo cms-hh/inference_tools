@@ -522,6 +522,10 @@ class PlotTask(AnalysisTask):
         significant=False,
         description="the upper z-axis limit; no default",
     )
+    paper = luigi.BoolParameter(
+        default=False,
+        description="produce plots with certain settings changed for publication; default: False",
+    )
 
     def get_axis_limit(self, value):
         if isinstance(value, six.string_types):

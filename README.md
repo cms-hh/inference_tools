@@ -94,10 +94,11 @@ module 'dhi.tasks.base', 2 task(s):
     - BundleRepo
     - BundleSoftware
 
-module 'dhi.tasks.limits', 6 task(s):
+module 'dhi.tasks.limits', 7 task(s):
     - UpperLimits
-    - PlotUpperLimits
     - PlotUpperLimitsAtPoint
+    - PlotUpperLimits
+    - PlotUpperLimits2D
     - PlotMultipleUpperLimitsByModel
     - PlotMultipleUpperLimits
     - MergeUpperLimits
@@ -127,18 +128,15 @@ module 'dhi.tasks.postfit', 3 task(s):
 
 module 'dhi.tasks.gof', 4 task(s):
     - GoodnessOfFit
-    - PlotGoodnessOfFit
     - PlotMultipleGoodnessOfFits
+    - PlotGoodnessOfFit
     - MergeGoodnessOfFit
 
-module 'dhi.tasks.eft', 7 task(s):
+module 'dhi.tasks.eft', 4 task(s):
     - EFTLimitBase
     - EFTBenchmarkLimits
-    - EFTUpperLimits
     - PlotEFTBenchmarkLimits
-    - PlotEFTUpperLimits
     - MergeEFTBenchmarkLimits
-    - MergeEFTUpperLimits
 
 module 'dhi.tasks.test', 1 task(s):
     - test.TestPlots
@@ -152,7 +150,7 @@ module 'dhi.tasks.exclusion', 2 task(s):
     - PlotExclusionAndBestFit
     - PlotExclusionAndBestFit2D
 
-written 44 task(s) to index file '/your/path/inference/.law/index'
+written 42 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type
