@@ -399,7 +399,7 @@ def plot_exclusion_and_bestfit_2d(
             r.setup_graph(g, props={"LineStyle": 2, "FillColor": colors.light_grey})
             draw_objs.append((g, "SAME,F"))
             if i == 0:
-                legend_entries[2] = (g, "#pm 2 #sigma expected", "LF")
+                legend_entries[2] = (g, "95% expected", "LF")
 
     # -1 and +1 sigma exclusion
     if has_unc1:
@@ -407,7 +407,7 @@ def plot_exclusion_and_bestfit_2d(
             r.setup_graph(g, props={"LineStyle": 2, "FillColor": colors.grey})
             draw_objs.append((g, "SAME,F"))
             if i == 0:
-                legend_entries[1] = (g, "#pm 1 #sigma expected", "LF")
+                legend_entries[1] = (g, "68% expected", "LF")
 
         p1_col = colors.light_grey if has_unc2 else colors.white
         for g in contours["limit_m1"]:

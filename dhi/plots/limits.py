@@ -135,7 +135,7 @@ def plot_limit_scan(
         g_2sigma = create_graph(sigma=2)
         r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.yellow})
         draw_objs.append((g_2sigma, "SAME,4"))  # option 4 might fallback to 3, see below
-        legend_entries[5] = (g_2sigma, "#pm 2 #sigma expected", "LF")
+        legend_entries[5] = (g_2sigma, "95% expected", "LF")
         y_max_value = max(y_max_value, max(expected_values["limit_p2"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m2"]))
 
@@ -145,7 +145,7 @@ def plot_limit_scan(
         g_1sigma = create_graph(sigma=1)
         r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.green})
         draw_objs.append((g_1sigma, "SAME,4"))  # option 4 might fallback to 3, see below
-        legend_entries[4] = (g_1sigma, "#pm 1 #sigma expected", "LF")
+        legend_entries[4] = (g_1sigma, "68% expected", "LF")
         y_max_value = max(y_max_value, max(expected_values["limit_p1"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m1"]))
 
@@ -621,13 +621,13 @@ def plot_limit_points(
     g_2sigma = create_graph(sigma=2)
     r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.yellow})
     draw_objs.append((g_2sigma, "SAME,2"))
-    legend_entries[5] = (g_2sigma, r"#pm 2 #sigma expected", "LF")
+    legend_entries[5] = (g_2sigma, r"95% expected", "LF")
 
     # 1 sigma band
     g_1sigma = create_graph(sigma=1)
     r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.green})
     draw_objs.append((g_1sigma, "SAME,2"))
-    legend_entries[4] = (g_1sigma, r"#pm 1 #sigma expected", "LF")
+    legend_entries[4] = (g_1sigma, r"68% expected", "LF")
 
     # central values
     g_exp = create_graph(sigma=0)
@@ -935,7 +935,7 @@ def plot_limit_scan_2d(
             r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black, "LineStyle": 3})
             draw_objs.append((g, "SAME,C"))
             if i == 0:
-                legend_entries.append((g, r"#pm 1 #sigma expected", "L"))
+                legend_entries.append((g, r"68% expected", "L"))
 
     if has_obs:
         for i, g in enumerate(obs_contours):
@@ -1093,13 +1093,13 @@ def plot_benchmark_limits(
     g_2sigma = create_graph(sigma=2)
     r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.yellow})
     draw_objs.append((g_2sigma, "SAME,2"))
-    legend_entries.append((g_2sigma, r"#pm 2 #sigma expected", "LF"))
+    legend_entries.append((g_2sigma, r"95% expected", "LF"))
 
     # 1 sigma band
     g_1sigma = create_graph(sigma=1)
     r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.green})
     draw_objs.append((g_1sigma, "SAME,2"))
-    legend_entries.insert(0, (g_1sigma, r"#pm 1 #sigma expected", "LF"))
+    legend_entries.insert(0, (g_1sigma, r"68% expected", "LF"))
 
     # prepare graphs
     g_exp = create_graph(sigma=0)
