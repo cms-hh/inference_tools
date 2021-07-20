@@ -160,6 +160,11 @@ class PlotPostfitSOverB(POIPlotTask):
         significant=False,
         description="the upper y-axis limit of the ratio plot; no default",
     )
+    prefit = luigi.BoolParameter(
+        default=False,
+        description="plot prefit distributions and uncertainties instead of postfit ones; only "
+        "available when not --unblinded; default: False",
+    )
     x_min = None
     x_max = None
     z_max = None
@@ -167,11 +172,19 @@ class PlotPostfitSOverB(POIPlotTask):
 
     force_n_pois = 1
 
+    def __init__(self, *args, **kwargs):
+        super(PlotPostfitSOverB, self).__init__(*args, **kwargs)
+
+        if self.prefit and self.unblinded:
+            self.logger.warning("prefit option is not available when unblinded")
+            self.prefit = False
+
     def requires(self):
         return FitDiagnostics.req(self)
 
     def output(self):
-        names = self.create_plot_names(["postfitsoverb", self.get_output_postfix()])
+        name = "prefitsoverb" if self.prefit else "postfitsoverb"
+        names = self.create_plot_names([name, self.get_output_postfix()])
         return [self.local_target(name) for name in names]
 
     @law.decorator.log
@@ -202,6 +215,7 @@ class PlotPostfitSOverB(POIPlotTask):
             signal_scale_ratio=self.signal_scale_ratio,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            prefit=self.prefit,
             unblinded=self.unblinded,
         )
 
