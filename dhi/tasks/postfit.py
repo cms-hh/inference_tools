@@ -15,6 +15,7 @@ from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWo
 
 
 class SAVEFLAGS(str, enum.Enum):
+
     Shapes = "Shapes"
     WithUncertainties = "WithUncertainties"
     Normalizations = "Normalizations"
@@ -201,6 +202,7 @@ class PlotPostfitSOverB(POIPlotTask):
             signal_scale_ratio=self.signal_scale_ratio,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            unblinded=self.unblinded,
         )
 
 

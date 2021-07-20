@@ -34,7 +34,8 @@ def plot_s_over_b(
     signal_scale=1.,
     signal_scale_ratio=1.,
     model_parameters=None,
-    campaign=None
+    campaign=None,
+    unblinded=False,
 ):
     """
     Creates a postfit signal-over-background plot combined over all bins in the fit of a *poi* and
@@ -48,7 +49,8 @@ def plot_s_over_b(
     *True*, the signal at the top pad is not drawn stacked on top of the background but as a
     separate histogram. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*.
+    *dhi.config.campaign_labels*. When *unblinded* is *True*, some legend labels are changed
+    accordingly.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/postfit.html#combined-postfit-shapes
     """
@@ -126,9 +128,10 @@ def plot_s_over_b(
         draw_objs1.append((hist_sb_post1, "SAME,HIST"))
 
     # postfit B histogram at the top
+    fit_prefix = "post" if unblinded else "pre"
     hist_b_post1 = ROOT.TH1F("b_post1", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_b_post1, props={"FillColor": colors.white})
-    legend_entries.insert(0, (hist_b_post1, "Background (postfit)", "L"))
+    legend_entries.insert(0, (hist_b_post1, "Background ({}-fit)".format(fit_prefix), "L"))
     if signal_superimposed:
         draw_objs1.insert(-1, (hist_b_post1, "SAME,HIST"))
     else:
@@ -138,10 +141,11 @@ def plot_s_over_b(
     hist_d1 = ROOT.TH1F("d1", "", len(bins) - 1, array.array("f", bins))
 
     # actual data graph at the top
+    data_postfix = "" if unblinded else " (Asimov)"
     graph_d1 = ROOT.TGraphAsymmErrors(len(bins) - 1)
     r.setup_hist(graph_d1, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 1}, color=1)
     draw_objs1.append((graph_d1, "PEZ,SAME"))
-    legend_entries.insert(0, (graph_d1, "Data", "LP"))
+    legend_entries.insert(0, (graph_d1, "Data" + data_postfix, "LP"))
 
     # postfit S+B ratio histogram and a mask histogram to mimic errors
     hist_sb_post2 = ROOT.TH1F("sb_post2", "", len(bins) - 1, array.array("f", bins))
@@ -159,7 +163,7 @@ def plot_s_over_b(
     graph_b_err2 = ROOT.TGraphAsymmErrors(len(bins) - 1)
     r.setup_hist(graph_b_err2, props={"FillColor": colors.black, "FillStyle": 3345, "LineWidth": 0})
     draw_objs2.append((graph_b_err2, "SAME,2"))
-    legend_entries.insert(2, (graph_b_err2, "Uncertainty (postfit)", "F"))
+    legend_entries.insert(2, (graph_b_err2, "Uncertainty ({}-fit)".format(fit_prefix), "F"))
 
     # data graph in the ratio
     graph_d2 = ROOT.TGraphAsymmErrors(len(bins) - 1)
@@ -189,7 +193,7 @@ def plot_s_over_b(
         b_err_up = hist_b_err_up1.GetBinContent(i + 1)
         b_err_down = hist_b_err_down1.GetBinContent(i + 1)
         d = hist_d1.GetBinContent(i + 1)
-        d_err = poisson_asym_errors(d)
+        d_err_up, d_err_down = poisson_asym_errors(d)
         # zero safe b value, leading to almost 0 when used as denominator
         b_safe = b or 1e15
         # bottom signal + background histogram and mask
@@ -198,10 +202,10 @@ def plot_s_over_b(
         hist_mask_post2.SetBinContent(i + 1, min(sb / b_safe, 1.))
         # data points at the top
         graph_d1.SetPoint(i, x, d)
-        graph_d1.SetPointError(i, 0., 0., d_err[1], d_err[0])
+        graph_d1.SetPointError(i, 0., 0., d_err_down, d_err_up)
         # data points in the ratio
         graph_d2.SetPoint(i, x, d / b_safe)
-        graph_d2.SetPointError(i, 0., 0., d_err[1] / b_safe, d_err[0] / b_safe)
+        graph_d2.SetPointError(i, 0., 0., d_err_down / b_safe, d_err_up / b_safe)
         # uncertainty in the ratio
         graph_b_err2.SetPoint(i, x, 1.)
         graph_b_err2.SetPointError(i, 0.5 * w, 0.5 * w, b_err_down / b_safe, b_err_up / b_safe)
@@ -300,26 +304,25 @@ def load_bin_data(fit_diagnostics_path):
                 continue
 
             # fill bin data
-            get = lambda obj, kind: getattr(obj, "Get" + kind)(i + 1)
             bin_data.append(DotDict(
-                pre_signal=get(s_pre, "BinContent"),
-                pre_signal_err_up=get(s_pre, "BinErrorUp"),
-                pre_signal_err_down=get(s_pre, "BinErrorLow"),
-                pre_background=get(b_pre, "BinContent"),
-                pre_background_err_up=get(b_pre, "BinErrorUp"),
-                pre_background_err_down=get(b_pre, "BinErrorLow"),
-                pre_all=get(a_pre, "BinContent"),
-                pre_all_err_up=get(a_pre, "BinErrorUp"),
-                pre_all_err_down=get(a_pre, "BinErrorLow"),
-                post_signal=get(s_post, "BinContent"),
-                post_signal_err_up=get(s_post, "BinErrorUp"),
-                post_signal_err_down=get(s_post, "BinErrorLow"),
-                post_background=get(b_post, "BinContent"),
-                post_background_err_up=get(b_post, "BinErrorUp"),
-                post_background_err_down=get(b_post, "BinErrorLow"),
-                post_all=get(a_post, "BinContent"),
-                post_all_err_up=get(a_post, "BinErrorUp"),
-                post_all_err_down=get(a_post, "BinErrorLow"),
+                pre_signal=s_pre.GetBinContent(i + 1),
+                pre_signal_err_up=s_pre.GetBinErrorUp(i + 1),
+                pre_signal_err_down=s_pre.GetBinErrorLow(i + 1),
+                pre_background=b_pre.GetBinContent(i + 1),
+                pre_background_err_up=b_pre.GetBinErrorUp(i + 1),
+                pre_background_err_down=b_pre.GetBinErrorLow(i + 1),
+                pre_all=a_pre.GetBinContent(i + 1),
+                pre_all_err_up=a_pre.GetBinErrorUp(i + 1),
+                pre_all_err_down=a_pre.GetBinErrorLow(i + 1),
+                post_signal=s_post.GetBinContent(i + 1),
+                post_signal_err_up=s_post.GetBinErrorUp(i + 1),
+                post_signal_err_down=s_post.GetBinErrorLow(i + 1),
+                post_background=b_post.GetBinContent(i + 1),
+                post_background_err_up=b_post.GetBinErrorUp(i + 1),
+                post_background_err_down=b_post.GetBinErrorLow(i + 1),
+                post_all=a_post.GetBinContent(i + 1),
+                post_all_err_up=a_post.GetBinErrorUp(i + 1),
+                post_all_err_down=a_post.GetBinErrorLow(i + 1),
                 data=d_post.GetY()[i] if d_post else None,
             ))
 
