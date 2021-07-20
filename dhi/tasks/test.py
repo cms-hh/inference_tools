@@ -88,17 +88,16 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
     def requires(self):
         reqs = OrderedDict()
 
-        ggf_cards = tuple(os.environ["DHI_EXAMPLE_CARDS_GGF"].split(","))
-        vbf_cards = tuple(os.environ["DHI_EXAMPLE_CARDS_VBF"].split(","))
-        multi_cards = (ggf_cards, vbf_cards, ggf_cards + vbf_cards)
-        multi_cards_names = ("ggF", "VBF", "All")
-        test_models = tuple("HHModelPinv.model_no_ggf_kl" + kl for kl in "1 2p45 5".split())
+        cards = tuple(os.environ["DHI_EXAMPLE_CARDS"].split(","))
+        multi_cards = tuple((c,) for c in cards) + (cards,)
+        multi_cards_names = tuple(map("Cards {}".format, range(1, len(cards) + 1))) + ("All",)
+        test_models = tuple(map("model_default{}".format, ["", "@noBRscaling", "@noHscaling"]))
         eft_cards_bm = tuple(os.environ["DHI_EXAMPLE_CARDS_EFT_BM"].split(","))
 
         if self.check_enabled("upper_limits"):
             reqs["upper_limits"] = PlotUpperLimits.req(
                 self,
-                datacards=ggf_cards,
+                datacards=cards,
                 pois=("r",),
                 scan_parameters=(("kl", -5.0, 5.0),),
                 show_parameters=("kt",),
@@ -117,7 +116,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         if self.check_enabled("multiple_upper_limits_by_model"):
             reqs["multiple_upper_limits_by_model"] = PlotMultipleUpperLimitsByModel.req(
                 self,
-                datacards=ggf_cards,
+                datacards=cards,
                 hh_models=test_models,
                 pois=("r",),
                 scan_parameters=(("kl", -5.0, 5.0),),
@@ -130,14 +129,14 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 multi_datacards=multi_cards,
                 datacard_names=multi_cards_names,
                 pois=("r",),
-                parameter_values=("kl=1", "kt=1"),
+                parameter_values=(("kl", 1), ("kt", 1)),
                 show_parameters=("kl", "kt"),
             )
 
         if self.check_enabled("likelihood_scan"):
             reqs["likelihood_scan"] = PlotLikelihoodScan.req(
                 self,
-                datacards=ggf_cards,
+                datacards=cards,
                 pois=("kl",),
                 scan_parameters=(("kl", -5.0, 5.0),),
                 show_parameters=("kt",),
@@ -146,7 +145,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         if self.check_enabled("likelihood_scan_2d"):
             reqs["likelihood_scan_2d"] = PlotLikelihoodScan.req(
                 self,
-                datacards=ggf_cards,
+                datacards=cards,
                 pois=("kl", "kt"),
                 scan_parameters=(
                     ("kl", -5.0, 5.0),
@@ -179,7 +178,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         if self.check_enabled("multiple_likelihood_scans_by_model"):
             reqs["multiple_likelihood_scans_by_model"] = PlotMultipleLikelihoodScansByModel.req(
                 self,
-                datacards=ggf_cards,
+                datacards=cards,
                 hh_models=test_models,
                 pois=("kl",),
                 scan_parameters=(("kl", -5.0, 5.0),),
@@ -189,7 +188,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         if self.check_enabled("multiple_likelihood_scans_by_model_2d"):
             reqs["multiple_likelihood_scans_by_model_2d"] = PlotMultipleLikelihoodScansByModel.req(
                 self,
-                datacards=ggf_cards,
+                datacards=cards,
                 hh_models=test_models,
                 pois=("kl", "kt"),
                 scan_parameters=(
@@ -201,7 +200,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         if self.check_enabled("significance_scan"):
             reqs["significance_scan"] = PlotSignificanceScan.req(
                 self,
-                datacards=ggf_cards,
+                datacards=cards,
                 pois=("r",),
                 scan_parameters=(("kl", -5.0, 5.0),),
                 show_parameters=("kt",),
@@ -220,7 +219,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         if self.check_enabled("pulls_and_impacts"):
             reqs["pulls_and_impacts"] = PlotPullsAndImpacts.req(
                 self,
-                datacards=ggf_cards,
+                datacards=cards,
                 pois=("r",),
             )
             reqs["pulls_and_impacts"].requires().requires().end_branch = 10
@@ -238,7 +237,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         if self.check_enabled("exclusion_and_bestfit_2d"):
             reqs["exclusion_and_bestfit_2d"] = PlotExclusionAndBestFit2D.req(
                 self,
-                datacards=ggf_cards,
+                datacards=cards,
                 pois=("r",),
                 scan_parameters=(("kl", -30.0, 30.0, 61), ("kt", -6.0, 9.0, 31)),
             )
@@ -246,7 +245,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         if self.check_enabled("postfit_s_over_b"):
             reqs["postfit_s_over_b"] = PlotPostfitSOverB.req(
                 self,
-                datacards=ggf_cards,
+                datacards=cards,
                 pois=("r",),
                 show_parameters=("kl", "kt"),
             )
@@ -254,7 +253,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         if self.check_enabled("nuisance_likelihood_scans"):
             reqs["nuisance_likelihood_scans"] = PlotNuisanceLikelihoodScans.req(
                 self,
-                datacards=ggf_cards,
+                datacards=cards,
                 pois=("r",),
                 parameters_per_page=6,
                 y_log=True,
@@ -264,10 +263,12 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         if self.check_enabled("goodness_of_fit"):
             reqs["goodness_of_fit"] = PlotGoodnessOfFit.req(
                 self,
-                datacards=ggf_cards,
+                datacards=cards,
                 pois=("r",),
                 toys=300,
                 toys_per_task=15,
+                algorithm="saturated",
+                frequentist_toys=True,
                 show_parameters=("kt", "kt"),
             )
 
@@ -279,6 +280,8 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("r",),
                 toys=(300,),
                 toys_per_task=(15,),
+                algorithm="saturated",
+                frequentist_toys=True,
                 show_parameters=("kt", "kt"),
             )
 
@@ -295,28 +298,28 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 hh_model="HHModelPinv.model_default",
                 signal="ggf",
                 scan_parameters=(("kl", -10.0, 10.0),),
-                parameter_values=("kt=1",),
+                parameter_values=(("kt", 1),),
             )
 
         if self.check_enabled("morphed_discriminant"):
             reqs["morphed_discriminant"] = PlotMorphedDiscriminant.req(
                 self,
-                datacards=ggf_cards[:1],
+                datacards=cards[:1],
                 hh_models=test_models,
                 signal="ggf",
                 bins=("ch1",),
-                parameter_values=("kl=1", "kt=1"),
+                parameter_values=(("kl", 1), ("kt", 1)),
             )
 
         if self.check_enabled("stat_error_scan"):
             reqs["stat_error_scan"] = PlotStatErrorScan.req(
                 self,
-                datacards=ggf_cards[:1],
+                datacards=cards[:1],
                 hh_models=test_models,
                 signal="ggf",
                 bins=("ch1",),
                 scan_parameters=(("kl", -20, 20, 81),),
-                parameter_values=("kt=1",),
+                parameter_values=(("kt", 1),),
             )
 
         return reqs
