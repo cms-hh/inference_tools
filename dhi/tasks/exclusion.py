@@ -130,6 +130,11 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, BoxPl
 class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
 
     best_fit = PlotExclusionAndBestFit.best_fit
+    best_fit_error = luigi.BoolParameter(
+        default=False,
+        description="when True, the uncertainty bars of the POI's best fit value are shown; "
+        "default: False",
+    )
     xsec_contours = law.CSVParameter(
         default=("auto",),
         significant=False,
@@ -265,6 +270,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
             xsec_levels=xsec_levels,
             xsec_unit=self.xsec,
             nll_values=nll_values,
+            best_fit_error=self.best_fit_error,
             scan_minima=scan_mins,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),

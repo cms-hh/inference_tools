@@ -269,6 +269,7 @@ def plot_exclusion_and_bestfit_2d(
     xsec_levels=None,
     xsec_unit=None,
     nll_values=None,
+    best_fit_error=False,
     scan_minima=None,
     draw_sm_point=True,
     x_min=None,
@@ -295,12 +296,12 @@ def plot_exclusion_and_bestfit_2d(
     not set explicitely. *xsec_unit* can be a string that is appended to every label.
 
     When *nll_values* is set, it is used to extract expected best fit values and their uncertainties
-    which are drawn as well. When set, it should be a mapping to lists of values or a record array
-    with keys "<scan_parameter1>", "<scan_parameter2>" and "dnll2". By default, the position of the
-    best value is directly extracted from the likelihood values. However, when *scan_minima* is a
-    2-tuple of positions per scan parameter, this best fit value is used instead, e.g. to use
-    combine's internally interpolated value. The standard model point at (1, 1) as drawn as well
-    unless *draw_sm_point* is *False*.
+    which are drawn as well when *best_fit_error* is *True*. When set, it should be a mapping to
+    lists of values or a record array with keys "<scan_parameter1>", "<scan_parameter2>" and
+    "dnll2". By default, the position of the best value is directly extracted from the likelihood
+    values. However, when *scan_minima* is a 2-tuple of positions per scan parameter, this best fit
+    value is used instead, e.g. to use combine's internally interpolated value. The standard model
+    point at (1, 1) as drawn as well unless *draw_sm_point* is *False*.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the range of the x- and y-axis, respectively, and
     default to the scan parameter ranges found in *expected_limits*. *model_parameters* can be a
@@ -511,15 +512,21 @@ def plot_exclusion_and_bestfit_2d(
             poi1_min=scan_minima and scan_minima[0], poi2_min=scan_minima and scan_minima[1])
         g_fit = ROOT.TGraphAsymmErrors(1)
         g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
-        if scan.num1_min.uncertainties:
-            g_fit.SetPointEXhigh(0, scan.num1_min.u(direction="up"))
-            g_fit.SetPointEXlow(0, scan.num1_min.u(direction="down"))
-        if scan.num2_min.uncertainties:
-            g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
-            g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
-        r.setup_graph(g_fit, props={"FillStyle": 0}, color=colors.black)
-        draw_objs.append((g_fit, "PEZ"))
-        legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "LPE")
+        if best_fit_error:
+            if scan.num1_min.uncertainties:
+                g_fit.SetPointEXhigh(0, scan.num1_min.u(direction="up"))
+                g_fit.SetPointEXlow(0, scan.num1_min.u(direction="down"))
+            if scan.num2_min.uncertainties:
+                g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
+                g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
+            r.setup_graph(g_fit, props={"FillStyle": 0}, color=colors.black)
+            draw_objs.append((g_fit, "PEZ"))
+            legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "PEL")
+        else:
+            r.setup_graph(g_fit, props={"FillStyle": 0, "MarkerStyle": 43, "MarkerSize": 2},
+                color=colors.black)
+            draw_objs.append((g_fit, "PZ"))
+            legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "P")
 
     # SM point
     if draw_sm_point:
