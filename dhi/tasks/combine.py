@@ -1302,10 +1302,19 @@ class CombineCommandTask(CommandTask):
         "likelihoods with containing discrete parameters; default: False",
     )
 
+    # default minimizer options with strategy 0
     combine_stable_options = (
         "--cminDefaultMinimizerType Minuit2"
         " --cminDefaultMinimizerStrategy 0"
         " --cminFallbackAlgo Minuit2,0:1.0"
+    )
+
+    # default minimizer options with strategy 1, i.e., for fits requiring Hesse
+    # see http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/runningthetool#generic-minimizer-options
+    combine_stable_options_hesse = (
+        "--cminDefaultMinimizerType Minuit2"
+        " --cminDefaultMinimizerStrategy 1"
+        " --cminFallbackAlgo Minuit2,1:1.0"
     )
 
     combine_discrete_options = (
@@ -1320,6 +1329,13 @@ class CombineCommandTask(CommandTask):
     @property
     def combine_optimization_args(self):
         args = self.combine_stable_options
+        if self.optimize_discretes:
+            args += " " + self.combine_discrete_options
+        return args
+
+    @property
+    def combine_optimization_args_hesse(self):
+        args = self.combine_stable_options_hesse
         if self.optimize_discretes:
             args += " " + self.combine_discrete_options
         return args

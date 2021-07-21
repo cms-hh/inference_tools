@@ -108,7 +108,7 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {flags}"
-            " {self.combine_optimization_args}"
+            " {self.combine_optimization_args_hesse}"
             " {self.custom_args}"
             " && "
             "mv higgsCombineTest.FitDiagnostics.mH{self.mass_int}{postfix}.root {output_result}"
