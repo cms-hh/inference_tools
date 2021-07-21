@@ -123,6 +123,7 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, BoxPl
             model_parameters=self.get_shown_parameters(),
             h_lines=self.h_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            paper=self.paper,
         )
 
 
@@ -271,4 +272,5 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
             y_max=self.get_axis_limit("y_max"),
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            paper=self.paper,
         )

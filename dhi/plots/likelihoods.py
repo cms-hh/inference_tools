@@ -42,6 +42,7 @@ def plot_likelihood_scan_1d(
     model_parameters=None,
     campaign=None,
     show_points=False,
+    paper=False,
 ):
     """
     Creates a likelihood plot of the 1D scan of a *poi* and saves it at *paths*. *values* should be a
@@ -56,6 +57,7 @@ def plot_likelihood_scan_1d(
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
     refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
     *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
+    When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d
     """
@@ -155,10 +157,10 @@ def plot_likelihood_scan_1d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -190,6 +192,7 @@ def plot_likelihood_scans_1d(
     model_parameters=None,
     campaign=None,
     show_points=True,
+    paper=False,
 ):
     """
     Plots multiple curves of 1D likelihood scans of a POI *poi1* and *poi2*, and saves it at *paths*.
@@ -210,6 +213,7 @@ def plot_likelihood_scans_1d(
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
     refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
     *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
+    When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d_1
     """
@@ -325,10 +329,11 @@ def plot_likelihood_scans_1d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
+        postfix="" if paper else "Preliminary")
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -364,6 +369,7 @@ def plot_likelihood_scan_2d(
     z_max=None,
     model_parameters=None,
     campaign=None,
+    paper=False,
 ):
     """
     Creates a likelihood plot of the 2D scan of two POIs *poi1* and *poi2*, and saves it at *paths*.
@@ -379,7 +385,8 @@ def plot_likelihood_scan_2d(
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
     and default to the ranges of the poi values. *z_min* and *z_max* limit the range of the z-axis.
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When *paper* is
+    *True*, certain plot configurations are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d
     """
@@ -514,10 +521,10 @@ def plot_likelihood_scan_2d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -548,6 +555,7 @@ def plot_likelihood_scans_2d(
     fill_nans=True,
     model_parameters=None,
     campaign=None,
+    paper=False,
 ):
     """
     Creates the likelihood contour plots of multiple 2D scans of two POIs *poi1* and *poi2*, and
@@ -564,7 +572,8 @@ def plot_likelihood_scans_2d(
     and default to the ranges of the poi values. When *fill_nans* is *True*, points with failed
     fits, denoted by nan values, are filled with the averages of neighboring fits. When
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When *paper* is
+    *True*, certain plot configurations are adjusted for use in publications.
 
     Example: Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d_1
     """
@@ -680,10 +689,11 @@ def plot_likelihood_scans_2d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
+        postfix="" if paper else "Preliminary")
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -720,6 +730,7 @@ def plot_nuisance_likelihood_scans(
     y_log=False,
     model_parameters=None,
     campaign=None,
+    paper=False,
 ):
     """
     Creates a plot showing the change of the negative log-likelihood, obtained *poi*, when varying
@@ -737,6 +748,7 @@ def plot_nuisance_likelihood_scans(
     define the range of the y-axis, which is plotted with a logarithmic scale when *y_log* is
     *True*. *model_parameters* can be a dictionary of key-value pairs of model parameters.
     *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/postfit.html#nuisance-parameter-influence-on-likelihood
     """
@@ -875,10 +887,11 @@ def plot_nuisance_likelihood_scans(
 
         # model parameter labels
         if model_parameters:
-            draw_objs.extend(create_model_parameters(model_parameters, pad))
+            draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad)
+        cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
+            postfix="" if paper else "Preliminary")
         draw_objs.extend(cms_labels)
 
         # campaign label

@@ -76,7 +76,7 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         for sample, scale_fn in scale_fns.items():
             x, y = [], []
             for v in self.get_scan_linspace():
-                subs = {self.scan_parameter_names[0]:v[0]}
+                subs = {self.scan_parameter_names[0]: v[0]}
                 subs.update(self.parameter_values_dict)
 
                 # check if all symbols are substituted
@@ -139,7 +139,7 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         draw_objs.append(model_label)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad)
+        cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad)
         draw_objs.extend(cms_labels)
 
         # draw all objects
@@ -147,9 +147,10 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
 
         # save
         r.update_canvas(canvas)
-        output = self.output()
-        output.parent.touch()
-        canvas.SaveAs(output.path)
+        outputs = self.output()
+        outputs[0].parent.touch()
+        for outp in outputs:
+            canvas.SaveAs(outp.path)
 
 
 class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, ParameterValuesTask):
@@ -327,7 +328,7 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
         draw_objs.append(legend)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad)
+        cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad)
         draw_objs.extend(cms_labels)
 
         # bin label
@@ -448,7 +449,7 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
         draw_objs.append(legend)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad)
+        cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad)
         draw_objs.extend(cms_labels)
 
         # bin label

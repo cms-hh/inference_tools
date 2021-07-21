@@ -45,6 +45,7 @@ def plot_limit_scan(
     model_parameters=None,
     campaign=None,
     show_points=False,
+    paper=False,
 ):
     """
     Creates a plot for the upper limit scan of a *poi* over a *scan_parameter* and saves it at
@@ -64,7 +65,8 @@ def plot_limit_scan(
     by a branching ratio. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
     *dhi.config.campaign_labels*. When *show_points* is *True*, the central scan points are drawn
-    on top of the interpolated curve.
+    on top of the interpolated curve. When *paper* is *True*, certain plot configurations are
+    adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#limit-on-poi-vs-scan-parameter
     """
@@ -237,10 +239,10 @@ def plot_limit_scan(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -276,6 +278,7 @@ def plot_limit_scans(
     model_parameters=None,
     campaign=None,
     show_points=True,
+    paper=False,
 ):
     """
     Creates a plot showing multiple upper limit scans of a *poi* over a *scan_parameter* and saves
@@ -295,7 +298,7 @@ def plot_limit_scans(
     branching ratio. *model_parameters* can be a dictionary of key-value pairs of model parameters.
     *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
     When *show_points* is *True*, the central scan points are drawn on top of the interpolated
-    curve.
+    curve. When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-on-poi-vs-scan-parameter
     """
@@ -409,7 +412,7 @@ def plot_limit_scans(
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
     legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
-    legend = r.routines.create_legend(pad=pad, width=legend_cols * 230, n=legend_rows,
+    legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
         props={"NColumns": legend_cols, "TextSize": 18})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
@@ -419,10 +422,11 @@ def plot_limit_scans(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad,
+        postfix="" if paper else "Preliminary")
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -460,6 +464,7 @@ def plot_limit_points(
     h_lines=None,
     campaign=None,
     digits=None,
+    paper=False,
 ):
     """
     Creates a plot showing a comparison of limits of multiple analysis (or channels) on a *poi* and
@@ -504,7 +509,8 @@ def plot_limit_points(
     additional horizontal lines are drawn for visual guidance. *campaign* should refer to the name
     of a campaign label defined in dhi.config.campaign_labels. *digits* controls the number of
     digits of the limit values shown for each entry. When *None*, a number based on the lowest limit
-    values is determined automatically.
+    values is determined automatically. When *paper* is *True*, certain plot configurations are
+    adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-at-a-certain-point-of-parameters
     """
@@ -712,7 +718,7 @@ def plot_limit_points(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
@@ -720,7 +726,7 @@ def plot_limit_points(
     draw_objs.append(legend)
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -758,6 +764,7 @@ def plot_limit_scan_2d(
     campaign=None,
     h_lines=None,
     v_lines=None,
+    paper=False,
 ):
     """
     Creates a plot for the upper limit scan of a *poi* in two dimensions over *scan_parameter1* and
@@ -774,7 +781,8 @@ def plot_limit_scan_2d(
     should refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
     *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
     *h_lines* and *v_lines* can be sequences of float values denoting positions of horizontal and
-    vertical lines, respectively, to be drawn.
+    vertical lines, respectively, to be drawn. When *paper* is *True*, certain plot configurations
+    are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#limit-on-poi-vs-two-scan-parameters
     """
@@ -964,7 +972,7 @@ def plot_limit_scan_2d(
         draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -994,6 +1002,7 @@ def plot_benchmark_limits(
     hh_process=None,
     campaign=None,
     bar_width=0.6,
+    paper=False,
 ):
     """
     Creates a plot showing a the limits of BSM benchmarks for a *poi* and saves it at *paths*. *data*
@@ -1027,7 +1036,8 @@ def plot_benchmark_limits(
     y-axis and indicates that the plotted cross section data was (e.g.) scaled by a branching ratio.
     *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
     The *bar_width* should be a value between 0 and 1 and controls the fraction of the limit bar
-    width relative to the bin width.
+    width relative to the bin width. When *paper* is *True*, certain plot configurations are
+    adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/eft.html#benchmark-limits
     """
@@ -1121,7 +1131,7 @@ def plot_benchmark_limits(
     draw_objs.append(legend)
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label

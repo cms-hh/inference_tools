@@ -224,6 +224,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                     model_parameters=self.get_shown_parameters(),
                     campaign=self.campaign if self.campaign != law.NO_STR else None,
                     show_points=self.show_points,
+                    paper=self.paper,
                 )
             else:  # 2
                 values = [
@@ -246,6 +247,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                     z_max=self.get_axis_limit("z_max"),
                     model_parameters=self.get_shown_parameters(),
                     campaign=self.campaign if self.campaign != law.NO_STR else None,
+                    paper=self.paper,
                 )
             return
 
@@ -280,6 +282,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 show_points=self.show_points,
+                paper=self.paper,
             )
         else:  # 2
             self.call_plot_func(
@@ -299,6 +302,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 z_max=self.get_axis_limit("z_max"),
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
+                paper=self.paper,
             )
 
     def load_scan_data(self, inputs, merge_scans=True):
@@ -446,6 +450,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 show_points=self.show_points,
+                paper=self.paper,
             )
         else:  # 2
             self.call_plot_func(
@@ -460,6 +465,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 y_max=self.get_axis_limit("y_max"),
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
+                paper=self.paper,
             )
 
 
@@ -556,6 +562,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 show_points=self.show_points,
+                paper=self.paper,
             )
         else:  # 2
             self.call_plot_func(
@@ -570,4 +577,5 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 y_max=self.get_axis_limit("y_max"),
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
+                paper=self.paper,
             )

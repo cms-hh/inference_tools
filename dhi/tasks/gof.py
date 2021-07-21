@@ -212,6 +212,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
             y_max=self.get_axis_limit("y_max"),
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            paper=self.paper,
         )
 
 
@@ -315,4 +316,5 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask, BoxPlotTa
             label_size=None if self.label_size == law.NO_INT else self.label_size,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            paper=self.paper,
         )

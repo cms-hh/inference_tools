@@ -37,6 +37,7 @@ def plot_s_over_b(
     campaign=None,
     prefit=False,
     unblinded=False,
+    paper=False,
 ):
     """
     Creates a postfit signal-over-background plot combined over all bins in the fit of a *poi* and
@@ -52,7 +53,8 @@ def plot_s_over_b(
     parameters. *campaign* should refer to the name of a campaign label defined in
     *dhi.config.campaign_labels*. When *prefit* is *True*, signal, background and uncertainties are
     shown according to the prefit expectation. When *unblinded* is *True*, some legend labels are
-    changed accordingly.
+    changed accordingly. When *paper* is *True*, certain plot configurations are adjusted for use in
+    publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/postfit.html#combined-postfit-shapes
     """
@@ -243,10 +245,10 @@ def plot_s_over_b(
 
     # model parameter labels
     if model_parameters:
-        draw_objs1.extend(create_model_parameters(model_parameters, pad1))
+        draw_objs1.extend(create_model_parameters(model_parameters, pad1, x_offset=200))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad1)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad1)
     draw_objs1.extend(cms_labels)
 
     # campaign label

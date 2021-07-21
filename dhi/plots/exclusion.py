@@ -37,6 +37,7 @@ def plot_exclusion_and_bestfit_1d(
     model_parameters=None,
     h_lines=None,
     campaign=None,
+    paper=False,
 ):
     """
     Creates a plot showing exluded regions of a *poi* over a *scan_parameter* for multiple analyses
@@ -70,7 +71,8 @@ def plot_exclusion_and_bestfit_1d(
     *label_size* can be set to a size in pixels to overwrite internal defaults. *model_parameters*
     can be a dictionary of key-value pairs of model parameters. *h_lines* can be a list of integers
     denoting positions where additional horizontal lines are drawn for visual guidance. *campaign*
-    should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    should refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
+    *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/exclusion.html#comparison-of-exclusion-performance
     """
@@ -234,10 +236,10 @@ def plot_exclusion_and_bestfit_1d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -275,6 +277,7 @@ def plot_exclusion_and_bestfit_2d(
     y_max=None,
     model_parameters=None,
     campaign=None,
+    paper=False,
 ):
     """
     Creates a 2D plot showing excluded regions of two paramters *scan_parameter1* and
@@ -302,7 +305,8 @@ def plot_exclusion_and_bestfit_2d(
     *x_min*, *x_max*, *y_min* and *y_max* define the range of the x- and y-axis, respectively, and
     default to the scan parameter ranges found in *expected_limits*. *model_parameters* can be a
     dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
-    campaign label defined in *dhi.config.campaign_labels*.
+    campaign label defined in *dhi.config.campaign_labels*. When *paper* is *True*, certain plot
+    configurations are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/exclusion.html#2d-parameter-exclusion
     """
@@ -519,10 +523,8 @@ def plot_exclusion_and_bestfit_2d(
 
     # SM point
     if draw_sm_point:
-        g_sm = create_tgraph(1,
-            poi_data.get(scan_parameter1, {}).get("sm_value", 1.0),
-            poi_data.get(scan_parameter2, {}).get("sm_value", 1.0),
-        )
+        g_sm = create_tgraph(1, poi_data[scan_parameter1]["sm_value"],
+            poi_data[scan_parameter2]["sm_value"])
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
         legend_entries[1 + 2 * has_uncs + has_obs + has_best_fit] = (g_sm, "Standard model", "P")
@@ -537,10 +539,10 @@ def plot_exclusion_and_bestfit_2d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label

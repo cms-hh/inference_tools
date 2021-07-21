@@ -18,10 +18,7 @@ from dhi.tasks.combine import (
     CreateWorkspace,
 )
 from dhi.tasks.limits import UpperLimits
-from dhi.eft_tools import (
-    get_eft_ggf_xsec_nnlo, sort_eft_benchmark_names, sort_eft_scan_names,
-    extract_eft_scan_parameter,
-)
+from dhi.eft_tools import sort_eft_benchmark_names, sort_eft_scan_names, extract_eft_scan_parameter
 from dhi.config import br_hh
 
 
@@ -387,4 +384,5 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
             xsec_unit=self.xsec,
             hh_process=self.br if self.br in br_hh else None,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            paper=self.paper,
         )

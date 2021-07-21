@@ -217,6 +217,7 @@ class PlotPostfitSOverB(POIPlotTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             prefit=self.prefit,
             unblinded=self.unblinded,
+            paper=self.paper,
         )
 
 
@@ -323,4 +324,5 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
                 y_log=self.y_log,
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
+                paper=self.paper,
             )

@@ -74,6 +74,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
 
     file_types = PlotTask.file_types
     campaign = PlotTask.campaign
+    paper = PlotTask.paper
     view_cmd = PlotTask.view_cmd
 
     exclude_params_req = {"view_cmd"}
@@ -100,7 +101,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacards=cards,
                 pois=("r",),
                 scan_parameters=(("kl", -5.0, 5.0),),
-                show_parameters=("kt",),
+                show_parameters=(("kt", "CV"),),
             )
 
         if self.check_enabled("multiple_upper_limits"):
@@ -110,7 +111,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacard_names=multi_cards_names,
                 pois=("r",),
                 scan_parameters=(("kl", -5.0, 5.0),),
-                show_parameters=("kt",),
+                show_parameters=(("kt", "CV"),),
             )
 
         if self.check_enabled("multiple_upper_limits_by_model"):
@@ -120,7 +121,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 hh_models=test_models,
                 pois=("r",),
                 scan_parameters=(("kl", -5.0, 5.0),),
-                show_parameters=("kt",),
+                show_parameters=(("kt", "CV"),),
             )
 
         if self.check_enabled("upper_limits_at_point"):
@@ -130,7 +131,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacard_names=multi_cards_names,
                 pois=("r",),
                 parameter_values=(("kl", 1), ("kt", 1)),
-                show_parameters=("kl", "kt"),
+                show_parameters=(("kl", "kt", "CV"),),
             )
 
         if self.check_enabled("likelihood_scan"):
@@ -139,7 +140,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacards=cards,
                 pois=("kl",),
                 scan_parameters=(("kl", -5.0, 5.0),),
-                show_parameters=("kt",),
+                show_parameters=(("kt", "CV"),),
             )
 
         if self.check_enabled("likelihood_scan_2d"):
@@ -160,7 +161,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacard_names=multi_cards_names,
                 pois=("kl",),
                 scan_parameters=(("kl", -5.0, 5.0),),
-                show_parameters=("kt",),
+                show_parameters=(("kt", "CV"),),
             )
 
         if self.check_enabled("multiple_likelihood_scans_2d"):
@@ -182,7 +183,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 hh_models=test_models,
                 pois=("kl",),
                 scan_parameters=(("kl", -5.0, 5.0),),
-                show_parameters=("kt",),
+                show_parameters=(("kt", "CV"),),
             )
 
         if self.check_enabled("multiple_likelihood_scans_by_model_2d"):
@@ -203,7 +204,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacards=cards,
                 pois=("r",),
                 scan_parameters=(("kl", -5.0, 5.0),),
-                show_parameters=("kt",),
+                show_parameters=(("kt", "CV"),),
             )
 
         if self.check_enabled("multiple_significance_scans"):
@@ -213,7 +214,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacard_names=multi_cards_names,
                 pois=("r",),
                 scan_parameters=(("kl", -5.0, 5.0),),
-                show_parameters=("kt",),
+                show_parameters=(("kt", "CV"),),
             )
 
         if self.check_enabled("pulls_and_impacts"):
@@ -231,7 +232,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacard_names=multi_cards_names,
                 pois=("r",),
                 scan_parameters=(("kl", -30.0, 30.0, 61),),
-                show_parameters=("kt",),
+                show_parameters=(("kt", "CV"),),
             )
 
         if self.check_enabled("exclusion_and_bestfit_2d"):
@@ -240,6 +241,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 datacards=cards,
                 pois=("r",),
                 scan_parameters=(("kl", -30.0, 30.0, 61), ("kt", -6.0, 9.0, 31)),
+                show_parameters=(("CV",),),
             )
 
         if self.check_enabled("postfit_s_over_b"):
@@ -247,7 +249,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 self,
                 datacards=cards,
                 pois=("r",),
-                show_parameters=("kl", "kt"),
+                show_parameters=(("kl", "kt"),),
             )
 
         if self.check_enabled("nuisance_likelihood_scans"):
@@ -257,7 +259,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("r",),
                 parameters_per_page=6,
                 y_log=True,
-                show_parameters=("kl", "kt"),
+                show_parameters=(("kl", "kt"),),
             )
 
         if self.check_enabled("goodness_of_fit"):
@@ -269,7 +271,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 toys_per_task=15,
                 algorithm="saturated",
                 frequentist_toys=True,
-                show_parameters=("kt", "kt"),
+                show_parameters=(("kl", "kt"),),
             )
 
         if self.check_enabled("multiple_goodness_of_fits"):
@@ -282,7 +284,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 toys_per_task=(15,),
                 algorithm="saturated",
                 frequentist_toys=True,
-                show_parameters=("kt", "kt"),
+                show_parameters=(("kl", "kt"),),
             )
 
         if self.check_enabled("eft_benchmark_limits"):
