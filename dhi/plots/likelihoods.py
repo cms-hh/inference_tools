@@ -16,7 +16,7 @@ from dhi.config import (
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match, convert_rooargset,
-    make_list, unique_recarray, dict_to_recarray,
+    make_list, unique_recarray, dict_to_recarray, warn,
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, fill_hist_from_points, get_contours, get_y_range,
@@ -84,7 +84,7 @@ def plot_likelihood_scan_1d(
     dnll2_values = dnll2_values[mask]
     n_nans = (~mask).sum()
     if n_nans:
-        print("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
+        warn("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
 
     # set y range
     y_max_value = max(dnll2_values[(poi_values >= x_min) & (poi_values <= x_max)])
@@ -248,7 +248,7 @@ def plot_likelihood_scans_1d(
         d["values"] = values
         n_nans = (~mask).sum()
         if n_nans:
-            print("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
+            warn("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
         # check poi minimum
         d.setdefault("poi_min", None)
         # default name
@@ -978,22 +978,31 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     dnll2_values = dnll2_values[mask]
     n_nans = (~mask).sum()
     if n_nans:
-        print("WARNING: found {} NaN(s) in values".format(n_nans))
+        warn("WARNING: found {} NaN(s) in values in 1D likelihood evaluation".format(n_nans))
 
     # first, obtain an interpolation function
     # interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="cubic")
     interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="linear")
 
-    # get the minimum when not set
-    if poi_min is None:
-        print("recomputing POI minimum ...")
-        objective = lambda x: abs(interp(x))
-        bounds = (poi_values_min + 1e-4, poi_values_max - 1e-4)
-        res = minimize_1d(objective, bounds)
-        if res.status != 0:
+    # recompute the minimum and compare with the existing one when given
+    print("recomputing POI minimum ...")
+    objective = lambda x: interp(x)
+    bounds = (poi_values_min + 1e-4, poi_values_max - 1e-4)
+    res = minimize_1d(objective, bounds)
+    if res.status != 0:
+        if poi_min is None:
             raise Exception("could not find minimum of nll2 interpolation: {}".format(res.message))
-        poi_min = res.x[0]
-        print("done, found {:.4f}".format(poi_min))
+    else:
+        poi_min_new = res.x[0]
+        print("done, found {:.4f}".format(poi_min_new))
+        if poi_min is None:
+            poi_min = poi_min_new
+        else:
+            # compare and optionally issue a warning (threshold to be optimized)
+            if abs(poi_min - poi_min_new) >= 0.03:
+                warn("\nWARNING: external POI minimum (from combine) {:.4f} differs from the "
+                    "recomputed value (from scipy.minimize) {:.4f}\n".format(poi_min, poi_min_new),
+                    color="red")
 
     # helper to get the outermost intersection of the nll curve with a certain value
     def get_intersections(v):
@@ -1093,7 +1102,7 @@ def evaluate_likelihood_scan_2d(
     dnll2_values = dnll2_values[mask]
     n_nans = (~mask).sum()
     if n_nans:
-        print("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
+        warn("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
 
     # obtain an interpolation function
     # interp = scipy.interpolate.interp2d(poi1_values, poi2_values, dnll2_values)
@@ -1102,18 +1111,32 @@ def evaluate_likelihood_scan_2d(
     coords = np.stack([poi1_values, poi2_values], axis=1)
     interp = scipy.interpolate.CloughTocher2DInterpolator(coords, dnll2_values)
 
-    # get the minima
-    if poi1_min is None or poi2_min is None:
-        print("recomputing POI minimum ...")
-        objective = lambda x: interp(*x) ** 2.0
-        bounds1 = (poi1_values_min + 1e-4, poi1_values_max - 1e-4)
-        bounds2 = (poi2_values_min + 1e-4, poi2_values_max - 1e-4)
-        res = scipy.optimize.minimize(objective, [1.0, 1.0], tol=1e-7, bounds=[bounds1, bounds2])
-        if res.status != 0:
+    # recompute the minimum and compare with the existing one when given
+    print("recomputing POI minimum ...")
+    objective = lambda x: interp(*x)
+    bounds1 = (poi1_values_min + 1e-4, poi1_values_max - 1e-4)
+    bounds2 = (poi2_values_min + 1e-4, poi2_values_max - 1e-4)
+    res = scipy.optimize.minimize(objective, [1.0, 1.0], tol=1e-7, bounds=[bounds1, bounds2])
+    if res.status != 0:
+        if poi1_min is None or poi2_min is None:
             raise Exception("could not find minimum of nll2 interpolation: {}".format(res.message))
-        poi1_min = res.x[0]
-        poi2_min = res.x[1]
-        print("done, found {:.4f}, {:.4f}".format(poi1_min, poi2_min))
+    else:
+        poi1_min_new = res.x[0]
+        poi2_min_new = res.x[0]
+        print("done, found {:.4f}, {:.4f}".format(poi1_min_new, poi2_min_new))
+        if poi1_min is None or poi2_min is None:
+            poi1_min = poi1_min_new
+            poi2_min = poi2_min_new
+        else:
+            # compare and optionally issue a warning (threshold to be optimized)
+            if abs(poi1_min - poi1_min_new) >= 0.03:
+                warn("\nWARNING: external POI1 minimum (from combine) {:.4f} differs from the "
+                    "recomputed value (from scipy.minimize) {:.4f}\n".format(poi1_min, poi1_min_new),
+                    color="red")
+            if abs(poi2_min - poi2_min_new) >= 0.03:
+                warn("\nWARNING: external POI2 minimum (from combine) {:.4f} differs from the "
+                    "recomputed value (from scipy.minimize) {:.4f}\n".format(poi2_min, poi2_min_new),
+                    color="red")
 
     # helper to get the outermost intersection of the dnll2 curve with a certain value of a poi,
     # while fixing the other poi at its best fit value
