@@ -156,6 +156,20 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         default=False,
         description="apply log scaling to the y-axis; 1D only; default: False",
     )
+    show_best_fit = luigi.BoolParameter(
+        default=True,
+        description="when False, do not draw the best fit value; default: True",
+    )
+    show_best_fit_error = luigi.BoolParameter(
+        default=True,
+        description="when False, the uncertainty bars of the POI's best fit values are not shown; "
+        "default: True",
+    )
+    recompute_best_fit = luigi.BoolParameter(
+        default=False,
+        description="when True, do not use the best fit value as reported from combine but "
+        "recompute it using scipy.minimize; default: False",
+    )
     show_points = luigi.BoolParameter(
         default=False,
         significant=False,
@@ -273,7 +287,9 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 poi=self.pois[0],
                 values=values,
                 theory_value=theory_value,
-                poi_min=poi_mins[0],
+                poi_min=None if self.recompute_best_fit else poi_mins[0],
+                show_best_fit=self.show_best_fit,
+                show_best_fit_error=self.show_best_fit_error,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -291,9 +307,11 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 values=values,
-                poi1_min=poi_mins[0],
-                poi2_min=poi_mins[1],
-                draw_box=self.show_box,
+                poi1_min=None if self.recompute_best_fit else poi_mins[0],
+                poi2_min=None if self.recompute_best_fit else poi_mins[1],
+                show_best_fit=self.show_best_fit,
+                show_best_fit_error=self.show_best_fit_error,
+                show_box=self.show_box,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -360,6 +378,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
     convert = law.NO_STR
+    show_best_fit_error = None
     z_min = None
     z_max = None
     z_log = None
@@ -404,6 +423,9 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
         for i, inps in enumerate(self.input()):
             values, poi_mins = self.load_scan_data(inps)
 
+            if self.recompute_best_fit:
+                poi_mins = [None] * len(poi_mins)
+
             # store a data entry
             data.append(dict([
                 ("values", values),
@@ -442,6 +464,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 poi=self.pois[0],
                 data=data,
                 theory_value=theory_value,
+                show_best_fit=self.show_best_fit,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -472,6 +495,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
 
     convert = law.NO_STR
+    show_best_fit_error = None
     z_min = None
     z_max = None
     z_log = None
@@ -509,6 +533,9 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
         data = []
         for hh_model, inps in zip(self.hh_models, self.input()):
             values, poi_mins = self.load_scan_data(inps)
+
+            if self.recompute_best_fit:
+                poi_mins = [None] * len(poi_mins)
 
             # prepare the name
             name = hh_model.rsplit(".", 1)[-1].replace("_", " ")
@@ -554,6 +581,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 poi=self.pois[0],
                 data=data,
                 theory_value=theory_value,
+                show_best_fit=self.show_best_fit,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),

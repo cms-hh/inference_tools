@@ -34,6 +34,8 @@ def plot_likelihood_scan_1d(
     values,
     theory_value=None,
     poi_min=None,
+    show_best_fit=True,
+    show_best_fit_error=True,
     x_min=None,
     x_max=None,
     y_min=None,
@@ -52,12 +54,14 @@ def plot_likelihood_scan_1d(
     the poi that leads to the best likelihood. Otherwise, it is estimated from the interpolated
     curve.
 
-    *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
-    the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
-    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
-    *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
-    When *paper* is *True*, certain plot configurations are adjusted for use in publications.
+    When *show_best_fit* (*show_best_fit_error*) is *False*, the nominal (uncertainty on the) best
+    fit value is not shown. *x_min* and *x_max* define the x-axis range of POI, and *y_min* and
+    *y_max* control the range of the y-axis. When *y_log* is *True*, the y-axis is plotted with a
+    logarithmic scale. *model_parameters* can be a dictionary of key-value pairs of model
+    parameters. *campaign* should refer to the name of a campaign label defined in
+    *dhi.config.campaign_labels*. When *show_points* is *True*, the central scan points are drawn on
+    top of the interpolated curve. When *paper* is *True*, certain plot configurations are adjusted
+    for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d
     """
@@ -103,19 +107,20 @@ def plot_likelihood_scan_1d(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
     draw_objs.append((h_dummy, "HIST"))
 
-    # 1 and 2 sigma indicators
-    for value in [scan.poi_p1, scan.poi_m1, scan.poi_p2, scan.poi_m2]:
-        if value is not None:
-            line = ROOT.TLine(value, y_min, value, scan.interp(value))
-            r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
-            draw_objs.append(line)
+    if show_best_fit and show_best_fit_error:
+        # 1 and 2 sigma indicators
+        for value in [scan.poi_p1, scan.poi_m1, scan.poi_p2, scan.poi_m2]:
+            if value is not None:
+                line = ROOT.TLine(value, y_min, value, scan.interp(value))
+                r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
+                draw_objs.append(line)
 
-    # lines at chi2_1 intervals
-    for n in [chi2_levels[1][1], chi2_levels[1][2]]:
-        if n < y_max_line:
-            line = ROOT.TLine(x_min, n, x_max, n)
-            r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
-            draw_objs.append(line)
+        # lines at chi2_1 intervals
+        for n in [chi2_levels[1][1], chi2_levels[1][2]]:
+            if n < y_max_line:
+                line = ROOT.TLine(x_min, n, x_max, n)
+                r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
+                draw_objs.append(line)
 
     # theory prediction with uncertainties
     if theory_value:
@@ -136,16 +141,20 @@ def plot_likelihood_scan_1d(
             legend_entries.append((line_thy, "Theory prediction", "L"))
 
     # line for best fit value
-    line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
-    r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors.black)
-    draw_objs.append(line_fit)
+    if show_best_fit:
+        line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
+        r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors.black)
+        draw_objs.append(line_fit)
 
     # nll curve
     g_nll = create_tgraph(len(poi_values), poi_values, dnll2_values)
     r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75})
     draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
-    fit_label = "{} = {}".format(to_root_latex(poi_data[poi].label),
-        scan.num_min.str(format="%.2f", style="root"))
+    if show_best_fit and show_best_fit_error:
+        fit_label = "{} = {}".format(to_root_latex(poi_data[poi].label),
+            scan.num_min.str(format="%.2f", style="root"))
+    else:
+        fit_label = to_root_latex(poi_data[poi].label)
     legend_entries.insert(0, (g_nll, fit_label, "LP" if show_points else "L"))
 
     # legend
@@ -184,6 +193,7 @@ def plot_likelihood_scans_1d(
     poi,
     data,
     theory_value=None,
+    show_best_fit=True,
     x_min=None,
     x_max=None,
     y_min=None,
@@ -208,6 +218,7 @@ def plot_likelihood_scans_1d(
     *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
     down uncertainties which is drawn as a vertical bar.
 
+    When *show_best_fit* is *False*, the best fit value indicator per data entry is not shown.
     *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
     the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. When
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
@@ -294,9 +305,10 @@ def plot_likelihood_scans_1d(
             "LP" if show_points else "L"))
 
         # line for best fit value
-        line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
-        r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors[col])
-        draw_objs.append(line_fit)
+        if show_best_fit:
+            line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
+            r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors[col])
+            draw_objs.append(line_fit)
 
     # theory prediction with uncertainties
     if theory_value:
@@ -359,8 +371,10 @@ def plot_likelihood_scan_2d(
     values,
     poi1_min=None,
     poi2_min=None,
-    draw_sm_point=True,
-    draw_box=False,
+    show_best_fit=False,
+    show_best_fit_error=False,
+    show_sm_point=True,
+    show_box=False,
     x_min=None,
     x_max=None,
     y_min=None,
@@ -375,12 +389,15 @@ def plot_likelihood_scan_2d(
     Creates a likelihood plot of the 2D scan of two POIs *poi1* and *poi2*, and saves it at *paths*.
     *values* should be a mapping to lists of values or a record array with keys "<poi1_name>",
     "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be the values of
-    the POIs that lead to the best likelihood. Otherwise, they are  estimated from the interpolated
-    curve. The standard model point at (1, 1) as drawn as well unless *draw_sm_point* is *False*.
-    The best fit value is drawn with uncertainties on one POI being estimated while setting the
-    other POI to its best value. When *draw_box* is *True*, a box containing the 1 sigma contour is
-    shown and used to estimate the dimensions of the standard error following the prescription at
-    https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf (see e.g. Fig. 40.5).
+    the POIs that lead to the best likelihood. Otherwise, they are estimated from the interpolated
+    curve.
+
+    When *show_best_fit* (*show_best_fit_error*) is *True*, the nominal (uncertainty on the) best
+    fit value is drawn. The standard model point at (1, 1) as drawn as well unless *show_sm_point*
+    is *False*. The best fit value is drawn with uncertainties on one POI being estimated while
+    setting the other POI to its best value. When *show_box* is *True*, a box containing the 1 sigma
+    contour is shown and used to estimate the dimensions of the standard error following the
+    prescription at https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf (e.g. Fig. 40.5).
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
     and default to the ranges of the poi values. *z_min* and *z_max* limit the range of the z-axis.
@@ -473,7 +490,7 @@ def plot_likelihood_scan_2d(
         draw_objs.append((g, "SAME,C"))
 
     # draw the first contour box
-    if draw_box:
+    if show_box:
         box_num1, box_num2 = scan.box_nums[0]
         if box_num1 and box_num2:
             box_t = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("up"), box_num2("up"))
@@ -486,7 +503,7 @@ def plot_likelihood_scan_2d(
                 draw_objs.append(box_line)
 
     # SM point
-    if draw_sm_point:
+    if show_sm_point:
         g_sm = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
@@ -494,30 +511,45 @@ def plot_likelihood_scan_2d(
     # central best fit point
     g_fit = ROOT.TGraphAsymmErrors(1)
     g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
-    if scan.num1_min.uncertainties:
+    if scan.num1_min.uncertainties and show_best_fit_error:
         g_fit.SetPointEXhigh(0, scan.num1_min.u(direction="up"))
         g_fit.SetPointEXlow(0, scan.num1_min.u(direction="down"))
-    if scan.num2_min.uncertainties:
+    if scan.num2_min.uncertainties and show_best_fit_error:
         g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
         g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
-    r.setup_graph(g_fit, color=colors.black)
-    draw_objs.append((g_fit, "PEZ"))
+    props = {} if show_best_fit_error else {"MarkerStyle": 43, "MarkerSize": 2}
+    r.setup_graph(g_fit, props=props, color=colors.black)
+    if show_best_fit:
+        draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
 
     # legend
     def make_bf_label(num1, num2):
-        return "{} = {} ,  {} = {}".format(
-            to_root_latex(poi_data[poi1].label),
-            num1.str(format="%.2f", style="root") if num1 else "-",
-            to_root_latex(poi_data[poi2].label),
-            num2.str(format="%.2f", style="root") if num2 else "-",
-        )
+        if show_best_fit_error:
+            return "{} = {} ,  {} = {}".format(
+                to_root_latex(poi_data[poi1].label),
+                num1.str(format="%.2f", style="root") if num1 else "-",
+                to_root_latex(poi_data[poi2].label),
+                num2.str(format="%.2f", style="root") if num2 else "-",
+            )
+        else:
+            return "{} = {:.2f} ,  {} = {:.2f}".format(
+                to_root_latex(poi_data[poi1].label),
+                num1() if num1 else "-",
+                to_root_latex(poi_data[poi2].label),
+                num2() if num2 else "-",
+            )
 
-    legend_entries = [(g_fit, make_bf_label(scan.num1_min, scan.num2_min), "L")]
-    if draw_box:
-        legend_entries.append((box_t, make_bf_label(box_num1, box_num2), "L"))
-    legend = r.routines.create_legend(pad=pad, width=340, n=len(legend_entries))
-    r.fill_legend(legend, legend_entries)
-    draw_objs.append(legend)
+    legend_entries = []
+    if show_best_fit:
+        legend_entries.append((g_fit, make_bf_label(scan.num1_min, scan.num2_min),
+            "PLE" if show_best_fit_error else "P"))
+    if show_box:
+        legend_entries.append((box_t, make_bf_label(box_num1, box_num2),
+            "PLE" if show_best_fit_error else "P"))
+    if legend_entries:
+        legend = r.routines.create_legend(pad=pad, width=340, n=len(legend_entries))
+        r.fill_legend(legend, legend_entries)
+        draw_objs.append(legend)
 
     # model parameter labels
     if model_parameters:
@@ -954,12 +986,14 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
 
     # get the minimum when not set
     if poi_min is None:
+        print("recomputing POI minimum ...")
         objective = lambda x: abs(interp(x))
         bounds = (poi_values_min + 1e-4, poi_values_max - 1e-4)
         res = minimize_1d(objective, bounds)
         if res.status != 0:
             raise Exception("could not find minimum of nll2 interpolation: {}".format(res.message))
         poi_min = res.x[0]
+        print("done, found {:.4f}".format(poi_min))
 
     # helper to get the outermost intersection of the nll curve with a certain value
     def get_intersections(v):
@@ -1070,6 +1104,7 @@ def evaluate_likelihood_scan_2d(
 
     # get the minima
     if poi1_min is None or poi2_min is None:
+        print("recomputing POI minimum ...")
         objective = lambda x: interp(*x) ** 2.0
         bounds1 = (poi1_values_min + 1e-4, poi1_values_max - 1e-4)
         bounds2 = (poi2_values_min + 1e-4, poi2_values_max - 1e-4)
@@ -1078,6 +1113,7 @@ def evaluate_likelihood_scan_2d(
             raise Exception("could not find minimum of nll2 interpolation: {}".format(res.message))
         poi1_min = res.x[0]
         poi2_min = res.x[1]
+        print("done, found {:.4f}, {:.4f}".format(poi1_min, poi2_min))
 
     # helper to get the outermost intersection of the dnll2 curve with a certain value of a poi,
     # while fixing the other poi at its best fit value
