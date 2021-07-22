@@ -526,6 +526,11 @@ class PlotTask(AnalysisTask):
         default=False,
         description="produce plots with certain settings changed for publication; default: False",
     )
+    style = luigi.Parameter(
+        default="default",
+        significant=False,
+        description="a string denoting and optional plot style name; default: default",
+    )
 
     def get_axis_limit(self, value):
         if isinstance(value, six.string_types):

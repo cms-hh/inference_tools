@@ -279,6 +279,7 @@ def plot_exclusion_and_bestfit_2d(
     model_parameters=None,
     campaign=None,
     paper=False,
+    style="default",
 ):
     """
     Creates a 2D plot showing excluded regions of two paramters *scan_parameter1* and
@@ -307,7 +308,8 @@ def plot_exclusion_and_bestfit_2d(
     default to the scan parameter ranges found in *expected_limits*. *model_parameters* can be a
     dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
     campaign label defined in *dhi.config.campaign_labels*. When *paper* is *True*, certain plot
-    configurations are adjusted for use in publications.
+    configurations are adjusted for use in publications. The color scheme is greyscale by default,
+    and converted to a brazil-band-plot style when *style* is "brazil".
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/exclusion.html#2d-parameter-exclusion
     """
@@ -398,10 +400,13 @@ def plot_exclusion_and_bestfit_2d(
 
     # style graphs and add to draw objects, from outer to inner graphs (-2, -1, +1, +2), followed by
     # nominal or observed
+    color_68 = colors.green if style == "brazil" else colors.grey
+    color_95 = colors.yellow if style == "brazil" else colors.light_grey
+
     # +2 sigma exclusion
     if has_unc2:
         for i, g in enumerate(contours["limit_p2"]):
-            r.setup_graph(g, props={"LineStyle": 2, "FillColor": colors.light_grey})
+            r.setup_graph(g, props={"LineStyle": 2, "FillColor": color_95})
             draw_objs.append((g, "SAME,F"))
             if i == 0:
                 legend_entries[2] = (g, "95% expected", "LF")
@@ -409,12 +414,12 @@ def plot_exclusion_and_bestfit_2d(
     # -1 and +1 sigma exclusion
     if has_unc1:
         for i, g in enumerate(contours["limit_p1"]):
-            r.setup_graph(g, props={"LineStyle": 2, "FillColor": colors.grey})
+            r.setup_graph(g, props={"LineStyle": 2, "FillColor": color_68})
             draw_objs.append((g, "SAME,F"))
             if i == 0:
                 legend_entries[1] = (g, "68% expected", "LF")
 
-        p1_col = colors.light_grey if has_unc2 else colors.white
+        p1_col = color_95 if has_unc2 else colors.white
         for g in contours["limit_m1"]:
             r.setup_graph(g, props={"FillColor": p1_col})
             draw_objs.append((g, "SAME,F"))
