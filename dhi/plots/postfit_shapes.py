@@ -26,13 +26,14 @@ def plot_s_over_b(
     poi,
     fit_diagnostics_path,
     bins=8,
+    signal_superimposed=False,
+    signal_scale=1.,
+    signal_scale_ratio=1.,
+    show_best_fit=True,
     y1_min=None,
     y1_max=None,
     y2_min=None,
     y2_max=None,
-    signal_superimposed=False,
-    signal_scale=1.,
-    signal_scale_ratio=1.,
     model_parameters=None,
     campaign=None,
     prefit=False,
@@ -43,13 +44,18 @@ def plot_s_over_b(
     Creates a postfit signal-over-background plot combined over all bins in the fit of a *poi* and
     saves it at *paths*. The plot is based on the fit diagnostics file *fit_diagnostics_path*
     produced by combine. *bins* can either be a single number of bins to use, or a list of n+1 bin
-    edges. *y1_min*, *y1_max*, *y2_min* and *y2_max* define the ranges of the y-axes of the upper
-    pad and ratio pad, respectively. When *signal_superimposed* is *True*, the signal at the top pad
+    edges.
+
+    When *signal_superimposed* is *True*, the signal at the top pad
     is not drawn stacked on top of the background but as a separate histogram. For visualization
     purposes, the fitted signal can be scaled by *signal_scale*, and, when drawing the signal
     superimposed, by *signal_scale_ratio* at the bottom ratio pad. When *signal_superimposed* is
     *True*, the signal at the top pad is not drawn stacked on top of the background but as a
-    separate histogram. *model_parameters* can be a dictionary of key-value pairs of model
+    separate histogram. When *show_best_fit* is *False*, the value of the signal scale is not shown
+    in the legend labels.
+
+    *y1_min*, *y1_max*, *y2_min* and *y2_max* define the ranges of the y-axes of the upper pad and
+    ratio pad, respectively. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
     *dhi.config.campaign_labels*. When *prefit* is *True*, signal, background and uncertainties are
     shown according to the prefit expectation. When *unblinded* is *True*, some legend labels are
@@ -112,9 +118,13 @@ def plot_s_over_b(
 
     # helper to create a signal label
     def signal_label(scale):
-        scale_text = "" if scale == 1 else " x {}".format(try_int(scale))
-        return "Signal{} ({} = {:.2f})".format(scale_text, to_root_latex(poi_data[poi].label),
-            signal_strength)
+        label = "Signal"
+        if not show_best_fit:
+            return label
+        if scale == 1:
+            label += " x {}".format(try_int(scale))
+        label += " ({} = {:.2f})".format(to_root_latex(poi_data[poi].label), signal_strength)
+        return label
 
     # superimposed signal histogram at the top
     hist_s1 = ROOT.TH1F("s_post1", "", len(bins) - 1, array.array("f", bins))
