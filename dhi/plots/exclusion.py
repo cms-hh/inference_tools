@@ -8,7 +8,7 @@ import math
 
 import numpy as np
 
-from dhi.config import poi_data, campaign_labels, colors, br_hh_names
+from dhi.config import poi_data, campaign_labels, colors, br_hh_names, cms_postfix
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, make_list
 from dhi.plots.limits import evaluate_limit_scan_1d, _print_excluded_ranges
 from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
@@ -247,7 +247,7 @@ def plot_exclusion_and_bestfit_1d(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -567,7 +567,7 @@ def plot_exclusion_and_bestfit_2d(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label

@@ -9,7 +9,7 @@ import math
 import numpy as np
 import scipy.stats
 
-from dhi.config import campaign_labels, colors, br_hh_names
+from dhi.config import campaign_labels, colors, br_hh_names, cms_postfix
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, make_list
 from dhi.plots.util import use_style, create_model_parameters, get_y_range
 
@@ -113,7 +113,7 @@ def plot_gof_distribution(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -305,7 +305,7 @@ def plot_gofs(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label

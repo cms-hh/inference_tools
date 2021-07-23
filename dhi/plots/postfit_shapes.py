@@ -10,7 +10,7 @@ import array
 import six
 import uproot
 
-from dhi.config import poi_data, campaign_labels, colors
+from dhi.config import poi_data, campaign_labels, colors, cms_postfix
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors, make_list,
 )
@@ -258,7 +258,7 @@ def plot_s_over_b(
         draw_objs1.extend(create_model_parameters(model_parameters, pad1, x_offset=200))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad1)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad1)
     draw_objs1.extend(cms_labels)
 
     # campaign label

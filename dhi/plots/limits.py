@@ -12,7 +12,7 @@ import numpy as np
 import scipy.interpolate
 
 from dhi.config import (
-    poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence,
+    poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence, cms_postfix,
 )
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, create_tgraph, colored, minimize_1d, unique_recarray,
@@ -242,7 +242,7 @@ def plot_limit_scan(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -426,7 +426,7 @@ def plot_limit_scans(
 
     # cms label
     cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad,
-        postfix="" if paper else "Preliminary")
+        postfix="" if paper else cms_postfix)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -726,7 +726,7 @@ def plot_limit_points(
     draw_objs.append(legend)
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -972,7 +972,7 @@ def plot_limit_scan_2d(
         draw_objs.extend(create_model_parameters(model_parameters, pad))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -1131,7 +1131,7 @@ def plot_benchmark_limits(
     draw_objs.append(legend)
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label

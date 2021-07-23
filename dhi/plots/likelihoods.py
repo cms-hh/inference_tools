@@ -13,6 +13,7 @@ from scinum import Number
 
 from dhi.config import (
     poi_data, br_hh_names, campaign_labels, chi2_levels, colors, color_sequence, marker_sequence,
+    cms_postfix,
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match, convert_rooargset,
@@ -169,7 +170,7 @@ def plot_likelihood_scan_1d(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -349,7 +350,7 @@ def plot_likelihood_scans_1d(
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-        postfix="" if paper else "Preliminary")
+        postfix="" if paper else cms_postfix)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -450,6 +451,7 @@ def plot_likelihood_scan_2d(
 
     # create a histogram for each scan patch
     hists = []
+    from IPython import embed; embed()
     for i, _values in enumerate(values):
         _, _, _x_bins, _y_bins, _x_min, _x_max, _y_min, _y_max = infer_binning_from_grid(
             _values[poi1], _values[poi2])
@@ -567,7 +569,7 @@ def plot_likelihood_scan_2d(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -744,7 +746,7 @@ def plot_likelihood_scans_2d(
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-        postfix="" if paper else "Preliminary")
+        postfix="" if paper else cms_postfix)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -942,7 +944,7 @@ def plot_nuisance_likelihood_scans(
 
         # cms label
         cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-            postfix="" if paper else "Preliminary")
+            postfix="" if paper else cms_postfix)
         draw_objs.extend(cms_labels)
 
         # campaign label
@@ -1077,8 +1079,7 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
                 warn(
                     "WARNING: external POI minimum (from combine) {:.4f} differs from the "
                     "recomputed value (from scipy.interpolate and scipy.minimize) {:.4f}".format(
-                        poi_min, poi_min_new),
-                    color="red",
+                        poi_min, poi_min_new)
                 )
         else:
             poi_min = poi_min_new
@@ -1126,7 +1127,12 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
 
 
 def evaluate_likelihood_scan_2d(
-    poi1_values, poi2_values, dnll2_values, poi1_min=None, poi2_min=None, contours=None,
+    poi1_values,
+    poi2_values,
+    dnll2_values,
+    poi1_min=None,
+    poi2_min=None,
+    contours=None,
 ):
     """
     Takes the results of a 2D likelihood profiling scan given by *poi1_values*, *poi2_values* and
@@ -1210,15 +1216,13 @@ def evaluate_likelihood_scan_2d(
                 warn(
                     "WARNING: external POI1 minimum (from combine) {:.4f} differs from the "
                     "recomputed value (from scipy.interpolate and scipy.minimize) {:.4f}".format(
-                        poi1_min, poi1_min_new),
-                    color="red",
+                        poi1_min, poi1_min_new)
                 )
             if abs(poi2_min - poi2_min_new) >= 0.03:
                 warn(
                     "WARNING: external POI2 minimum (from combine) {:.4f} differs from the "
                     "recomputed value (from scipy.interpolate and scipy.minimize) {:.4f}".format(
-                        poi2_min, poi2_min_new),
-                    color="red",
+                        poi2_min, poi2_min_new)
                 )
         else:
             poi1_min = poi1_min_new

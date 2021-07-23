@@ -11,7 +11,7 @@ import scipy as sp
 import scipy.stats
 
 from dhi.config import (
-    poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence,
+    poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence, cms_postfix,
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, make_list, unique_recarray, dict_to_recarray,
@@ -184,7 +184,7 @@ def plot_significance_scan_1d(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -343,7 +343,7 @@ def plot_significance_scans_1d(
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-        postfix="" if paper else "Preliminary")
+        postfix="" if paper else cms_postfix)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -513,7 +513,7 @@ def plot_significance_scan_2d(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else "Preliminary", pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label

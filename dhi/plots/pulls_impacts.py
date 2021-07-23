@@ -13,7 +13,7 @@ import array
 import six
 import numpy as np
 
-from dhi.config import poi_data, campaign_labels, colors
+from dhi.config import poi_data, campaign_labels, colors, cms_postfix
 from dhi.util import (
     import_ROOT, import_file, multi_match, to_root_latex, linspace, colored, make_list,
 )
@@ -390,7 +390,7 @@ def plot_pulls_impacts(
             draw_objs.append(fit_label)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else "Preliminary")
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix)
         draw_objs.extend(cms_labels)
 
         # campaign label
