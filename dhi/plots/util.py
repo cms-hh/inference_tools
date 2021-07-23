@@ -131,11 +131,11 @@ def determine_limit_digits(limit, is_xsec=False):
             return 0
 
 
-def get_y_range(y_min_value, y_max_value, y_min=None, y_max=None, log=False, top_margin=0.38,
-        visible_margin=0.4):
+def get_y_range(y_min_value, y_max_value, y_min=None, y_max=None, log=False, y_min_log=1e-3,
+        top_margin=0.38, visible_margin=0.4):
     if log:
         if y_min is None:
-            y_min = (0.75 * y_min_value) if y_min_value > 0 else 1e-3
+            y_min = (0.75 * y_min_value) if y_min_value > 0 else y_min_log
         if y_max is None:
             y_max = y_min * 10**(math.log10(y_max_value / y_min) * (1. + top_margin))
         y_max_vis = y_min * 10**(math.log10(y_max / y_min) / (1. + visible_margin))

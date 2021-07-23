@@ -36,6 +36,7 @@ def plot_likelihood_scan_1d(
     poi_min=None,
     show_best_fit=True,
     show_best_fit_error=True,
+    shift_negative_values=False,
     x_min=None,
     x_max=None,
     y_min=None,
@@ -50,12 +51,15 @@ def plot_likelihood_scan_1d(
     Creates a likelihood plot of the 1D scan of a *poi* and saves it at *paths*. *values* should be a
     mapping to lists of values or a record array with keys "<poi_name>" and "dnll2". *theory_value*
     can be a 3-tuple denoting the nominal theory prediction of the POI and its up and down
-    uncertainties which is drawn as a vertical bar. When *poi_min* is set, it should be the value of
-    the poi that leads to the best likelihood. Otherwise, it is estimated from the interpolated
-    curve.
+    uncertainties which is drawn as a vertical bar.
 
-    When *show_best_fit* (*show_best_fit_error*) is *False*, the nominal (uncertainty on the) best
-    fit value is not shown. *x_min* and *x_max* define the x-axis range of POI, and *y_min* and
+    When *poi_min* is set, it should be the value of the poi that leads to the best likelihood.
+    Otherwise, it is estimated from the interpolated curve. When *show_best_fit*
+    (*show_best_fit_error*) is *False*, the nominal (uncertainty on the) best fit value is not
+    shown. In case there are negative dnll2 values, *shift_negative_values* can be set to *True* to
+    shift them vertically so that the minimum is located at 0 again.
+
+    *x_min* and *x_max* define the x-axis range of POI, and *y_min* and
     *y_max* control the range of the y-axis. When *y_log* is *True*, the y-axis is plotted with a
     logarithmic scale. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
@@ -72,16 +76,9 @@ def plot_likelihood_scan_1d(
     poi_values = np.array(values[poi], dtype=np.float32)
     dnll2_values = np.array(values["dnll2"], dtype=np.float32)
 
-    # check for negative dnll2 values
-    _check_negative_dnll2_values(dnll2_values, (poi, poi_values))
-
-    # select valid points
-    mask = ~np.isnan(dnll2_values)
-    poi_values = poi_values[mask]
-    dnll2_values = dnll2_values[mask]
-    n_nans = (~mask).sum()
-    if n_nans:
-        warn("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
+    # preprocess values (nan detection, negative shift)
+    dnll2_values, poi_values = _preprocess_values(dnll2_values, (poi, poi_values),
+        shift_negative_values=shift_negative_values)
 
     # set x range
     if x_min is None:
@@ -91,7 +88,7 @@ def plot_likelihood_scan_1d(
 
     # set y range
     y_max_value = max(dnll2_values[(poi_values >= x_min) & (poi_values <= x_max)])
-    y_min, y_max, y_max_line = get_y_range(0., y_max_value, y_min, y_max, log=y_log)
+    y_min, y_max, y_max_line = get_y_range(dnll2_values.min(), y_max_value, y_min, y_max, log=y_log)
 
     # evaluate the scan, run interpolation and error estimation
     scan = evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min)
@@ -197,6 +194,7 @@ def plot_likelihood_scans_1d(
     data,
     theory_value=None,
     show_best_fit=True,
+    shift_negative_values=False,
     x_min=None,
     x_max=None,
     y_min=None,
@@ -219,9 +217,11 @@ def plot_likelihood_scans_1d(
         - "name": A name of the data to be shown in the legend.
 
     *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
-    down uncertainties which is drawn as a vertical bar.
+    down uncertainties which is drawn as a vertical bar. When *show_best_fit* is *False*, the best
+    fit value indicator per data entry is not shown. In case there are negative dnll2 values,
+    *shift_negative_values* can be set to *True* to shift them vertically so that the minimum is
+    located at 0 again.
 
-    When *show_best_fit* is *False*, the best fit value indicator per data entry is not shown.
     *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
     the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. When
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
@@ -245,16 +245,10 @@ def plot_likelihood_scans_1d(
         assert("dnll2" in values)
         # keep only valid points
         values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}
-        mask = ~np.isnan(values["dnll2"])
-        values[poi] = values[poi][mask]
-        values["dnll2"] = values["dnll2"][mask]
+        # preprocess values (nan detection, negative shift)
+        values["dnll2"], values[poi] = _preprocess_values(values["dnll2"], (poi, values[poi]),
+            shift_negative_values=shift_negative_values, origin="entry {}".format(i))
         d["values"] = values
-        n_nans = (~mask).sum()
-        if n_nans:
-            warn("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
-        # check for negative dnll2 values
-        _check_negative_dnll2_values(values["dnll2"], (poi, values[poi]),
-            origin="entry {}".format(i))
         # check poi minimum
         d.setdefault("poi_min", None)
         # default name
@@ -271,7 +265,11 @@ def plot_likelihood_scans_1d(
         d["values"]["dnll2"][(d["values"][poi] >= x_min) & (d["values"][poi] <= x_max)].max()
         for d in data
     ])
-    y_min, y_max, y_max_line = get_y_range(0., y_max_value, y_min, y_max, log=y_log)
+    y_min_value = min([
+        d["values"]["dnll2"][(d["values"][poi] >= x_min) & (d["values"][poi] <= x_max)].min()
+        for d in data
+    ])
+    y_min, y_max, y_max_line = get_y_range(y_min_value, y_max_value, y_min, y_max, log=y_log)
 
     # start plotting
     r.setup_style()
@@ -379,6 +377,7 @@ def plot_likelihood_scan_2d(
     poi2_min=None,
     show_best_fit=False,
     show_best_fit_error=False,
+    shift_negative_values=False,
     show_sm_point=True,
     show_box=False,
     x_min=None,
@@ -399,11 +398,13 @@ def plot_likelihood_scan_2d(
     curve.
 
     When *show_best_fit* (*show_best_fit_error*) is *True*, the nominal (uncertainty on the) best
-    fit value is drawn. The standard model point at (1, 1) as drawn as well unless *show_sm_point*
-    is *False*. The best fit value is drawn with uncertainties on one POI being estimated while
-    setting the other POI to its best value. When *show_box* is *True*, a box containing the 1 sigma
-    contour is shown and used to estimate the dimensions of the standard error following the
-    prescription at https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf (e.g. Fig. 40.5).
+    fit value is drawn. In case there are negative dnll2 values, *shift_negative_values* can be set
+    to *True* to shift them vertically so that the minimum is located at 0 again. The standard model
+    point at (1, 1) as drawn as well unless *show_sm_point* is *False*. The best fit value is drawn
+    with uncertainties on one POI being estimated while setting the other POI to its best value.
+    When *show_box* is *True*, a box containing the 1 sigma contour is shown and used to estimate
+    the dimensions of the standard error following the prescription at
+    https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf (e.g. Fig. 40.5).
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
     and default to the ranges of the poi values. *z_min* and *z_max* limit the range of the z-axis.
@@ -424,14 +425,14 @@ def plot_likelihood_scan_2d(
         assert(poi1 in _values)
         assert(poi2 in _values)
         assert("dnll2" in _values)
+        # preprocess values (nan detection, negative shift)
+        _values["dnll2"], _values[poi1], _values[poi2] = _preprocess_values(_values["dnll2"],
+            (poi1, _values[poi1]), (poi2, _values[poi2]),
+            shift_negative_values=shift_negative_values)
         values[i] = _values
 
     # join values for contour calculation
     joined_values = unique_recarray(dict_to_recarray(values), cols=[poi1, poi2])
-
-    # check for negative dnll2 values
-    _check_negative_dnll2_values(joined_values["dnll2"], (poi1, joined_values[poi1]),
-        (poi2, joined_values[poi2]))
 
     # determine contours independent of plotting
     contours = get_contours(joined_values[poi1], joined_values[poi2], joined_values["dnll2"],
@@ -455,8 +456,8 @@ def plot_likelihood_scan_2d(
 
         # get the z range
         dnll2 = np.array(_values["dnll2"])
-        _z_min = np.nanmin(dnll2[dnll2 > 0]) or 1e-2
-        _z_max = np.nanmax(dnll2)
+        _z_min = dnll2.min() or 1e-3
+        _z_max = dnll2.max()
 
         # infer axis limits from the first set of values
         if i == 0:
@@ -590,6 +591,7 @@ def plot_likelihood_scans_2d(
     poi1,
     poi2,
     data,
+    shift_negative_values=False,
     x_min=None,
     x_max=None,
     y_min=None,
@@ -609,6 +611,9 @@ def plot_likelihood_scans_2d(
         - "poi_mins": A list of two floats describing the best fit value of the two POIs. When not
           set, the minima are estimated from the interpolated curve.
         - "name": A name of the data to be shown in the legend.
+
+    In case there are negative dnll2 values, *shift_negative_values* can be set to *True* to shift
+    them vertically so that the minimum is located at 0 again.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
     and default to the ranges of the poi values. When *fill_nans* is *True*, points with failed
@@ -633,10 +638,11 @@ def plot_likelihood_scans_2d(
         assert(poi2 in values)
         assert("dnll2" in values)
         values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}
-        d["values"] = values
-        # check for negative dnll2 values
-        _check_negative_dnll2_values(values["dnll2"], (poi1, values[poi1]), (poi2, values[poi2]),
+        # preprocess values (nan detection, negative shift)
+        values["dnll2"], values[poi1], values[poi2] = _preprocess_values(values["dnll2"],
+            (poi1, values[poi1]), (poi2, values[poi2]), shift_negative_values=shift_negative_values,
             origin="entry {}".format(i))
+        d["values"] = values
         # check poi minima
         d["poi_mins"] = d.get("poi_mins") or [None, None]
         assert(len(d["poi_mins"]) == 2)
@@ -957,29 +963,60 @@ def plot_nuisance_likelihood_scans(
             canvas.Print(path + ("]" if path.endswith(".pdf") else ""))
 
 
-def _check_negative_dnll2_values(dnll2_values, poi1_data, poi2_data=None, origin=None):
-    neg_mask = dnll2_values < 0
-    if not neg_mask.sum():
-        return neg_mask
-
+def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, shift_negative_values=False,
+        origin=None):
+    # unpack data
     poi1, poi1_values = poi1_data
-    poi2, poi2_values = poi2_data if poi2_data else (None, None)
-    poi_values = np.stack(filter((lambda v: v is not None), [poi1_values, poi2_values]), axis=1)
+    poi2, poi2_values = poi2_data or (None, None)
     pois = ", ".join(filter(None, [poi1, poi2]))
     origin = (" ({})".format(origin)) if origin else ""
-    coords = "\n  - ".join(", ".join(map(str, vals)) for vals in poi_values[neg_mask])
 
-    msg = (
-        "WARNING: {} dnll2 values{} have negative values (coordinates below) which implies that "
-        "combine might have found a local rather than the global minimum; consider re-running "
-        "combine with different fit options or allow this function to recompute the minimum via "
-        "scipy.minimize on the likelihood curve by not passing combine's result "
-        "(--recompute-best-fit when triggered by a law task);\nPOI coordinates ({}):\n  - {}"
-    ).format(int(neg_mask.sum()), origin, pois, coords)
+    # helper to find poi values for coordinates of a given mask
+    def find_coords(mask):
+        poi_values = np.stack(filter((lambda v: v is not None), [poi1_values, poi2_values]), axis=1)
+        coords = "\n  - ".join(", ".join(map(str, vals)) for vals in poi_values[mask])
+        return coords
 
-    warn("\n{}\n".format(msg), color="red")
+    # warn about nans and remove them
+    nan_mask = np.isnan(dnll2_values)
+    if nan_mask.sum():
+        warn("WARNING: found {} NaN(s) in dnll2 values{}".format(nan_mask.sum(), origin))
+        warn("WARNING: POI coordinates ({})\n  - {}".format(pois, find_coords(nan_mask)))
+        poi1_values = poi1_values[~nan_mask]
+        if poi2:
+            poi2_values = poi2_values[~nan_mask]
+        dnll2_values = dnll2_values[~nan_mask]
+        print("removed {} NaN(s)".format(nan_mask.sum()))
 
-    return neg_mask
+    # warn about negative dnll2 values
+    neg_mask = dnll2_values < 0
+    if neg_mask.sum():
+        warn(
+            "WARNING: {} dnll2 values{} have negative values (coordinates below) which implies "
+            "that combine might have found a local rather than the global minimum; consider "
+            "re-running combine with different fit options or allow this function to recompute the "
+            "minimum via scipy.interpolate and scipy.minimize on the likelihood curve by not "
+            "passing combine's result (--recompute-best-fit when triggered by a law task)".format(
+                neg_mask.sum(), origin),
+            color="red",
+        )
+        warn(
+            "WARNING: POI coordinates ({})\n  - {}".format(pois, find_coords(neg_mask)),
+            color="red",
+        )
+        if shift_negative_values:
+            dnll2_values -= dnll2_values.min()
+            print("shifting dnll2 values by minimum value {:.4f}".format(dnll2_values.min()))
+        else:
+            warn(
+                "WARNING: also consider shifting the dnll2 values vertically to move the minimum "
+                "back to 0, which would otherwise lead to wrong uncertainties being extracted from "
+                "intersections with certain dnll2 values (--shift-negative-values when triggered "
+                "by a law task)",
+                color="red",
+            )
+
+    return (dnll2_values, poi1_values) + ((poi2_values,) if poi2 else ())
 
 
 def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
@@ -1019,8 +1056,8 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
         warn("WARNING: found {} NaN(s) in values in 1D likelihood evaluation".format(n_nans))
 
     # first, obtain an interpolation function
-    # interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="cubic")
-    interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="linear")
+    # interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="linear")
+    interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="cubic")
 
     # recompute the minimum and compare with the existing one when given
     xcheck = poi_min is not None
@@ -1037,9 +1074,12 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
         if xcheck:
             # compare and optionally issue a warning (threshold to be optimized)
             if abs(poi_min - poi_min_new) >= 0.03:
-                warn("\nWARNING: external POI minimum (from combine) {:.4f} differs from the "
-                    "recomputed value (from scipy.minimize) {:.4f}\n".format(poi_min, poi_min_new),
-                    color="red")
+                warn(
+                    "WARNING: external POI minimum (from combine) {:.4f} differs from the "
+                    "recomputed value (from scipy.interpolate and scipy.minimize) {:.4f}".format(
+                        poi_min, poi_min_new),
+                    color="red",
+                )
         else:
             poi_min = poi_min_new
 
@@ -1167,13 +1207,19 @@ def evaluate_likelihood_scan_2d(
         if xcheck:
             # compare and optionally issue a warning (threshold to be optimized)
             if abs(poi1_min - poi1_min_new) >= 0.03:
-                warn("\nWARNING: external POI1 minimum (from combine) {:.4f} differs from the "
-                    "recomputed value (from scipy.minimize) {:.4f}\n".format(poi1_min, poi1_min_new),
-                    color="red")
+                warn(
+                    "WARNING: external POI1 minimum (from combine) {:.4f} differs from the "
+                    "recomputed value (from scipy.interpolate and scipy.minimize) {:.4f}".format(
+                        poi1_min, poi1_min_new),
+                    color="red",
+                )
             if abs(poi2_min - poi2_min_new) >= 0.03:
-                warn("\nWARNING: external POI2 minimum (from combine) {:.4f} differs from the "
-                    "recomputed value (from scipy.minimize) {:.4f}\n".format(poi2_min, poi2_min_new),
-                    color="red")
+                warn(
+                    "WARNING: external POI2 minimum (from combine) {:.4f} differs from the "
+                    "recomputed value (from scipy.interpolate and scipy.minimize) {:.4f}".format(
+                        poi2_min, poi2_min_new),
+                    color="red",
+                )
         else:
             poi1_min = poi1_min_new
             poi2_min = poi2_min_new

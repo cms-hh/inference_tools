@@ -158,17 +158,26 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
     )
     show_best_fit = luigi.BoolParameter(
         default=True,
+        significant=False,
         description="when False, do not draw the best fit value; default: True",
     )
     show_best_fit_error = luigi.BoolParameter(
         default=True,
+        significant=False,
         description="when False, the uncertainty bars of the POI's best fit values are not shown; "
         "default: True",
     )
     recompute_best_fit = luigi.BoolParameter(
         default=False,
+        significant=False,
         description="when True, do not use the best fit value as reported from combine but "
-        "recompute it using scipy.minimize; default: False",
+        "recompute it using scipy.interpolate and scipy.minimize; default: False",
+    )
+    shift_negative_values = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when True, dnll2 values are vertically shifted to move the minimum back to 0; "
+        "default: False",
     )
     show_points = luigi.BoolParameter(
         default=False,
@@ -290,6 +299,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 poi_min=None if self.recompute_best_fit else poi_mins[0],
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
+                shift_negative_values=self.shift_negative_values,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -311,6 +321,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 poi2_min=None if self.recompute_best_fit else poi_mins[1],
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
+                shift_negative_values=self.shift_negative_values,
                 show_box=self.show_box,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
@@ -465,6 +476,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 data=data,
                 theory_value=theory_value,
                 show_best_fit=self.show_best_fit,
+                shift_negative_values=self.shift_negative_values,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -482,6 +494,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 data=data,
+                shift_negative_values=self.shift_negative_values,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -582,6 +595,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 data=data,
                 theory_value=theory_value,
                 show_best_fit=self.show_best_fit,
+                shift_negative_values=self.shift_negative_values,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -599,6 +613,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 data=data,
+                shift_negative_values=self.shift_negative_values,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
