@@ -63,11 +63,12 @@ class HHModelTask(AnalysisTask):
             raise Exception("{!r}: hh_model is not allowed to be empty".format(self))
 
         # store whether certain POIs are profiled when a model is set
+        self.profiled_pois = []
         if not self.hh_model_empty:
             options = self.split_hh_model()[2]
-            for k in ["kl", "kt", "CV", "C2V", "C2"]:
-                flag = options.get("doProfile{}".format(k), "").lower() not in ("", "none", "false")
-                setattr(self, "profile_{}".format(k), flag)
+            for opt in options:
+                if opt.startswith("doProfile"):
+                    self.profiled_pois.append(opt[9:])
 
         # cached hh model instance
         self._cached_model = None
@@ -1040,10 +1041,10 @@ class POITask(DatacardTask, ParameterValuesTask):
         if not self.hh_model_empty:
             model = self.load_hh_model()[1]
             for p in self.r_pois:
-                if p not in model.R_POIS:
+                if p not in model.R_POIS or p in self.profiled_pois:
                     r_pois.remove(p)
             for p in self.k_pois:
-                if p not in model.K_POIS:
+                if p not in model.K_POIS or p in self.profiled_pois:
                     k_pois.remove(p)
         self.r_pois = tuple(r_pois)
         self.k_pois = tuple(k_pois)
