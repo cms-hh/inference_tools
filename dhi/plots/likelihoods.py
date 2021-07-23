@@ -72,11 +72,8 @@ def plot_likelihood_scan_1d(
     poi_values = np.array(values[poi], dtype=np.float32)
     dnll2_values = np.array(values["dnll2"], dtype=np.float32)
 
-    # set x range
-    if x_min is None:
-        x_min = min(poi_values)
-    if x_max is None:
-        x_max = max(poi_values)
+    # check for negative dnll2 values
+    _check_negative_dnll2_values(dnll2_values, poi)
 
     # select valid points
     mask = ~np.isnan(dnll2_values)
@@ -85,6 +82,12 @@ def plot_likelihood_scan_1d(
     n_nans = (~mask).sum()
     if n_nans:
         warn("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
+
+    # set x range
+    if x_min is None:
+        x_min = min(poi_values)
+    if x_max is None:
+        x_max = max(poi_values)
 
     # set y range
     y_max_value = max(dnll2_values[(poi_values >= x_min) & (poi_values <= x_max)])
@@ -249,6 +252,8 @@ def plot_likelihood_scans_1d(
         n_nans = (~mask).sum()
         if n_nans:
             warn("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
+        # check for negative dnll2 values
+        _check_negative_dnll2_values(values, poi, origin="entry {}".format(i))
         # check poi minimum
         d.setdefault("poi_min", None)
         # default name
@@ -422,6 +427,9 @@ def plot_likelihood_scan_2d(
 
     # join values for contour calculation
     joined_values = unique_recarray(dict_to_recarray(values), cols=[poi1, poi2])
+
+    # check for negative dnll2 values
+    _check_negative_dnll2_values(joined_values, poi1, poi2)
 
     # determine contours independent of plotting
     contours = get_contours(joined_values[poi1], joined_values[poi2], joined_values["dnll2"],
@@ -624,6 +632,8 @@ def plot_likelihood_scans_2d(
         assert("dnll2" in values)
         values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}
         d["values"] = values
+        # check for negative dnll2 values
+        _check_negative_dnll2_values(values, poi1, poi2, origin="entry {}".format(i))
         # check poi minima
         d["poi_mins"] = d.get("poi_mins") or [None, None]
         assert(len(d["poi_mins"]) == 2)
@@ -942,6 +952,30 @@ def plot_nuisance_likelihood_scans(
     if canvas:
         for path in make_list(paths):
             canvas.Print(path + ("]" if path.endswith(".pdf") else ""))
+
+
+def _check_negative_dnll2_values(dnll2_values, poi1, poi2=None, origin=None):
+    neg_mask = dnll2_values < 0
+    if not neg_mask.sum():
+        return neg_mask
+
+    pois = [poi1]
+    if poi2:
+        pois.append(poi2)
+
+    origin = (" ({})".format(origin)) if origin else ""
+
+    msg = (
+        "WARNING: {} dnll2 values{} appear to have negative values (see list below) which implies "
+        "that combine might have found a local rather than the global minimum; consider rerunning "
+        "combine with different fit options or use the minimum extracted from the likelihood curve "
+        "using scipy.minimize by not passing combine's value to this plot function "
+        "(--recompute-best-fit when triggered by a law task)"
+    ).format(int(neg_mask.sum()), origin)
+
+    warn("\n{}\n".format(msg), color="red")
+
+    return neg_mask
 
 
 def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
