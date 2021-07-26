@@ -224,6 +224,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
+            paper=self.paper,
         )
 
     def load_scan_data(self, inputs):
@@ -315,4 +316,5 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
+            paper=self.paper,
         )

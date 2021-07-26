@@ -174,6 +174,13 @@ def colored(msg, color=None, force=False):
     return "\033[{}m{}\033[0m".format(color, msg)
 
 
+def warn(msg, color="yellow", force=False):
+    """
+    Prints a warning *msg* with a default *color*. *force* is forwarded to *colored*.
+    """
+    print(colored(msg, color=color, force=force))
+
+
 def linspace(start, stop, steps, precision=7):
     """
     Same as np.linspace with *start*, *stop* and *steps* being directly forwarded but the generated

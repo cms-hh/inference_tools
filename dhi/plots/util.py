@@ -131,11 +131,11 @@ def determine_limit_digits(limit, is_xsec=False):
             return 0
 
 
-def get_y_range(y_min_value, y_max_value, y_min=None, y_max=None, log=False, top_margin=0.38,
-        visible_margin=0.4):
+def get_y_range(y_min_value, y_max_value, y_min=None, y_max=None, log=False, y_min_log=1e-3,
+        top_margin=0.38, visible_margin=0.4):
     if log:
         if y_min is None:
-            y_min = (0.75 * y_min_value) if y_min_value > 0 else 1e-3
+            y_min = (0.75 * y_min_value) if y_min_value > 0 else y_min_log
         if y_max is None:
             y_max = y_min * 10**(math.log10(y_max_value / y_min) * (1. + top_margin))
         y_max_vis = y_min * 10**(math.log10(y_max / y_min) / (1. + visible_margin))
@@ -213,12 +213,12 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
     # remove or replace nans in z_values
     z_values = np.array(z_values)
     nan_indices = np.argwhere(np.isnan(z_values))
-    if replace_nan is not None:
+    if replace_nan is None:
+        x_values = [x for i, x in enumerate(x_values) if i not in nan_indices]
+        y_values = [y for i, y in enumerate(y_values) if i not in nan_indices]
+        z_values = [z for i, z in enumerate(z_values) if i not in nan_indices]
+    else:
         z_values[nan_indices] = replace_nan
-        nan_indices = []
-    x_values = [x for i, x in enumerate(x_values) if i not in nan_indices]
-    y_values = [y for i, y in enumerate(y_values) if i not in nan_indices]
-    z_values = [z for i, z in enumerate(z_values) if i not in nan_indices]
 
     # create an interpolation function
     if interpolation == "tgraph2d":

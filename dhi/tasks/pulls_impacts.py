@@ -282,11 +282,10 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
 
     keep_failures = MergePullsAndImpacts.keep_failures
-    hide_best_fit = luigi.BoolParameter(
-        default=False,
+    show_best_fit = luigi.BoolParameter(
+        default=True,
         significant=False,
-        description="do not show the label of the best fit value; should be considered when also "
-        "using --unblinded; default: False",
+        description="when True, show the label of the best fit value; default: True",
     )
     parameters_per_page = luigi.IntParameter(
         default=-1,
@@ -351,8 +350,8 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
                 "got {}".format(self.file_types))
             self.parameters_per_page = -1
 
-        # show a warning when unblinded and not hiding the best fit value
-        if self.unblinded and not self.hide_best_fit:
+        # show a warning when unblinded, not in paper mode and not hiding the best fit value
+        if self.unblinded and not self.paper and self.show_best_fit:
             self.logger.warning("running unblinded but not hiding the best fit value")
 
     def requires(self):
@@ -398,7 +397,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
             order_by_impact=self.order_by_impact,
             pull_range=self.pull_range,
             impact_range=self.impact_range,
-            best_fit_value=not self.hide_best_fit,
+            best_fit_value=self.show_best_fit,
             labels=None if self.labels == law.NO_STR else self.labels,
             label_size=None if self.label_size == law.NO_INT else self.label_size,
             pad_width=None if self.pad_width == law.NO_INT else self.pad_width,
@@ -406,4 +405,5 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
             right_margin=None if self.right_margin == law.NO_INT else self.right_margin,
             entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            paper=self.paper,
         )

@@ -10,7 +10,7 @@ import array
 import six
 import uproot
 
-from dhi.config import poi_data, campaign_labels, colors
+from dhi.config import poi_data, campaign_labels, colors, cms_postfix
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors, make_list,
 )
@@ -26,29 +26,41 @@ def plot_s_over_b(
     poi,
     fit_diagnostics_path,
     bins=8,
+    signal_superimposed=False,
+    signal_scale=1.,
+    signal_scale_ratio=1.,
+    show_best_fit=True,
     y1_min=None,
     y1_max=None,
     y2_min=None,
     y2_max=None,
-    signal_superimposed=False,
-    signal_scale=1.,
-    signal_scale_ratio=1.,
     model_parameters=None,
-    campaign=None
+    campaign=None,
+    prefit=False,
+    unblinded=False,
+    paper=False,
 ):
     """
     Creates a postfit signal-over-background plot combined over all bins in the fit of a *poi* and
     saves it at *paths*. The plot is based on the fit diagnostics file *fit_diagnostics_path*
     produced by combine. *bins* can either be a single number of bins to use, or a list of n+1 bin
-    edges. *y1_min*, *y1_max*, *y2_min* and *y2_max* define the ranges of the y-axes of the upper
-    pad and ratio pad, respectively. When *signal_superimposed* is *True*, the signal at the top pad
+    edges.
+
+    When *signal_superimposed* is *True*, the signal at the top pad
     is not drawn stacked on top of the background but as a separate histogram. For visualization
     purposes, the fitted signal can be scaled by *signal_scale*, and, when drawing the signal
     superimposed, by *signal_scale_ratio* at the bottom ratio pad. When *signal_superimposed* is
     *True*, the signal at the top pad is not drawn stacked on top of the background but as a
-    separate histogram. *model_parameters* can be a dictionary of key-value pairs of model
+    separate histogram. When *show_best_fit* is *False*, the value of the signal scale is not shown
+    in the legend labels.
+
+    *y1_min*, *y1_max*, *y2_min* and *y2_max* define the ranges of the y-axes of the upper pad and
+    ratio pad, respectively. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*.
+    *dhi.config.campaign_labels*. When *prefit* is *True*, signal, background and uncertainties are
+    shown according to the prefit expectation. When *unblinded* is *True*, some legend labels are
+    changed accordingly. When *paper* is *True*, certain plot configurations are adjusted for use in
+    publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/postfit.html#combined-postfit-shapes
     """
@@ -60,6 +72,7 @@ def plot_s_over_b(
     assert signal_scale_ratio != 0
     if not signal_superimposed:
         signal_scale_ratio = signal_scale
+    assert not (prefit and unblinded)
 
     # load the shape data from the fit diagnostics file
     bin_data = load_bin_data(fit_diagnostics_path)
@@ -105,51 +118,57 @@ def plot_s_over_b(
 
     # helper to create a signal label
     def signal_label(scale):
-        scale_text = "" if scale == 1 else " x {}".format(try_int(scale))
-        return "Signal{} ({} = {:.2f})".format(scale_text, to_root_latex(poi_data[poi].label),
-            signal_strength)
+        label = "Signal"
+        if not show_best_fit:
+            return label
+        if scale == 1:
+            label += " x {}".format(try_int(scale))
+        label += " ({} = {:.2f})".format(to_root_latex(poi_data[poi].label), signal_strength)
+        return label
 
-    # superimposed postfit signal histogram at the top
-    hist_s_post1 = ROOT.TH1F("s_post1", "", len(bins) - 1, array.array("f", bins))
-    r.setup_hist(hist_s_post1, props={"LineColor": colors.blue_signal})
+    # superimposed signal histogram at the top
+    hist_s1 = ROOT.TH1F("s_post1", "", len(bins) - 1, array.array("f", bins))
+    r.setup_hist(hist_s1, props={"LineColor": colors.blue_signal})
     if signal_superimposed:
-        draw_objs1.append((hist_s_post1, "SAME,HIST"))
-        legend_entries.append((hist_s_post1, signal_label(signal_scale), "L"))
+        draw_objs1.append((hist_s1, "SAME,HIST"))
+        legend_entries.append((hist_s1, signal_label(signal_scale), "L"))
 
     # postfit signal histogram at the top
-    hist_sb_post1 = ROOT.TH1F("sb_post1", "", len(bins) - 1, array.array("f", bins))
-    r.setup_hist(hist_sb_post1, props={"FillColor": colors.blue_signal})
+    hist_sb1 = ROOT.TH1F("sb_post1", "", len(bins) - 1, array.array("f", bins))
+    r.setup_hist(hist_sb1, props={"FillColor": colors.blue_signal})
     if signal_superimposed:
-        legend_entries.append((hist_sb_post1, signal_label(signal_scale_ratio), "AF"))
+        legend_entries.append((hist_sb1, signal_label(signal_scale_ratio), "AF"))
     else:
-        legend_entries.append((hist_sb_post1, signal_label(signal_scale), "AF"))
-        draw_objs1.append((hist_sb_post1, "SAME,HIST"))
+        legend_entries.append((hist_sb1, signal_label(signal_scale), "AF"))
+        draw_objs1.append((hist_sb1, "SAME,HIST"))
 
     # postfit B histogram at the top
-    hist_b_post1 = ROOT.TH1F("b_post1", "", len(bins) - 1, array.array("f", bins))
-    r.setup_hist(hist_b_post1, props={"FillColor": colors.white})
-    legend_entries.insert(0, (hist_b_post1, "Background (postfit)", "L"))
+    fit_type = "pre" if prefit else "post"
+    hist_b1 = ROOT.TH1F("b_post1", "", len(bins) - 1, array.array("f", bins))
+    r.setup_hist(hist_b1, props={"FillColor": colors.white})
+    legend_entries.insert(0, (hist_b1, "Background ({}-fit)".format(fit_type), "L"))
     if signal_superimposed:
-        draw_objs1.insert(-1, (hist_b_post1, "SAME,HIST"))
+        draw_objs1.insert(-1, (hist_b1, "SAME,HIST"))
     else:
-        draw_objs1.append((hist_b_post1, "SAME,HIST"))
+        draw_objs1.append((hist_b1, "SAME,HIST"))
 
     # dummy data histogram to handle binning
     hist_d1 = ROOT.TH1F("d1", "", len(bins) - 1, array.array("f", bins))
 
     # actual data graph at the top
+    data_postfix = "" if unblinded else " (Asimov)"
     graph_d1 = ROOT.TGraphAsymmErrors(len(bins) - 1)
     r.setup_hist(graph_d1, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 1}, color=1)
     draw_objs1.append((graph_d1, "PEZ,SAME"))
-    legend_entries.insert(0, (graph_d1, "Data", "LP"))
+    legend_entries.insert(0, (graph_d1, "Data" + data_postfix, "LP"))
 
     # postfit S+B ratio histogram and a mask histogram to mimic errors
-    hist_sb_post2 = ROOT.TH1F("sb_post2", "", len(bins) - 1, array.array("f", bins))
-    r.setup_hist(hist_sb_post2, props={"FillColor": colors.blue_signal})
-    draw_objs2.append((hist_sb_post2, "SAME,HIST"))
-    hist_mask_post2 = ROOT.TH1F("mask_post2", "", len(bins) - 1, array.array("f", bins))
-    r.setup_hist(hist_mask_post2, props={"FillColor": colors.white})
-    draw_objs2.append((hist_mask_post2, "SAME,HIST"))
+    hist_sb2 = ROOT.TH1F("sb_post2", "", len(bins) - 1, array.array("f", bins))
+    r.setup_hist(hist_sb2, props={"FillColor": colors.blue_signal})
+    draw_objs2.append((hist_sb2, "SAME,HIST"))
+    hist_mask2 = ROOT.TH1F("mask_post2", "", len(bins) - 1, array.array("f", bins))
+    r.setup_hist(hist_mask2, props={"FillColor": colors.white})
+    draw_objs2.append((hist_mask2, "SAME,HIST"))
 
     # dummy histograms to handle binning of background uncertainties
     hist_b_err_up1 = ROOT.TH1F("b_err_up1", "", len(bins) - 1, array.array("f", bins))
@@ -159,7 +178,7 @@ def plot_s_over_b(
     graph_b_err2 = ROOT.TGraphAsymmErrors(len(bins) - 1)
     r.setup_hist(graph_b_err2, props={"FillColor": colors.black, "FillStyle": 3345, "LineWidth": 0})
     draw_objs2.append((graph_b_err2, "SAME,2"))
-    legend_entries.insert(2, (graph_b_err2, "Uncertainty (postfit)", "F"))
+    legend_entries.insert(2, (graph_b_err2, "Uncertainty ({}-fit)".format(fit_type), "F"))
 
     # data graph in the ratio
     graph_d2 = ROOT.TGraphAsymmErrors(len(bins) - 1)
@@ -169,39 +188,45 @@ def plot_s_over_b(
     # fill histograms by traversing bin data
     for _bin in bin_data:
         s_over_b = min(x_max - 1e-5, max(_bin.get("pre_s_over_b", x_min), x_min + 1e-5))
+        # get values to fill
+        s = _bin[fit_type + "_signal"]
+        b = _bin[fit_type + "_background"]
+        b_err_up = _bin[fit_type + "_background_err_up"]
+        b_err_down = _bin[fit_type + "_background_err_down"]
+        d = _bin.data
         # signal and background
-        hist_b_post1.Fill(s_over_b, _bin.post_background)
-        hist_s_post1.Fill(s_over_b, _bin.post_signal * signal_scale)
-        hist_sb_post1.Fill(s_over_b, _bin.post_background + _bin.post_signal * signal_scale)
+        hist_b1.Fill(s_over_b, b)
+        hist_s1.Fill(s_over_b, s * signal_scale)
+        hist_sb1.Fill(s_over_b, b + s * signal_scale)
         # data histogram for binning
-        hist_d1.Fill(s_over_b, _bin.data)
+        hist_d1.Fill(s_over_b, d)
         # background uncertainty histogram for binning
-        hist_b_err_up1.Fill(s_over_b, _bin.post_background_err_up)
-        hist_b_err_down1.Fill(s_over_b, _bin.post_background_err_down)
+        hist_b_err_up1.Fill(s_over_b, b_err_up)
+        hist_b_err_down1.Fill(s_over_b, b_err_down)
 
     # fill remaining objects
-    for i in range(hist_sb_post1.GetNbinsX()):
+    for i in range(hist_sb1.GetNbinsX()):
         # get values from top histograms
-        s = hist_s_post1.GetBinContent(i + 1) / signal_scale
-        x = hist_b_post1.GetBinCenter(i + 1)
-        w = hist_b_post1.GetBinWidth(i + 1)
-        b = hist_b_post1.GetBinContent(i + 1)
+        s = hist_s1.GetBinContent(i + 1) / signal_scale
+        x = hist_b1.GetBinCenter(i + 1)
+        w = hist_b1.GetBinWidth(i + 1)
+        b = hist_b1.GetBinContent(i + 1)
         b_err_up = hist_b_err_up1.GetBinContent(i + 1)
         b_err_down = hist_b_err_down1.GetBinContent(i + 1)
         d = hist_d1.GetBinContent(i + 1)
-        d_err = poisson_asym_errors(d)
+        d_err_up, d_err_down = poisson_asym_errors(d)
         # zero safe b value, leading to almost 0 when used as denominator
         b_safe = b or 1e15
         # bottom signal + background histogram and mask
         sb = b + s * signal_scale_ratio
-        hist_sb_post2.SetBinContent(i + 1, max(sb / b_safe, 1.))
-        hist_mask_post2.SetBinContent(i + 1, min(sb / b_safe, 1.))
+        hist_sb2.SetBinContent(i + 1, max(sb / b_safe, 1.))
+        hist_mask2.SetBinContent(i + 1, min(sb / b_safe, 1.))
         # data points at the top
         graph_d1.SetPoint(i, x, d)
-        graph_d1.SetPointError(i, 0., 0., d_err[1], d_err[0])
+        graph_d1.SetPointError(i, 0., 0., d_err_down, d_err_up)
         # data points in the ratio
         graph_d2.SetPoint(i, x, d / b_safe)
-        graph_d2.SetPointError(i, 0., 0., d_err[1] / b_safe, d_err[0] / b_safe)
+        graph_d2.SetPointError(i, 0., 0., d_err_down / b_safe, d_err_up / b_safe)
         # uncertainty in the ratio
         graph_b_err2.SetPoint(i, x, 1.)
         graph_b_err2.SetPointError(i, 0.5 * w, 0.5 * w, b_err_down / b_safe, b_err_up / b_safe)
@@ -210,7 +235,7 @@ def plot_s_over_b(
     if y1_min is None:
         y1_min = 5.
     if y1_max is None:
-        y1_max_value = hist_b_post1.GetMaximum()
+        y1_max_value = hist_b1.GetMaximum()
         y1_max = y1_min * 10**(1.35 * math.log10(y1_max_value / y1_min))
     if y2_min is None:
         y2_min = 0.7
@@ -230,10 +255,10 @@ def plot_s_over_b(
 
     # model parameter labels
     if model_parameters:
-        draw_objs1.extend(create_model_parameters(model_parameters, pad1))
+        draw_objs1.extend(create_model_parameters(model_parameters, pad1, x_offset=200))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad1)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad1)
     draw_objs1.extend(cms_labels)
 
     # campaign label
@@ -300,26 +325,25 @@ def load_bin_data(fit_diagnostics_path):
                 continue
 
             # fill bin data
-            get = lambda obj, kind: getattr(obj, "Get" + kind)(i + 1)
             bin_data.append(DotDict(
-                pre_signal=get(s_pre, "BinContent"),
-                pre_signal_err_up=get(s_pre, "BinErrorUp"),
-                pre_signal_err_down=get(s_pre, "BinErrorLow"),
-                pre_background=get(b_pre, "BinContent"),
-                pre_background_err_up=get(b_pre, "BinErrorUp"),
-                pre_background_err_down=get(b_pre, "BinErrorLow"),
-                pre_all=get(a_pre, "BinContent"),
-                pre_all_err_up=get(a_pre, "BinErrorUp"),
-                pre_all_err_down=get(a_pre, "BinErrorLow"),
-                post_signal=get(s_post, "BinContent"),
-                post_signal_err_up=get(s_post, "BinErrorUp"),
-                post_signal_err_down=get(s_post, "BinErrorLow"),
-                post_background=get(b_post, "BinContent"),
-                post_background_err_up=get(b_post, "BinErrorUp"),
-                post_background_err_down=get(b_post, "BinErrorLow"),
-                post_all=get(a_post, "BinContent"),
-                post_all_err_up=get(a_post, "BinErrorUp"),
-                post_all_err_down=get(a_post, "BinErrorLow"),
+                pre_signal=s_pre.GetBinContent(i + 1),
+                pre_signal_err_up=s_pre.GetBinErrorUp(i + 1),
+                pre_signal_err_down=s_pre.GetBinErrorLow(i + 1),
+                pre_background=b_pre.GetBinContent(i + 1),
+                pre_background_err_up=b_pre.GetBinErrorUp(i + 1),
+                pre_background_err_down=b_pre.GetBinErrorLow(i + 1),
+                pre_all=a_pre.GetBinContent(i + 1),
+                pre_all_err_up=a_pre.GetBinErrorUp(i + 1),
+                pre_all_err_down=a_pre.GetBinErrorLow(i + 1),
+                post_signal=s_post.GetBinContent(i + 1),
+                post_signal_err_up=s_post.GetBinErrorUp(i + 1),
+                post_signal_err_down=s_post.GetBinErrorLow(i + 1),
+                post_background=b_post.GetBinContent(i + 1),
+                post_background_err_up=b_post.GetBinErrorUp(i + 1),
+                post_background_err_down=b_post.GetBinErrorLow(i + 1),
+                post_all=a_post.GetBinContent(i + 1),
+                post_all_err_up=a_post.GetBinErrorUp(i + 1),
+                post_all_err_down=a_post.GetBinErrorLow(i + 1),
                 data=d_post.GetY()[i] if d_post else None,
             ))
 

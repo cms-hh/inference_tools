@@ -13,7 +13,7 @@ import array
 import six
 import numpy as np
 
-from dhi.config import poi_data, campaign_labels, colors
+from dhi.config import poi_data, campaign_labels, colors, cms_postfix
 from dhi.util import (
     import_ROOT, import_file, multi_match, to_root_latex, linspace, colored, make_list,
 )
@@ -44,6 +44,7 @@ def plot_pulls_impacts(
     entry_height=None,
     label_size=None,
     campaign=None,
+    paper=False,
 ):
     r"""
     Creates a plot containing both pulls and impacts and saves it at *paths*. *data* should either
@@ -80,7 +81,8 @@ def plot_pulls_impacts(
 
     *pad_width*, *left_margin*, *right_margin*, *entry_height* and *label_size* can be set to a size
     in pixels to overwrite internal defaults. *campaign* should refer to the name of a campaign
-    label defined in dhi.config.campaign_labels.
+    label defined in dhi.config.campaign_labels. When *paper* is *True*, certain plot configurations
+    are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/pullsandimpacts.html
     """
@@ -388,7 +390,7 @@ def plot_pulls_impacts(
             draw_objs.append(fit_label)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad, x_offset=10, y_offset=50)
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix)
         draw_objs.extend(cms_labels)
 
         # campaign label

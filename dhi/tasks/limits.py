@@ -289,6 +289,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
+            paper=self.paper,
         )
 
     def load_scan_data(self, inputs):
@@ -424,6 +425,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
+            paper=self.paper,
         )
 
 
@@ -546,6 +548,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
+            paper=self.paper,
         )
 
 
@@ -725,6 +728,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask, BoxPlotTask):
             model_parameters=self.get_shown_parameters(),
             h_lines=self.h_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            paper=self.paper,
         )
 
 
@@ -812,4 +816,5 @@ class PlotUpperLimits2D(UpperLimitsBase, POIPlotTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             h_lines=self.h_lines,
             v_lines=self.v_lines,
+            paper=self.paper,
         )

@@ -167,3 +167,6 @@ chi2_levels = {
     2: {1: 2.296, 2: 6.180},
     3: {1: 3.527, 2: 8.025},
 }
+
+# postfix after "CMS" labels in plots, shwon when the --paper flag is not used
+cms_postfix = "Preliminary"

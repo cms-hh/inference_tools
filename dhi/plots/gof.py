@@ -9,7 +9,7 @@ import math
 import numpy as np
 import scipy.stats
 
-from dhi.config import campaign_labels, colors, br_hh_names
+from dhi.config import campaign_labels, colors, br_hh_names, cms_postfix
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, make_list
 from dhi.plots.util import use_style, create_model_parameters, get_y_range
 
@@ -30,6 +30,7 @@ def plot_gof_distribution(
     y_max=None,
     model_parameters=None,
     campaign=None,
+    paper=False,
 ):
     """
     Creates a plot showing the goodness-of-fit value *data* between simulated events and real data
@@ -39,7 +40,8 @@ def plot_gof_distribution(
     The toy histogram is drawn with *n_bins* bins. *x_min*, *x_max*, *y_min* and *y_max* define the
     axis ranges and default to the range of the given values. *model_parameters* can be a dictionary
     of key-value pairs of model parameters. *campaign* should refer to the name of a campaign label
-    defined in *dhi.config.campaign_labels*.
+    defined in *dhi.config.campaign_labels*. When *paper* is *True*, certain plot configurations are
+    adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/gof.html#testing-a-datacard
     """
@@ -108,10 +110,10 @@ def plot_gof_distribution(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -144,6 +146,7 @@ def plot_gofs(
     label_size=None,
     model_parameters=None,
     campaign=None,
+    paper=False,
 ):
     """
     Creates a plot showing the results of multiple goodness-of-fit tests and saves it at *paths*.
@@ -156,7 +159,8 @@ def plot_gofs(
     *right_margin*, *entry_height* and *label_size* can be set to a size in pixels to overwrite
     internal defaults. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*.
+    *dhi.config.campaign_labels*. When *paper* is *True*, certain plot configurations are adjusted
+    for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/gof.html#testing-multiple-datacards
     """
@@ -179,7 +183,7 @@ def plot_gofs(
     left_margin = left_margin or 150  # pixels
     right_margin = right_margin or 20  # pixels
     entry_height = entry_height or 90  # pixels
-    head_space = 100  # pixels
+    head_space = 130  # pixels
     label_size = label_size or 22
 
     # get the pad height
@@ -298,10 +302,10 @@ def plot_gofs(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label

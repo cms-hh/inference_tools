@@ -15,6 +15,7 @@ from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWo
 
 
 class SAVEFLAGS(str, enum.Enum):
+
     Shapes = "Shapes"
     WithUncertainties = "WithUncertainties"
     Normalizations = "Normalizations"
@@ -107,7 +108,7 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {flags}"
-            " {self.combine_optimization_args}"
+            " {self.combine_optimization_args_hesse}"
             " {self.custom_args}"
             " && "
             "mv higgsCombineTest.FitDiagnostics.mH{self.mass_int}{postfix}.root {output_result}"
@@ -132,6 +133,11 @@ class PlotPostfitSOverB(POIPlotTask):
         significant=False,
         description="comma-separated list of bin edges to use; when a single number is passed, a "
         "automatic binning is applied with that number of bins; default: (8,)",
+    )
+    show_best_fit = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when True, show the label of the best fit value; default: False",
     )
     signal_superimposed = luigi.BoolParameter(
         default=False,
@@ -159,6 +165,11 @@ class PlotPostfitSOverB(POIPlotTask):
         significant=False,
         description="the upper y-axis limit of the ratio plot; no default",
     )
+    prefit = luigi.BoolParameter(
+        default=False,
+        description="plot prefit distributions and uncertainties instead of postfit ones; only "
+        "available when not --unblinded; default: False",
+    )
     x_min = None
     x_max = None
     z_max = None
@@ -166,11 +177,24 @@ class PlotPostfitSOverB(POIPlotTask):
 
     force_n_pois = 1
 
+    def __init__(self, *args, **kwargs):
+        super(PlotPostfitSOverB, self).__init__(*args, **kwargs)
+
+        # disable prefit when unblinded
+        if self.prefit and self.unblinded:
+            self.logger.warning("prefit option is not available when unblinded")
+            self.prefit = False
+
+        # show a warning when unblinded, not in paper mode and not hiding the best fit value
+        if self.unblinded and not self.paper and self.show_best_fit:
+            self.logger.warning("running unblinded but not hiding the best fit value")
+
     def requires(self):
         return FitDiagnostics.req(self)
 
     def output(self):
-        names = self.create_plot_names(["postfitsoverb", self.get_output_postfix()])
+        name = "prefitsoverb" if self.prefit else "postfitsoverb"
+        names = self.create_plot_names([name, self.get_output_postfix()])
         return [self.local_target(name) for name in names]
 
     @law.decorator.log
@@ -192,15 +216,19 @@ class PlotPostfitSOverB(POIPlotTask):
             poi=self.pois[0],
             fit_diagnostics_path=fit_diagnostics_path,
             bins=self.bins if len(self.bins) > 1 else int(self.bins[0]),
+            signal_superimposed=self.signal_superimposed,
+            signal_scale=self.signal_scale,
+            signal_scale_ratio=self.signal_scale_ratio,
+            show_best_fit=self.show_best_fit,
             y1_min=self.get_axis_limit("y_min"),
             y1_max=self.get_axis_limit("y_max"),
             y2_min=self.get_axis_limit("ratio_min"),
             y2_max=self.get_axis_limit("ratio_max"),
-            signal_superimposed=self.signal_superimposed,
-            signal_scale=self.signal_scale,
-            signal_scale_ratio=self.signal_scale_ratio,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            prefit=self.prefit,
+            unblinded=self.unblinded,
+            paper=self.paper,
         )
 
 
@@ -307,4 +335,5 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
                 y_log=self.y_log,
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
+                paper=self.paper,
             )

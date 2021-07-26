@@ -4,6 +4,8 @@
 Tasks for obtaining exclusion plots.
 """
 
+import copy
+
 import law
 import luigi
 
@@ -16,11 +18,9 @@ from dhi.config import br_hh
 
 class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, BoxPlotTask):
 
-    best_fit = luigi.BoolParameter(
-        default=True,
-        description="when True, the POI's best fit value from likelihood profiling is computed and "
-        "shown as well; default: True",
-    )
+    show_best_fit = PlotLikelihoodScan.show_best_fit
+    show_best_fit_error = PlotLikelihoodScan.show_best_fit_error
+    recompute_best_fit = PlotLikelihoodScan.recompute_best_fit
     h_lines = law.CSVParameter(
         cls=luigi.IntParameter,
         default=tuple(),
@@ -48,7 +48,7 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, BoxPl
         reqs = []
         for datacards in self.multi_datacards:
             req = {"limits": merge_tasks(MergeUpperLimits, datacards=datacards)}
-            if self.best_fit:
+            if self.show_best_fit:
                 req["likelihoods"] = merge_tasks(MergeLikelihoodScan, datacards=datacards,
                     pois=tuple(self.scan_parameter_names))
             reqs.append(req)
@@ -81,7 +81,8 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, BoxPl
             if "likelihoods" in inp:
                 nll_values, scan_min = PlotLikelihoodScan._load_scan_data(inp["likelihoods"],
                     self.scan_parameter_names, self.get_scan_parameter_combinations())
-                scan_min = None if np.isnan(scan_min[0]) else float(scan_min[0])
+                if not self.recompute_best_fit and not np.isnan(scan_min[0]):
+                    scan_min = float(scan_min[0])
 
             # store data
             entry = dict(
@@ -113,6 +114,7 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, BoxPl
             data=data,
             poi=self.pois[0],
             scan_parameter=self.scan_parameter_names[0],
+            show_best_fit_error=self.show_best_fit_error,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             pad_width=None if self.pad_width == law.NO_INT else self.pad_width,
@@ -123,12 +125,16 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, BoxPl
             model_parameters=self.get_shown_parameters(),
             h_lines=self.h_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            paper=self.paper,
         )
 
 
 class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
 
-    best_fit = PlotExclusionAndBestFit.best_fit
+    show_best_fit = PlotLikelihoodScan.show_best_fit
+    show_best_fit_error = copy.copy(PlotLikelihoodScan.show_best_fit_error)
+    show_best_fit_error._default = False
+    recompute_best_fit = PlotLikelihoodScan.recompute_best_fit
     xsec_contours = law.CSVParameter(
         default=("auto",),
         significant=False,
@@ -178,7 +184,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
             ]
 
         reqs = {"limits": merge_tasks(MergeUpperLimits)}
-        if self.best_fit:
+        if self.show_best_fit:
             reqs["likelihoods"] = merge_tasks(MergeLikelihoodScan,
                 pois=tuple(self.scan_parameter_names))
 
@@ -264,11 +270,14 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
             xsec_levels=xsec_levels,
             xsec_unit=self.xsec,
             nll_values=nll_values,
-            scan_minima=scan_mins,
+            show_best_fit_error=self.show_best_fit_error,
+            scan_minima=None if self.recompute_best_fit else scan_mins,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            paper=self.paper,
+            style=self.style,
         )

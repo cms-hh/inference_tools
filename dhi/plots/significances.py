@@ -11,7 +11,7 @@ import scipy as sp
 import scipy.stats
 
 from dhi.config import (
-    poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence,
+    poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence, cms_postfix,
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, make_list, unique_recarray, dict_to_recarray,
@@ -41,6 +41,7 @@ def plot_significance_scan_1d(
     model_parameters=None,
     campaign=None,
     show_points=False,
+    paper=False,
 ):
     """
     Creates a plot for the significance scan over a *scan_parameter* and saves it at *paths*.
@@ -54,6 +55,7 @@ def plot_significance_scan_1d(
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
     refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
     *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
+    When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/significances.html#significance-vs-scan-parameter
     """
@@ -179,10 +181,10 @@ def plot_significance_scan_1d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -215,6 +217,7 @@ def plot_significance_scans_1d(
     model_parameters=None,
     campaign=None,
     show_points=True,
+    paper=False,
 ):
     """
     Creates a plot showing multiple significance scans over a *scan_parameter* and saves it at
@@ -228,6 +231,7 @@ def plot_significance_scans_1d(
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
     refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
     *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
+    When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/significances.html#multiple-significance-scans-vs-scan-parameter
     """
@@ -335,10 +339,11 @@ def plot_significance_scans_1d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
+        postfix="" if paper else cms_postfix)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -373,6 +378,7 @@ def plot_significance_scan_2d(
     z_log=True,
     model_parameters=None,
     campaign=None,
+    paper=False,
 ):
     """
     Creates a significance plot of the 2D scan of two parameters *scan_parameter1* and
@@ -386,7 +392,8 @@ def plot_significance_scan_2d(
     *z_max* limit the range of the z-axis. When *z_log* is *True*, the z-axis is plotted with a
     logarithmic scale. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*.
+    *dhi.config.campaign_labels*. When *paper* is *True*, certain plot configurations are adjusted
+    for use in publications.
     """
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -503,10 +510,10 @@ def plot_significance_scan_2d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label

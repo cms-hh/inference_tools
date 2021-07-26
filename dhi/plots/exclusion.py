@@ -8,7 +8,7 @@ import math
 
 import numpy as np
 
-from dhi.config import poi_data, campaign_labels, colors, br_hh_names
+from dhi.config import poi_data, campaign_labels, colors, br_hh_names, cms_postfix
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, make_list
 from dhi.plots.limits import evaluate_limit_scan_1d, _print_excluded_ranges
 from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
@@ -27,6 +27,7 @@ def plot_exclusion_and_bestfit_1d(
     data,
     poi,
     scan_parameter,
+    show_best_fit_error=True,
     x_min=None,
     x_max=None,
     pad_width=None,
@@ -37,6 +38,7 @@ def plot_exclusion_and_bestfit_1d(
     model_parameters=None,
     h_lines=None,
     campaign=None,
+    paper=False,
 ):
     """
     Creates a plot showing exluded regions of a *poi* over a *scan_parameter* for multiple analyses
@@ -65,12 +67,16 @@ def plot_exclusion_and_bestfit_1d(
             }],
         )
 
-    *x_min* and *x_max* define the range of the x-axis and default to the maximum range of poi
-    values passed in data. *pad_width*, *left_margin*, *right_margin*, *entry_height* and
-    *label_size* can be set to a size in pixels to overwrite internal defaults. *model_parameters*
-    can be a dictionary of key-value pairs of model parameters. *h_lines* can be a list of integers
-    denoting positions where additional horizontal lines are drawn for visual guidance. *campaign*
-    should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    When *show_best_fit_error* is *True*, the error bars on the best values are shown. The nominal
+    values are taken from the "scan_min" entries in *data*, or they are recomputed using
+    scipy.minimize when *None*. *x_min* and *x_max* define the range of the x-axis and default to
+    the maximum range of poi values passed in data. *pad_width*, *left_margin*, *right_margin*,
+    *entry_height* and *label_size* can be set to a size in pixels to overwrite internal defaults.
+    *model_parameters* can be a dictionary of key-value pairs of model parameters. *h_lines* can be
+    a list of integers denoting positions where additional horizontal lines are drawn for visual
+    guidance. *campaign* should refer to the name of a campaign label defined in
+    *dhi.config.campaign_labels*. When *paper* is *True*, certain plot configurations are adjusted
+    for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/exclusion.html#comparison-of-exclusion-performance
     """
@@ -167,28 +173,28 @@ def plot_exclusion_and_bestfit_1d(
         legend_entries.append((h_dummy, " ", ""))
 
     # best fit values
-    scans = []
-    for d in data:
-        scan = None
-        if "nll_values" in d:
-            scan = evaluate_likelihood_scan_1d(
-                d["nll_values"][scan_parameter],
-                d["nll_values"]["dnll2"],
-                poi_min=d.get("scan_min"),
-            )
-        scans.append(scan)
+    scans = [
+        evaluate_likelihood_scan_1d(
+            d["nll_values"][scan_parameter],
+            d["nll_values"]["dnll2"],
+            poi_min=d.get("scan_min"),
+        ) if d and d.get("nll_values") is not None else None
+        for d in data
+    ]
     if any(scans):
+        f = int(show_best_fit_error)
         g_bestfit = create_tgraph(n,
             [(scan.num_min() if scan else -1e5) for scan in scans],
             [n - i - 0.5 for i in range(n)],
-            [(scan.num_min.u(direction="down", default=0.) if scan else 0) for scan in scans],
-            [(scan.num_min.u(direction="up", default=0.,) if scan else 0) for scan in scans],
+            [(f * scan.num_min.u(direction="down", default=0.) if scan else 0) for scan in scans],
+            [(f * scan.num_min.u(direction="up", default=0.,) if scan else 0) for scan in scans],
             0,
             0,
         )
+        opt = lambda s: s if show_best_fit_error else ""
         r.setup_graph(g_bestfit, props={"MarkerStyle": 20, "MarkerSize": 1.2, "LineWidth": 1})
-        draw_objs.append((g_bestfit, "PEZ"))
-        legend_entries.append((g_bestfit, "Best fit value"))
+        draw_objs.append((g_bestfit, "PZ" + opt("E")))
+        legend_entries.append((g_bestfit, "Best fit value", "P" + opt("L")))
 
     # theory prediction
     if x_min < 1:
@@ -207,11 +213,15 @@ def plot_exclusion_and_bestfit_1d(
 
     # y axis labels and ticks
     h_dummy.GetYaxis().SetBinLabel(1, "")
-    label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{%s = %s}}"
+    label_tmpl = "#bf{%s}"
+    label_tmpl_scan = "#splitline{#bf{%s}}{#scale[0.75]{%s = %s}}"
     for i, (d, scan) in enumerate(zip(data, scans)):
         # name labels
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
-        label = label_tmpl % (label, scan_label, scan.num_min.str("%.1f", style="root"))
+        if scan:
+            label = label_tmpl_scan % (label, scan_label, scan.num_min.str("%.1f", style="root"))
+        else:
+            label = label_tmpl % (label,)
         label_x = r.get_x(10, canvas)
         label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
         label = ROOT.TLatex(label_x, label_y, label)
@@ -234,10 +244,10 @@ def plot_exclusion_and_bestfit_1d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -267,14 +277,18 @@ def plot_exclusion_and_bestfit_2d(
     xsec_levels=None,
     xsec_unit=None,
     nll_values=None,
+    show_best_fit_error=False,
+    recompute_best_fit=False,
     scan_minima=None,
-    draw_sm_point=True,
+    show_sm_point=True,
     x_min=None,
     x_max=None,
     y_min=None,
     y_max=None,
     model_parameters=None,
     campaign=None,
+    paper=False,
+    style="default",
 ):
     """
     Creates a 2D plot showing excluded regions of two paramters *scan_parameter1* and
@@ -292,17 +306,19 @@ def plot_exclusion_and_bestfit_2d(
     not set explicitely. *xsec_unit* can be a string that is appended to every label.
 
     When *nll_values* is set, it is used to extract expected best fit values and their uncertainties
-    which are drawn as well. When set, it should be a mapping to lists of values or a record array
-    with keys "<scan_parameter1>", "<scan_parameter2>" and "dnll2". By default, the position of the
-    best value is directly extracted from the likelihood values. However, when *scan_minima* is a
-    2-tuple of positions per scan parameter, this best fit value is used instead, e.g. to use
-    combine's internally interpolated value. The standard model point at (1, 1) as drawn as well
-    unless *draw_sm_point* is *False*.
+    which are drawn as well when *show_best_fit_error* is *True*. When set, it should be a mapping to
+    lists of values or a record array with keys "<scan_parameter1>", "<scan_parameter2>" and
+    "dnll2". By default, the position of the best value is directly extracted from the likelihood
+    values. However, when *scan_minima* is a 2-tuple of positions per scan parameter, this best fit
+    value is used instead, e.g. to use combine's internally interpolated value. The standard model
+    point at (1, 1) as drawn as well unless *show_sm_point* is *False*.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the range of the x- and y-axis, respectively, and
     default to the scan parameter ranges found in *expected_limits*. *model_parameters* can be a
     dictionary of key-value pairs of model parameters. *campaign* should refer to the name of a
-    campaign label defined in *dhi.config.campaign_labels*.
+    campaign label defined in *dhi.config.campaign_labels*. When *paper* is *True*, certain plot
+    configurations are adjusted for use in publications. The color scheme is greyscale by default,
+    and converted to a brazil-band-plot style when *style* is "brazil".
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/exclusion.html#2d-parameter-exclusion
     """
@@ -393,23 +409,26 @@ def plot_exclusion_and_bestfit_2d(
 
     # style graphs and add to draw objects, from outer to inner graphs (-2, -1, +1, +2), followed by
     # nominal or observed
+    color_68 = colors.green if style == "brazil" else colors.grey
+    color_95 = colors.yellow if style == "brazil" else colors.light_grey
+
     # +2 sigma exclusion
     if has_unc2:
         for i, g in enumerate(contours["limit_p2"]):
-            r.setup_graph(g, props={"LineStyle": 2, "FillColor": colors.light_grey})
+            r.setup_graph(g, props={"LineStyle": 2, "FillColor": color_95})
             draw_objs.append((g, "SAME,F"))
             if i == 0:
-                legend_entries[2] = (g, "#pm 2 #sigma expected", "LF")
+                legend_entries[2] = (g, "95% expected", "LF")
 
     # -1 and +1 sigma exclusion
     if has_unc1:
         for i, g in enumerate(contours["limit_p1"]):
-            r.setup_graph(g, props={"LineStyle": 2, "FillColor": colors.grey})
+            r.setup_graph(g, props={"LineStyle": 2, "FillColor": color_68})
             draw_objs.append((g, "SAME,F"))
             if i == 0:
-                legend_entries[1] = (g, "#pm 1 #sigma expected", "LF")
+                legend_entries[1] = (g, "68% expected", "LF")
 
-        p1_col = colors.light_grey if has_unc2 else colors.white
+        p1_col = color_95 if has_unc2 else colors.white
         for g in contours["limit_m1"]:
             r.setup_graph(g, props={"FillColor": p1_col})
             draw_objs.append((g, "SAME,F"))
@@ -502,27 +521,35 @@ def plot_exclusion_and_bestfit_2d(
 
     # best fit point
     if nll_values:
-        scan = evaluate_likelihood_scan_2d(nll_values[scan_parameter1],
-            nll_values[scan_parameter2], nll_values["dnll2"],
-            poi1_min=scan_minima and scan_minima[0], poi2_min=scan_minima and scan_minima[1])
+        scan = evaluate_likelihood_scan_2d(
+            nll_values[scan_parameter1],
+            nll_values[scan_parameter2],
+            nll_values["dnll2"],
+            poi1_min=scan_minima[0] if scan_minima and show_best_fit_error else None,
+            poi2_min=scan_minima[1] if scan_minima and show_best_fit_error else None,
+        )
         g_fit = ROOT.TGraphAsymmErrors(1)
         g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
-        if scan.num1_min.uncertainties:
-            g_fit.SetPointEXhigh(0, scan.num1_min.u(direction="up"))
-            g_fit.SetPointEXlow(0, scan.num1_min.u(direction="down"))
-        if scan.num2_min.uncertainties:
-            g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
-            g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
-        r.setup_graph(g_fit, props={"FillStyle": 0}, color=colors.black)
-        draw_objs.append((g_fit, "PEZ"))
-        legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "LPE")
+        if show_best_fit_error:
+            if scan.num1_min.uncertainties:
+                g_fit.SetPointEXhigh(0, scan.num1_min.u(direction="up"))
+                g_fit.SetPointEXlow(0, scan.num1_min.u(direction="down"))
+            if scan.num2_min.uncertainties:
+                g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
+                g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
+            r.setup_graph(g_fit, props={"FillStyle": 0}, color=colors.black)
+            draw_objs.append((g_fit, "PEZ"))
+            legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "PEL")
+        else:
+            r.setup_graph(g_fit, props={"FillStyle": 0, "MarkerStyle": 43, "MarkerSize": 2},
+                color=colors.black)
+            draw_objs.append((g_fit, "PZ"))
+            legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "P")
 
     # SM point
-    if draw_sm_point:
-        g_sm = create_tgraph(1,
-            poi_data.get(scan_parameter1, {}).get("sm_value", 1.0),
-            poi_data.get(scan_parameter2, {}).get("sm_value", 1.0),
-        )
+    if show_sm_point:
+        g_sm = create_tgraph(1, poi_data[scan_parameter1]["sm_value"],
+            poi_data[scan_parameter2]["sm_value"])
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
         legend_entries[1 + 2 * has_uncs + has_obs + has_best_fit] = (g_sm, "Standard model", "P")
@@ -537,10 +564,10 @@ def plot_exclusion_and_bestfit_2d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad)
+    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
 
     # campaign label
