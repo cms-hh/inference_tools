@@ -379,6 +379,7 @@ def plot_likelihood_scan_2d(
     show_best_fit=False,
     show_best_fit_error=False,
     shift_negative_values=False,
+    interpolate_nans=False,
     show_sm_point=True,
     show_box=False,
     x_min=None,
@@ -400,12 +401,16 @@ def plot_likelihood_scan_2d(
 
     When *show_best_fit* (*show_best_fit_error*) is *True*, the nominal (uncertainty on the) best
     fit value is drawn. In case there are negative dnll2 values, *shift_negative_values* can be set
-    to *True* to shift them vertically so that the minimum is located at 0 again. The standard model
-    point at (1, 1) as drawn as well unless *show_sm_point* is *False*. The best fit value is drawn
-    with uncertainties on one POI being estimated while setting the other POI to its best value.
-    When *show_box* is *True*, a box containing the 1 sigma contour is shown and used to estimate
-    the dimensions of the standard error following the prescription at
-    https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf (e.g. Fig. 40.5).
+    to *True* to shift them vertically so that the minimum is located at 0 again. Points where the
+    dnll2 value is NaN are visualized as white pixels by default. However, when *interpolate_nans*
+    is set, these values are smoothed out with information from neighboring pixels through ROOT's
+    TGraph2D.Interpolate feature (similar to how its line interpolation draws values between two
+    discrete points in a 1D graph).The standard model point at (1, 1) as drawn as well unless
+    *show_sm_point* is *False*. The best fit value is drawn with uncertainties on one POI being
+    estimated while setting the other POI to its best value. When *show_box* is *True*, a box
+    containing the 1 sigma contour is shown and used to estimate the dimensions of the standard
+    error following the prescription at https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf
+    (e.g. Fig. 40.5).
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
     and default to the ranges of the poi values. *z_min* and *z_max* limit the range of the z-axis.
@@ -428,7 +433,7 @@ def plot_likelihood_scan_2d(
         assert("dnll2" in _values)
         # preprocess values (nan detection, negative shift)
         _values["dnll2"], _values[poi1], _values[poi2] = _preprocess_values(_values["dnll2"],
-            (poi1, _values[poi1]), (poi2, _values[poi2]),
+            (poi1, _values[poi1]), (poi2, _values[poi2]), remove_nans=interpolate_nans,
             shift_negative_values=shift_negative_values)
         values[i] = _values
 
@@ -451,15 +456,14 @@ def plot_likelihood_scan_2d(
 
     # create a histogram for each scan patch
     hists = []
-    from IPython import embed; embed()
     for i, _values in enumerate(values):
         _, _, _x_bins, _y_bins, _x_min, _x_max, _y_min, _y_max = infer_binning_from_grid(
             _values[poi1], _values[poi2])
 
         # get the z range
         dnll2 = np.array(_values["dnll2"])
-        _z_min = dnll2.min() or 1e-3
-        _z_max = dnll2.max()
+        _z_min = np.nanmin(dnll2) or (0.1 * dnll2[dnll2 > 0].min())
+        _z_max = np.nanmax(dnll2)
 
         # infer axis limits from the first set of values
         if i == 0:
@@ -470,9 +474,22 @@ def plot_likelihood_scan_2d(
             z_min = _z_min if z_min is None else z_min
             z_max = _z_max if z_max is None else z_max
 
+        # when there are NaN's, set them to values right below the z_min which causes ROOT to draw
+        # white pixels
+        z_min_fill = z_min
+        nan_mask = np.isnan(dnll2)
+        if not interpolate_nans and nan_mask.sum():
+            warn(
+                "WARNING: {} NaN(s) will be drawn as white pixels; consider enabling NaN "
+                "interpolation (--interpolate-nans when triggered by a law task)".format(
+                    nan_mask.sum())
+            )
+            dnll2[np.isnan(dnll2)] = 0.9 * z_min
+            z_min_fill = None
+
         # fill and store the histogram
         h = ROOT.TH2F("h" + str(i), "", _x_bins, _x_min, _x_max, _y_bins, _y_min, _y_max)
-        fill_hist_from_points(h, _values[poi1], _values[poi2], dnll2, z_min=z_min, z_max=z_max)
+        fill_hist_from_points(h, _values[poi1], _values[poi2], dnll2, z_min=z_min_fill, z_max=z_max)
         hists.append(h)
 
     # dummy histogram to control axes
@@ -965,8 +982,8 @@ def plot_nuisance_likelihood_scans(
             canvas.Print(path + ("]" if path.endswith(".pdf") else ""))
 
 
-def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, shift_negative_values=False,
-        origin=None):
+def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True,
+        shift_negative_values=False, origin=None):
     # unpack data
     poi1, poi1_values = poi1_data
     poi2, poi2_values = poi2_data or (None, None)
@@ -984,11 +1001,12 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, shift_negative_v
     if nan_mask.sum():
         warn("WARNING: found {} NaN(s) in dnll2 values{}".format(nan_mask.sum(), origin))
         warn("WARNING: POI coordinates ({})\n  - {}".format(pois, find_coords(nan_mask)))
-        poi1_values = poi1_values[~nan_mask]
-        if poi2:
-            poi2_values = poi2_values[~nan_mask]
-        dnll2_values = dnll2_values[~nan_mask]
-        print("removed {} NaN(s)".format(nan_mask.sum()))
+        if remove_nans:
+            dnll2_values = dnll2_values[~nan_mask]
+            poi1_values = poi1_values[~nan_mask]
+            if poi2:
+                poi2_values = poi2_values[~nan_mask]
+            print("removed {} NaN(s)".format(nan_mask.sum()))
 
     # warn about negative dnll2 values
     neg_mask = dnll2_values < 0
@@ -1007,7 +1025,8 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, shift_negative_v
             color="red",
         )
         if shift_negative_values:
-            dnll2_values -= dnll2_values.min()
+            # skip nan's again in case they we not removed above
+            dnll2_values[~np.isnan(dnll2_values)] -= dnll2_values.nanmin()
             print("shifting dnll2 values by minimum value {:.4f}".format(dnll2_values.min()))
         else:
             warn(

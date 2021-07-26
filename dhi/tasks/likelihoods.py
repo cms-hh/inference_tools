@@ -179,6 +179,12 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         description="when True, dnll2 values are vertically shifted to move the minimum back to 0; "
         "default: False",
     )
+    interpolate_nans = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when True, interpolate NaN values with information from neighboring fits "
+        "instead of drawing white pixels; 2D only; default: False",
+    )
     show_points = luigi.BoolParameter(
         default=False,
         significant=False,
@@ -322,6 +328,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
                 shift_negative_values=self.shift_negative_values,
+                interpolate_nans=self.interpolate_nans,
                 show_box=self.show_box,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),

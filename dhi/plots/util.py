@@ -213,12 +213,12 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
     # remove or replace nans in z_values
     z_values = np.array(z_values)
     nan_indices = np.argwhere(np.isnan(z_values))
-    if replace_nan is not None:
+    if replace_nan is None:
+        x_values = [x for i, x in enumerate(x_values) if i not in nan_indices]
+        y_values = [y for i, y in enumerate(y_values) if i not in nan_indices]
+        z_values = [z for i, z in enumerate(z_values) if i not in nan_indices]
+    else:
         z_values[nan_indices] = replace_nan
-        nan_indices = []
-    x_values = [x for i, x in enumerate(x_values) if i not in nan_indices]
-    y_values = [y for i, y in enumerate(y_values) if i not in nan_indices]
-    z_values = [z for i, z in enumerate(z_values) if i not in nan_indices]
 
     # create an interpolation function
     if interpolation == "tgraph2d":
