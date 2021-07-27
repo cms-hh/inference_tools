@@ -1026,7 +1026,7 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
         )
         if shift_negative_values:
             # skip nan's again in case they we not removed above
-            dnll2_values[~np.isnan(dnll2_values)] -= dnll2_values.nanmin()
+            dnll2_values[~np.isnan(dnll2_values)] -= np.nanmin(dnll2_values)
             print("shifting dnll2 values by minimum value {:.4f}".format(dnll2_values.min()))
         else:
             warn(
