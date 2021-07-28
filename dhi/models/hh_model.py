@@ -41,6 +41,12 @@ from HiggsAnalysis.CombinedLimit.SMHiggsBuilder import SMHiggsBuilder
 
 no_value = object()
 
+# default data directory of the SMHiggsBuilder, as used by the HBRScaler
+if "DHI_SOFTWARE" in os.environ:
+    default_data_dir = "$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit/data/lhc-hxswg"
+else:
+    default_data_dir = "$CMSSW_BASE/src/HiggsAnalysis/CombinedLimit/data/lhc-hxswg"
+
 
 ####################################################################################################
 ### Samples
@@ -363,13 +369,12 @@ class HBRScaler(object):
     and HH.
     """
 
-    def __init__(self, model_builder, scale_br=False, scale_h=False, data_dir=None):
+    def __init__(self, model_builder, scale_br=False, scale_h=False, data_dir=default_data_dir):
         super(HBRScaler, self).__init__()
 
         # setup and store combine related objects
         self.model_builder = model_builder
-        if data_dir is None and "DHI_SOFTWARE" in os.environ:
-            data_dir = os.path.expandvars("$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit/data/lhc-hxswg")
+        data_dir = data_dir and os.path.expandvars(data_dir)
         self.higgs_builder = SMHiggsBuilder(self.model_builder, datadir=data_dir)
 
         # store names of expressions that model the scalings
@@ -1230,10 +1235,10 @@ model_no_vbf_CV1p5 = create_model("model_no_vbf_CV1p5", skip_ggf=[(0, 1)], skip_
 ### Cross section helpers
 ####################################################################################################
 
-#: The ggf NLO -> NNLO k-factor.
+# ggf NLO -> NNLO k-factor
 ggf_k_factor = 1.115
 
-#: Coefficients for modeling the kl dependence of the ggf cross section (in fb) and its uncertainty.
+# coefficients for modeling the kl dependence of the ggf cross section (in fb) and its uncertainty
 # (a0, a1, a2) -> a0 + a1 * kl + a2 * kl**2
 # values from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=70
 ggf_kl_coeffs = {
@@ -1500,14 +1505,14 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None, vhh_formula=None):
     return wrapper
 
 
-#: Default ggf cross section getter using the formula of the *model_default* model.
+# default ggf cross section getter using the formula of the *model_default* model
 get_ggf_xsec = create_ggf_xsec_func()
 
-#: Default vbf cross section getter using the formula of the *model_default* model.
+# default vbf cross section getter using the formula of the *model_default* model
 get_vbf_xsec = create_vbf_xsec_func()
 
-#: Default vhh cross section getter using the formula of the *model_default* model.
+# default vhh cross section getter using the formula of the *model_default* model
 get_vhh_xsec = create_vhh_xsec_func()
 
-#: Default combined cross section getter using the formulas of the *model_default* model.
+# default combined cross section getter using the formulas of the *model_default* model
 get_hh_xsec = create_hh_xsec_func()
