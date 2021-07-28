@@ -40,6 +40,7 @@ class GGFHHSample:
 class GGFHHFormula:
     def __init__(self, sample_list):
         self.sample_list = sample_list
+        self.samples = self.sample_list
         self.build_matrix()
         self.calculatecoeffients()
 
@@ -104,6 +105,7 @@ class GGFHHFormula:
 class VBFHHFormula:
     def __init__(self, sample_list):
         self.sample_list = sample_list
+        self.samples = self.sample_list
         self.build_matrix()
         self.calculatecoeffients()
 
@@ -176,6 +178,9 @@ class VBFHHFormula:
 #########################################
 
 
+no_value = object()
+
+
 class HHModel(PhysicsModel):
     """
     Models the HH production as linear sum of the input components for VBF (>= 6) and GGF (>= 3).
@@ -197,22 +202,27 @@ class HHModel(PhysicsModel):
 
     R_POIS = ["r", "r_gghh", "r_qqhh"]
     K_POIS = ["kl", "kt", "CV", "C2V"]
-    KNOWN_FLAGS = ["doNNLOscaling", "doBRscaling", "doHscaling", "doklDependentUnc"]
-    KNOWN_PARAMS = ["doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V"]
 
     def __init__(self, ggf_sample_list, vbf_sample_list, name):
         PhysicsModel.__init__(self)
 
-        self.doNNLOscaling    = True
-        self.doBRscaling      = True
-        self.doHscaling       = True
-        self.doklDependentUnc = True
-        self.doProfilekl      = None
-        self.doProfilekt      = None
-        self.doProfileCV      = None
-        self.doProfileC2V     = None
-        self.klUncName        = "THU_HH"
-        self.name             = name
+        self.name = name
+        self.klUncName = "THU_HH"
+
+        # names and values of physics options
+        self.hh_options = {
+            "doNNLOscaling": {"value": True, "is_flag": True},
+            "doBRscaling": {"value": True, "is_flag": True},
+            "doHscaling": {"value": True, "is_flag": True},
+            "doklDependentUnc": {"value": True, "is_flag": True},
+            "doProfilekl": {"value": None, "is_flag": False},
+            "doProfilekt": {"value": None, "is_flag": False},
+            "doProfileCV": {"value": None, "is_flag": False},
+            "doProfileC2V": {"value": None, "is_flag": False},
+        }
+        # add as attributes for forward compatibility
+        for name, opt in self.hh_options.items():
+            setattr(self, name, opt["value"])
 
         self.check_validity_ggf(ggf_sample_list)
         self.check_validity_vbf(vbf_sample_list)
@@ -220,35 +230,53 @@ class HHModel(PhysicsModel):
         self.ggf_formula = GGFHHFormula(ggf_sample_list)
         self.vbf_formula = VBFHHFormula(vbf_sample_list)
 
+        self.r_pois = None
+        self.k_pois = None
+        self.reset_pois()
+
         self.scalingMap = defaultdict(list)
 
-    def setPhysicsOptions(self, physOptions):
-        opts = [opt.split("=", 1) for opt in physOptions if "=" in opt]
+    def set_opt(self, name, value):
+        """
+        Sets the value of a physics option named *name*, previoulsy registered with
+        :py:meth:`register_opt`, to *value*.
+        """
+        self.hh_options[name]["value"] = value
 
-        set_params = set()
-        for key, value in opts:
-            # identify boolean flags
-            if key in self.KNOWN_FLAGS:
-                flag = value.lower() in ["yes", "true", "1"]
-                setattr(self, key, flag)
-                set_params.add(key)
+        # set also as attributes for forward compatibility
+        setattr(self, name, value)
+
+    def opt(self, name, default=no_value):
+        """
+        Helper to get the value of a physics option defined by *name* with an optional *default*
+        value that is returned when no option with that *name* is registered.
+        """
+        if name in self.hh_options or default == no_value:
+            return self.hh_options[name]["value"]
+        else:
+            return default
+
+    def setPhysicsOptions(self, options):
+        """
+        Hook called by the super class to parse physics options received externally, e.g. via
+        ``--physics-option`` or ``--PO``.
+        """
+        # split by "=" and check one by one
+        pairs = [opt.split("=", 1) for opt in options if "=" in opt]
+        for name, value in pairs:
+            if name not in self.hh_options:
+                print("[WARNING] unknown physics option '{}'".format(name))
                 continue
 
-            # identify remaining "key=value" parameter pairs
-            if key in self.KNOWN_PARAMS:
-                # special case: interpret empty string and "None" as actual None
-                if value.lower() in ("", "none"):
-                    value = None
-                setattr(self, key, value)
-                set_params.add(key)
-                continue
+            if self.hh_options[name]["is_flag"]:
+                # boolean flag
+                value = value.lower() in ["yes", "true", "1"]
+            else:
+                # string value, catch special cases
+                value = None if value.lower() in ["", "none"] else value
 
-        # print all current options
-        for param in self.KNOWN_FLAGS + self.KNOWN_PARAMS:
-            msg = "[INFO] using model option {} = {}".format(param, getattr(self, param))
-            if param in set_params:
-                msg += " (set via option)"
-            print(msg)
+            self.set_opt(name, value)
+            print("[INFO] using model option {} = {}".format(name, value))
 
     def check_validity_ggf(self, ggf_sample_list):
         if len(ggf_sample_list) < 3:
@@ -276,6 +304,13 @@ class HHModel(PhysicsModel):
         print "......  VBF configuration"
         for i,s in enumerate(self.vbf_formula.sample_list):
             print "        {0:<3} ... CV : {1:<3}, C2V : {2:<3}, kl : {3:<3}, xs : {4:<3.8f} pb, label : {5}".format(i, s.val_CV, s.val_C2V, s.val_kl, s.val_xs, s.label)
+
+    def reset_pois(self):
+        self.r_pois = ["r", "r_gghh", "r_qqhh"]
+        self.k_pois = [
+            p for p in self.K_POIS
+            if not self.opt("doProfile" + p)
+        ]
 
     def doParametersOfInterest(self):
         ## the model is built with:
@@ -585,6 +620,11 @@ class HHModel(PhysicsModel):
             "ggf_formula": self.ggf_formula,
             "vbf_formula": self.vbf_formula,
         }
+
+    def create_hh_xsec_func(self, **kwargs):
+        _kwargs = self.get_formulae()
+        _kwargs.update(kwargs)
+        return create_hh_xsec_func(**_kwargs)
 
     def done(self):
         super(HHModel, self).done()

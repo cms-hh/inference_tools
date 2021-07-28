@@ -79,7 +79,7 @@ def plot_likelihood_scan_1d(
 
     # preprocess values (nan detection, negative shift)
     dnll2_values, poi_values = _preprocess_values(dnll2_values, (poi, poi_values),
-        shift_negative_values=shift_negative_values)
+        shift_negative_values=shift_negative_values, min_is_external=poi_min is not None)
 
     # set x range
     if x_min is None:
@@ -244,16 +244,17 @@ def plot_likelihood_scans_1d(
             values = {k: values[k] for k in values.dtype.names}
         assert(poi in values)
         assert("dnll2" in values)
-        # keep only valid points
-        values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}
-        # preprocess values (nan detection, negative shift)
-        values["dnll2"], values[poi] = _preprocess_values(values["dnll2"], (poi, values[poi]),
-            shift_negative_values=shift_negative_values, origin="entry {}".format(i))
-        d["values"] = values
         # check poi minimum
         d.setdefault("poi_min", None)
         # default name
         d.setdefault("name", str(i + 1))
+        # keep only valid points
+        values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}
+        # preprocess values (nan detection, negative shift)
+        values["dnll2"], values[poi] = _preprocess_values(values["dnll2"], (poi, values[poi]),
+            shift_negative_values=shift_negative_values, origin="entry '{}'".format(d["name"]),
+            min_is_external=d["poi_min"] is not None)
+        d["values"] = values
 
     # set x range
     if x_min is None:
@@ -434,7 +435,8 @@ def plot_likelihood_scan_2d(
         # preprocess values (nan detection, negative shift)
         _values["dnll2"], _values[poi1], _values[poi2] = _preprocess_values(_values["dnll2"],
             (poi1, _values[poi1]), (poi2, _values[poi2]), remove_nans=interpolate_nans,
-            shift_negative_values=shift_negative_values)
+            shift_negative_values=shift_negative_values,
+            min_is_external=poi1_min is not None and poi2_min is not None)
         values[i] = _values
 
     # join values for contour calculation
@@ -656,17 +658,17 @@ def plot_likelihood_scans_2d(
         assert(poi1 in values)
         assert(poi2 in values)
         assert("dnll2" in values)
-        values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}
-        # preprocess values (nan detection, negative shift)
-        values["dnll2"], values[poi1], values[poi2] = _preprocess_values(values["dnll2"],
-            (poi1, values[poi1]), (poi2, values[poi2]), shift_negative_values=shift_negative_values,
-            origin="entry {}".format(i))
-        d["values"] = values
         # check poi minima
         d["poi_mins"] = d.get("poi_mins") or [None, None]
         assert(len(d["poi_mins"]) == 2)
         # default name
         d.setdefault("name", str(i + 1))
+        values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}
+        # preprocess values (nan detection, negative shift)
+        values["dnll2"], values[poi1], values[poi2] = _preprocess_values(values["dnll2"],
+            (poi1, values[poi1]), (poi2, values[poi2]), shift_negative_values=shift_negative_values,
+            origin="entry '{}'".format(d["name"]), min_is_external=None not in d["poi_mins"])
+        d["values"] = values
 
     # determine contours independent of plotting
     contours = [
@@ -983,7 +985,7 @@ def plot_nuisance_likelihood_scans(
 
 
 def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True,
-        shift_negative_values=False, origin=None):
+        shift_negative_values=False, min_is_external=False, origin=None, epsilon=1e-8):
     # unpack data
     poi1, poi1_values = poi1_data
     poi2, poi2_values = poi2_data or (None, None)
@@ -999,8 +1001,10 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
     # warn about nans and remove them
     nan_mask = np.isnan(dnll2_values)
     if nan_mask.sum():
-        warn("WARNING: found {} NaN(s) in dnll2 values{}".format(nan_mask.sum(), origin))
-        warn("WARNING: POI coordinates ({})\n  - {}".format(pois, find_coords(nan_mask)))
+        warn(
+            "WARNING: found {} NaN(s) in dnll2 values{}; POI coordinates ({}):\n  - {}".format(
+                nan_mask.sum(), origin, pois, find_coords(nan_mask))
+        )
         if remove_nans:
             dnll2_values = dnll2_values[~nan_mask]
             poi1_values = poi1_values[~nan_mask]
@@ -1011,31 +1015,57 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
     # warn about negative dnll2 values
     neg_mask = dnll2_values < 0
     if neg_mask.sum():
-        warn(
-            "WARNING: {} dnll2 values{} have negative values (coordinates below) which implies "
-            "that combine might have found a local rather than the global minimum; consider "
-            "re-running combine with different fit options or allow this function to recompute the "
-            "minimum via scipy.interpolate and scipy.minimize on the likelihood curve by not "
-            "passing combine's result (--recompute-best-fit when triggered by a law task)".format(
-                neg_mask.sum(), origin),
-            color="red",
-        )
-        warn(
-            "WARNING: POI coordinates ({})\n  - {}".format(pois, find_coords(neg_mask)),
-            color="red",
-        )
-        if shift_negative_values:
-            # skip nan's again in case they we not removed above
-            dnll2_values[~np.isnan(dnll2_values)] -= np.nanmin(dnll2_values)
-            print("shifting dnll2 values by minimum value {:.4f}".format(dnll2_values.min()))
-        else:
+        neg_min = dnll2_values[dnll2_values < 0].min()
+        slightly_neg = neg_min > -epsilon
+        # issue a warning about potentially wrong external best fit values
+        if min_is_external and not slightly_neg:
             warn(
-                "WARNING: also consider shifting the dnll2 values vertically to move the minimum "
-                "back to 0, which would otherwise lead to wrong uncertainties being extracted from "
+                "WARNING: {} dnll2 values{} have negative values, implying that that combine might "
+                "have found a local rather than the global minimum; consider re-running combine "
+                "with different fit options or allow this function to recompute the minimum via "
+                "scipy.interpolate and scipy.minimize on the likelihood curve by not passing "
+                "combine's result (--recompute-best-fit when triggered by a law task); POI "
+                "coordinates ({}):\n  - {}".format(
+                    neg_mask.sum(), origin, pois, find_coords(neg_mask)),
+                color="red",
+            )
+        # warn again that negative shifts are small and will be changed, or in case they are large
+        if slightly_neg:
+            shift_negative_values = True
+            warn("WARNING: detected slightly negative minimum dnll2 value of {}".format(neg_min))
+        elif not shift_negative_values:
+            warn(
+                "WARNING: consider shifting the dnll2 values vertically to move the minimum back "
+                "to 0, which would otherwise lead to wrong uncertainties being extracted from "
                 "intersections with certain dnll2 values (--shift-negative-values when triggered "
                 "by a law task)",
                 color="red",
             )
+        # apply the actua shift, skipping nan's in case they were not removed above
+        if shift_negative_values:
+            neg_min = np.nanmin(dnll2_values)
+            dnll2_values[~np.isnan(dnll2_values)] -= neg_min
+            print("shifting dnll2 values up by {}".format(-neg_min))
+
+    # when the previous step did not shift values to 0,
+    # detect cases where the positive minimum is > 0 and shift values
+    if (not neg_mask.sum() or not shift_negative_values) and (dnll2_values > 0).sum():
+        pos_min = dnll2_values[dnll2_values > 0].min()
+        if pos_min > 0:
+            slightly_pos = pos_min < epsilon
+            if slightly_pos:
+                warn(
+                    "WARNING: detected slightly positive minimum dnll2 value of {}".format(
+                        pos_min)
+                )
+            else:
+                warn(
+                    "WARNING: minimum dnll2 value found to be {} while it should be 0".format(
+                        pos_min),
+                    color="red",
+                )
+            dnll2_values[~np.isnan(dnll2_values)] -= pos_min
+            print("shifting dnll2 values down by {}".format(pos_min))
 
     return (dnll2_values, poi1_values) + ((poi2_values,) if poi2 else ())
 
