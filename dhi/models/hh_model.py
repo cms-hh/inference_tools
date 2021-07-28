@@ -354,13 +354,12 @@ class HBRScaler(object):
     and HH.
     """
 
-    def __init__(self, model_builder, scale_br=False, scale_h=False):
+    def __init__(self, model_builder, scale_br=False, scale_h=False, data_dir=None):
         super(HBRScaler, self).__init__()
 
         # setup and store combine related objects
         self.model_builder = model_builder
-        data_dir = None
-        if "DHI_SOFTWARE" in os.environ:
+        if data_dir is None and "DHI_SOFTWARE" in os.environ:
             data_dir = os.path.expandvars("$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit/data/lhc-hxswg")
         self.higgs_builder = SMHiggsBuilder(self.model_builder, datadir=data_dir)
 
