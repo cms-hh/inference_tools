@@ -589,7 +589,7 @@ class HBRScaler(object):
                 "was expected".format(process, bin, len(br_scalings)))
 
         # build the new scaling
-        xsbr_scaling = "%s_BRscal_%s" % (xs_scaling, br)
+        xsbr_scaling = "{}_BRscal_{}".format(xs_scaling, br)
         if not self.get_expr(xsbr_scaling):
             self.make_expr("expr::{}('@0 * @1', {}, {})".format(xsbr_scaling, xs_scaling, br_scalings[0]))
 
