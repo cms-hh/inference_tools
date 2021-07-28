@@ -18,10 +18,10 @@ __all__ = [
     # br and h scaling
     "SM_HIGG_DECAYS", "SM_HIGG_PROD", "coeffs_br", "cxs_13", "ewk_13", "dZH", "HBRScaler",
     # model
-    "HHModelBase", "HHModel", "create_model", "model_all", "model_default", "model_no_ggf_kl0",
-    "model_no_ggf_kl1", "model_no_ggf_kl2p45", "model_no_ggf_kl5", "model_no_vbf_sm",
-    "model_no_vbf_kl0", "model_no_vbf_kl2", "model_no_vbf_C2V0", "model_no_vbf_C2V2",
-    "model_no_vbf_CV0p5", "model_no_vbf_CV1p5",
+    "HHModelBase", "HHModel", "create_model", "model_all", "model_default", "model_default_vhh",
+    "model_no_ggf_kl0", "model_no_ggf_kl1", "model_no_ggf_kl2p45", "model_no_ggf_kl5",
+    "model_no_vbf_sm", "model_no_vbf_kl0", "model_no_vbf_kl2", "model_no_vbf_C2V0",
+    "model_no_vbf_C2V2", "model_no_vbf_CV0p5", "model_no_vbf_CV1p5",
     # xsec helpers
     "ggf_k_factor", "ggf_kl_coeffs", "create_ggf_xsec_str", "create_ggf_xsec_func",
     "create_vbf_xsec_func", "create_vhh_xsec_func", "create_hh_xsec_func", "get_ggf_xsec",
@@ -597,7 +597,7 @@ class HBRScaler(object):
 
 
 ####################################################################################################
-### Constants and related helpers
+### Model classes
 ####################################################################################################
 
 class HHModelBase(PhysicsModel):
@@ -724,10 +724,20 @@ class HHModelBase(PhysicsModel):
 
     def get_formulae(self):
         """
-        Method that returns a list of all used :py:class:`HHFormula` instances.
+        Method that returns a dictionary of all used :py:class:`HHFormula` instances, mapped to
+        their attribute names.
         To be implemented in subclasses.
         """
         raise NotImplementedError
+
+    def create_hh_xsec_func(self, **kwargs):
+        """
+        Returns a function that can be used to compute cross sections, based on all formulae
+        returned by :py:meth:`get_formulae`.
+        """
+        _kwargs = self.get_formulae()
+        _kwargs.update(kwargs)
+        return create_hh_xsec_func(**_kwargs)
 
     def done(self):
         """
@@ -740,7 +750,7 @@ class HHModelBase(PhysicsModel):
         super(HHModelBase, self).done()
 
         errors = []
-        for formula in self.get_formulae():
+        for formula in self.get_formulae().values():
             if not self.process_scales[formula]:
                 continue
 
@@ -803,7 +813,7 @@ class HHModel(HHModelBase):
         ("C2V", (1, -10, 10)),
     ])
 
-    def __init__(self, name, ggf_samples, vbf_samples, vhh_samples):
+    def __init__(self, name, ggf_samples, vbf_samples, vhh_samples, include_vhh_in_xsec=False):
         super(HHModel, self).__init__(name)
 
         # attributes
@@ -812,6 +822,7 @@ class HHModel(HHModelBase):
         self.vhh_formula = VHHFormula(vhh_samples)
         self.ggf_kl_dep_unc = "THU_HH"  # name for kl-dependent QCDscale + mtop uncertainty on ggf
         self.h_br_scaler = None  # initialized in create_scalings
+        self.include_vhh_in_xsec = include_vhh_in_xsec
 
         # names and values of physics options
         # register options
@@ -823,7 +834,20 @@ class HHModel(HHModelBase):
             self.register_opt("doProfile{}".format(p), None)
 
     def get_formulae(self):
-        return [self.ggf_formula, self.vbf_formula, self.vhh_formula]
+        return {
+            "ggf_formula": self.ggf_formula,
+            "vbf_formula": self.vbf_formula,
+            "vhh_formula": self.vhh_formula,
+        }
+
+    def create_hh_xsec_func(self, **kwargs):
+        _kwargs = {
+            "ggf_formula": self.ggf_formula,
+            "vbf_formula": self.vbf_formula,
+            "vhh_formula": self.vhh_formula if self.include_vhh_in_xsec else False,
+        }
+        _kwargs.update(kwargs)
+        return create_hh_xsec_func(**_kwargs)
 
     def doParametersOfInterest(self):
         """
@@ -1095,7 +1119,7 @@ class HHModel(HHModelBase):
             - Return 1 to express that we are using the rate as saved in datacards
         """
         # find signal matches
-        for formula in self.get_formulae():
+        for formula in self.get_formulae().values():
             # get matching samples
             matching_samples = []
             for sample in formula.samples:
@@ -1137,11 +1161,12 @@ class HHModel(HHModelBase):
         return 1.
 
 
-def create_model(name, skip_ggf=None, skip_vbf=None, skip_vhh=None):
+def create_model(name, skip_ggf=None, skip_vbf=None, skip_vhh=None, **kwargs):
     """
     Returns a new :py:class:`HHModel` instance named *name*. Its ggf, vbf and vhh sample lists are
     using all availabe samples except those defined in *skip_ggf*, *skip_vbf* and *skip_vhh*. The
-    order of passed keys to be skipped does not matter.
+    order of passed keys to be skipped does not matter. All additional *kwargs* are forwarded to the
+    model constructor.
     """
     # get all unskipped ggf keys
     ggf_keys = [
@@ -1167,6 +1192,7 @@ def create_model(name, skip_ggf=None, skip_vbf=None, skip_vhh=None):
         ggf_samples=[ggf_samples[key] for key in ggf_keys],
         vbf_samples=[vbf_samples[key] for key in vbf_keys],
         vhh_samples=[vhh_samples[key] for key in vhh_keys],
+        **kwargs
     )
 
 
@@ -1175,6 +1201,8 @@ model_all = create_model("model_all")
 
 # model used for the combination
 model_default = create_model("model_default", skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)])
+model_default_vhh = create_model("model_default", skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)],
+    include_vhh_in_xsec=True)
 
 # ggf test models
 model_no_ggf_kl0    = create_model("model_no_ggf_kl0",    skip_ggf=[(0, 1)],    skip_vbf=[(1, 0, 1)])

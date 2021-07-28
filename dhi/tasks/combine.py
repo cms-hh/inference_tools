@@ -161,9 +161,9 @@ class HHModelTask(AnalysisTask):
         # get the proper xsec getter, based on poi
         if r_poi == "r_gghh":
             get_ggf_xsec = module.create_ggf_xsec_func(model.ggf_formula)
-            get_xsec = functools.partial(get_ggf_xsec, nnlo=model.doNNLOscaling)
+            get_xsec = functools.partial(get_ggf_xsec, nnlo=model.opt("doNNLOscaling"))
             signature_kwargs = set(inspect.getargspec(get_ggf_xsec).args) - {"nnlo"}
-            has_unc = bool(model.doNNLOscaling)
+            has_unc = bool(model.opt("doNNLOscaling"))
         elif r_poi == "r_qqhh":
             get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
             signature_kwargs = set(inspect.getargspec(get_xsec).args)
@@ -173,10 +173,9 @@ class HHModelTask(AnalysisTask):
             signature_kwargs = set(inspect.getargspec(get_xsec).args)
             has_unc = False
         else:  # r
-            # TODO: contribution from vhh_formula is disabled at the moment
-            get_hh_xsec = module.create_hh_xsec_func(**model.get_formulae())
-            get_xsec = functools.partial(get_hh_xsec, nnlo=model.doNNLOscaling)
-            signature_kwargs = set(inspect.getargspec(get_hh_xsec).args) - {"nnlo"}
+            _get_xsec = model.create_hh_xsec_func()
+            get_xsec = functools.partial(_get_xsec, nnlo=model.opt("doNNLOscaling"))
+            signature_kwargs = set(inspect.getargspec(_get_xsec).args) - {"nnlo"}
             has_unc = True
 
         # compute the scale conversion
@@ -276,7 +275,7 @@ class HHModelTask(AnalysisTask):
 
     @require_hh_model
     def convert_to_xsecs(self, *args, **kwargs):
-        if kwargs.get("br") and self.load_hh_model()[1].doBRscaling:
+        if kwargs.get("br") and self.load_hh_model()[1].opt("doBRscaling"):
             self.logger.warning("the computation of cross sections involving the branching ratio "
                 "'{}' does not consider any kappa dependence of the branching ratio itself; this "
                 "is, however, part of the configured physics model '{}' and is therefore used "
