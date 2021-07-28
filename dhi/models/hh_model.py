@@ -366,8 +366,7 @@ dZH = -1.536e-3
 
 class HBRScaler(object):
     """
-    Produce single H and BR scalings for anomalous couplings, and produce XS*BR scalings for both H
-    and HH.
+    Class to produce BR scalings for anomalous couplings and XS * BR scalings for both H and HH.
     """
 
     def __init__(self, model_builder, scale_br=False, scale_h=False, data_dir=default_data_dir):
@@ -444,7 +443,7 @@ class HBRScaler(object):
         # fix to have all BRs add up to unity
         self.make_expr("sum::CVktkl_SMBRs({})".format(", ".join("SM_BR_" + d for d in SM_HIGG_DECAYS)))
 
-        # total witdh, normalized to SM
+        # total width, normalized to SM
         # (just the sum over the partial widths/SM total BR)
         self.make_expr("expr::CVktkl_Gscal_tot('(@0 + @1 + @2 + @3 + @4 + @5 + @6) / @7', CVktkl_Gscal_Z, CVktkl_Gscal_W, CVktkl_Gscal_tau, CVktkl_Gscal_top, CVktkl_Gscal_bottom, CVktkl_Gscal_gluon, CVktkl_Gscal_gamma, CVktkl_SMBRs)")
 
@@ -715,7 +714,6 @@ class HHModelBase(PhysicsModel):
         self.k_pois = OrderedDict()
         for p, v in self.K_POIS.items():
             keep = any(p in formula.couplings for formula in self.get_formulae().values())
-            keep &= not self.opt("doProfile" + p)
             if keep:
                 self.k_pois[p] = v
 
@@ -860,6 +858,14 @@ class HHModel(HHModelBase):
 
         # reset instance-level pois
         self.reset_pois()
+
+    def reset_pois(self):
+        super(HHModel, self).reset_pois()
+
+        # remove profiled k pois
+        for p in list(self.k_pois):
+            if self.opt("doProfile" + p):
+                del self.k_pois[p]
 
     def get_formulae(self):
         formulae = {}
