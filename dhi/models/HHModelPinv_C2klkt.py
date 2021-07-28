@@ -34,6 +34,7 @@ class GGFHHSample:
 class GGFHHFormula_1D:
     def __init__(self, sample_list):
         self.sample_list = sample_list
+        self.samples = self.sample_list
         self.build_matrix()
         self.calculatecoeffients()
 
@@ -100,6 +101,7 @@ class GGFHHFormula_3D:
 
     def __init__(self, sample_list):
         self.sample_list = sample_list
+        self.samples = self.sample_list
         self.build_matrix()
         self.calculatecoeffients()
 
@@ -529,6 +531,11 @@ class HHModel(PhysicsModel):
         return {
             "ggf_formula": self.ggf_formula,
         }
+
+    def create_hh_xsec_func(self, **kwargs):
+        _kwargs = self.get_formulae()
+        _kwargs.update(kwargs)
+        return create_hh_xsec_func(**_kwargs)
 
     def done(self):
         super(HHModel, self).done()

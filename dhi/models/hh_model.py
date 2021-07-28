@@ -131,7 +131,7 @@ class VHHSample(HHSample):
         self.kl = kl
 
 
-# ggf samples with keys (kl, kt), ordered by kl
+# ggf samples with keys (kl, kt)
 # cross section values are NLO with k-factor applied and only used in create_ggf_xsec_func below
 ggf_samples = OrderedDict([
     ((0.0,  1.0), GGFSample(kl=0.0,  kt=1.0, xs=0.069725, label="ggHH_kl_0_kt_1")),
@@ -140,7 +140,7 @@ ggf_samples = OrderedDict([
     ((5.0,  1.0), GGFSample(kl=5.0,  kt=1.0, xs=0.091172, label="ggHH_kl_5_kt_1")),
 ])
 
-# vbf samples with keys (CV, C2V, kl), SM point first, then ordered by kl, then C2V, then CV
+# vbf samples with keys (CV, C2V, kl)
 # cross section values are LO (from 2017/2018 gridpacks) x SM k-factor for N3LO (1.03477) and are
 # only used in create_vbf_xsec_func below
 vbf_samples = OrderedDict([
@@ -153,7 +153,7 @@ vbf_samples = OrderedDict([
     ((1.5, 1.0, 1.0), VBFSample(CV=1.5, C2V=1.0, kl=1.0, xs=0.0660185, label="qqHH_CV_1p5_C2V_1_kl_1")),
 ])
 
-# vhh samples with keys (CV, C2V, kl), SM point first, then ordered by kl, then C2V, then CV
+# vhh samples with keys (CV, C2V, kl)
 # cross section values are LO (no k-factor applied) and are only used in create_vhh_xsec_func below
 vhh_samples = OrderedDict([
     ((1.0, 1.0, 1.0), VHHSample(CV=1.0, C2V=1.0, kl=1.0, xs=0.0008095, label="VHH_CV_1_C2V_1_kl_1")),
@@ -694,17 +694,6 @@ class HHModelBase(PhysicsModel):
                 opt["value"] = value
                 print("[INFO] using model option {} = {}".format(name, value))
 
-        # check options
-        self.check_options()
-
-    def check_options(self):
-        """
-        Hook called by :py:meth:`setPhysicsOptions` to add functionality to check externally set
-        physics options.
-        """
-        # nothing checked by default
-        return
-
     def make_expr(self, *args, **kwargs):
         """
         Shorthand for :py:meth:`modelBuilder.factory_`.
@@ -837,7 +826,6 @@ class HHModel(HHModelBase):
         self.h_br_scaler = None  # initialized in create_scalings
         self.include_vhh_in_xsec = include_vhh_in_xsec
 
-        # names and values of physics options
         # register options
         self.register_opt("doNNLOscaling", True, is_flag=True)
         self.register_opt("doklDependentUnc", True, is_flag=True)
@@ -847,11 +835,14 @@ class HHModel(HHModelBase):
             self.register_opt("doProfile{}".format(p), None)
 
     def get_formulae(self):
-        return {
-            "ggf_formula": self.ggf_formula,
-            "vbf_formula": self.vbf_formula,
-            "vhh_formula": self.vhh_formula,
-        }
+        formulae = {}
+        if self.ggf_formula:
+            formulae["ggf_formula"] = self.ggf_formula
+        if self.vbf_formula:
+            formulae["vbf_formula"] = self.vbf_formula
+        if self.vhh_formula:
+            formulae["vhh_formula"] = self.vhh_formula
+        return formulae
 
     def create_hh_xsec_func(self, **kwargs):
         _kwargs = self.get_formulae()
@@ -993,93 +984,96 @@ class HHModel(HHModelBase):
             return re.sub(r"{}([^0-9a-zA-Z])".format(c), r"{}\1".format(repl), s + " ")[:-1]
 
         # add ggf sample scalings
-        for sample, coeff in zip(self.ggf_formula.samples, self.ggf_formula.coeffs):
-            # create the expression that scales this particular sample based on the formula
-            name = "f_scale_ggf_sample_{}".format(sample.label)
-            expr = pow_to_mul_string(coeff)
-            for i, coupling in enumerate(sample.couplings):
-                expr = replace_coupling(coupling, "@{}".format(i), expr)
-            self.make_expr("expr::{}('{}', {})".format(
-                name, expr, ", ".join(sample.couplings)))
+        if self.ggf_formula:
+            for sample, coeff in zip(self.ggf_formula.samples, self.ggf_formula.coeffs):
+                # create the expression that scales this particular sample based on the formula
+                name = "f_scale_ggf_sample_{}".format(sample.label)
+                expr = pow_to_mul_string(coeff)
+                for i, coupling in enumerate(sample.couplings):
+                    expr = replace_coupling(coupling, "@{}".format(i), expr)
+                self.make_expr("expr::{}('{}', {})".format(
+                    name, expr, ", ".join(sample.couplings)))
 
-            # optionally multiply the theory uncertainty scaling to the expression
-            if self.opt("doklDependentUnc"):
-                new_name = "{}__kl_dep_unc".format(name)
-                self.make_expr("prod::{}(scaling_{}, {})".format(
-                    new_name, self.ggf_kl_dep_unc, name))
+                # optionally multiply the theory uncertainty scaling to the expression
+                if self.opt("doklDependentUnc"):
+                    new_name = "{}__kl_dep_unc".format(name)
+                    self.make_expr("prod::{}(scaling_{}, {})".format(
+                        new_name, self.ggf_kl_dep_unc, name))
+                    name = new_name
+
+                # optionally rescale to nnlo (expecting the normalization to be nlo * k initially)
+                if self.opt("doNNLOscaling"):
+                    new_name = "{}__nlo2nnlo".format(name)
+                    nlo_expr = create_ggf_xsec_str("nlo", "@0")
+                    nnlo_expr = create_ggf_xsec_str("nnlo", "@0")
+                    self.make_expr("expr::{}('@1 * ({}) / ({} * ({}))', kl, {})".format(
+                        new_name, nnlo_expr, ggf_k_factor, nlo_expr, name))
+                    name = new_name
+
+                # scale it by the channel specific r POI
+                new_name = "{}__r_gghh".format(name)
+                self.make_expr("prod::{}(r_gghh, {})".format(new_name, name))
                 name = new_name
 
-            # optionally rescale to nnlo (expecting the normalization to be nlo * k initially)
-            if self.opt("doNNLOscaling"):
-                new_name = "{}__nlo2nnlo".format(name)
-                nlo_expr = create_ggf_xsec_str("nlo", "@0")
-                nnlo_expr = create_ggf_xsec_str("nnlo", "@0")
-                self.make_expr("expr::{}('@1 * ({}) / ({} * ({}))', kl, {})".format(
-                    new_name, nnlo_expr, ggf_k_factor, nlo_expr, name))
+                # scale it by the common r POI
+                new_name = "{}__r".format(name)
+                self.make_expr("prod::{}(r, {})".format(new_name, name))
                 name = new_name
 
-            # scale it by the channel specific r POI
-            new_name = "{}__r_gghh".format(name)
-            self.make_expr("prod::{}(r_gghh, {})".format(new_name, name))
-            name = new_name
-
-            # scale it by the common r POI
-            new_name = "{}__r".format(name)
-            self.make_expr("prod::{}(r, {})".format(new_name, name))
-            name = new_name
-
-            # store the final expression name
-            self.r_expressions[(self.ggf_formula, sample)] = name
+                # store the final expression name
+                self.r_expressions[(self.ggf_formula, sample)] = name
 
         # add vbf sample scalings
-        for sample, coeff in zip(self.vbf_formula.samples, self.vbf_formula.coeffs):
-            # create the expression that scales this particular sample based on the formula
-            name = "f_scale_vbf_sample_{}".format(sample.label)
-            expr = pow_to_mul_string(coeff)
-            for i, coupling in enumerate(sample.couplings):
-                expr = replace_coupling(coupling, "@{}".format(i), expr)
-            self.make_expr("expr::{}('{}', {})".format(
-                name, expr, ", ".join(sample.couplings)))
+        if self.vbf_formula:
+            for sample, coeff in zip(self.vbf_formula.samples, self.vbf_formula.coeffs):
+                # create the expression that scales this particular sample based on the formula
+                name = "f_scale_vbf_sample_{}".format(sample.label)
+                expr = pow_to_mul_string(coeff)
+                for i, coupling in enumerate(sample.couplings):
+                    expr = replace_coupling(coupling, "@{}".format(i), expr)
+                self.make_expr("expr::{}('{}', {})".format(
+                    name, expr, ", ".join(sample.couplings)))
 
-            # scale it by the channel specific r POI
-            new_name = "{}__r_qqhh".format(name)
-            self.make_expr("prod::{}(r_qqhh, {})".format(
-                new_name, name))
-            name = new_name
+                # scale it by the channel specific r POI
+                new_name = "{}__r_qqhh".format(name)
+                self.make_expr("prod::{}(r_qqhh, {})".format(
+                    new_name, name))
+                name = new_name
 
-            # scale it by the common r POI
-            new_name = "{}__r".format(name)
-            self.make_expr("prod::{}(r, {})".format(
-                new_name, name))
-            name = new_name
+                # scale it by the common r POI
+                new_name = "{}__r".format(name)
+                self.make_expr("prod::{}(r, {})".format(
+                    new_name, name))
+                name = new_name
 
-            # store the final expression name
-            self.r_expressions[(self.vbf_formula, sample)] = name
+                # store the final expression name
+                self.r_expressions[(self.vbf_formula, sample)] = name
 
         # add vhh sample scalings
-        for sample, coeff in zip(self.vhh_formula.samples, self.vhh_formula.coeffs):
-            # create the expression that scales this particular sample based on the formula
-            name = "f_scale_vhh_sample_{}".format(sample.label)
-            expr = pow_to_mul_string(coeff)
-            for i, coupling in enumerate(sample.couplings):
-                expr = replace_coupling(coupling, "@{}".format(i), expr)
-            self.make_expr("expr::{}('{}', {})".format(
-                name, expr, ", ".join(sample.couplings)))
+        if self.vhh_formula:
+            for sample, coeff in zip(self.vhh_formula.samples, self.vhh_formula.coeffs):
+                # create the expression that scales this particular sample based on the formula
+                name = "f_scale_vhh_sample_{}".format(sample.label)
+                expr = pow_to_mul_string(coeff)
+                for i, coupling in enumerate(sample.couplings):
+                    expr = replace_coupling(coupling, "@{}".format(i), expr)
+                self.make_expr("expr::{}('{}', {})".format(
+                    name, expr, ", ".join(sample.couplings)))
 
-            # scale it by the channel specific r POI
-            new_name = "{}__r_vhh".format(name)
-            self.make_expr("prod::{}(r_vhh, {})".format(
-                new_name, name))
-            name = new_name
+                # scale it by the channel specific r POI
+                new_name = "{}__r_vhh".format(name)
+                self.make_expr("prod::{}(r_vhh, {})".format(
+                    new_name, name))
+                name = new_name
 
-            # scale it by the common r POI
-            new_name = "{}__r".format(name)
-            self.make_expr("prod::{}(r, {})".format(
-                new_name, name))
-            name = new_name
+                # scale it by the common r POI
+                new_name = "{}__r".format(name)
+                self.make_expr("prod::{}(r, {})".format(
+                    new_name, name))
+                name = new_name
 
-            # store the final expression name
-            self.r_expressions[(self.vhh_formula, sample)] = name
+                # store the final expression name
+                self.r_expressions[(self.vhh_formula, sample)] = name
 
     def preProcessNuisances(self, nuisances):
         """
@@ -1337,7 +1331,7 @@ def create_ggf_xsec_func(formula=None):
 
         # combine with flat 3% PDF uncertainty, preserving the sign
         unc_sign = 1 if xsec_unc > 0 else -1
-        xsec_unc = unc_sign * (xsec_unc**2. + 0.03**2.)**0.5
+        xsec_unc = unc_sign * (xsec_unc**2 + 0.03**2)**0.5
 
         # compute the shifted absolute value
         xsec = xsec_nom * (1. + xsec_unc)
@@ -1345,7 +1339,7 @@ def create_ggf_xsec_func(formula=None):
         return xsec
 
     # wrap into another function to apply defaults and nlo-to-nnlo scaling
-    def wrapper(kl=1., kt=1., nnlo=True, unc=None):
+    def wrapper(kl=1.0, kt=1.0, nnlo=True, unc=None):
         xsec = xsec_func(kl, kt, *(sample.xs for sample in formula.samples))[0, 0]
 
         # nnlo scaling?
@@ -1400,7 +1394,7 @@ def create_vbf_xsec_func(formula=None):
                 raise ValueError("unc must be 'up' or 'down', got '{}'".format(unc))
             scale_rel = {"up": 0.0003, "down": 0.0004}[unc.lower()]
             pdf_rel = 0.021
-            unc_rel = (1 if unc.lower() == "up" else -1) * (scale_rel**2. + pdf_rel**2.)**0.5
+            unc_rel = (1 if unc.lower() == "up" else -1) * (scale_rel**2 + pdf_rel**2)**0.5
             xsec *= 1 + unc_rel
 
         return xsec
@@ -1431,7 +1425,7 @@ def create_vhh_xsec_func(formula=None):
     xsec_func = sympy.lambdify(sympy.symbols(symbol_names), formula.sigma)
 
     # wrap into another function to apply defaults
-    def wrapper(C2V=1., CV=1., kl=1.):
+    def wrapper(C2V=1.0, CV=1.0, kl=1.0):
         xsec = xsec_func(C2V, CV, kl, *(sample.xs for sample in formula.samples))[0, 0]
         return xsec
 
@@ -1479,7 +1473,7 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None, vhh_formula=None):
     get_vhh_xsec = no_xsec if vhh_formula is False else create_vhh_xsec_func(vhh_formula)
 
     # create a combined wrapper with the merged signature
-    def wrapper(kl=1., kt=1., C2V=1., CV=1., nnlo=True, unc=None):
+    def wrapper(kl=1.0, kt=1.0, C2V=1.0, CV=1.0, nnlo=True, unc=None):
         ggf_xsec = get_ggf_xsec(kl=kl, kt=kt, nnlo=nnlo)
         vbf_xsec = get_vbf_xsec(C2V=C2V, CV=CV, kl=kl)
         vhh_xsec = get_vhh_xsec(C2V=C2V, CV=CV, kl=kl)
@@ -1497,7 +1491,7 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None, vhh_formula=None):
             vhh_unc = 0.
             # combine
             sign = 1 if unc.lower() == "up" else -1
-            unc = sign * (ggf_unc**2. + vbf_unc**2. + vhh_unc**2.)**0.5
+            unc = sign * (ggf_unc**2 + vbf_unc**2 + vhh_unc**2)**0.5
             xsec += unc
 
         return xsec

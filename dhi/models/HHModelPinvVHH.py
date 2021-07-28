@@ -767,6 +767,11 @@ class HHModel(PhysicsModel):
             "vhh_formula": self.vhh_formula,
         }
 
+    def create_hh_xsec_func(self, **kwargs):
+        _kwargs = self.get_formulae()
+        _kwargs.update(kwargs)
+        return create_hh_xsec_func(**_kwargs)
+
     def done(self):
         super(HHModel, self).done()
 
