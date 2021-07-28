@@ -137,7 +137,7 @@ class HHModel(DefaultHHModel):
     K_POIS = OrderedDict([
         ("kl", (1, -30, 30)),
         ("kt", (1, -10, 10)),
-        ("C2", (0, -5,  5)),
+        ("C2", (0, -5, 5)),
     ])
 
     def __init__(self, name, ggf_samples):
