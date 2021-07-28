@@ -215,12 +215,17 @@ class HHModel(PhysicsModel):
             "doProfilekt": {"value": None, "is_flag": False},
             "doProfileC2": {"value": None, "is_flag": False},
         }
+        # add as attributes for forward compatibility
+        for name, opt in self.hh_options.items():
+            setattr(self, name, opt["value"])
 
         # check the sample list and same the formula
         self.check_validity_ggf(ggf_sample_list)
         self.ggf_formula = (GGFHHFormula_3D if do3D else GGFHHFormula_1D)(ggf_sample_list)
-        # TODO: the ggf_formula depends in do3D, which is only final after physics options were set,
-        #       so we might need to set it lazily
+
+        self.r_pois = None
+        self.k_pois = None
+        self.reset_pois()
 
         self.scalingMap = defaultdict(list)
 
@@ -230,6 +235,9 @@ class HHModel(PhysicsModel):
         :py:meth:`register_opt`, to *value*.
         """
         self.hh_options[name]["value"] = value
+
+        # set also as attributes for forward compatibility
+        setattr(self, name, value)
 
     def opt(self, name, default=no_value):
         """
@@ -253,20 +261,15 @@ class HHModel(PhysicsModel):
                 print("[WARNING] unknown physics option '{}'".format(name))
                 continue
 
-            opt = self.hh_options[name]
-            if opt["is_flag"]:
+            if self.hh_options[name]["is_flag"]:
                 # boolean flag
                 value = value.lower() in ["yes", "true", "1"]
             else:
                 # string value, catch special cases
                 value = None if value.lower() in ["", "none"] else value
 
-                opt["value"] = value
-                print("[INFO] using model option {} = {}".format(name, value))
-
-        # set all options also as attributes for backwards compatibility
-        for name, opt in self.hh_options.items():
-            setattr(self, name, opt["value"])
+            self.set_opt(name, value)
+            print("[INFO] using model option {} = {}".format(name, value))
 
         # check that profile makes sense
         if not self.do3D:
@@ -284,6 +287,13 @@ class HHModel(PhysicsModel):
         for s in ggf_sample_list:
             if not isinstance(s, GGFHHSample):
                 raise RuntimeError("%s : malformed GGF input sample list - each element must be a GGFHHSample" % self.name)
+
+    def reset_pois(self):
+        self.r_pois = ["r", "r_gghh"]
+        self.k_pois = [
+            p for p in self.K_POIS
+            if not self.opt("doProfile" + p)
+        ]
 
     def doParametersOfInterest(self):
         ## the model is built with:

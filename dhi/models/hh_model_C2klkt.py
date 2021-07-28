@@ -30,7 +30,6 @@ class GGFSample(HHSample):
     Class describing ggf samples, characterized by values of *kl*, *kt* and *C2*.
     """
 
-    couplings = ["kl", "kt", "C2"]
     label_re = r"^ggHH_kl_([pm0-9]+)_kt_([pm0-9]+)_c2_([pm0-9]+)$"
 
     def __init__(self, kl, kt, C2, xs, label):
@@ -67,6 +66,8 @@ class GGFFormula(HHFormula):
     sample_cls = GGFSample
     min_samples = 6
     channel = "ggf"
+    r_poi = "r_gghh"
+    couplings = ["kl", "kt", "C2"]
 
     def build_expressions(self):
         # define the matrix with three scalings - box, triangle, interf
@@ -140,12 +141,12 @@ class HHModel(DefaultHHModel):
         ("C2", (0, -5, 5)),
     ])
 
-    def __init__(self, name, ggf_samples):
+    def __init__(self, name, ggf_samples=None):
         # skip the DefaultHHModel init
         HHModelBase.__init__(self, name)
 
         # attributes
-        self.ggf_formula = GGFFormula(ggf_samples)
+        self.ggf_formula = GGFFormula(ggf_samples) if ggf_samples else None
         self.vbf_formula = None
         self.vhh_formula = None
         self.ggf_kl_dep_unc = "THU_HH"  # name for kl-dependent QCDscale + mtop uncertainty on ggf
@@ -159,10 +160,8 @@ class HHModel(DefaultHHModel):
         for p in self.K_POIS:
             self.register_opt("doProfile{}".format(p), None)
 
-    def create_hh_xsec_func(self, **kwargs):
-        _kwargs = self.get_formulae()
-        _kwargs.update(kwargs)
-        return create_hh_xsec_func(**_kwargs)
+        # reset instance-level pois
+        self.reset_pois()
 
     def doParametersOfInterest(self):
         """

@@ -62,14 +62,6 @@ class HHModelTask(AnalysisTask):
         if self.hh_model_empty and not self.allow_empty_hh_model:
             raise Exception("{!r}: hh_model is not allowed to be empty".format(self))
 
-        # store whether certain POIs are profiled when a model is set
-        self.profiled_pois = []
-        if not self.hh_model_empty:
-            options = self.split_hh_model()[2]
-            for opt in options:
-                if opt.startswith("doProfile"):
-                    self.profiled_pois.append(opt[9:])
-
         # cached hh model instance
         self._cached_model = None
 
@@ -140,6 +132,9 @@ class HHModelTask(AnalysisTask):
         set_opt("doProfileC2V", options.get("doProfileC2V"))
         set_opt("doProfileC2", options.get("doProfileC2"))
 
+        # reset pois
+        model.reset_pois()
+
         return mod, model
 
     @classmethod
@@ -155,7 +150,7 @@ class HHModelTask(AnalysisTask):
         module, model = cls._load_hh_model(hh_model)
 
         # check that the r POI is handled by the model
-        if r_poi not in model.R_POIS:
+        if r_poi not in model.r_pois:
             raise ValueError("r POI {} is not covered by the HH model {}".format(r_poi, hh_model))
 
         # get the proper xsec getter, based on poi
@@ -1035,18 +1030,13 @@ class POITask(DatacardTask, ParameterValuesTask):
         super(POITask, self).__init__(*args, **kwargs)
 
         # store available pois on task level and potentially update them according to the model
-        r_pois = list(self.r_pois)
-        k_pois = list(self.k_pois)
-        if not self.hh_model_empty:
+        if self.hh_model_empty:
+            self.r_pois = tuple(self.__class__.r_pois)
+            self.k_pois = tuple(self.__class__.k_pois)
+        else:
             model = self.load_hh_model()[1]
-            for p in self.r_pois:
-                if p not in model.R_POIS or p in self.profiled_pois:
-                    r_pois.remove(p)
-            for p in self.k_pois:
-                if p not in model.K_POIS or p in self.profiled_pois:
-                    k_pois.remove(p)
-        self.r_pois = tuple(r_pois)
-        self.k_pois = tuple(k_pois)
+            self.r_pois = list(model.r_pois)
+            self.k_pois = list(model.k_pois)
         self.all_pois = self.r_pois + self.k_pois
 
         # check again of the chosen pois are available

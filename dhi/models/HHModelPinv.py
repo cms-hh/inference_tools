@@ -220,12 +220,19 @@ class HHModel(PhysicsModel):
             "doProfileCV": {"value": None, "is_flag": False},
             "doProfileC2V": {"value": None, "is_flag": False},
         }
+        # add as attributes for forward compatibility
+        for name, opt in self.hh_options.items():
+            setattr(self, name, opt["value"])
 
         self.check_validity_ggf(ggf_sample_list)
         self.check_validity_vbf(vbf_sample_list)
 
         self.ggf_formula = GGFHHFormula(ggf_sample_list)
         self.vbf_formula = VBFHHFormula(vbf_sample_list)
+
+        self.r_pois = None
+        self.k_pois = None
+        self.reset_pois()
 
         self.scalingMap = defaultdict(list)
 
@@ -235,6 +242,9 @@ class HHModel(PhysicsModel):
         :py:meth:`register_opt`, to *value*.
         """
         self.hh_options[name]["value"] = value
+
+        # set also as attributes for forward compatibility
+        setattr(self, name, value)
 
     def opt(self, name, default=no_value):
         """
@@ -258,20 +268,15 @@ class HHModel(PhysicsModel):
                 print("[WARNING] unknown physics option '{}'".format(name))
                 continue
 
-            opt = self.hh_options[name]
-            if opt["is_flag"]:
+            if self.hh_options[name]["is_flag"]:
                 # boolean flag
                 value = value.lower() in ["yes", "true", "1"]
             else:
                 # string value, catch special cases
                 value = None if value.lower() in ["", "none"] else value
 
-                opt["value"] = value
-                print("[INFO] using model option {} = {}".format(name, value))
-
-        # set all options also as attributes for backwards compatibility
-        for name, opt in self.hh_options.items():
-            setattr(self, name, opt["value"])
+            self.set_opt(name, value)
+            print("[INFO] using model option {} = {}".format(name, value))
 
     def check_validity_ggf(self, ggf_sample_list):
         if len(ggf_sample_list) < 3:
@@ -299,6 +304,13 @@ class HHModel(PhysicsModel):
         print "......  VBF configuration"
         for i,s in enumerate(self.vbf_formula.sample_list):
             print "        {0:<3} ... CV : {1:<3}, C2V : {2:<3}, kl : {3:<3}, xs : {4:<3.8f} pb, label : {5}".format(i, s.val_CV, s.val_C2V, s.val_kl, s.val_xs, s.label)
+
+    def reset_pois(self):
+        self.r_pois = ["r", "r_gghh", "r_qqhh"]
+        self.k_pois = [
+            p for p in self.K_POIS
+            if not self.opt("doProfile" + p)
+        ]
 
     def doParametersOfInterest(self):
         ## the model is built with:

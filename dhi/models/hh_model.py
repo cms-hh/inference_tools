@@ -58,10 +58,6 @@ class HHSample(object):
     *label*.
     """
 
-    # list of coupling names that this sample describes
-    # to be overwritten in subclasses
-    couplings = None
-
     # regular expression to check sample labels
     # to be overwritten in subclasses
     label_re = None
@@ -89,7 +85,6 @@ class GGFSample(HHSample):
     Class describing ggf samples, characterized by values of *kl* and *kt*.
     """
 
-    couplings = ["kl", "kt"]
     label_re = r"^ggHH_kl_([pm0-9]+)_kt_([pm0-9]+)$"
 
     def __init__(self, kl, kt, xs, label):
@@ -104,7 +99,6 @@ class VBFSample(HHSample):
     Class describing vbf samples, characterized by values of *CV* (kV), *C2V* (k2V) and *kl*.
     """
 
-    couplings = ["CV", "C2V", "kl"]
     label_re = r"qqHH_CV_([pm0-9]+)_C2V_([pm0-9]+)_kl_([pm0-9]+)$"
 
     def __init__(self, CV, C2V, kl, xs, label):
@@ -120,7 +114,6 @@ class VHHSample(HHSample):
     Class describing vhh samples, characterized by values of *CV* (kV), *C2V* (k2V) and *kl*.
     """
 
-    couplings = ["CV", "C2V", "kl"]
     label_re = r"VHH_CV_([pm0-9]+)_C2V_([pm0-9]+)_kl_([pm0-9]+)$"
 
     def __init__(self, CV, C2V, kl, xs, label):
@@ -180,6 +173,8 @@ class HHFormula(object):
     sample_cls = None
     min_samples = None
     channel = None
+    r_poi = None
+    couplings = None
 
     @classmethod
     def check_samples(cls, samples):
@@ -229,6 +224,8 @@ class GGFFormula(HHFormula):
     sample_cls = GGFSample
     min_samples = 3
     channel = "ggf"
+    r_poi = "r_gghh"
+    couplings = ["kl", "kt"]
 
     def build_expressions(self):
         # define the matrix with three scalings - box, triangle, interf
@@ -269,6 +266,8 @@ class VBFFormula(HHFormula):
     sample_cls = VBFSample
     min_samples = 6
     channel = "vbf"
+    r_poi = "r_qqhh"
+    couplings = ["CV", "C2V", "kl"]
 
     def build_expressions(self):
         # define the matrix with three scalings - box, triangle, interf
@@ -317,6 +316,8 @@ class VHHFormula(VBFFormula):
     sample_cls = VHHSample
     min_samples = 6
     channel = "vhh"
+    r_poi = "r_vhh"
+    couplings = ["CV", "C2V", "kl"]
 
 
 ####################################################################################################
@@ -633,6 +634,10 @@ class HHModelBase(PhysicsModel):
         # names and values of physics options
         self.hh_options = {}
 
+        # actual r and k pois, depending on registerd formulae, set in reset_pois
+        self.r_pois = None
+        self.k_pois = None
+
         # mapping of (formula, sample) -> expression name modeling the linear sample scales
         self.r_expressions = {}
 
@@ -683,16 +688,53 @@ class HHModelBase(PhysicsModel):
                 print("[WARNING] unknown physics option '{}'".format(name))
                 continue
 
-            opt = self.hh_options[name]
-            if opt["is_flag"]:
+            if self.hh_options[name]["is_flag"]:
                 # boolean flag
                 value = value.lower() in ["yes", "true", "1"]
             else:
                 # string value, catch special cases
                 value = None if value.lower() in ["", "none"] else value
 
-                opt["value"] = value
-                print("[INFO] using model option {} = {}".format(name, value))
+            self.set_opt(name, value)
+            print("[INFO] using model option {} = {}".format(name, value))
+
+    def reset_pois(self):
+        """
+        Sets the instance-level :py:attr:`r_pois` and :py:attr:`k_pois` based on registered
+        formulae.
+        """
+        # r pois
+        self.r_pois = OrderedDict()
+        for p, v in self.R_POIS.items():
+            keep = p == "r"
+            keep |= any(p == formula.r_poi for formula in self.get_formulae().values())
+            if keep:
+                self.r_pois[p] = v
+
+        # k pois
+        self.k_pois = OrderedDict()
+        for p, v in self.K_POIS.items():
+            keep = any(p in formula.couplings for formula in self.get_formulae().values())
+            keep &= not self.opt("doProfile" + p)
+            if keep:
+                self.k_pois[p] = v
+
+    def get_formulae(self):
+        """
+        Method that returns a dictionary of all used :py:class:`HHFormula` instances, mapped to
+        their attribute names.
+        To be implemented in subclasses.
+        """
+        raise NotImplementedError
+
+    def create_hh_xsec_func(self, **kwargs):
+        """
+        Returns a function that can be used to compute cross sections, based on all formulae
+        returned by :py:meth:`get_formulae`.
+        """
+        _kwargs = self.get_formulae()
+        _kwargs.update(kwargs)
+        return create_hh_xsec_func(**_kwargs)
 
     def make_expr(self, *args, **kwargs):
         """
@@ -723,23 +765,6 @@ class HHModelBase(PhysicsModel):
         Shorthand for :py:meth:`modelBuilder.doSet`.
         """
         return self.modelBuilder.doSet(*args, **kwargs)
-
-    def get_formulae(self):
-        """
-        Method that returns a dictionary of all used :py:class:`HHFormula` instances, mapped to
-        their attribute names.
-        To be implemented in subclasses.
-        """
-        raise NotImplementedError
-
-    def create_hh_xsec_func(self, **kwargs):
-        """
-        Returns a function that can be used to compute cross sections, based on all formulae
-        returned by :py:meth:`get_formulae`.
-        """
-        _kwargs = self.get_formulae()
-        _kwargs.update(kwargs)
-        return create_hh_xsec_func(**_kwargs)
 
     def done(self):
         """
@@ -815,16 +840,15 @@ class HHModel(HHModelBase):
         ("C2V", (1, -10, 10)),
     ])
 
-    def __init__(self, name, ggf_samples, vbf_samples, vhh_samples, include_vhh_in_xsec=False):
+    def __init__(self, name, ggf_samples=None, vbf_samples=None, vhh_samples=None):
         super(HHModel, self).__init__(name)
 
         # attributes
-        self.ggf_formula = GGFFormula(ggf_samples)
-        self.vbf_formula = VBFFormula(vbf_samples)
-        self.vhh_formula = VHHFormula(vhh_samples)
+        self.ggf_formula = GGFFormula(ggf_samples) if ggf_samples else None
+        self.vbf_formula = VBFFormula(vbf_samples) if vbf_samples else None
+        self.vhh_formula = VHHFormula(vhh_samples) if vhh_samples else None
         self.ggf_kl_dep_unc = "THU_HH"  # name for kl-dependent QCDscale + mtop uncertainty on ggf
         self.h_br_scaler = None  # initialized in create_scalings
-        self.include_vhh_in_xsec = include_vhh_in_xsec
 
         # register options
         self.register_opt("doNNLOscaling", True, is_flag=True)
@@ -833,6 +857,9 @@ class HHModel(HHModelBase):
         self.register_opt("doHscaling", True, is_flag=True)
         for p in self.K_POIS:
             self.register_opt("doProfile{}".format(p), None)
+
+        # reset instance-level pois
+        self.reset_pois()
 
     def get_formulae(self):
         formulae = {}
@@ -844,13 +871,6 @@ class HHModel(HHModelBase):
             formulae["vhh_formula"] = self.vhh_formula
         return formulae
 
-    def create_hh_xsec_func(self, **kwargs):
-        _kwargs = self.get_formulae()
-        if not self.include_vhh_in_xsec:
-            _kwargs["vhh_formula"] = False
-        _kwargs.update(kwargs)
-        return create_hh_xsec_func(**_kwargs)
-
     def doParametersOfInterest(self):
         """
         Hook called by the super class to add parameters (of interest) to the model.
@@ -861,7 +881,7 @@ class HHModel(HHModelBase):
         """
         # add rate POIs and freeze r_* by default
         pois = []
-        for p, (value, start, stop) in self.R_POIS.items():
+        for p, (value, start, stop) in self.r_pois.items():
             self.make_var("{}[{},{},{}]".format(p, value, start, stop))
             # freeze anything but r
             if p != "r":
@@ -869,13 +889,16 @@ class HHModel(HHModelBase):
             pois.append(p)
 
         # add coupling modifiers
-        for p, (value, start, stop) in self.K_POIS.items():
+        for p, (value, start, stop) in self.k_pois.items():
             self.make_var("{}[{},{},{}]".format(p, value, start, stop))
             # freeze when not profiled
             profile = self.opt("doProfile" + p, False)
             if not profile:
                 self.get_var(p).setConstant(True)
                 pois.append(p)
+            else:
+                # remove from k pois
+                pass
 
         # define the POI group
         self.make_set("POI", ",".join(pois))
@@ -989,10 +1012,10 @@ class HHModel(HHModelBase):
                 # create the expression that scales this particular sample based on the formula
                 name = "f_scale_ggf_sample_{}".format(sample.label)
                 expr = pow_to_mul_string(coeff)
-                for i, coupling in enumerate(sample.couplings):
+                for i, coupling in enumerate(self.ggf_formula.couplings):
                     expr = replace_coupling(coupling, "@{}".format(i), expr)
                 self.make_expr("expr::{}('{}', {})".format(
-                    name, expr, ", ".join(sample.couplings)))
+                    name, expr, ", ".join(self.ggf_formula.couplings)))
 
                 # optionally multiply the theory uncertainty scaling to the expression
                 if self.opt("doklDependentUnc"):
@@ -1029,10 +1052,10 @@ class HHModel(HHModelBase):
                 # create the expression that scales this particular sample based on the formula
                 name = "f_scale_vbf_sample_{}".format(sample.label)
                 expr = pow_to_mul_string(coeff)
-                for i, coupling in enumerate(sample.couplings):
+                for i, coupling in enumerate(self.vbf_formula.couplings):
                     expr = replace_coupling(coupling, "@{}".format(i), expr)
                 self.make_expr("expr::{}('{}', {})".format(
-                    name, expr, ", ".join(sample.couplings)))
+                    name, expr, ", ".join(self.vbf_formula.couplings)))
 
                 # scale it by the channel specific r POI
                 new_name = "{}__r_qqhh".format(name)
@@ -1055,10 +1078,10 @@ class HHModel(HHModelBase):
                 # create the expression that scales this particular sample based on the formula
                 name = "f_scale_vhh_sample_{}".format(sample.label)
                 expr = pow_to_mul_string(coeff)
-                for i, coupling in enumerate(sample.couplings):
+                for i, coupling in enumerate(self.vhh_formula.couplings):
                     expr = replace_coupling(coupling, "@{}".format(i), expr)
                 self.make_expr("expr::{}('{}', {})".format(
-                    name, expr, ", ".join(sample.couplings)))
+                    name, expr, ", ".join(self.vhh_formula.couplings)))
 
                 # scale it by the channel specific r POI
                 new_name = "{}__r_vhh".format(name)
@@ -1091,13 +1114,13 @@ class HHModel(HHModelBase):
                 continue
 
             # get the prior and add it
-            prior, value = value.split(",", 1) if "," in value else (value, None)
+            prior, width = value.split(",", 1) if "," in value else (value, None)
             if prior == "flat":
                 self.modelBuilder.DC.flatParamNuisances[p] = True
                 print("adding flat prior for parameter {}".format(p))
             elif prior == "gauss":
-                nuisances.append((p, False, "param", ["1", value, "[-7,7]"], []))
-                print("adding gaussian prior for parameter {} with width {}".format(p, value))
+                nuisances.append((p, False, "param", ["1", width, "[-7,7]"], []))
+                print("adding gaussian prior for parameter {} with width {}".format(p, width))
             else:
                 raise Exception("unknown prior '{}' for parameter {}".format(prior, p))
 
@@ -1166,7 +1189,7 @@ class HHModel(HHModelBase):
         return 1.
 
 
-def create_model(name, skip_ggf=None, skip_vbf=None, skip_vhh=None, **kwargs):
+def create_model(name, skip_ggf=None, skip_vbf=None, skip_vhh=True, **kwargs):
     """
     Returns a new :py:class:`HHModel` instance named *name*. Its ggf, vbf and vhh sample lists are
     using all availabe samples except those defined in *skip_ggf*, *skip_vbf* and *skip_vhh*. The
@@ -1174,19 +1197,19 @@ def create_model(name, skip_ggf=None, skip_vbf=None, skip_vhh=None, **kwargs):
     model constructor.
     """
     # get all unskipped ggf keys
-    ggf_keys = [
+    ggf_keys = [] if skip_ggf is True else [
         key for key in ggf_samples
         if skip_ggf is None or key not in skip_ggf
     ]
 
     # get all unskipped vbf keys
-    vbf_keys = [
+    vbf_keys = [] if skip_vbf is True else [
         key for key in vbf_samples
         if skip_vbf is None or key not in skip_vbf
     ]
 
     # get all unskipped vhh keys
-    vhh_keys = [
+    vhh_keys = [] if skip_vhh is True else [
         key for key in vhh_samples
         if skip_vhh is None or key not in skip_vhh
     ]
@@ -1203,11 +1226,12 @@ def create_model(name, skip_ggf=None, skip_vbf=None, skip_vhh=None, **kwargs):
 
 # some named, default models
 model_all = create_model("model_all")
+model_all_vhh = create_model("model_all_vhh", skip_vhh=[])
 
 # model used for the combination
 model_default = create_model("model_default", skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)])
-model_default_vhh = create_model("model_default", skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)],
-    include_vhh_in_xsec=True)
+model_default_vhh = create_model("model_default_vhh", skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)],
+    skip_vhh=[])
 
 # ggf test models
 model_no_ggf_kl0    = create_model("model_no_ggf_kl0",    skip_ggf=[(0, 1)],    skip_vbf=[(1, 0, 1)])
@@ -1242,6 +1266,12 @@ ggf_kl_coeffs = {
     "unc_u2": (75.4617, -56.3164, 12.7135),
     "unc_d1": (57.6809, -42.9905, 9.58474),
     "unc_d2": (58.3769, -43.9657, 9.87094),
+    # old uncertainty coefficients for backward checks from
+    # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=65
+    # "unc_u1": (72.0744, -51.7362, 11.3712),
+    # "unc_u2": (70.9286, -51.5708, 11.4497),
+    # "unc_d1": (66.0621, -46.7458, 10.1673),
+    # "unc_d2": (66.7581, -47.7210, 10.4535),
 }
 
 
@@ -1405,8 +1435,8 @@ def create_vbf_xsec_func(formula=None):
 def create_vhh_xsec_func(formula=None):
     """
     Creates and returns a function that can be used to calculate numeric vhh cross section values in
-    pb given an appropriate *formula*, which defaults to *model_default.vhh_formula*. The returned
-    function has the signature ``(C2V=1.0, CV=1.0, kl=1.0)``.
+    pb given an appropriate *formula*, which defaults to *model_default_vhh.vhh_formula*. The
+    returned function has the signature ``(C2V=1.0, CV=1.0, kl=1.0)``.
 
     Example:
 
@@ -1418,7 +1448,7 @@ def create_vhh_xsec_func(formula=None):
         # -> 0.005316... (or similar)
     """
     if formula is None:
-        formula = model_default.vhh_formula
+        formula = model_default_vhh.vhh_formula
 
     # create the lambdify'ed evaluation function
     symbol_names = ["C2V", "CV", "kl"] + list(map("xs{}".format, range(formula.n_samples)))
