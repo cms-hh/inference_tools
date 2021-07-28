@@ -172,7 +172,7 @@ class HHFormula(object):
 
     # to be overwritten in subclasses
     sample_cls = None
-    min_n_samples = None
+    min_samples = None
     channel = None
 
     @classmethod
@@ -182,9 +182,9 @@ class HHFormula(object):
                 raise ValueError("{} expects samples to be of type {}, but got {}".format(
                     cls.__name__, cls.sample_cls.__name__, sample))
 
-        if len(samples) < cls.min_n_samples:
+        if len(samples) < cls.min_samples:
             raise ValueError("{} expects at least {} samples, but got {}".format(
-                cls.__name__, cls.min_n_samples, len(samples)))
+                cls.__name__, cls.min_samples, len(samples)))
 
     def __init__(self, samples):
         super(HHFormula, self).__init__()
@@ -221,7 +221,7 @@ class GGFFormula(HHFormula):
     """
 
     sample_cls = GGFSample
-    min_n_samples = 3
+    min_samples = 3
     channel = "ggf"
 
     def build_expressions(self):
@@ -261,7 +261,7 @@ class VBFFormula(HHFormula):
     """
 
     sample_cls = VBFSample
-    min_n_samples = 6
+    min_samples = 6
     channel = "vbf"
 
     def build_expressions(self):
@@ -309,7 +309,7 @@ class VHHFormula(VBFFormula):
     """
 
     sample_cls = VHHSample
-    min_n_samples = 6
+    min_samples = 6
     channel = "vhh"
 
 
@@ -323,7 +323,7 @@ SM_HIGG_DECAYS = ["hww", "hzz", "hgg", "htt", "hbb", "hzg", "hmm", "hcc", "hglug
 # single H production modes that are supported in the scaling
 SM_HIGG_PROD = ["ggZH", "tHq", "tHW", "ggH", "qqH", "ZH", "WH", "VH", "ttH"]
 
-# coefficients for the BR scaling (from https://arxiv.org/abs/1709.08649, Eq 22)
+# coefficients for the BR scaling with kl (from https://arxiv.org/abs/1709.08649, Eq 22)
 coeffs_br = {
     "hgg": 0.49e-2,
     "hzz": 0.83e-2,
@@ -336,7 +336,7 @@ coeffs_br = {
     "hmm": 0,
 }
 
-# coefficients for the single H scaling
+# coefficients for the single H scaling with kl
 # WH and ZH coeff are very similar, so use their average
 cxs_13 = {
     "ggH": 0.66e-2,
@@ -849,11 +849,9 @@ class HHModel(HHModelBase):
         }
 
     def create_hh_xsec_func(self, **kwargs):
-        _kwargs = {
-            "ggf_formula": self.ggf_formula,
-            "vbf_formula": self.vbf_formula,
-            "vhh_formula": self.vhh_formula if self.include_vhh_in_xsec else False,
-        }
+        _kwargs = self.get_formulae()
+        if not self.include_vhh_in_xsec:
+            _kwargs["vhh_formula"] = False
         _kwargs.update(kwargs)
         return create_hh_xsec_func(**_kwargs)
 
@@ -1502,13 +1500,13 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None, vhh_formula=None):
     return wrapper
 
 
-#: Default ggF cross section getter using the formula of the *model_default* model.
+#: Default ggf cross section getter using the formula of the *model_default* model.
 get_ggf_xsec = create_ggf_xsec_func()
 
-#: Default VBF cross section getter using the formula of the *model_default* model.
+#: Default vbf cross section getter using the formula of the *model_default* model.
 get_vbf_xsec = create_vbf_xsec_func()
 
-#: Default VHH cross section getter using the formula of the *model_default* model.
+#: Default vhh cross section getter using the formula of the *model_default* model.
 get_vhh_xsec = create_vhh_xsec_func()
 
 #: Default combined cross section getter using the formulas of the *model_default* model.
