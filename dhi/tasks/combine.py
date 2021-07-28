@@ -126,8 +126,8 @@ class HHModelTask(AnalysisTask):
 
         # helper to set options when existing
         def set_opt(name, value):
-            if name in model.KNOWN_PARAMS or name in model.KNOWN_FLAGS:
-                setattr(model, name, value)
+            if name in model.hh_options:
+                model.set_opt(name, value)
 
         # set physics options
         set_opt("doNNLOscaling", not options.get("noNNLOscaling", False))
@@ -1425,7 +1425,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
                 if not all_samples or not formula:
                     continue
                 all_procs |= {s.label for s in all_samples.values()}
-                model_procs |= {s.label for s in formula.sample_list}
+                model_procs |= {s.label for s in formula.samples}
 
             # subtract the sets to see which processes to remove
             to_remove = all_procs - model_procs
@@ -1469,29 +1469,13 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
             return None
 
         # build physics model arguments when not empty
-        model_args = ""
+        model_args = []
         if not self.hh_model_empty:
             model = self.load_hh_model()[1]
-            model_args = ["--physics-model {model.__module__}:{model.name}"]
-
-            # helper to set options
-            def set_opt(name, value):
-                if name in model.KNOWN_PARAMS + model.KNOWN_FLAGS:
-                    model_args.append("--physics-option {}={}".format(name, value))
-
-            # set options
-            set_opt("doNNLOscaling", "{model.doNNLOscaling}")
-            set_opt("doBRscaling", "{model.doBRscaling}")
-            set_opt("doHscaling", "{model.doHscaling}")
-            set_opt("doklDependentUnc", "{model.doklDependentUnc}")
-            set_opt("doProfilekl", "{model.doProfilekl}")
-            set_opt("doProfilekt", "{model.doProfilekt}")
-            set_opt("doProfileCV", "{model.doProfileCV}")
-            set_opt("doProfileC2V", "{model.doProfileC2V}")
-            set_opt("doProfileC2", "{model.doProfileC2}")
-
-            # format
-            model_args = " ".join(model_args).format(model=model)
+            model_args.append("--physics-model {model.__module__}:{model.name}".format(model=model))
+            # add options
+            for name, opt in model.hh_options.items():
+                model_args.append("--physics-option {}={}".format(name, opt["value"]))
 
         # build and return the full command
         return (
@@ -1506,7 +1490,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
             self=self,
             datacard=self.input().path,
             workspace=self.output().path,
-            model_args=model_args,
+            model_args=" ".join(model_args),
         )
 
     @law.decorator.log

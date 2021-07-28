@@ -170,6 +170,9 @@ class GGFHHFormula_3D:
 #########################################
 
 
+no_value = object()
+
+
 class HHModel(PhysicsModel):
     """
     Models the HH production as linear sum of the input components for GGF >= 3 samples for a C2
@@ -192,56 +195,76 @@ class HHModel(PhysicsModel):
 
     R_POIS = ["r", "r_gghh"]
     K_POIS = ["kl", "kt", "C2"]
-    KNOWN_FLAGS = ["doNNLOscaling", "doBRscaling", "doHscaling", "doklDependentUnc", "do3D"]
-    KNOWN_PARAMS = ["doProfilekl", "doProfilekt", "doProfileC2"]
 
     def __init__(self, ggf_sample_list, name, do3D=True):
         PhysicsModel.__init__(self)
 
-        self.doNNLOscaling    = True
-        self.doBRscaling      = True
-        self.doHscaling       = True
-        self.doklDependentUnc = True
-        self.do3D             = do3D
-        self.doProfilekl      = None
-        self.doProfilekt      = None
-        self.doProfileC2      = None
-        self.klUncName        = "THU_HH"
-        self.name             = name
+        self.name = name
+        self.klUncName = "THU_HH"
+
+        # names and values of physics options
+        self.hh_options = {
+            "doNNLOscaling": {"value": True, "is_flag": True},
+            "doBRscaling": {"value": True, "is_flag": True},
+            "doHscaling": {"value": True, "is_flag": True},
+            "doklDependentUnc": {"value": True, "is_flag": True},
+            "do3D": {"value": do3D, "is_flag": True},
+            "doProfilekl": {"value": None, "is_flag": False},
+            "doProfilekt": {"value": None, "is_flag": False},
+            "doProfileC2": {"value": None, "is_flag": False},
+        }
 
         # check the sample list and same the formula
         self.check_validity_ggf(ggf_sample_list)
-        self.ggf_formula = (GGFHHFormula_3D if self.do3D else GGFHHFormula_1D)(ggf_sample_list)
+        self.ggf_formula = (GGFHHFormula_3D if do3D else GGFHHFormula_1D)(ggf_sample_list)
+        # TODO: the ggf_formula depends in do3D, which is only final after physics options were set,
+        #       so we might need to set it lazily
 
         self.scalingMap = defaultdict(list)
 
-    def setPhysicsOptions(self, physOptions):
-        opts = [opt.split("=", 1) for opt in physOptions if "=" in opt]
+    def set_opt(self, name, value):
+        """
+        Sets the value of a physics option named *name*, previoulsy registered with
+        :py:meth:`register_opt`, to *value*.
+        """
+        self.hh_options[name]["value"] = value
 
-        set_params = set()
-        for key, value in opts:
-            # identify boolean flags
-            if key in self.KNOWN_FLAGS:
-                flag = value.lower() in ["yes", "true", "1"]
-                setattr(self, key, flag)
-                set_params.add(key)
+    def opt(self, name, default=no_value):
+        """
+        Helper to get the value of a physics option defined by *name* with an optional *default*
+        value that is returned when no option with that *name* is registered.
+        """
+        if name in self.hh_options or default == no_value:
+            return self.hh_options[name]["value"]
+        else:
+            return default
+
+    def setPhysicsOptions(self, options):
+        """
+        Hook called by the super class to parse physics options received externally, e.g. via
+        ``--physics-option`` or ``--PO``.
+        """
+        # split by "=" and check one by one
+        pairs = [opt.split("=", 1) for opt in options if "=" in opt]
+        for name, value in pairs:
+            if name not in self.hh_options:
+                print("[WARNING] unknown physics option '{}'".format(name))
                 continue
 
-            # identify remaining "key=value" parameter pairs
-            if key in self.KNOWN_PARAMS:
-                # special case: interpret empty string and "None" as actual None
-                if value.lower() in ("", "none"):
-                    value = None
-                setattr(self, key, value)
-                set_params.add(key)
-                continue
+            opt = self.hh_options[name]
+            if opt["is_flag"]:
+                # boolean flag
+                value = value.lower() in ["yes", "true", "1"]
+            else:
+                # string value, catch special cases
+                value = None if value.lower() in ["", "none"] else value
 
-        # print all current options
-        for param in self.KNOWN_FLAGS + self.KNOWN_PARAMS:
-            msg = "[INFO] using model option {} = {}".format(param, getattr(self, param))
-            if param in set_params:
-                msg += " (set via option)"
-            print(msg)
+                opt["value"] = value
+                print("[INFO] using model option {} = {}".format(name, value))
+
+        # set all options also as attributes for backwards compatibility
+        for name, opt in self.hh_options.items():
+            setattr(self, name, opt["value"])
 
         # check that profile makes sense
         if not self.do3D:
@@ -251,7 +274,7 @@ class HHModel(PhysicsModel):
                 raise RuntimeError("kt profiling only possible with 3D scan - enable do3D and add at least 6 samples!")
 
     def check_validity_ggf(self, ggf_sample_list):
-        min_samples = 6 if self.do3D else 3
+        min_samples = 6 if self.opt("do3D") else 3
         if len(ggf_sample_list) < min_samples:
             raise RuntimeError("%s : malformed GGF input sample list - expect at least %d samples" % (self.name, min_samples))
         if not isinstance(ggf_sample_list, list) and not isinstance(ggf_sample_list, tuple):
