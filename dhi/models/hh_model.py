@@ -56,8 +56,17 @@ class HHSample(object):
     # to be overwritten in subclasses
     couplings = None
 
+    # regular expression to check sample labels
+    # to be overwritten in subclasses
+    label_re = None
+
     def __init__(self, xs, label):
         super(HHSample, self).__init__()
+
+        # check the label
+        if not re.match(self.label_re, label):
+            raise Exception("{} label '{}' does not match configured format {}".format(
+                self.__class__.__name__, label, self.label_re))
 
         self.xs = xs
         self.label = label
@@ -75,6 +84,7 @@ class GGFSample(HHSample):
     """
 
     couplings = ["kl", "kt"]
+    label_re = r"^ggHH_kl_([pm0-9]+)_kt_([pm0-9]+)$"
 
     def __init__(self, kl, kt, xs, label):
         super(GGFSample, self).__init__(xs, label)
@@ -89,6 +99,7 @@ class VBFSample(HHSample):
     """
 
     couplings = ["CV", "C2V", "kl"]
+    label_re = r"qqHH_CV_([pm0-9]+)_C2V_([pm0-9]+)_kl_([pm0-9]+)$"
 
     def __init__(self, CV, C2V, kl, xs, label):
         super(VBFSample, self).__init__(xs, label)
@@ -104,6 +115,7 @@ class VHHSample(HHSample):
     """
 
     couplings = ["CV", "C2V", "kl"]
+    label_re = r"VHH_CV_([pm0-9]+)_C2V_([pm0-9]+)_kl_([pm0-9]+)$"
 
     def __init__(self, CV, C2V, kl, xs, label):
         super(VHHSample, self).__init__(xs, label)
@@ -210,7 +222,6 @@ class GGFFormula(HHFormula):
 
     sample_cls = GGFSample
     min_n_samples = 3
-    label_re = r"^ggHH_kl_([pm0-9]+)_kt_([pm0-9]+).*$"
     channel = "ggf"
 
     def build_expressions(self):
@@ -251,7 +262,6 @@ class VBFFormula(HHFormula):
 
     sample_cls = VBFSample
     min_n_samples = 6
-    label_re = r"qqHH_CV_([pm0-9]+)_C2V_([pm0-9]+)_kl_([pm0-9]+).*$"
     channel = "vbf"
 
     def build_expressions(self):
@@ -300,7 +310,6 @@ class VHHFormula(VBFFormula):
 
     sample_cls = VHHSample
     min_n_samples = 6
-    label_re = r"VHH_CV_([pm0-9]+)_C2V_([pm0-9]+)_kl_([pm0-9]+).*$"
     channel = "vhh"
 
 
@@ -434,7 +443,7 @@ class HBRScaler(object):
         self.make_expr("expr::CVktkl_Gscal_tot('(@0 + @1 + @2 + @3 + @4 + @5 + @6) / @7', CVktkl_Gscal_Z, CVktkl_Gscal_W, CVktkl_Gscal_tau, CVktkl_Gscal_top, CVktkl_Gscal_bottom, CVktkl_Gscal_gluon, CVktkl_Gscal_gamma, CVktkl_SMBRs)")
 
         # BRs, normalized to SM
-        # (scaling as (partial/partial_SM) / (total/total_SM) )
+        # (scaling as (partial/partial_SM) / (total/total_SM))
         self.make_expr("expr::CVktkl_BRscal_hww('(@0 * @0 + @3) * @2 / @1', CV, CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hww, kl_scalBR_hww)")
         self.make_expr("expr::CVktkl_BRscal_hzz('(@0 * @0 + @3) * @2 / @1', CV, CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hzz, kl_scalBR_hzz)")
         self.make_expr("expr::CVktkl_BRscal_htt('(1 + @2) * @1 / @0', CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_htt, kl_scalBR_htt)")
