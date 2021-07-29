@@ -959,7 +959,9 @@ class ParameterScanTask(AnalysisTask):
 
 class POITask(DatacardTask, ParameterValuesTask):
 
-    r_pois = ("r", "r_qqhh", "r_gghh", "r_vhh")
+    # class-level sequence of all available pois
+    # instances will have potentially reduced sequences, depending on the physics model
+    r_pois = ("r", "r_gghh", "r_qqhh", "r_vhh")
     k_pois = ("kl", "kt", "CV", "C2V", "C2")
     all_pois = r_pois + k_pois
 
@@ -1035,8 +1037,8 @@ class POITask(DatacardTask, ParameterValuesTask):
             self.k_pois = tuple(self.__class__.k_pois)
         else:
             model = self.load_hh_model()[1]
-            self.r_pois = list(model.r_pois)
-            self.k_pois = list(model.k_pois)
+            self.r_pois = tuple(model.r_pois)
+            self.k_pois = tuple(model.k_pois)
         self.all_pois = self.r_pois + self.k_pois
 
         # check again of the chosen pois are available

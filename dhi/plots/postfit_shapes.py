@@ -83,15 +83,15 @@ def plot_s_over_b(
     bad_data_indices = set()
     missing_signals = defaultdict(int)
     missing_data = defaultdict(int)
-    for i, b in enumerate(bin_data):
-        if b.pre_signal is None:
+    for i, _bin in enumerate(bin_data):
+        if _bin.pre_signal is None:
             bad_signal_indices.add(i)
-            missing_signals[b.category] += 1
-        if b.data is None:
+            missing_signals[_bin.category] += 1
+        if _bin.data is None:
             bad_data_indices.add(i)
-            missing_data[b.category] += 1
+            missing_data[_bin.category] += 1
     if bad_signal_indices:
-        bin_data = [b for i, b in enumerate(bin_data) if i not in bad_signal_indices]
+        bin_data = [_bin for i, _bin in enumerate(bin_data) if i not in bad_signal_indices]
         warn(
             "WARNING: detected {} categories without signal contributions that will not be "
             "considered in this plot; ignore this warning when they are pure control regions; "
@@ -153,7 +153,7 @@ def plot_s_over_b(
         label = "Signal"
         if not show_best_fit:
             return label
-        if scale == 1:
+        if scale != 1:
             label += " x {}".format(try_int(scale))
         label += " ({} = {:.2f})".format(to_root_latex(poi_data[poi].label), signal_strength)
         return label
@@ -191,7 +191,7 @@ def plot_s_over_b(
     data_postfix = "" if unblinded else " (Asimov)"
     graph_d1 = ROOT.TGraphAsymmErrors(len(bins) - 1)
     r.setup_hist(graph_d1, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 1}, color=1)
-    draw_objs1.append((graph_d1, "PEZ,SAME"))
+    draw_objs1.append((graph_d1, "PEZ0,SAME"))
     legend_entries.insert(0, (graph_d1, "Data" + data_postfix, "LP"))
 
     # postfit S+B ratio histogram and a mask histogram to mimic errors
@@ -215,7 +215,7 @@ def plot_s_over_b(
     # data graph in the ratio
     graph_d2 = ROOT.TGraphAsymmErrors(len(bins) - 1)
     r.setup_hist(graph_d2, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 1}, color=1)
-    draw_objs2.append((graph_d2, "SAME,PEZ"))
+    draw_objs2.append((graph_d2, "SAME,PEZ0"))
 
     # fill histograms by traversing bin data
     for _bin in bin_data:
@@ -271,6 +271,7 @@ def plot_s_over_b(
         y1_max = y1_min * 10**(1.35 * math.log10(y1_max_value / y1_min))
     if y2_min is None:
         y2_min = 0.7
+    if y2_max is None:
         y2_max = 1.7
     h_dummy1.SetMinimum(y1_min)
     h_dummy1.SetMaximum(y1_max)
