@@ -180,11 +180,6 @@ class PlotPostfitSOverB(POIPlotTask):
     def __init__(self, *args, **kwargs):
         super(PlotPostfitSOverB, self).__init__(*args, **kwargs)
 
-        # disable prefit when unblinded
-        if self.prefit and self.unblinded:
-            self.logger.warning("prefit option is not available when unblinded")
-            self.prefit = False
-
         # show a warning when unblinded, not in paper mode and not hiding the best fit value
         if self.unblinded and not self.paper and self.show_best_fit:
             self.logger.warning("running unblinded but not hiding the best fit value")

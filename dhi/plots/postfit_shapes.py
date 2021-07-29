@@ -73,7 +73,6 @@ def plot_s_over_b(
     assert signal_scale_ratio != 0
     if not signal_superimposed:
         signal_scale_ratio = signal_scale
-    assert not (prefit and unblinded)
 
     # load the shape data from the fit diagnostics file
     bin_data = load_bin_data(fit_diagnostics_path)
