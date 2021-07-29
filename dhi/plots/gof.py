@@ -170,9 +170,9 @@ def plot_gofs(
     # check inputs
     n = len(data)
     for d in data:
-        assert("name" in d)
-        assert("data" in d)
-        assert("toys" in d)
+        assert "name" in d
+        assert "data" in d
+        assert "toys" in d
         d["toys"] = remove_nans(list(d["toys"]))
         d["central_toys"] = remove_outliers(list(d["toys"]))
 

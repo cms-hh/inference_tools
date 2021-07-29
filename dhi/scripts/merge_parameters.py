@@ -90,7 +90,7 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
 
     # store supported types, which must always be a subset of all columnar types
     supported_types = ["lnN", "lnU", "shape"]
-    assert(all(multi_match(t, columnar_parameter_directives) for t in supported_types))
+    assert all(multi_match(t, columnar_parameter_directives) for t in supported_types)
 
     # prepare the datacard path
     datacard = real_path(datacard)
@@ -486,7 +486,7 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                         merged_effect = "{}/{}".format(rnd(unc2ln(unc_d)), rnd(unc2ln(unc_u)))
                 else:
                     # this should never happen
-                    assert(False)
+                    assert False
 
                 # store the merged effect
                 merged_effects.append(str(merged_effect))

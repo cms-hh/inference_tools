@@ -44,7 +44,7 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
     # object in case the pattern has the format "obj_name:shape_pattern"
     def parse_shape_pattern(shape_line, tfile, process_name, bin_name, syst_name=None):
         # get the new process name
-        assert(renamer.has_rule(process_name))
+        assert renamer.has_rule(process_name)
         new_process_name = renamer.translate(process_name)
 
         # get the pattern

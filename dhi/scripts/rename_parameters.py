@@ -44,8 +44,8 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
     # as well as the containing object in case the pattern has the format "obj_name:shape_pattern"
     def parse_shape_pattern(shape_line, tfile, process_name, bin_name, syst_name, syst_dir):
         # get the new systematic name
-        assert(not skip_shapes)
-        assert(renamer.has_rule(syst_name))
+        assert not skip_shapes
+        assert renamer.has_rule(syst_name)
         new_syst_name = renamer.translate(syst_name)
 
         # get the pattern

@@ -78,9 +78,9 @@ def plot_limit_scan(
         # convert record array to dict mapping to arrays
         if isinstance(values, np.ndarray):
             values = {key: values[key] for key in values.dtype.names}
-        assert(scan_parameter in values)
+        assert scan_parameter in values
         if keys:
-            assert(all(key in values for key in keys))
+            assert all(key in values for key in keys)
         return values
 
     expected_values = check_values(expected_values, ["limit"])
@@ -315,10 +315,10 @@ def plot_limit_scans(
 
     # input checks
     n_graphs = len(expected_values)
-    assert(n_graphs >= 1)
-    assert(len(names) == n_graphs)
-    assert(all(scan_parameter in ev for ev in expected_values))
-    assert(all("limit" in ev for ev in expected_values))
+    assert n_graphs >= 1
+    assert len(names) == n_graphs
+    assert all(scan_parameter in ev for ev in expected_values)
+    assert all("limit" in ev for ev in expected_values)
     scan_values = expected_values[0][scan_parameter]
     has_thy = theory_values is not None
     has_thy_err = False
@@ -326,8 +326,8 @@ def plot_limit_scans(
         # convert record array to dicts mapping to arrays
         if isinstance(theory_values, np.ndarray):
             theory_values = {key: theory_values[key] for key in theory_values.dtype.names}
-        assert(scan_parameter in theory_values)
-        assert("xsec" in theory_values)
+        assert scan_parameter in theory_values
+        assert "xsec" in theory_values
         has_thy_err = "xsec_p1" in theory_values and "xsec_m1" in theory_values
 
     # set default ranges
@@ -525,12 +525,12 @@ def plot_limit_points(
     x_min_value = 1e5
     x_max_value = -1e5
     for d in data:
-        assert("name" in d)
-        assert("expected" in d)
+        assert "name" in d
+        assert "expected" in d
         x_min_value = min(x_min_value, min(d["expected"]))
         x_max_value = max(x_max_value, max(d["expected"]))
         if "observed" in d:
-            assert(isinstance(d["observed"], (float, int)))
+            assert isinstance(d["observed"], (float, int))
             has_obs = True
             x_min_value = min(x_min_value, d["observed"])
             x_max_value = max(x_max_value, d["observed"])
@@ -540,7 +540,7 @@ def plot_limit_points(
                 if len(d["theory"]) == 3:
                     has_thy_err = True
                 else:
-                    assert(len(d["theory"]) == 1)
+                    assert len(d["theory"]) == 1
             else:
                 d["theory"] = 3 * (d["theory"],)
             has_thy = True
@@ -794,8 +794,8 @@ def plot_limit_scan_2d(
             return list(map(check_values, values))
         if isinstance(values, np.ndarray):
             values = {key: np.array(values[key]) for key in values.dtype.names}
-        assert(scan_parameter1 in values)
-        assert(scan_parameter2 in values)
+        assert scan_parameter1 in values
+        assert scan_parameter2 in values
         return values
 
     def join_limits(values):
@@ -1050,12 +1050,12 @@ def plot_benchmark_limits(
     y_min_value = 1e5
     y_max_value = -1e5
     for d in data:
-        assert("name" in d)
-        assert("expected" in d)
+        assert "name" in d
+        assert "expected" in d
         y_min_value = min(y_min_value, min(d["expected"]))
         y_max_value = max(y_max_value, max(d["expected"]))
         if "observed" in d:
-            assert(isinstance(d["observed"], (float, int)))
+            assert isinstance(d["observed"], (float, int))
             has_obs = True
             y_min_value = min(y_min_value, d["observed"])
             y_max_value = max(y_max_value, d["observed"])

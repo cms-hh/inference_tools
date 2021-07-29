@@ -52,7 +52,7 @@ def split_parameter(datacard, param_name, specs, ensure_unique=False, ensure_all
     """
     # store supported types, which must always be a subset of all columnar types
     supported_types = ["lnN", "lnU"]
-    assert(all(multi_match(t, columnar_parameter_directives) for t in supported_types))
+    assert all(multi_match(t, columnar_parameter_directives) for t in supported_types)
 
     # prepare the datacard path
     datacard = real_path(datacard)

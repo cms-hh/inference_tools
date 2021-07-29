@@ -238,12 +238,12 @@ def plot_likelihood_scans_1d(
     # validate data entries
     for i, d in enumerate(data):
         # convert likelihood values to arrays
-        assert("values" in d)
+        assert "values" in d
         values = d["values"]
         if isinstance(values, np.ndarray):
             values = {k: values[k] for k in values.dtype.names}
-        assert(poi in values)
-        assert("dnll2" in values)
+        assert poi in values
+        assert "dnll2" in values
         # check poi minimum
         d.setdefault("poi_min", None)
         # default name
@@ -429,9 +429,9 @@ def plot_likelihood_scan_2d(
     for i, _values in enumerate(list(values)):
         if isinstance(_values, np.ndarray):
             _values = {key: np.array(_values[key]) for key in _values.dtype.names}
-        assert(poi1 in _values)
-        assert(poi2 in _values)
-        assert("dnll2" in _values)
+        assert poi1 in _values
+        assert poi2 in _values
+        assert "dnll2" in _values
         # preprocess values (nan detection, negative shift)
         _values["dnll2"], _values[poi1], _values[poi2] = _preprocess_values(_values["dnll2"],
             (poi1, _values[poi1]), (poi2, _values[poi2]), remove_nans=interpolate_nans,
@@ -651,16 +651,16 @@ def plot_likelihood_scans_2d(
     # validate data entries
     for i, d in enumerate(data):
         # convert likelihood values to arrays
-        assert("values" in d)
+        assert "values" in d
         values = d["values"]
         if isinstance(values, np.ndarray):
             values = {k: values[k] for k in values.dtype.names}
-        assert(poi1 in values)
-        assert(poi2 in values)
-        assert("dnll2" in values)
+        assert poi1 in values
+        assert poi2 in values
+        assert "dnll2" in values
         # check poi minima
         d["poi_mins"] = d.get("poi_mins") or [None, None]
-        assert(len(d["poi_mins"]) == 2)
+        assert len(d["poi_mins"]) == 2
         # default name
         d.setdefault("name", str(i + 1))
         values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}

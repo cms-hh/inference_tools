@@ -84,9 +84,9 @@ def plot_exclusion_and_bestfit_1d(
     ROOT = import_ROOT()
 
     # check minimal fields per data entry
-    assert(all("name" in d for d in data))
-    assert(all("expected_limits" in d for d in data))
-    assert(all("nll_values" in d for d in data))
+    assert all("name" in d for d in data)
+    assert all("expected_limits" in d for d in data)
+    assert all("nll_values" in d for d in data)
     n = len(data)
     has_obs = any("observed_limits" in d for d in data)
     scan_values = np.array(data[0]["expected_limits"][scan_parameter])
@@ -337,23 +337,23 @@ def plot_exclusion_and_bestfit_2d(
     observed_limits = rec2dict(observed_limits)
 
     # input checks
-    assert(scan_parameter1 in expected_limits)
-    assert(scan_parameter2 in expected_limits)
-    assert("limit" in expected_limits)
+    assert scan_parameter1 in expected_limits
+    assert scan_parameter2 in expected_limits
+    assert "limit" in expected_limits
     if observed_limits:
-        assert(scan_parameter1 in observed_limits)
-        assert(scan_parameter2 in observed_limits)
-        assert("limit" in observed_limits)
+        assert scan_parameter1 in observed_limits
+        assert scan_parameter2 in observed_limits
+        assert "limit" in observed_limits
     if xsec_values:
-        assert(scan_parameter1 in xsec_values)
-        assert(scan_parameter2 in xsec_values)
-        assert("xsec" in xsec_values)
+        assert scan_parameter1 in xsec_values
+        assert scan_parameter2 in xsec_values
+        assert "xsec" in xsec_values
     if nll_values:
-        assert(scan_parameter1 in nll_values)
-        assert(scan_parameter2 in nll_values)
-        assert("dnll2" in nll_values)
+        assert scan_parameter1 in nll_values
+        assert scan_parameter2 in nll_values
+        assert "dnll2" in nll_values
     if scan_minima:
-        assert(len(scan_minima) == 2)
+        assert len(scan_minima) == 2
 
     # store content flags
     has_unc1 = "limit_p1" in expected_limits and "limit_m1" in expected_limits

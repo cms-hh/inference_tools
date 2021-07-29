@@ -68,8 +68,8 @@ def plot_significance_scan_1d(
             values = {key: values[key] for key in values.dtype.names}
         values = {k: np.array(v) for k, v in values.items()}
         # check fields
-        assert(scan_parameter in values)
-        assert("significance" in values)
+        assert scan_parameter in values
+        assert "significance" in values
         # remove nans
         mask = ~np.isnan(values["significance"])
         values = {k: v[mask] for k, v in values.items()}
@@ -253,10 +253,10 @@ def plot_significance_scans_1d(
 
     # input checks
     n_graphs = len(values)
-    assert(n_graphs >= 1)
-    assert(len(names) == n_graphs)
-    assert(all(scan_parameter in vals for vals in values))
-    assert(all("significance" in vals for vals in values))
+    assert n_graphs >= 1
+    assert len(names) == n_graphs
+    assert all(scan_parameter in vals for vals in values)
+    assert all("significance" in vals for vals in values)
     scan_values = values[0][scan_parameter]
 
     # set default ranges
@@ -403,9 +403,9 @@ def plot_significance_scan_2d(
     for i, _values in enumerate(list(values)):
         if isinstance(_values, np.ndarray):
             _values = {key: np.array(_values[key]) for key in _values.dtype.names}
-        assert(scan_parameter1 in _values)
-        assert(scan_parameter2 in _values)
-        assert("significance" in _values)
+        assert scan_parameter1 in _values
+        assert scan_parameter2 in _values
+        assert "significance" in _values
         values[i] = _values
 
     # join values for contour calculation

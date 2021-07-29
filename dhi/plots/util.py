@@ -153,11 +153,11 @@ def frame_histogram(hist, x_width, y_width, mode="edge", frame_value=None, conto
     # when the mode is "contour-", edge values below the level are set to a higher value which
     # effectively closes contour areas that are below (thus the "-") the contour level
     # when the mode is "contour++", the opposite happens to close contour areas above the level
-    assert(mode in ["edge", "constant", "contour+", "contour-"])
+    assert mode in ["edge", "constant", "contour+", "contour-"]
     if mode == "constant":
-        assert(frame_value is not None)
+        assert frame_value is not None
     elif mode in ["contour+", "contour-"]:
-        assert(contour_level is not None)
+        assert contour_level is not None
 
     # first, extract histogram data into a 2D array (x-axis is inner dimension 1)
     data = np.array([
@@ -426,7 +426,7 @@ def get_graph_points(g, errors=False):
 
 
 def get_contour_box(graphs):
-    assert(graphs)
+    assert graphs
 
     x_values, y_values = [], []
     for g in graphs:
@@ -521,7 +521,7 @@ def get_text_extent(t, text_size=None, text_font=None):
         t.SetTextFont(text_font)
 
     # only available when the font precision is 3
-    assert(t.GetTextFont() % 10 == 3)
+    assert t.GetTextFont() % 10 == 3
 
     # create a temporary canvas and draw the text
     with temporary_canvas() as c:
