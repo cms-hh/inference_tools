@@ -170,9 +170,17 @@ to list all parameters of `SomeTask`.
 Now you are done with the setup and can start running the statistical inference!
 
 
+### Configurable postfit plots
+
+Postfit plots are not yet covered by the tasks listed above but will be provided in the future.
+In the meantime, you can use a separate set of scripts that allow to create fully configurable postfit plots for your analysis channel.
+For more info, see the dedicated [README](dhi/scripts/README_postfit_plots.md).
+
+
 ## Documentation
 
 The documentation is hosted at [cern.ch/cms-hh/tools/inference](https://cern.ch/cms-hh/tools/inference).
+
 
 ### For developers
 
@@ -201,9 +209,3 @@ To start a server to browse the pages, run
 
 and open your webbrowser at [http://localhost:8000](http://localhost:8000).
 By default, all pages are *automatically rebuilt and reloaded* when a source file is updated.
-
-
-## Developers
-
-- Peter Fackeldey: peter.fackeldey@cern.ch (email)
-- Marcel Rieger: marcel.rieger@cern.ch (email), marcel_r88 (skype)
