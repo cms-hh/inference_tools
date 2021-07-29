@@ -6,13 +6,14 @@ Postfit shape plots using ROOT.
 
 import math
 import array
+from collections import defaultdict
 
 import six
 import uproot
 
 from dhi.config import poi_data, campaign_labels, colors, cms_postfix
 from dhi.util import (
-    import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors, make_list,
+    import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors, make_list, warn,
 )
 from dhi.plots.util import use_style, create_model_parameters
 
@@ -76,6 +77,37 @@ def plot_s_over_b(
 
     # load the shape data from the fit diagnostics file
     bin_data = load_bin_data(fit_diagnostics_path)
+
+    # warn about categories with missing signal or data contributions
+    bad_signal_indices = set()
+    bad_data_indices = set()
+    missing_signals = defaultdict(int)
+    missing_data = defaultdict(int)
+    for i, b in enumerate(bin_data):
+        if b.pre_signal is None:
+            bad_signal_indices.add(i)
+            missing_signals[b.category] += 1
+        if b.data is None:
+            bad_data_indices.add(i)
+            missing_data[b.category] += 1
+    if bad_signal_indices:
+        bin_data = [b for i, b in enumerate(bin_data) if i not in bad_signal_indices]
+        warn(
+            "WARNING: detected {} categories without signal contributions that will not be "
+            "considered in this plot; ignore this warning when they are pure control regions; "
+            "categories:\n  - {}".format(
+                len(missing_signals),
+                "\n  - ".join("{} ({} bins)".format(c, n) for c, n in missing_signals.items()),
+            )
+        )
+    if len(bad_data_indices) not in [0, len(bin_data)]:
+        warn(
+            "WARNING: detected {} categories without data contributions; this can affect the "
+            "agreement in the produced plot; categories:\n  - {}".format(
+                len(missing_data),
+                "\n  - ".join("{} ({} bins)".format(c, n) for c, n in missing_data.items()),
+            )
+        )
 
     # compute prefit log(s/b) where possible
     x_min = 1.e5
@@ -311,11 +343,15 @@ def load_bin_data(fit_diagnostics_path):
         d_post = cat_dir_post.Get("data")
 
         # some dimension checks
-        n = s_pre.GetNbinsX()
-        assert(b_pre.GetNbinsX() == a_pre.GetNbinsX() == n)
-        assert(s_post.GetNbinsX() == b_post.GetNbinsX() == a_post.GetNbinsX() == n)
-        assert(not d_pre or d_pre.GetN() == n)
-        assert(not d_post or d_post.GetN() == n)
+        n = b_pre.GetNbinsX()
+        assert b_pre.GetNbinsX() == a_pre.GetNbinsX() == n
+        assert b_post.GetNbinsX() == a_post.GetNbinsX() == n
+        # total_signal's might be missing when a pure control region was fitted
+        if s_pre:
+            assert s_pre.GetNbinsX() == s_post.GetNbinsX() == n
+        # data might be missing when blinded
+        if d_pre:
+            assert d_pre.GetN() == d_post.GetN() == n
 
         # read bins one by one
         for i in range(n):
@@ -326,18 +362,20 @@ def load_bin_data(fit_diagnostics_path):
 
             # fill bin data
             bin_data.append(DotDict(
-                pre_signal=s_pre.GetBinContent(i + 1),
-                pre_signal_err_up=s_pre.GetBinErrorUp(i + 1),
-                pre_signal_err_down=s_pre.GetBinErrorLow(i + 1),
+                category=cat_name,
+                bin=i,
+                pre_signal=s_pre.GetBinContent(i + 1) if s_pre else None,
+                pre_signal_err_up=s_pre.GetBinErrorUp(i + 1) if s_pre else None,
+                pre_signal_err_down=s_pre.GetBinErrorLow(i + 1) if s_pre else None,
                 pre_background=b_pre.GetBinContent(i + 1),
                 pre_background_err_up=b_pre.GetBinErrorUp(i + 1),
                 pre_background_err_down=b_pre.GetBinErrorLow(i + 1),
                 pre_all=a_pre.GetBinContent(i + 1),
                 pre_all_err_up=a_pre.GetBinErrorUp(i + 1),
                 pre_all_err_down=a_pre.GetBinErrorLow(i + 1),
-                post_signal=s_post.GetBinContent(i + 1),
-                post_signal_err_up=s_post.GetBinErrorUp(i + 1),
-                post_signal_err_down=s_post.GetBinErrorLow(i + 1),
+                post_signal=s_post.GetBinContent(i + 1) if s_post else None,
+                post_signal_err_up=s_post.GetBinErrorUp(i + 1) if s_post else None,
+                post_signal_err_down=s_post.GetBinErrorLow(i + 1) if s_post else None,
                 post_background=b_post.GetBinContent(i + 1),
                 post_background_err_up=b_post.GetBinErrorUp(i + 1),
                 post_background_err_down=b_post.GetBinErrorLow(i + 1),
