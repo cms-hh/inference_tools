@@ -707,14 +707,14 @@ def write_datacard_pretty(f, blocks, skip_fields=False):
         for line in align(lines):
             write(line)
 
-    # write groups and auto mc stats aligned
-    for field in ["groups", "auto_mc_stats"]:
+    # write auto mc stats aligned
+    for field in ["auto_mc_stats"]:
         if field not in skip_fields and blocks.get(field):
             for line in align(blocks[field]):
                 write(line)
 
-    # write nuisance edits and unknown lines with proper spacing
-    for field in ["nuisance_edits", "unknown"]:
+    # write groups, nuisance edits and unknown lines with proper spacing
+    for field in ["groups", "nuisance_edits", "unknown"]:
         if field not in skip_fields and blocks.get(field):
             for line in blocks[field]:
                 write(line.strip().split())

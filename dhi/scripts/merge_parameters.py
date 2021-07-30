@@ -399,6 +399,8 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                         # get single uncertainty values
                         uncs = [ln2unc(f[0]) for f in eff]
                         merged_effect = rnd(unc2ln(sum(v**2. for v in uncs)**0.5))
+                        if float(merged_effect) == 1:
+                            merged_effect = "-"
                     else:
                         # get both sets of uncertainties
                         uncs_d = [(ln2unc(f[0]) if len(f) == 2 else -ln2unc(f[0])) for f in eff]
@@ -483,7 +485,12 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                         sign_u = -1 if comb_u[0] < 0 else 1
                         unc_d = sign_d * sum(d**2. for d in comb_d)**0.5
                         unc_u = sign_u * sum(u**2. for u in comb_u)**0.5
-                        merged_effect = "{}/{}".format(rnd(unc2ln(unc_d)), rnd(unc2ln(unc_u)))
+                        merged_effect_d = rnd(unc2ln(unc_d))
+                        merged_effect_u = rnd(unc2ln(unc_u))
+                        if float(merged_effect_d) == 1 and float(merged_effect_u == 1):
+                            merged_effect = "-"
+                        else:
+                            merged_effect = "{}/{}".format(merged_effect_d, merged_effect_u)
                 else:
                     # this should never happen
                     assert False
