@@ -307,7 +307,7 @@ def plot_likelihood_scans_1d(
         r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
         draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
-        legend_entries.insert(-1, (g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])),
+        legend_entries.insert(0, (g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])),
             "LP" if show_points else "L"))
 
         # line for best fit value

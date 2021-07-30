@@ -633,11 +633,11 @@ class HHModelBase(PhysicsModel):
         # names and values of physics options
         self.hh_options = {}
 
-        # actual r and k pois, depending on registerd formulae, set in reset_pois
+        # actual r and k pois, depending on used formulae and profiling options, set in reset_pois
         self.r_pois = None
         self.k_pois = None
 
-        # mapping of (formula, sample) -> expression name modeling the linear sample scales
+        # mapping of (formula, sample) -> expression name that models the linear sample scales
         self.r_expressions = {}
 
         # nested mapping of formula -> sample -> matched processes for book keeping
@@ -696,6 +696,9 @@ class HHModelBase(PhysicsModel):
 
             self.set_opt(name, value)
             print("[INFO] using model option {} = {}".format(name, value))
+
+        # since settings might have changed, reset pois again
+        self.reset_pois()
 
     def reset_pois(self):
         """
@@ -894,17 +897,15 @@ class HHModel(HHModelBase):
                 self.get_var(p).setConstant(True)
             pois.append(p)
 
-        # add coupling modifiers
-        for p, (value, start, stop) in self.k_pois.items():
+        # first, add all known coupling modifiers
+        for p in self.K_POIS:
+            value, start, stop = self.k_pois.get(p, self.K_POIS[p])
             self.make_var("{}[{},{},{}]".format(p, value, start, stop))
-            # freeze when not profiled
-            profile = self.opt("doProfile" + p, False)
-            if not profile:
-                self.get_var(p).setConstant(True)
-                pois.append(p)
-            else:
-                # remove from k pois
-                pass
+
+        # then, configure coupling modifiers used as potential POIs
+        for p, (value, start, stop) in self.k_pois.items():
+            self.get_var(p).setConstant(True)
+            pois.append(p)
 
         # define the POI group
         self.make_set("POI", ",".join(pois))
