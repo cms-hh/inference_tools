@@ -35,7 +35,7 @@ from collections import OrderedDict, defaultdict
 
 import sympy
 
-from HiggsAnalysis.CombinedLimit.PhysicsModel import PhysicsModel
+from HiggsAnalysis.CombinedLimit.PhysicsModel import PhysicsModelBase
 from HiggsAnalysis.CombinedLimit.SMHiggsBuilder import SMHiggsBuilder
 
 
@@ -613,7 +613,7 @@ class HBRScaler(object):
 ### Model classes
 ####################################################################################################
 
-class HHModelBase(PhysicsModel):
+class HHModelBase(PhysicsModelBase):
     """
     Base class for HH physics models providing a common interface for subclasses such as the default
     HH model or a potential EFT model (e.g. kt-kl-C2).
@@ -625,7 +625,7 @@ class HHModelBase(PhysicsModel):
     K_POIS = OrderedDict()
 
     def __init__(self, name):
-        PhysicsModel.__init__(self)  # requires old-style inheritance
+        super(HHModelBase, self).__init__()
 
         # attributes
         self.name = name
