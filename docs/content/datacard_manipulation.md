@@ -90,6 +90,10 @@ Example usage:
 # rename via simple rules
 > rename_parameters.py datacard.txt btag_JES=CMS_btag_JES -d output_directory
 
+# rename multiple parameters using a replacement rule
+# (note the quotes)
+> rename_parameters.py datacard.txt '^parameter_(.+)$=param_\1' -d output_directory
+
 # rename via rules in files
 > rename_parameters.py datacard.txt my_rules.txt -d output_directory
 
@@ -101,7 +105,11 @@ positional arguments:
                         --directory)
   OLD_NAME=NEW_NAME     translation rules for one or multiple parameter names
                         in the format 'OLD_NAME=NEW_NAME', or files containing
-                        these rules in the same format line by line
+                        these rules in the same format line by line; OLD_NAME
+                        can be a regular expression starting with '^' and
+                        ending with '$'; in this case, group placeholders in
+                        NEW_NAME are replaced with the proper matches as
+                        described in re.sub()
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -545,6 +553,10 @@ Example usage:
 # rename via simple rules
 > rename_processes.py datacard.txt ggH_process=ggHH_kl_1_kt_1 -d output_directory
 
+# rename multiple processes using a replacement rule
+# (note the quotes)
+> rename_processes.py datacard.txt '^ggH_process_(.+)$=ggHH_kl_1_kt_1_\1' -d output_directory
+
 # rename via rules in files
 > rename_processes.py datacard.txt my_rules.txt -d output_directory
 
@@ -556,7 +568,11 @@ positional arguments:
                         --directory)
   OLD_NAME=NEW_NAME     translation rules for one or multiple process names in
                         the format 'OLD_NAME=NEW_NAME', or files containing
-                        these rules in the same format line by line
+                        these rules in the same format line by line; OLD_NAME
+                        can be a regular expression starting with '^' and
+                        ending with '$'; in this case, group placeholders in
+                        NEW_NAME are replaced with the proper matches as
+                        described in re.sub()
 
 optional arguments:
   -h, --help            show this help message and exit

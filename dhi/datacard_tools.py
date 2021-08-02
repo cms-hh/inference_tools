@@ -5,6 +5,7 @@ Helpers to manipulate and work with datacards and shape files.
 """
 
 import os
+import re
 import shutil
 import contextlib
 import logging
@@ -68,12 +69,10 @@ class DatacardRenamer(object):
         # store attributes
         self._datacard_orig = datacard
         self.datacard = real_path(datacard)
-        self._rules_orig = rules or []
-        self.rules = OrderedDict()
+        self.rules = rules
         self.skip_shapes = skip_shapes
         self.logger = logger or logging.getLogger(
-            "{}_{}".format(self.__class__.__name__, hex(id(self)))
-        )
+            "{}_{}".format(self.__class__.__name__, hex(id(self))))
 
         # datacard object if required
         self._dc = None
@@ -82,9 +81,6 @@ class DatacardRenamer(object):
         self._tfile_cache = TFileCache(logger=self.logger)
         self._tobj_input_cache = defaultdict(dict)
         self._tobj_output_cache = defaultdict(dict)
-
-        # validate renaming rules right away
-        self._validate_rules()
 
         # when a directory is given, run the bundling
         if directory:
@@ -95,8 +91,26 @@ class DatacardRenamer(object):
         self._tobj_output_cache.clear()
         self._tfile_cache._clear()
 
-    def _validate_rules(self):
-        rules = self.parse_rules(self._rules_orig)
+    def _expand_and_validate_rules(self, rules, old_names=None):
+        # check rule formats
+        rules = self.parse_rules(rules)
+
+        # expand patterns
+        if old_names:
+            _rules = []
+            for old_name, new_name in rules:
+                is_pattern = old_name.startswith("^") and old_name.endswith("$")
+                if is_pattern:
+                    # compare to all existing old names and store the result as the new name
+                    for _old_name in old_names:
+                        if re.match(old_name, _old_name):
+                            _new_name = re.sub(old_name, new_name, _old_name)
+                            _rules.append((_old_name, _new_name))
+                else:
+                    _rules.append((old_name, new_name))
+            rules = _rules
+
+        # check uniqueness
         old_names = [name for name, _ in rules]
         for rule in rules:
             # rules must have length 2
@@ -106,18 +120,16 @@ class DatacardRenamer(object):
 
             # old names must be unique
             if old_names.count(old_name) > 1:
-                raise ValueError(
-                    "old process name {} not unique in translationion rules".format(old_name)
-                )
+                raise ValueError("old process name {} not unique in translationion rules".format(
+                    old_name))
 
             # new name must not be in old names
             if new_name in old_names:
-                raise ValueError(
-                    "new process name {} must not be in old process names".format(new_name)
-                )
+                raise ValueError("new process name {} must not be in old process names".format(
+                    new_name))
 
         # store in the dictionary
-        self.rules = OrderedDict(map(tuple, rules))
+        return OrderedDict(map(tuple, rules))
 
     def _bundle_files(self, directory):
         self.logger.info("bundle datacard files into directory {}".format(directory))
@@ -155,10 +167,8 @@ class DatacardRenamer(object):
                     if syst_effect:
                         key = (bin_name, process_name)
                         if syst_name in shape_syst_names[key]:
-                            self.logger.warning(
-                                "shape systematic {} appears more than once for "
-                                "bin {} and process {}".format(syst_name, *key)
-                            )
+                            self.logger.warning("shape systematic {} appears more than once for "
+                                "bin {} and process {}".format(syst_name, *key))
                         else:
                             shape_syst_names[key].append(syst_name)
 
@@ -179,14 +189,25 @@ class DatacardRenamer(object):
         return cache[tfile][obj_name]
 
     @contextlib.contextmanager
-    def start(self):
+    def start(self, expand=None):
         # clear all caches
         self._clear_caches()
 
         # yield the context and handle errors
         try:
             with self._tfile_cache:
-                with manipulate_datacard(self.datacard) as blocks:
+                with manipulate_datacard(self.datacard, read_structured=True) as (blocks, content):
+                    old_names = None
+                    if expand == "processes":
+                        old_names = set(p["name"] for p in content["processes"])
+                    elif expand == "parameters":
+                        old_names = set(p["name"] for p in content["parameters"])
+                    elif expand:
+                        raise Exception("unknown expand type '{}'".format(expand))
+
+                    # expand and validate rules
+                    self.rules = self._expand_and_validate_rules(self.rules, old_names=old_names)
+
                     yield blocks
 
                 # add all output objects to the tfile cache for writing
@@ -195,11 +216,8 @@ class DatacardRenamer(object):
                         self._tfile_cache.write_tobj(f, tobj)
 
         except BaseException as e:
-            self.logger.error(
-                "an exception of type {} occurred while renaming the datacard".format(
-                    e.__class__.__name__
-                )
-            )
+            self.logger.error("an exception of type {} occurred while renaming the datacard".format(
+                e.__class__.__name__))
             raise
 
         finally:
@@ -847,9 +865,8 @@ def update_shape_name(towner, old_name, new_name):
     combine.
     """
     if not towner:
-        raise Exception(
-            "owner object is null pointer, cannot rename shape {} to {}".format(old_name, new_name)
-        )
+        raise Exception("owner object is null pointer, cannot rename shape {} to {}".format(
+            old_name, new_name))
 
     elif towner.InheritsFrom("TDirectoryFile"):
         # strategy: get the object, make a copy with the new name, delete all cycles of the old
@@ -1010,8 +1027,10 @@ def expand_file_lines(paths, skip_comments=True):
     """
     lines = []
     for path in paths:
+        is_pattern = path.startswith("^") or "*" in path
+
         # first try to interpret it as a file
-        _path = real_path(path) if isinstance(path, six.string_types) else ""
+        _path = real_path(path) if isinstance(path, six.string_types) and not is_pattern else ""
         if not os.path.isfile(_path):
             # not a file, use as is
             lines.append(path)

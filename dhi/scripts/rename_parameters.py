@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-"""
+r"""
 Script to rename one or multiple (nuisance) parameters in a datacard.
 Example usage:
 
 # rename via simple rules
 > rename_parameters.py datacard.txt btag_JES=CMS_btag_JES -d output_directory
+
+# rename multiple parameters using a replacement rule
+# (note the quotes)
+> rename_parameters.py datacard.txt '^parameter_(.+)$=param_\1' -d output_directory
 
 # rename via rules in files
 > rename_parameters.py datacard.txt my_rules.txt -d output_directory
@@ -28,7 +32,9 @@ logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="125"):
     """
     Reads a *datacard* and renames parameters according to translation *rules*. A rule should be a
-    sequence of length 2 containing the old and the new parameter name.
+    sequence of length 2 containing the old and the new parameter name. When the old name starts
+    with "^" and ends with "$", it is interpreted as a regular expression and the new name can
+    contain group placeholders as understood by *re.sub()*.
 
     When *directory* is *None*, the input *datacard* and all shape files it refers to are updated
     in-place. Otherwise, both the changed datacard and its shape files are stored in the specified
@@ -71,7 +77,7 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
         return old_name, new_name, towner
 
     # start renaming
-    with renamer.start() as blocks:
+    with renamer.start(expand="parameters") as blocks:
         # rename parameter names in the "parameters" block itself
         if blocks.get("parameters"):
             def sub_fn(match):
@@ -177,7 +183,9 @@ if __name__ == "__main__":
         "update (see --directory)")
     parser.add_argument("rules", nargs="+", metavar="OLD_NAME=NEW_NAME", help="translation rules "
         "for one or multiple parameter names in the format 'OLD_NAME=NEW_NAME', or files "
-        "containing these rules in the same format line by line")
+        "containing these rules in the same format line by line; OLD_NAME can be a regular "
+        "expression starting with '^' and ending with '$'; in this case, group placeholders in "
+        "NEW_NAME are replaced with the proper matches as described in re.sub()")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not change parameter "
