@@ -906,31 +906,37 @@ def update_shape_name(towner, old_name, new_name):
         return tobj_clone
 
     elif towner.InheritsFrom("RooWorkspace"):
-        # strategy: get the pdf and optional norm object, simply rename them
-        pdf = towner.pdf(old_name)
-        if not pdf:
-            raise Exception("no pdf named {} found in {}".format(old_name, towner))
+        # strategy: get the data or pdf, and optional norm objects, simply rename them
+        tdata = towner.data(old_name)
+        tpdf = towner.pdf(old_name)
+        if not tdata and not tpdf:
+            raise Exception("no pdf or data named {} found in {}".format(old_name, towner))
 
         # stop here when the name does not change at all
         if new_name == old_name:
-            return pdf
+            return tdata or tpdf
 
         # go ahead and rename
-        pdf.SetName(new_name)
-        pdf.SetTitle(pdf.GetTitle().replace(old_name, new_name))
+        if tdata:
+            tdata.SetName(new_name)
+            tdata.SetTitle(tdata.GetTitle().replace(old_name, new_name))
+        if tpdf:
+            tpdf.SetName(new_name)
+            tpdf.SetTitle(tpdf.GetTitle().replace(old_name, new_name))
 
         # also rename the norm object when existing
         old_norm_name = old_name + "_norm"
         new_norm_name = new_name + "_norm"
-        norm = towner.arg(old_norm_name)
-        if norm:
-            norm.SetName(new_norm_name)
-            norm.SetTitle(norm.GetTitle().replace(old_norm_name, new_norm_name))
+        tnorm = towner.arg(old_norm_name)
+        if tnorm:
+            tnorm.SetName(new_norm_name)
+            tnorm.SetTitle(tnorm.GetTitle().replace(old_norm_name, new_norm_name))
+
+        return tdata or tpdf
 
     else:
-        raise NotImplementedError(
-            "cannot extract shape from {} object for updating".format(towner.ClassName())
-        )
+        raise NotImplementedError("cannot extract shape from {} object for updating".format(
+            towner.ClassName()))
 
 
 def expand_variables(s, process=None, channel=None, systematic=None, mass=None):
