@@ -608,7 +608,12 @@ class TFileCache(object):
         self._r_cache = {}
 
         # cache of files opened for writing
-        # abs_path -> {tmp_path: str, tfile: TFile, objects: [(tobj, towner, name), ...]}
+        # abs_path -> {
+        #     tmp_path: str,
+        #     tfile: TFile,
+        #     write_objects: [(tobj, towner, name), ...],
+        #     delete_objects: [abs_key, ...],
+        # }
         self._w_cache = {}
 
     def __enter__(self):
@@ -650,13 +655,15 @@ class TFileCache(object):
 
                 # open the file and cache it
                 tfile = ROOT.TFile(tmp_path, mode)
-                self._w_cache[abs_path] = {"tmp_path": tmp_path, "tfile": tfile, "objects": []}
+                self._w_cache[abs_path] = {
+                    "tmp_path": tmp_path,
+                    "tfile": tfile,
+                    "write_objects": [],
+                    "delete_objects": [],
+                }
 
-                self.logger.debug(
-                    "opened tfile {} with mode {} in temporary location {}".format(
-                        abs_path, mode, tmp_path
-                    )
-                )
+                self.logger.debug("opened tfile {} with mode {} in temporary location {}".format(
+                    abs_path, mode, tmp_path))
 
             return self._w_cache[abs_path]["tfile"]
 
@@ -667,19 +674,41 @@ class TFileCache(object):
             # lookup the cache entry by the tfile reference
             for data in self._w_cache.values():
                 if data["tfile"] == path:
-                    data["objects"].append((tobj, towner, name))
+                    data["write_objects"].append((tobj, towner, name))
                     break
             else:
-                raise Exception("cannot write object {} unknown TFile {}".format(tobj, path))
+                raise Exception("cannot write object {} into unknown TFile {}".format(
+                    tobj, path))
 
         else:
             abs_path = real_path(path)
             if abs_path not in self._w_cache:
                 raise Exception("cannot write object {} into unopened file {}".format(tobj, path))
 
-            self._w_cache[abs_path]["objects"].append((tobj, towner, name))
+            self._w_cache[abs_path]["write_objects"].append((tobj, towner, name))
 
-    def finalize(self, skip_write=False):
+    def delete_tobj(self, path, abs_key):
+        ROOT = import_ROOT()
+
+        if isinstance(path, ROOT.TFile):
+            # lookup the cache entry by the tfile reference
+            for data in self._w_cache.values():
+                if data["tfile"] == path:
+                    data["delete_objects"].append(abs_key)
+                    break
+            else:
+                raise Exception("cannot delete object {} from unknown TFile {}".format(
+                    abs_key, path))
+
+        else:
+            abs_path = real_path(path)
+            if abs_path not in self._w_cache:
+                raise Exception("cannot delete object {} from unopened file {}".format(
+                    abs_key, path))
+
+            self._w_cache[abs_path]["delete_objects"].append(abs_key)
+
+    def finalize(self, skip_write=False, skip_delete=False):
         if self._r_cache:
             # close files opened for reading
             for abs_path, data in self._r_cache.items():
@@ -701,21 +730,26 @@ class TFileCache(object):
 
                 if not skip_write:
                     data["tfile"].cd()
-                    self.logger.debug("going to write {} objects".format(len(data["objects"])))
-                    for tobj, towner, name in data["objects"]:
+                    self.logger.debug("writing {} objects".format(len(data["write_objects"])))
+                    for tobj, towner, name in data["write_objects"]:
                         if towner:
                             towner.cd()
                         args = (name,) if name else ()
                         tobj.Write(*args)
-                        # self.logger.debug("written object '{}'".format(tobj.GetName()))
+
+                if not skip_delete:
+                    data["tfile"].cd()
+                    self.logger.debug("deleting {} objects".format(len(data["delete_objects"])))
+                    for abs_key in data["delete_objects"]:
+                        data["tfile"].Delete(abs_key)
+                        self.logger.debug("deleted {} from tfile at {}".format(abs_key, abs_path))
 
                 data["tfile"].Close()
 
-                if not skip_write:
+                if not skip_write and not skip_delete:
                     shutil.move(data["tmp_path"], abs_path)
-                    self.logger.debug(
-                        "moving back temporary file {} to {}".format(data["tmp_path"], abs_path)
-                    )
+                    self.logger.debug("moving back temporary file {} to {}".format(
+                        data["tmp_path"], abs_path))
 
             self.logger.debug("closed {} cached file(s) opened for writing".format(
                 len(self._w_cache)))
