@@ -34,7 +34,7 @@ parameter_directives = [
     "param",
     "rateParam",
     "flatParam",
-    "extArgs",
+    "extArg",
 ]
 
 #: Parameter directives that are configured per bin and process column.
@@ -791,7 +791,8 @@ def update_shape_files(func, datacard, target_datacard=None, skip=("FAKE",)):
     # use the content manipulation helper
     with manipulate_datacard(datacard, target_datacard=target_datacard) as content:
         # iterate through shape lines and change them in-place
-        for i, line in enumerate(content["shapes"]):
+        new_shape_files = {}
+        for i, line in enumerate(list(content["shapes"])):
             parts = line.split()
             if len(parts) < 4:
                 continue
@@ -814,6 +815,23 @@ def update_shape_files(func, datacard, target_datacard=None, skip=("FAKE",)):
             if new_shape_file != shape_file:
                 new_line = " ".join([prefix, process, channel, new_shape_file] + patterns)
                 content["shapes"][i] = new_line
+                new_shape_files[shape_file] = new_shape_file
+
+        # replace shape files in extArg's
+        for i, line in enumerate(list(content["parameters"])):
+            parts = line.split()
+            if len(parts) < 3 or parts[1] != "extArg":
+                continue
+
+            # get the shape file
+            shape_file, rest = parts[2].split(":", 1) if ":" in parts[2] else (parts[2], "")
+            if rest:
+                rest = ":" + rest
+
+            # update if needed
+            if shape_file in new_shape_files:
+                new_line = " ".join(parts[:2] + [new_shape_files[shape_file] + rest] + parts[3:])
+                content["parameters"][i] = new_line
 
 
 def bundle_datacard(datacard, directory, shapes_directory=".", skip_shapes=False):
@@ -1027,9 +1045,8 @@ def expand_file_lines(paths, skip_comments=True):
     """
     lines = []
     for path in paths:
-        is_pattern = path.startswith("^") or "*" in path
-
         # first try to interpret it as a file
+        is_pattern = isinstance(path, six.string_types) and (path.startswith("^") or "*" in path)
         _path = real_path(path) if isinstance(path, six.string_types) and not is_pattern else ""
         if not os.path.isfile(_path):
             # not a file, use as is

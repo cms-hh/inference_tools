@@ -87,11 +87,17 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
                 return " ".join([new_name, rest])
 
             for i, param_line in enumerate(list(blocks["parameters"])):
-                old_name = param_line.split()[0]
+                parts = param_line.split()
+                old_name = parts[0]
                 if renamer.has_rule(old_name):
                     expr = r"^({})\s(.*)$".format(old_name)
                     param_line = re.sub(expr, sub_fn, param_line)
                     blocks["parameters"][i] = param_line
+
+                    # extArg's are not supported yet
+                    if parts[1] == "extArg":
+                        raise Exception("'{}' is an extArg, but the renaming of extArg's is not "
+                            "supported yet".format(old_name))
 
         # update them in group listings
         if blocks.get("groups"):
