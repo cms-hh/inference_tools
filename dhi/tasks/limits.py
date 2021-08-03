@@ -252,6 +252,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
                     [self.scan_parameter],
                     thy_linspace,
                     normalize=True,
+                    skip_unc=False,
                     xsec_kwargs=self.parameter_values_dict,
                 )
 
@@ -391,6 +392,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
                         [self.scan_parameter],
                         thy_linspace,
                         normalize=True,
+                        skip_unc=False,
                         xsec_kwargs=self.parameter_values_dict,
                     )
 
@@ -509,6 +511,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
                         [self.scan_parameter],
                         thy_linspace,
                         normalize=True,
+                        skip_unc=False,
                         xsec_kwargs=self.parameter_values_dict,
                     )
 
@@ -678,12 +681,13 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask, BoxPlotTask):
                 )
                 xsec_unit = self.xsec
             else:
-                # normalized values at one with errors
+                # normalized values
                 thy_value = self.get_theory_xsecs(
                     self.poi,
                     [self.pseudo_scan_parameter],
                     [self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.0)],
                     normalize=True,
+                    skip_unc=False,
                     xsec_kwargs=self.parameter_values_dict,
                 )
 

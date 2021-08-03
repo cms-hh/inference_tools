@@ -1267,13 +1267,15 @@ ggf_k_factor = 1.115
 # (a0, a1, a2) -> a0 + a1 * kl + a2 * kl**2
 # values from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=70
 ggf_kl_coeffs = {
+    # nlo and nnlo coefficients
     "nlo": (62.5339, -44.3231, 9.6340),
     "nnlo": (70.3874, -50.4111, 11.0595),
+    # QCDscale + mtop uncertainty coefficients (max/min to be taken from 1 and 2)
     "unc_u1": (76.6075, -56.4818, 12.6350),
     "unc_u2": (75.4617, -56.3164, 12.7135),
     "unc_d1": (57.6809, -42.9905, 9.58474),
     "unc_d2": (58.3769, -43.9657, 9.87094),
-    # old uncertainty coefficients for backward checks from
+    # old QCDscale only uncertainty coefficients for backward checks from
     # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=65
     # "unc_u1": (72.0744, -51.7362, 11.3712),
     # "unc_u2": (70.9286, -51.5708, 11.4497),

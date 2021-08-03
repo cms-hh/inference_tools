@@ -218,7 +218,7 @@ class HHModelTask(AnalysisTask):
 
     @classmethod
     def _get_theory_xsecs(cls, hh_model, r_poi, param_names, param_values, unit=None, br=None,
-            normalize=False, xsec_kwargs=None):
+            normalize=False, skip_unc=False, xsec_kwargs=None):
         import numpy as np
 
         # set defaults
@@ -230,10 +230,13 @@ class HHModelTask(AnalysisTask):
         # create the xsec getter
         get_xsec = cls._create_xsec_func(hh_model, r_poi, unit, br=br)
 
+        # check if uncertainties can / should be added
+        add_unc = get_xsec.has_unc and not skip_unc
+
         # store as records
         records = []
         dtype = [(p, np.float32) for p in param_names] + [("xsec", np.float32)]
-        if get_xsec.has_unc:
+        if add_unc:
             dtype.extend([("xsec_p1", np.float32), ("xsec_m1", np.float32)])
         for values in param_values:
             # prepare the xsec kwargs
@@ -243,7 +246,7 @@ class HHModelTask(AnalysisTask):
 
             # create the record, potentially with uncertainties and normalization
             record = values + (get_xsec(**_xsec_kwargs),)
-            if get_xsec.has_unc:
+            if add_unc:
                 record += (
                     get_xsec(unc="up", **_xsec_kwargs),
                     get_xsec(unc="down", **_xsec_kwargs),

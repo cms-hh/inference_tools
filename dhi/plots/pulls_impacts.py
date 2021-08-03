@@ -396,8 +396,8 @@ def plot_pulls_impacts(
         # campaign label
         if campaign:
             campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
-            campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, x_offset=10,
-                y_offset=80)
+            campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, x_offset=22,
+                y_offset=90 if paper else 105)
             draw_objs.append(campaign_label)
 
         # draw objects

@@ -219,6 +219,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             msg = "{} failing parameter fit(s) detected:\n".format(len(fail_info))
             for b, name, _ in fail_info:
                 msg += "  {} (branch {})\n".format(name, b)
+            msg += "\nBranches: {}".format(",".join(map(str, failing_branches)))
             msg += c("\nYou have two options\n\n", style=("underlined", "bright"))
             msg += "  " + c("1.", "magenta")
             msg += " You can try to remove the corresponding output files via\n\n"
