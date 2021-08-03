@@ -128,6 +128,9 @@ class DatacardRenamer(object):
                 raise ValueError("new process name {} must not be in old process names".format(
                     new_name))
 
+        # sort such that the longest name is first to prevent replacing only parts of names
+        rules.sort(key=lambda rule: -len(rule[0]))
+
         # store in the dictionary
         return OrderedDict(map(tuple, rules))
 

@@ -129,6 +129,30 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
                     group_line = re.sub(expr, sub_fn, group_line)
                     blocks["groups"][i] = group_line
 
+        # update them in nuisace edit lines
+        if blocks.get("nuisance_edits"):
+            def sub_fn(match):
+                start, old_name, end = match.groups()
+                new_name = renamer.translate(old_name)
+                logger.info("rename nuisance {} in nuisance edit line '{}' to {}".format(old_name,
+                    start.split()[2], new_name))
+                return " ".join([start, new_name, end]).strip()
+
+            for i, edit_line in enumerate(list(blocks["nuisance_edits"])):
+                # check if the action is supported and build a regexp for sub
+                parts = edit_line.split()
+                if len(parts) >= 6 and parts[2] in ["add", "drop"]:
+                    expr = r"^(nuisance\s+edit\s+{}\s+[^\s]+\s+[^\s]+)\s+({})\s+(.*)$"
+                elif len(parts) >= 4 and parts[2] in ["changepdf", "freeze"]:
+                    expr = r"^(nuisance\s+edit\s+{})\s+({})\s+(.*)$"
+                else:
+                    continue
+
+                for old_name in renamer.rules:
+                    _expr = expr.format(parts[2], old_name)
+                    edit_line = re.sub(_expr, sub_fn, edit_line + " ")
+                blocks["nuisance_edits"][i] = edit_line
+
         # rename shapes
         if not skip_shapes and blocks.get("shapes"):
             # determine shape systematic names per (bin, process) pair

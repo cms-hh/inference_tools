@@ -620,10 +620,19 @@ class TFileCache(object):
         return self
 
     def __exit__(self, err_type, err_value, traceback):
-        self.finalize(skip_write=err_type is not None)
+        self.finalize(skip_write=err_type is not None, skip_delete=err_type is not None)
 
     def _clear(self):
+        # close and clear r_cache
+        for data in self._r_cache.values():
+            if data["tfile"] and data["tfile"].IsOpen():
+                data["tfile"].Close()
         self._r_cache.clear()
+
+        # close and clear w_cache
+        for data in self._w_cache.values():
+            if data["tfile"] and data["tfile"].IsOpen():
+                data["tfile"].Close()
         self._w_cache.clear()
 
     def open_tfile(self, path, mode):
@@ -669,6 +678,7 @@ class TFileCache(object):
 
     def write_tobj(self, path, tobj, towner=None, name=None):
         ROOT = import_ROOT()
+        print("register for writing", path, tbj, towner, name)
 
         if isinstance(path, ROOT.TFile):
             # lookup the cache entry by the tfile reference
@@ -728,25 +738,28 @@ class TFileCache(object):
                 if not data["tfile"] or not data["tfile"].IsOpen():
                     continue
 
-                if not skip_write:
+                changed_file = False
+                if not skip_write and data["write_objects"]:
                     data["tfile"].cd()
-                    self.logger.debug("writing {} objects".format(len(data["write_objects"])))
+                    self.logger.warning("writing {} objects".format(len(data["write_objects"])))
                     for tobj, towner, name in data["write_objects"]:
                         if towner:
                             towner.cd()
                         args = (name,) if name else ()
                         tobj.Write(*args)
+                        changed_file = True
 
-                if not skip_delete:
+                if not skip_delete and data["delete_objects"]:
                     data["tfile"].cd()
                     self.logger.debug("deleting {} objects".format(len(data["delete_objects"])))
                     for abs_key in data["delete_objects"]:
                         data["tfile"].Delete(abs_key)
                         self.logger.debug("deleted {} from tfile at {}".format(abs_key, abs_path))
+                        changed_file = True
 
                 data["tfile"].Close()
 
-                if not skip_write and not skip_delete:
+                if not skip_write or not skip_delete:
                     shutil.move(data["tmp_path"], abs_path)
                     self.logger.debug("moving back temporary file {} to {}".format(
                         data["tmp_path"], abs_path))
