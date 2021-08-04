@@ -102,7 +102,7 @@ class BaseTask(law.Task):
                     text += " (from branch {})".format(law.util.colored("0", "red"))
                 text += ": "
 
-                cmd = dep.build_command()
+                cmd = dep.get_command()
                 if cmd:
                     cmd = law.util.quote_cmd(cmd) if isinstance(cmd, (list, tuple)) else cmd
                     text += law.util.colored(cmd, "cyan")
@@ -312,11 +312,8 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         self.bundle(bundle)
 
         # log the size
-        self.publish_message(
-            "bundled repository archive, size is {:.2f} {}".format(
-                *law.util.human_bytes(bundle.stat().st_size)
-            )
-        )
+        self.publish_message("bundled repository archive, size is {:.2f} {}".format(
+            *law.util.human_bytes(bundle.stat().st_size)))
 
         # transfer the bundle
         self.transfer(bundle)
@@ -373,11 +370,8 @@ class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile):
         bundle.dump(software_path, filter=_filter)
 
         # log the size
-        self.publish_message(
-            "bundled software archive, size is {:.2f} {}".format(
-                *law.util.human_bytes(bundle.stat().st_size)
-            )
-        )
+        self.publish_message("bundled software archive, size is {:.2f} {}".format(
+            *law.util.human_bytes(bundle.stat().st_size)))
 
         # transfer the bundle
         self.transfer(bundle)
@@ -403,6 +397,10 @@ class CommandTask(AnalysisTask):
     def build_command(self):
         # this method should build and return the command to run
         raise NotImplementedError
+
+    def get_command(self):
+        # this method is returning the actual, possibly cleaned command
+        return self.build_command()
 
     def touch_output_dirs(self):
         # keep track of created uris so we can avoid creating them twice
@@ -454,8 +452,8 @@ class CommandTask(AnalysisTask):
         # first, create all output directories
         self.touch_output_dirs()
 
-        # build the command
-        cmd = self.build_command()
+        # get the command
+        cmd = self.get_command()
 
         # run it
         self.run_command(cmd, **kwargs)

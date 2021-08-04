@@ -8,6 +8,7 @@ import os
 import sys
 import re
 import glob
+import shlex
 import importlib
 import itertools
 import functools
@@ -1301,6 +1302,8 @@ class CombineCommandTask(CommandTask):
     combine_stable_options = (
         "--cminDefaultMinimizerType Minuit2"
         " --cminDefaultMinimizerStrategy 0"
+        " --cminApproxPreFitTolerance 0.1"
+        " --cminFallbackAlgo Minuit2,1:0.1"
         " --cminFallbackAlgo Minuit2,0:1.0"
     )
 
@@ -1309,6 +1312,7 @@ class CombineCommandTask(CommandTask):
     combine_stable_options_hesse = (
         "--cminDefaultMinimizerType Minuit2"
         " --cminDefaultMinimizerStrategy 1"
+        " --cminApproxPreFitTolerance 0.1"
         " --cminFallbackAlgo Minuit2,1:1.0"
     )
 
@@ -1318,6 +1322,25 @@ class CombineCommandTask(CommandTask):
         " --X-rtd MINIMIZER_multiMin_maskConstraints"
         " --X-rtd MINIMIZER_multiMin_maskChannels=2"
     )
+
+    option_aliases = {
+        "-d": ["--datacard"],
+        "-M": ["--method"],
+        "-t": ["--toys"],
+        "-v": ["--verbose"],
+        "-m": ["--mass"],
+        "-s": ["--seed"],
+        "-w": ["--workspaceName"],
+        "-n": ["--name"],
+        "-g": ["-group"],
+        "-C": ["--cl"],
+        "-D": ["--dataset"],
+        "-H": ["--hintMethod"],
+        "-L": ["--LoadLibrary"],
+        "--blind": ["--run expected", "--noFitAsimov"],
+    }
+
+    multi_options = ["--cminFallbackAlgo", "--LoadLibrary", "--keyword-value", "--X-rtd"]
 
     exclude_index = True
 
@@ -1334,6 +1357,65 @@ class CombineCommandTask(CommandTask):
         if self.optimize_discretes:
             args += " " + self.combine_discrete_options
         return args
+
+    def get_command(self):
+        cmd = super(CombineCommandTask, self).get_command()
+
+        def is_number(s):
+            try:
+                return isinstance(float(s), float)
+            except:
+                return False
+
+        def is_opt(s):
+            return s.startswith("-") and not is_number(s[1:])
+
+        # extract the "combine ..." part
+        cmds = [c.strip() for c in cmd.split(" && ")]
+        for i, c in enumerate(list(cmds)):
+            if not c.startswith("combine "):
+                continue
+
+            # first, replace aliases
+            parts = []
+            for part in shlex.split(c)[1:]:
+                if is_opt(part) and part in self.option_aliases:
+                    parts.extend(self.option_aliases[part])
+                else:
+                    parts.append(part)
+
+            # group into (opt, value|None) pairs
+            leading_values = []
+            params = []
+            for part in parts:
+                if is_opt(part):
+                    params.append([part])
+                elif params:
+                    params[-1].append(part)
+                else:
+                    leading_values.append(part)
+
+            # list indices of occurence per option
+            indices = defaultdict(list)
+            for j, param in enumerate(params):
+                indices[param[0]].append(j)
+
+            # remove last occurences of options that are allowed only once
+            params = [
+                param for j, param in enumerate(params)
+                if param[0] in self.multi_options or j == max(indices[param[0]])
+            ]
+
+            # remove params with existing, but all empty values
+            params = [
+                param for param in params
+                if len(param) == 1 or any(param[1:])
+            ]
+
+            # build the full command again
+            cmds[i] = law.util.quote_cmd(["combine"] + leading_values + law.util.flatten(params))
+
+        return " && ".join(cmds)
 
 
 class CombineDatacards(DatacardTask, CombineCommandTask):
