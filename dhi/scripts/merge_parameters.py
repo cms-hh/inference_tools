@@ -529,7 +529,7 @@ if __name__ == "__main__":
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
         "the output directory when --directory is set")
     parser.add_argument("--unique", "-u", action="store_true", help="only merge parameters when at "
-        "most on of them as an effect in a bin process pair")
+        "most one of them has an effect in a bin process pair")
     parser.add_argument("--flip-parameters", help="comma-separated list of parameters whose effect "
         "should be flipped, i.e., flips effects of up and down variations; supports patterns")
     parser.add_argument("--auto-rate-flip", action="store_true", help="only for lnN and lnU; when "

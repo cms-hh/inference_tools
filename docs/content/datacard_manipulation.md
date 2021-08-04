@@ -231,7 +231,7 @@ optional arguments:
                         changed in-place
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
-  --unique, -u          only merge parameters when at most on of them as an
+  --unique, -u          only merge parameters when at most one of them has an
                         effect in a bin process pair
   --flip-parameters FLIP_PARAMETERS
                         comma-separated list of parameters whose effect should
