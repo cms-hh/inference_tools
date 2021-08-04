@@ -35,7 +35,7 @@ from dhi.util import TFileCache, import_ROOT, create_console_logger, patch_objec
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
-def remove_unused_shapes(datacard, rules, directory=None, mass="125"):
+def remove_unused_shapes(datacard, rules, directory=None, mass="125", inplace_shapes=False):
     """
     Reads a *datacard* and removes shapes from referenced files that are not used by any shape
     parameter and that any of the passed *rules*. A rule can be a 2-tuple containing a bin pattern
@@ -126,9 +126,9 @@ def remove_unused_shapes(datacard, rules, directory=None, mass="125"):
             keep_shapes[shape_file].append(syst_shape_name_down)
 
     # use a TFileCache for removing files
-    with TFileCache(logger=logger) as cache:
-        for shape_file, keep in keep_shapes.items():
-            tfile = cache.open_tfile(shape_file, "UPDATE")
+    for shape_file, keep in keep_shapes.items():
+        with TFileCache(logger=logger) as cache:
+            tfile = cache.open_tfile(shape_file, "UPDATE", tmp=not inplace_shapes)
 
             # recursively get keys of all non-directory objects
             keys = []
@@ -141,7 +141,7 @@ def remove_unused_shapes(datacard, rules, directory=None, mass="125"):
                     abs_key = (owner_key + "/" + key) if owner_key else key
                     if isinstance(tobj, ROOT.TDirectory):
                         lookup.append((tobj, abs_key))
-                    elif isinstance(tobj, ROOT.TH1):
+                    elif isinstance(tobj, ROOT.TH1) and key != "data_obs":
                         keys.append(abs_key)
 
             logger.info("keeping {} of {} shapes in file {}".format(
@@ -149,7 +149,8 @@ def remove_unused_shapes(datacard, rules, directory=None, mass="125"):
 
             # remove all keys that are not kept
             for key in keys:
-                if key not in keep and "data_obs" not in key:
+                if key not in keep:
+                    logger.debug("dropping {} from {}".format(key, shape_file))
                     cache.delete_tobj(tfile, key + ";*")
 
 
@@ -162,13 +163,16 @@ if __name__ == "__main__":
 
     parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
         "update (see --directory)")
-    parser.add_argument("rules", nargs="+", metavar="BIN,PROCESS", help="names of bins and "
-        "processes for which unused shapes are removed; both names support patterns where a "
-        "leading '!' negates their meaning; each argument can also be a file containing "
-        "'BIN,PROCESS' values line by line")
+    parser.add_argument("rules", nargs="*", metavar="BIN,PROCESS", default=["*,*"], help="names of "
+        "bins and processes for which unused shapes are removed; both names support patterns where "
+        "a leading '!' negates their meaning; each argument can also be a file containing "
+        "'BIN,PROCESS' values line by line; defaults to '*,*', removing unused shapes in all bins "
+        "and processes")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
+    parser.add_argument("--inplace-shapes", "-i", action="store_true", help="change shape files "
+        "in-place rather than in a temporary file first")
     parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
     parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
         "line; default: {}".format(logger.name))
@@ -179,4 +183,5 @@ if __name__ == "__main__":
 
     # run the renaming
     with patch_object(logger, "name", args.log_name):
-        remove_unused_shapes(args.input, args.rules, directory=args.directory, mass=args.mass)
+        remove_unused_shapes(args.input, args.rules, directory=args.directory, mass=args.mass,
+            inplace_shapes=args.inplace_shapes)

@@ -921,8 +921,9 @@ optional arguments:
 > remove_unused_shapes.py --help
 
 usage: remove_unused_shapes.py [-h] [--directory [DIRECTORY]] [--mass MASS]
-                               [--log-level LOG_LEVEL] [--log-name LOG_NAME]
-                               DATACARD BIN,PROCESS [BIN,PROCESS ...]
+                               [--inplace-shapes] [--log-level LOG_LEVEL]
+                               [--log-name LOG_NAME]
+                               DATACARD [BIN,PROCESS [BIN,PROCESS ...]]
 
 Script to remove all shapes from files referenced in a datacard that are not
 used. This is necessary to combine cards with parameters of different types
@@ -949,7 +950,8 @@ positional arguments:
                         are removed; both names support patterns where a
                         leading '!' negates their meaning; each argument can
                         also be a file containing 'BIN,PROCESS' values line by
-                        line
+                        line; defaults to '*,*', removing unused shapes in all
+                        bins and processes
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -958,6 +960,8 @@ optional arguments:
                         files are stored; when not set, the input files are
                         changed in-place
   --mass MASS, -m MASS  mass hypothesis; default: 125
+  --inplace-shapes, -i  change shape files in-place rather than in a temporary
+                        file first
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
   --log-name LOG_NAME   name of the logger on the command line; default:
