@@ -30,6 +30,7 @@ def plot_s_over_b(
     signal_superimposed=False,
     signal_scale=1.,
     signal_scale_ratio=1.,
+    show_signal=True,
     show_best_fit=True,
     y1_min=None,
     y1_max=None,
@@ -52,8 +53,8 @@ def plot_s_over_b(
     purposes, the fitted signal can be scaled by *signal_scale*, and, when drawing the signal
     superimposed, by *signal_scale_ratio* at the bottom ratio pad. When *signal_superimposed* is
     *True*, the signal at the top pad is not drawn stacked on top of the background but as a
-    separate histogram. When *show_best_fit* is *False*, the value of the signal scale is not shown
-    in the legend labels.
+    separate histogram. The signal is not shown at all when *show_signal* is *False*. When
+    *show_best_fit* is *False*, the value of the signal scale is not shown in the legend labels.
 
     *y1_min*, *y1_max*, *y2_min* and *y2_max* define the ranges of the y-axes of the upper pad and
     ratio pad, respectively. *model_parameters* can be a dictionary of key-value pairs of model
@@ -160,18 +161,19 @@ def plot_s_over_b(
     # superimposed signal histogram at the top
     hist_s1 = ROOT.TH1F("s_post1", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_s1, props={"LineColor": colors.blue_signal})
-    if signal_superimposed:
+    if signal_superimposed and show_signal:
         draw_objs1.append((hist_s1, "SAME,HIST"))
         legend_entries.append((hist_s1, signal_label(signal_scale), "L"))
 
     # postfit signal histogram at the top
     hist_sb1 = ROOT.TH1F("sb_post1", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_sb1, props={"FillColor": colors.blue_signal})
-    if signal_superimposed:
-        legend_entries.append((hist_sb1, signal_label(signal_scale_ratio), "AF"))
-    else:
-        legend_entries.append((hist_sb1, signal_label(signal_scale), "AF"))
-        draw_objs1.append((hist_sb1, "SAME,HIST"))
+    if show_signal:
+        if signal_superimposed:
+            legend_entries.append((hist_sb1, signal_label(signal_scale_ratio), "AF"))
+        else:
+            legend_entries.append((hist_sb1, signal_label(signal_scale), "AF"))
+            draw_objs1.append((hist_sb1, "SAME,HIST"))
 
     # postfit B histogram at the top
     fit_type = "pre" if prefit else "post"
@@ -196,7 +198,8 @@ def plot_s_over_b(
     # postfit S+B ratio histogram and a mask histogram to mimic errors
     hist_sb2 = ROOT.TH1F("sb_post2", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_sb2, props={"FillColor": colors.blue_signal})
-    draw_objs2.append((hist_sb2, "SAME,HIST"))
+    if show_signal:
+        draw_objs2.append((hist_sb2, "SAME,HIST"))
     hist_mask2 = ROOT.TH1F("mask_post2", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_mask2, props={"FillColor": colors.white})
     draw_objs2.append((hist_mask2, "SAME,HIST"))
@@ -251,7 +254,7 @@ def plot_s_over_b(
         # bottom signal + background histogram and mask
         sb = b + s * signal_scale_ratio
         hist_sb2.SetBinContent(i + 1, max(sb / b_safe, 1.))
-        hist_mask2.SetBinContent(i + 1, min(sb / b_safe, 1.))
+        hist_mask2.SetBinContent(i + 1, min(sb / b_safe, 1.) if show_signal else 1.)
         # data points at the top
         graph_d1.SetPoint(i, x, d)
         graph_d1.SetPointError(i, 0., 0., d_err_down, d_err_up)

@@ -156,6 +156,11 @@ class PlotPostfitSOverB(POIPlotTask):
         description="scale the postfit signal in the ratio plot by this value; only considered "
         "when drawing the signal superimposed; default: 1.0",
     )
+    hide_signal = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="hide the signal contribution completely; default: False",
+    )
     ratio_min = luigi.FloatParameter(
         default=-1000.0,
         significant=False,
@@ -215,6 +220,7 @@ class PlotPostfitSOverB(POIPlotTask):
             signal_superimposed=self.signal_superimposed,
             signal_scale=self.signal_scale,
             signal_scale_ratio=self.signal_scale_ratio,
+            show_signal=not self.hide_signal,
             show_best_fit=self.show_best_fit,
             y1_min=self.get_axis_limit("y_min"),
             y1_max=self.get_axis_limit("y_max"),
