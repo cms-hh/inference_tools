@@ -1302,7 +1302,6 @@ class CombineCommandTask(CommandTask):
     combine_stable_options = (
         "--cminDefaultMinimizerType Minuit2"
         " --cminDefaultMinimizerStrategy 0"
-        " --cminApproxPreFitTolerance 0.1"
         " --cminFallbackAlgo Minuit2,1:0.1"
         " --cminFallbackAlgo Minuit2,0:1.0"
     )
@@ -1312,7 +1311,6 @@ class CombineCommandTask(CommandTask):
     combine_stable_options_hesse = (
         "--cminDefaultMinimizerType Minuit2"
         " --cminDefaultMinimizerStrategy 1"
-        " --cminApproxPreFitTolerance 0.1"
         " --cminFallbackAlgo Minuit2,1:1.0"
     )
 
