@@ -112,6 +112,16 @@ class BaseTask(law.Task):
             else:
                 print(offset + law.util.colored("not a CommandTask", "yellow"))
 
+    def _repr_params(self, *args, **kwargs):
+        params = super(BaseTask, self)._repr_params(*args, **kwargs)
+
+        # remove empty params by default
+        for key, value in list(params.items()):
+            if not value and value != 0:
+                del params[key]
+
+        return params
+
 
 class AnalysisTask(BaseTask):
 
