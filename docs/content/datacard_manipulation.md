@@ -1013,6 +1013,73 @@ optional arguments:
 ```
 
 
+### Extract fit results from FitDiagnostics
+
+```shell hl_lines="1"
+> extract_fit_result.py --help
+
+usage: extract_fit_result.py [-h] [--keep KEEP] [--skip SKIP]
+                             [--log-level LOG_LEVEL] [--log-name LOG_NAME]
+                             INPUT FIT OUTPUT
+
+Script to extract values from a RooFitResult object in a ROOT file into a json
+file with configurable patterns for variable selection. Example usage:
+
+# extract variables from a result 'fit_b' starting with 'CMS_'
+# (note the quotes)
+> extract_fit_result.py fit.root fit_b output.json --keep 'CMS_*'
+
+# extract variables from a result 'fit_b' except thise starting with 'CMS_'
+# (note the quotes)
+> extract_fit_result.py fit.root fit_b output.json --skip 'CMS_*'
+
+positional arguments:
+  INPUT                 the input root file to read
+  FIT                   the name of the RootFitResult
+  OUTPUT                name of the output file to write
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --keep KEEP, -k KEEP  comma-separated patterns matching names of variables
+                        to keep
+  --skip SKIP, -s SKIP  comma-separated patterns matching names of variables
+                        to skip
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        extract_fit_result
+```
+
+
+### Inject fit results into a workspace
+
+```shell hl_lines="1"
+> inject_fit_result.py --help
+
+usage: inject_fit_result.py [-h] [--log-level LOG_LEVEL] [--log-name LOG_NAME]
+                            INPUT OUTPUT WORKSPACE
+
+Script to inject nuisance values from a json file into a RooFit workspace. The
+json file must follow the same structure as produced by extract_fit_result.py.
+Example usage:
+
+# inject variables into a workspace "w"
+> inject_fit_result.py input.json workspace.root w
+
+positional arguments:
+  INPUT                 the input json file to read
+  OUTPUT                the workspace file
+  WORKSPACE             name of the workspace
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        inject_fit_result
+```
+
+
 ### Bundle a datacard
 
 ```shell hl_lines="1"
