@@ -755,7 +755,7 @@ class TFileCache(object):
                     # write objects
                     if not skip_write and data["write_objects"]:
                         data["tfile"].cd()
-                        self.logger.warning("writing {} objects".format(len(data["write_objects"])))
+                        self.logger.debug("writing {} objects".format(len(data["write_objects"])))
                         for tobj, towner, name in data["write_objects"]:
                             if towner:
                                 towner.cd()

@@ -186,7 +186,8 @@ class DatacardRenamer(object):
 
         cache = self._tobj_input_cache if mode == "READ" else self._tobj_output_cache
         if obj_name not in cache[tfile]:
-            self.logger.debug("loading object {} from file {}".format(obj_name, tfile.GetPath()))
+            self.logger.debug("loading object {} from file {}".format(
+                obj_name, tfile.GetPath().rstrip("/")))
             cache[tfile][obj_name] = tfile.Get(obj_name)
 
         return cache[tfile][obj_name]

@@ -94,10 +94,25 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
                     param_line = re.sub(expr, sub_fn, param_line)
                     blocks["parameters"][i] = param_line
 
-                    # extArg's are not supported yet
-                    if parts[1] == "extArg":
-                        raise Exception("'{}' is an extArg, but the renaming of extArg's is not "
-                            "supported yet".format(old_name))
+                    # for extArg and rateParam, change the name of the var in the linked workspace
+                    expr1 = r".*\s+extArg\s+([^\s]+\.root)\:([^\s]+).*$"
+                    expr2 = r".*\s+rateParam\s+[^\s]+\s+[^\s]+\s+([^\s]+\.root)\:([^\s]+).*$"
+                    m = re.match(expr1, param_line) or re.match(expr2, param_line)
+                    if m:
+                        ws_file, ws_name = m.groups()
+                        ws_file = os.path.join(os.path.dirname(renamer.datacard), ws_file)
+                        ws = renamer.get_tobj(ws_file, ws_name, "UPDATE")
+                        if not ws:
+                            raise Exception("workspace {} not found in file {} referenced by "
+                                "extArg {}".format(ws_name, ws_file, old_name))
+                        new_name = renamer.translate(old_name)
+                        targ = ws.arg(old_name)
+                        if targ:
+                            targ.SetName(new_name)
+                            targ.SetTitle(targ.GetTitle().replace(old_name, new_name))
+                        else:
+                            logger.warning("extArg {} not found in workspace {} in tfile {}".format(
+                                old_name, ws_name, ws_file))
 
         # update them in group listings
         if blocks.get("groups"):

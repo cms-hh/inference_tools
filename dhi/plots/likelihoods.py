@@ -559,16 +559,16 @@ def plot_likelihood_scan_2d(
         if show_best_fit_error:
             return "{} = {} ,  {} = {}".format(
                 to_root_latex(poi_data[poi1].label),
-                num1.str(format="%.2f", style="root") if num1 else "-",
+                "-" if num1 is None else num1.str(format="%.2f", style="root"),
                 to_root_latex(poi_data[poi2].label),
-                num2.str(format="%.2f", style="root") if num2 else "-",
+                "-" if num2 is None else num2.str(format="%.2f", style="root"),
             )
         else:
             return "{} = {:.2f} ,  {} = {:.2f}".format(
                 to_root_latex(poi_data[poi1].label),
-                num1() if num1 else "-",
+                "-" if num1 is None else num1(),
                 to_root_latex(poi_data[poi2].label),
-                num2() if num2 else "-",
+                "-" if num2 is None else num2(),
             )
 
     legend_entries = []

@@ -165,7 +165,7 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                                 old_name, new_name, new_pattern, towner = parse_shape_pattern(
                                     shape_line, tfile, process_name, bin_name, syst_name + syst_dir)
                                 if not skip_shapes:
-                                    logger.info("renaming syst shape {} to {} for process {} in "
+                                    logger.debug("renaming syst shape {} to {} for process {} in "
                                         "bin {}".format(old_name, new_name, process_name, bin_name))
                                     update_shape_name(towner, old_name, new_name)
                                 if not process_is_wildcard:
