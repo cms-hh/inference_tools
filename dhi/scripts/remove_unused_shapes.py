@@ -71,7 +71,7 @@ def remove_unused_shapes(datacard, rules, directory=None, mass="125", inplace_sh
         datacard = bundle_datacard(datacard, directory, skip_shapes=False)
 
     # read the datacard and remember which shapes to keep
-    keep_shapes = defaultdict(list)
+    keep_shapes = defaultdict(set)
     content = read_datacard_structured(datacard)
 
     # per shape file, build a list of all shape objects to keep
@@ -102,7 +102,12 @@ def remove_unused_shapes(datacard, rules, directory=None, mass="125", inplace_sh
         # keep the nominal shape
         nom_shape_name = expand_variables(shape_data["nom_pattern"], channel=shape_data["bin"],
             process=shape_data["process"], mass=mass)
-        keep_shapes[shape_file].append(nom_shape_name)
+        keep_shapes[shape_file].add(nom_shape_name)
+
+        # do the same for data_obs (this might be called multiple times)
+        data_shape_name = expand_variables(shape_data["nom_pattern"], channel=shape_data["bin"],
+            process="data_obs", mass=mass)
+        keep_shapes[shape_file].add(data_shape_name)
 
         # check if the systematic shapes should be kept (if any)
         for syst_data in content["parameters"]:
@@ -122,8 +127,8 @@ def remove_unused_shapes(datacard, rules, directory=None, mass="125", inplace_sh
             syst_shape_name_down = expand_variables(shape_data["syst_pattern"],
                 channel=shape_data["bin"], process=shape_data["process"],
                 systematic=syst_data["name"] + "Down", mass=mass)
-            keep_shapes[shape_file].append(syst_shape_name_up)
-            keep_shapes[shape_file].append(syst_shape_name_down)
+            keep_shapes[shape_file].add(syst_shape_name_up)
+            keep_shapes[shape_file].add(syst_shape_name_down)
 
     # use a TFileCache for removing files
     for shape_file, keep in keep_shapes.items():
@@ -141,7 +146,7 @@ def remove_unused_shapes(datacard, rules, directory=None, mass="125", inplace_sh
                     abs_key = (owner_key + "/" + key) if owner_key else key
                     if isinstance(tobj, ROOT.TDirectory):
                         lookup.append((tobj, abs_key))
-                    elif isinstance(tobj, ROOT.TH1) and key != "data_obs":
+                    elif isinstance(tobj, ROOT.TH1):
                         keys.append(abs_key)
 
             logger.info("keeping {} of {} shapes in file {}".format(

@@ -335,9 +335,9 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                             # TODO: maybe go with something like 2.4 in
                             # https://www.slac.stanford.edu/econf/C030908/papers/WEMT002.pdf
                             diffs_d_n = [d for d in diffs_d if d < 0]
-                            diffs_d_p = [d for d in diffs_d if d > 0]
+                            diffs_d_p = [d for d in diffs_d if d >= 0]
                             diffs_u_n = [u for u in diffs_u if u < 0]
-                            diffs_u_p = [u for u in diffs_u if u > 0]
+                            diffs_u_p = [u for u in diffs_u if u >= 0]
 
                             # abort or warn when signs of effects are mixed and the relative effect
                             # strength is larger than a threshold value

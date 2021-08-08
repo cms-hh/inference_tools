@@ -126,7 +126,6 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
-            " --robustFit 1"
             " {self.combine_optimization_args}"
             " {self.custom_args}"
             " {branch_opts}"

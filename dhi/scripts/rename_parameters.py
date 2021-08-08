@@ -212,7 +212,7 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
                                 process_name, bin_name, syst_name, syst_dir)
 
                             # update the shape name
-                            logger.info("renaming syst shape {} to {} for process {} in "
+                            logger.debug("renaming syst shape {} to {} for process {} in "
                                 "bin {}".format(old_name, new_name, process_name, bin_name))
                             update_shape_name(towner, old_name, new_name)
 

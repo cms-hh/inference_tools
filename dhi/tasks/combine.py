@@ -1318,24 +1318,31 @@ class CombineCommandTask(CommandTask):
         "likelihoods with containing discrete parameters; default: False",
     )
 
-    # default minimizer options with strategy 0
+    # default minimizer options with initial strategy 0
     combine_stable_options = (
-        "--cminDefaultMinimizerType Minuit2"
+        " --cminDefaultMinimizerType Minuit2"
         " --cminDefaultMinimizerStrategy 0"
-        " --cminFallbackAlgo Minuit2,1:0.1"
+        " --cminDefaultMinimizerTolerance 0.1"
+        " --cminFallbackAlgo Minuit2,1:0.2"
+        " --cminFallbackAlgo Minuit2,1:0.5"
+        " --cminFallbackAlgo Minuit2,1:1.0"
         " --cminFallbackAlgo Minuit2,0:1.0"
     )
 
-    # default minimizer options with strategy 1, i.e., for fits requiring Hesse
+    # default minimizer options with initial strategy 1, i.e., for fits requiring Hesse
     # see http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/runningthetool#generic-minimizer-options
     combine_stable_options_hesse = (
-        "--cminDefaultMinimizerType Minuit2"
+        " --cminDefaultMinimizerType Minuit2"
         " --cminDefaultMinimizerStrategy 1"
+        " --cminDefaultMinimizerTolerance 0.1"
+        " --cminFallbackAlgo Minuit2,1:0.2"
+        " --cminFallbackAlgo Minuit2,1:0.5"
         " --cminFallbackAlgo Minuit2,1:1.0"
+        " --cminFallbackAlgo Minuit2,0:1.0"
     )
 
     combine_discrete_options = (
-        "--X-rt MINIMIZER_freezeDisassociatedParams"
+        " --X-rtd MINIMIZER_freezeDisassociatedParams"
         " --X-rtd MINIMIZER_multiMin_hideConstants"
         " --X-rtd MINIMIZER_multiMin_maskConstraints"
         " --X-rtd MINIMIZER_multiMin_maskChannels=2"
@@ -1358,7 +1365,7 @@ class CombineCommandTask(CommandTask):
         "--blind": ["--run expected", "--noFitAsimov"],
     }
 
-    multi_options = ["--cminFallbackAlgo", "--LoadLibrary", "--keyword-value", "--X-rtd"]
+    multi_options = ["--cminFallbackAlgo", "--LoadLibrary", "--keyword-value", "--X-rtd", "--X-rt"]
 
     exclude_index = True
 
@@ -1548,8 +1555,9 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         # copy shape files and the datacard to the output location
         output = self.output()
         output.parent.touch()
-        for basename in tmp_dir.listdir(pattern="*.root", type="f"):
-            tmp_dir.child(basename).copy_to(output.parent)
+        with self.publish_step("moving shape files ..."):
+            for basename in tmp_dir.listdir(pattern="*.root", type="f"):
+                tmp_dir.child(basename).move_to(output.parent)
         output_card.copy_to(output)
 
 

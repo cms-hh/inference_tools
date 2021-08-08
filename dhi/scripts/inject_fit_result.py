@@ -59,7 +59,7 @@ def inject_fit_result(input_file, workspace_file, workspace_name):
             v.setMax(d["max"])
             logger.debug("injected parameter {}".format(name))
             n += 1
-        logger.info("injected {} parameters into workspace".format(n))
+        logger.info("injected {} / {} parameters into workspace".format(n, len(data)))
 
 
 if __name__ == "__main__":
