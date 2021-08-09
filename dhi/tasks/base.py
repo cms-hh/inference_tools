@@ -15,7 +15,9 @@ import law
 import six
 
 
-law.contrib.load("git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks")
+law.contrib.load(
+    "cms", "git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks",
+)
 
 
 class LocalTarget(law.LocalTarget):
@@ -228,12 +230,14 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         if not self.htcondor_getenv:
             reqs["repo"] = BundleRepo.req(self, replicas=3)
             reqs["software"] = BundleSoftware.req(self, replicas=3)
+            if os.environ["DHI_COMBINE_STANDALONE"] != "True":
+                reqs["cmssw"] = BundleCMSSW.req(self, replicas=3)
 
         return reqs
 
     def htcondor_output_directory(self):
         # the directory where submission meta data and logs should be stored
-        return self.local_target(store="$DHI_STORE_REPO", dir=True)
+        return self.local_target(store="$DHI_STORE_JOBS", dir=True)
 
     def htcondor_bootstrap_file(self):
         # each job can define a bootstrap file that is executed prior to the actual job
@@ -247,6 +251,9 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         # copy the entire environment when requests
         if self.htcondor_getenv:
             config.custom_content.append(("getenv", "true"))
+
+        # include the wlcg specific tools script in the input sandbox
+        config.input_files.append(law.util.law_src_path("contrib/wlcg/scripts/law_wlcg_tools.sh"))
 
         # the CERN htcondor setup requires a "log" config, but we can safely set it to /dev/null
         # if you are interested in the logs of the batch system itself, set a meaningful value here
@@ -263,22 +270,45 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         if self.htcondor_group and self.htcondor_group != law.NO_STR:
             config.custom_content.append(("+AccountingGroup", self.htcondor_group))
 
+        # helper to return uris and a file pattern for replicated bundles
+        reqs = self.htcondor_workflow_requires()
+        def get_bundle_info(task):
+            uris = task.output().dir.uri(cmd="filecopy", return_all=True)
+            pattern = os.path.basename(task.get_file_pattern())
+            return ",".join(uris), pattern
+
         # render_variables are rendered into all files sent with a job
-        if self.htcondor_getenv:
-            config.render_variables["dhi_bootstrap_name"] = "htcondor_getenv"
-        else:
-            reqs = self.htcondor_workflow_requires()
-            config.render_variables["dhi_bootstrap_name"] = "htcondor_standalone"
-            config.render_variables["dhi_software_pattern"] = reqs["software"].get_file_pattern()
-            config.render_variables["dhi_repo_pattern"] = reqs["repo"].get_file_pattern()
         config.render_variables["dhi_env_path"] = os.environ["PATH"]
         config.render_variables["dhi_env_pythonpath"] = os.environ["PYTHONPATH"]
         config.render_variables["dhi_htcondor_flavor"] = self.htcondor_flavor
         config.render_variables["dhi_base"] = os.environ["DHI_BASE"]
         config.render_variables["dhi_user"] = os.environ["DHI_USER"]
         config.render_variables["dhi_store"] = os.environ["DHI_STORE"]
+        config.render_variables["dhi_combine_standalone"] = os.environ["DHI_COMBINE_STANDALONE"]
         config.render_variables["dhi_task_namespace"] = os.environ["DHI_TASK_NAMESPACE"]
         config.render_variables["dhi_local_scheduler"] = os.environ["DHI_LOCAL_SCHEDULER"]
+        if self.htcondor_getenv:
+            config.render_variables["dhi_bootstrap_name"] = "htcondor_getenv"
+        else:
+            config.render_variables["dhi_bootstrap_name"] = "htcondor_standalone"
+
+            # add repo bundle variables
+            uris, pattern = get_bundle_info(reqs["repo"])
+            config.render_variables["dhi_repo_uris"] = uris
+            config.render_variables["dhi_repo_pattern"] = pattern
+
+            # add software bundle variables
+            uris, pattern = get_bundle_info(reqs["software"])
+            config.render_variables["dhi_software_uris"] = uris
+            config.render_variables["dhi_software_pattern"] = pattern
+
+            # add cmssw bundle variables
+            if "cmssw" in reqs:
+                uris, pattern = get_bundle_info(reqs["cmssw"])
+                config.render_variables["dhi_cmssw_uris"] = uris
+                config.render_variables["dhi_cmssw_pattern"] = pattern
+                config.render_variables["dhi_scram_arch"] = os.environ["SCRAM_ARCH"]
+                config.render_variables["dhi_cmssw_version"] = os.environ["CMSSW_VERSION"]
 
         return config
 
@@ -374,6 +404,8 @@ class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile):
         def _filter(tarinfo):
             if re.search(r"(\.pyc|\/\.git|\.tgz|__pycache__|black)$", tarinfo.name):
                 return None
+            if re.search(r"^(.+/)?CMSSW_\d+_\d+_\d+", tarinfo.name):
+                return None
             return tarinfo
 
         # create the archive with a custom filter
@@ -381,6 +413,45 @@ class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile):
 
         # log the size
         self.publish_message("bundled software archive, size is {:.2f} {}".format(
+            *law.util.human_bytes(bundle.stat().st_size)))
+
+        # transfer the bundle
+        self.transfer(bundle)
+
+
+class BundleCMSSW(AnalysisTask, law.cms.BundleCMSSW, law.tasks.TransferLocalFile):
+
+    replicas = luigi.IntParameter(
+        default=10,
+        description="number of replicas to generate; default: 10",
+    )
+
+    version = None
+    task_namespace = None
+    exclude = "^src/tmp"
+    default_store = "$DHI_STORE_BUNDLES"
+
+    def get_cmssw_path(self):
+        return os.environ["CMSSW_BASE"]
+
+    def single_output(self):
+        path = "{}.{}.tgz".format(os.path.basename(self.get_cmssw_path()), self.checksum)
+        return self.local_target(path)
+
+    def get_file_pattern(self):
+        path = os.path.expandvars(os.path.expanduser(self.single_output().path))
+        return self.get_replicated_path(path, i=None if self.replicas <= 0 else "*")
+
+    def output(self):
+        return law.tasks.TransferLocalFile.output(self)
+
+    def run(self):
+        # create the bundle
+        bundle = law.LocalFileTarget(is_tmp="tgz")
+        self.bundle(bundle)
+
+        # log the size
+        self.publish_message("bundled CMSSW archive, size is {:.2f} {}".format(
             *law.util.human_bytes(bundle.stat().st_size)))
 
         # transfer the bundle

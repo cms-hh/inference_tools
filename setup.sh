@@ -40,6 +40,16 @@ setup() {
     [ -z "$LANG" ] && export LANG="en_US.UTF-8"
     [ -z "$LC_ALL" ] && export LC_ALL="en_US.UTF-8"
 
+    # warning about missing backwards compatibilty with old setups
+    if [ -z "$DHI_COMBINE_STANDALONE" ]; then
+        >&2 echo ""
+        >&2 echo "WARNING: you appear to use an existing, deprecated inference tools setup, please run"
+        >&2 echo "         > rm -f \$DHI_BASE/.setups/${setup_name}.sh"
+        >&2 echo "         > DHI_REINSTALL_COMBINE=1 DHI_REINSTALL_SOFTWARE=1 source setup.sh $( $setup_is_default || echo "$setup_name" )"
+        >&2 echo ""
+        return "1"
+    fi
+
 
     #
     # helper functions
@@ -53,28 +63,54 @@ setup() {
 
 
     #
-    # combine setup
+    # CMSSW & combine setup
     #
 
-    local combine_version="2"
+    local combine_version="3"
     local flag_file_combine="$DHI_SOFTWARE/.combine_good"
+
+    if [ "$DHI_COMBINE_STANDALONE" != "True" ]; then
+        source "/cvmfs/cms.cern.ch/cmsset_default.sh" "" || return "$?"
+        export SCRAM_ARCH="slc7_amd64_gcc700"
+        export CMSSW_VERSION="CMSSW_10_2_13"
+    fi
+
     [ "$DHI_REINSTALL_COMBINE" = "1" ] && rm -f "$flag_file_combine"
     if [ ! -f "$flag_file_combine" ]; then
-        echo "installing combine at $DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
         mkdir -p "$DHI_SOFTWARE"
-
-        (
-            cd "$DHI_SOFTWARE"
-            rm -rf HiggsAnalysis/CombinedLimit
-            git clone --depth 1 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
-            cd HiggsAnalysis/CombinedLimit && \
-            git fetch --tags && \
-            git checkout tags/v8.2.0 && \
-            chmod ug+x test/diffNuisances.py && \
-            source env_standalone.sh "" && \
-            make -j ${DHI_INSTALL_CORES} && \
-            make
-        ) || return "$?"
+        if [ "$DHI_COMBINE_STANDALONE" != "True" ]; then
+            # CMSSW based
+            (
+                echo "installing combine at $DHI_SOFTWARE/$CMSSW_VERSION"
+                cd "$DHI_SOFTWARE"
+                rm -rf "$CMSSW_VERSION"
+                scramv1 project CMSSW "$CMSSW_VERSION" && \
+                cd "$CMSSW_VERSION/src" && \
+                eval "$( scramv1 runtime -sh )" && \
+                scram b && \
+                git clone --depth 1 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
+                cd HiggsAnalysis/CombinedLimit && \
+                git fetch --tags && \
+                git checkout tags/v8.2.0 && \
+                chmod ug+x test/diffNuisances.py && \
+                scram b -j
+            ) || return "$?"
+        else
+            # standalone
+            (
+                echo "installing standalone combine at $DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
+                cd "$DHI_SOFTWARE"
+                rm -rf HiggsAnalysis/CombinedLimit
+                git clone --depth 1 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
+                cd HiggsAnalysis/CombinedLimit && \
+                git fetch --tags && \
+                git checkout tags/v8.2.0 && \
+                chmod ug+x test/diffNuisances.py && \
+                source env_standalone.sh "" && \
+                make -j ${DHI_INSTALL_CORES} && \
+                make
+            ) || return "$?"
+        fi
 
         date "+%s" > "$flag_file_combine"
         echo "version $combine_version" >> "$flag_file_combine"
@@ -83,18 +119,24 @@ setup() {
 
     # check the version in the combine flag file and show a warning when there was an update
     if [ "$( cat "$flag_file_combine" | grep -Po "version \K\d+.*" )" != "$combine_version" ]; then
-        2>&1 echo ""
-        2>&1 echo "WARNING: your local combine installation is not up to date, please consider updating it in a new shell with"
-        2>&1 echo "         > DHI_REINSTALL_COMBINE=1 source setup.sh $( $setup_is_default || echo "$setup_name" )"
-        2>&1 echo ""
+        >&2 echo ""
+        >&2 echo "WARNING: your local combine installation is not up to date, please consider updating it in a new shell with"
+        >&2 echo "         > DHI_REINSTALL_COMBINE=1 source setup.sh $( $setup_is_default || echo "$setup_name" )"
+        >&2 echo ""
     fi
 
     # source it
-    cd "$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
-    source env_standalone.sh "" || return "$?"
-    # the setup script appends to PATH, but we need to prepend since some htcondor nodes seem to
-    # have an other "combine" executable that gets picked instead
-    export PATH="$PWD/exe:$PWD/scripts:$PWD/test:$PATH"
+    if [ "$DHI_COMBINE_STANDALONE" != "True" ]; then
+        cd "$DHI_SOFTWARE/$CMSSW_VERSION/src" || return "$?"
+        eval "$( scramv1 runtime -sh )" || return "$?"
+        export PATH="$PWD/HiggsAnalysis/CombinedLimit/exe:$PWD/HiggsAnalysis/CombinedLimit/scripts:$PWD/HiggsAnalysis/CombinedLimit/test:$PATH"
+    else
+        cd "$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
+        source env_standalone.sh "" || return "$?"
+        # the setup script appends to PATH, but we need to prepend since some htcondor nodes seem to
+        # have an other "combine" executable that gets picked instead
+        export PATH="$PWD/exe:$PWD/scripts:$PWD/test:$PATH"
+    fi
     cd "$orig"
 
 
@@ -102,25 +144,27 @@ setup() {
     # minimal local software stack
     #
 
-    # source externals
-    for pkg in \
-            libjpeg-turbo/1.3.1-omkpbe2 \
-            py2-pip/9.0.3 \
-            py2-numpy/1.16.2-pafccj \
-            py2-scipy/1.2.1-pafccj \
-            py2-sympy/1.3-pafccj \
-            py2-matplotlib/2.2.3 \
-            py2-cycler/0.10.0-gnimlf \
-            py2-uproot/2.6.19-gnimlf \
-            py2-requests/2.20.0 \
-            py2-urllib3/1.25.3 \
-            py2-idna/2.8 \
-            py2-chardet/3.0.4-gnimlf \
-            py2-ipython/5.5.0-ogkkac \
-            py2-backports/1.0 \
-            ; do
-        source "/cvmfs/cms.cern.ch/slc7_amd64_gcc700/external/$pkg/etc/profile.d/init.sh" "" || return "$?"
-    done
+    if [ "$DHI_COMBINE_STANDALONE" = "True" ]; then
+        # source externals
+        for pkg in \
+                libjpeg-turbo/1.3.1-omkpbe2 \
+                py2-pip/9.0.3 \
+                py2-numpy/1.16.2-pafccj \
+                py2-scipy/1.2.1-pafccj \
+                py2-sympy/1.3-pafccj \
+                py2-matplotlib/2.2.3 \
+                py2-cycler/0.10.0-gnimlf \
+                py2-uproot/2.6.19-gnimlf \
+                py2-requests/2.20.0 \
+                py2-urllib3/1.25.3 \
+                py2-idna/2.8 \
+                py2-chardet/3.0.4-gnimlf \
+                py2-ipython/5.5.0-ogkkac \
+                py2-backports/1.0 \
+                ; do
+            source "/cvmfs/cms.cern.ch/slc7_amd64_gcc700/external/$pkg/etc/profile.d/init.sh" "" || return "$?"
+        done
+    fi
 
     # update paths and flags
     local pyv="$( python -c "import sys; print('{0.major}.{0.minor}'.format(sys.version_info))" )"
@@ -156,16 +200,16 @@ setup() {
 
     # check the version in the sw flag file and show a warning when there was an update
     if [ "$( cat "$flag_file_sw" | grep -Po "version \K\d+.*" )" != "$sw_version" ]; then
-        2>&1 echo ""
-        2>&1 echo "WARNING: your local software stack is not up to date, please consider updating it in a new shell with"
-        2>&1 echo "         > DHI_REINSTALL_SOFTWARE=1 source setup.sh $( $setup_is_default || echo "$setup_name" )"
-        2>&1 echo ""
+        >&2 echo ""
+        >&2 echo "WARNING: your local software stack is not up to date, please consider updating it in a new shell with"
+        >&2 echo "         > DHI_REINSTALL_SOFTWARE=1 source setup.sh $( $setup_is_default || echo "$setup_name" )"
+        >&2 echo ""
     fi
 
     # gfal2 bindings (optional)
     local lcg_dir="/cvmfs/grid.cern.ch/centos7-ui-4.0.3-1_umd4v3/usr"
     if [ ! -d "$lcg_dir" ]; then
-        2>&1 echo "lcg directory $lcg_dir not existing, cannot setup gfal2 bindings"
+        >&2 echo "lcg directory $lcg_dir not existing, cannot setup gfal2 bindings"
     else
         export DHI_GFAL_DIR="$DHI_SOFTWARE/gfal2"
         export GFAL_PLUGIN_DIR="$DHI_GFAL_DIR/plugins"
@@ -305,11 +349,12 @@ interactive_setup() {
     query DHI_USER "CERN / WLCG username" "$( whoami )"
     query DHI_DATA "Local data directory" "$DHI_BASE/data" "./data"
     query DHI_STORE "Default local output store" "$DHI_DATA/store" "\$DHI_DATA/store"
+    query DHI_STORE_JOBS "Default local store for job files (should not be on /eos when submitting via lxplus!)" "$DHI_STORE" "\$DHI_STORE"
     query DHI_STORE_BUNDLES "Output store for software bundles when submitting jobs" "$DHI_STORE" "\$DHI_STORE"
     query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "/eos/user/${DHI_USER:0:1}/${DHI_USER}/dhi/store"
     query DHI_SOFTWARE "Directory for installing software" "$DHI_DATA/software" "\$DHI_DATA/software"
+    query DHI_COMBINE_STANDALONE "Whether combine should be installed standalone instead of within CMSSW" "False"
     query DHI_DATACARDS_RUN2 "Location of the datacards_run2 repository (optional)" "" "''"
-    query DHI_JOB_DIR "Directory for storing job files" "$DHI_DATA/jobs" "\$DHI_DATA/jobs"
     query DHI_TASK_NAMESPACE "Namespace (i.e. the prefix) of law tasks" "" "''"
     query DHI_LOCAL_SCHEDULER "Use a local scheduler for law tasks" "True"
     if [ "$DHI_LOCAL_SCHEDULER" != "True" ]; then

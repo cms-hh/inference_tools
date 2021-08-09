@@ -42,10 +42,12 @@ from HiggsAnalysis.CombinedLimit.SMHiggsBuilder import SMHiggsBuilder
 no_value = object()
 
 # default data directory of the SMHiggsBuilder, as used by the HBRScaler
-if "DHI_SOFTWARE" in os.environ:
+if "CMSSW_BASE" in os.environ:
+    default_data_dir = "$CMSSW_BASE/src/HiggsAnalysis/CombinedLimit/data/lhc-hxswg"
+elif "DHI_SOFTWARE" in os.environ:
     default_data_dir = "$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit/data/lhc-hxswg"
 else:
-    default_data_dir = "$CMSSW_BASE/src/HiggsAnalysis/CombinedLimit/data/lhc-hxswg"
+    default_data_dir = None
 
 
 ####################################################################################################
