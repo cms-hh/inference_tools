@@ -8,12 +8,12 @@
 This repository uses submodules, so you should clone it recursively via
 
 ```shell
-# ssh
+# ssh (recommended)
 git clone --recursive ssh://git@gitlab.cern.ch:7999/hh/tools/inference.git
 
 # or
 
-# https
+# https (discouraged)
 git clone --recursive https://gitlab.cern.ch/hh/tools/inference.git
 ```
 
@@ -82,6 +82,9 @@ You should see:
 indexing tasks in 1 module(s)
 loading module 'dhi.tasks', done
 
+module 'law.contrib.cms.tasks', 1 task(s):
+    - law.cms.BundleCMSSW
+
 module 'law.contrib.git', 1 task(s):
     - law.git.BundleGitRepository
 
@@ -90,7 +93,8 @@ module 'dhi.tasks.combine', 3 task(s):
     - CombineDatacards
     - CreateWorkspace
 
-module 'dhi.tasks.base', 2 task(s):
+module 'dhi.tasks.base', 3 task(s):
+    - BundleCMSSW
     - BundleRepo
     - BundleSoftware
 
@@ -150,7 +154,7 @@ module 'dhi.tasks.exclusion', 2 task(s):
     - PlotExclusionAndBestFit
     - PlotExclusionAndBestFit2D
 
-written 42 task(s) to index file '/your/path/inference/.law/index'
+written 44 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type
