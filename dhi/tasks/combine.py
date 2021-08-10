@@ -1324,9 +1324,7 @@ class CombineCommandTask(CommandTask):
         " --cminDefaultMinimizerStrategy 0"
         " --cminDefaultMinimizerTolerance 0.1"
         " --cminFallbackAlgo Minuit2,1:0.2"
-        " --cminFallbackAlgo Minuit2,1:0.5"
-        " --cminFallbackAlgo Minuit2,1:1.0"
-        " --cminFallbackAlgo Minuit2,0:1.0"
+        " --cminFallbackAlgo Minuit2,0:0.2"
     )
 
     # default minimizer options with initial strategy 1, i.e., for fits requiring Hesse
@@ -1336,9 +1334,7 @@ class CombineCommandTask(CommandTask):
         " --cminDefaultMinimizerStrategy 1"
         " --cminDefaultMinimizerTolerance 0.1"
         " --cminFallbackAlgo Minuit2,1:0.2"
-        " --cminFallbackAlgo Minuit2,1:0.5"
-        " --cminFallbackAlgo Minuit2,1:1.0"
-        " --cminFallbackAlgo Minuit2,0:1.0"
+        " --cminFallbackAlgo Minuit2,1:0.4"
     )
 
     combine_discrete_options = (
