@@ -1541,12 +1541,18 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             # subtract the sets to see which processes to remove
             to_remove = all_procs - model_procs
             if to_remove:
-                from dhi.scripts import remove_processes as remove_processes_script
+                from dhi.scripts.remove_processes import remove_processes
                 self.logger.info("trying to remove processe(s) '{}' from the combined datacard as "
                     "they are not part of the phyics model {}".format(
                         ",".join(to_remove), self.hh_model))
-                remove_processes_script.remove_processes(
-                    output_card.path, map("{}*".format, to_remove))
+                remove_processes(output_card.path, map("{}*".format, to_remove))
+
+            # remove the THU_HH nuisance if not added (probably in listed in nuisances group)
+            if not model.opt("doklDependentUnc"):
+                from dhi.scripts.remove_parameters import remove_parameters
+                self.logger.info("trying to remove '{}' from the combined datacard as the model "
+                    "does not add need it".format(model.ggf_kl_dep_unc))
+                remove_parameters(output_card.path, [model.ggf_kl_dep_unc])
 
         # copy shape files and the datacard to the output location
         output = self.output()
