@@ -108,6 +108,7 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
 
         return (
             "combine -M GoodnessOfFit {workspace}"
+            " {self.custom_args}"
             " --verbose 1"
             " --mass {self.mass}"
             " {toy_opts}"
@@ -119,7 +120,6 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {self.combine_optimization_args}"
-            " {self.custom_args}"
             " && "
             "mv higgsCombineTest.GoodnessOfFit.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(

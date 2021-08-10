@@ -1324,9 +1324,7 @@ class CombineCommandTask(CommandTask):
         " --cminDefaultMinimizerStrategy 0"
         " --cminDefaultMinimizerTolerance 0.1"
         " --cminFallbackAlgo Minuit2,1:0.2"
-        " --cminFallbackAlgo Minuit2,1:0.5"
-        " --cminFallbackAlgo Minuit2,1:1.0"
-        " --cminFallbackAlgo Minuit2,0:1.0"
+        " --cminFallbackAlgo Minuit2,0:0.2"
     )
 
     # default minimizer options with initial strategy 1, i.e., for fits requiring Hesse
@@ -1336,9 +1334,7 @@ class CombineCommandTask(CommandTask):
         " --cminDefaultMinimizerStrategy 1"
         " --cminDefaultMinimizerTolerance 0.1"
         " --cminFallbackAlgo Minuit2,1:0.2"
-        " --cminFallbackAlgo Minuit2,1:0.5"
-        " --cminFallbackAlgo Minuit2,1:1.0"
-        " --cminFallbackAlgo Minuit2,0:1.0"
+        " --cminFallbackAlgo Minuit2,1:0.4"
     )
 
     combine_discrete_options = (
@@ -1425,10 +1421,10 @@ class CombineCommandTask(CommandTask):
             for j, param in enumerate(params):
                 indices[param[0]].append(j)
 
-            # remove last occurences of options that are allowed only once
+            # remove all but the first occurrence of options that are allowed only once
             params = [
                 param for j, param in enumerate(params)
-                if param[0] in self.multi_options or j == max(indices[param[0]])
+                if param[0] in self.multi_options or j == min(indices[param[0]])
             ]
 
             # remove params with existing, but all empty values
@@ -1545,12 +1541,18 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             # subtract the sets to see which processes to remove
             to_remove = all_procs - model_procs
             if to_remove:
-                from dhi.scripts import remove_processes as remove_processes_script
+                from dhi.scripts.remove_processes import remove_processes
                 self.logger.info("trying to remove processe(s) '{}' from the combined datacard as "
                     "they are not part of the phyics model {}".format(
                         ",".join(to_remove), self.hh_model))
-                remove_processes_script.remove_processes(
-                    output_card.path, map("{}*".format, to_remove))
+                remove_processes(output_card.path, map("{}*".format, to_remove))
+
+            # remove the THU_HH nuisance if not added (probably in listed in nuisances group)
+            if not model.opt("doklDependentUnc"):
+                from dhi.scripts.remove_parameters import remove_parameters
+                self.logger.info("trying to remove '{}' from the combined datacard as the model "
+                    "does not add need it".format(model.ggf_kl_dep_unc))
+                remove_parameters(output_card.path, [model.ggf_kl_dep_unc])
 
         # copy shape files and the datacard to the output location
         output = self.output()
@@ -1596,10 +1598,10 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
         # build the t2w command
         cmd = (
             "text2workspace.py {datacard}"
+            " {self.custom_args}"
             " --out workspace.root"
             " --mass {self.mass}"
             " {model_args}"
-            " {self.custom_args}"
         ).format(
             self=self,
             datacard=self.input().path,

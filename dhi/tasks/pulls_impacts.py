@@ -31,6 +31,11 @@ class PullsAndImpactsBase(POITask):
         description="when True, calculate pulls and impacts for MC stats nuisances as well; "
         "default: False",
     )
+    use_snapshot = luigi.BoolParameter(
+        default=False,
+        description="when True, run the initial fit first and use it as a snapshot for nuisance "
+        "fits; default: False",
+    )
 
     mc_stats_patterns = ["*prop_bin*"]
 
@@ -45,6 +50,12 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
     def __init__(self, *args, **kwargs):
         super(PullsAndImpacts, self).__init__(*args, **kwargs)
 
+        # encourage using snapshots when running unblinded
+        if self.unblinded and not self.use_snapshot and self.is_workflow:
+            self.logger.warning("you are running ublinded without using the initial fit as a "
+                "snapshot for nuisance fits; you might consider to do so by adding "
+                "'--use snapshot' to your command as this can lead to more stable results")
+
         self._cache_branches = False
 
     def create_branch_map(self):
@@ -52,7 +63,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         branches = ["nominal"]
 
         # read the nuisance parameters from the workspace file when present
-        params = self.workspace_parameters
+        params = self.workspace_parameter_names
         if params:
             # remove poi
             params = [p for p in params if p != self.pois[0]]
@@ -74,28 +85,42 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             # add to branches
             branches.extend(params)
 
+            self._cache_branches = True
+
         return branches
 
     @law.cached_workflow_property(setter=False, empty_value=law.no_value)
     def workspace_parameters(self):
         ws_input = CreateWorkspace.req(self).output()
         if not ws_input.exists():
-            # not existing yet, return no_value to express that this value is still to be resolved
             return law.no_value
-        else:
-            self._cache_branches = True
-            return get_workspace_parameters(ws_input.path)
+        return get_workspace_parameters(ws_input.path)
+
+    @law.cached_workflow_property(setter=False, empty_value=law.no_value)
+    def workspace_parameter_names(self):
+        ws_input = CreateWorkspace.req(self).output()
+        if not ws_input.exists():
+            return law.no_value
+        return get_workspace_parameters(ws_input.path, only_names=True)
 
     def workflow_requires(self):
         reqs = super(PullsAndImpacts, self).workflow_requires()
-        reqs["workspace"] = self.requires_from_branch()
+        reqs["workspace"] = CreateWorkspace.req(self)
+        if self.use_snapshot and set(self.branch_map) != {0}:
+            reqs["snapshot"] = self.req(self, branches=[0])
         return reqs
 
     def requires(self):
-        return CreateWorkspace.req(self)
+        reqs = {"workspace": CreateWorkspace.req(self)}
+        if self.branch > 0 and self.use_snapshot:
+            reqs["snapshot"] = self.req(self, branch=0)
+        return reqs
 
     def output(self):
-        name = "fit__{}__{}.root".format(self.get_output_postfix(), self.branch_data)
+        parts = [self.branch_data]
+        if self.branch > 0 and self.use_snapshot:
+            parts.append("fromsnapshot")
+        name = self.join_postfix(["fit", self.get_output_postfix()] + parts) + ".root"
         return self.local_target(name)
 
     @property
@@ -106,18 +131,28 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             return "--seed {self.branch} --toys {self.toys}".format(self=self)
 
     def build_command(self):
+        # check if a snapshot is used
+        use_snapshot = self.use_snapshot and self.branch > 0
+
+        # the workspace to use
+        workspace = self.input()["snapshot" if use_snapshot else "workspace"].path
+
         # define branch dependent options
         if self.branch == 0:
             # initial fit
-            branch_opts = "--algo singles"
+            branch_opts = "--algo singles --saveWorkspace"
         else:
             # nuisance fits
-            branch_opts = "--algo impact -P {} --floatOtherPOIs 1 --saveInactivePOI 1".format(
-                self.branch_data
-            )
+            branch_opts = (
+                "--algo impact --parameters {} "
+                " --floatOtherPOIs 1 --saveInactivePOI 1"
+            ).format(self.branch_data)
+            if use_snapshot:
+                branch_opts += " --snapshotName MultiDimFit"
 
         return (
             "combine -M MultiDimFit {workspace}"
+            " {self.custom_args}"
             " --verbose 1"
             " --mass {self.mass}"
             " {self.blinded_args}"
@@ -127,13 +162,12 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {self.combine_optimization_args}"
-            " {self.custom_args}"
             " {branch_opts}"
             " && "
             "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
-            workspace=self.input().path,
+            workspace=workspace,
             output=self.output().path,
             branch_opts=branch_opts,
         )
@@ -166,6 +200,8 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         parts = []
         if self.mc_stats:
             parts.append("mcstats")
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
         if self.only_parameters:
             parts.append("only_" + law.util.create_hash(sorted(self.only_parameters)))
         if self.skip_parameters:
@@ -362,6 +398,8 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
         parts = []
         if self.mc_stats:
             parts.append("mcstats")
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
         if self.only_parameters:
             parts.append("only_" + law.util.create_hash(sorted(self.only_parameters)))
         if self.skip_parameters:

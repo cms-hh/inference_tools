@@ -1087,12 +1087,14 @@ def prepare_prefit_var(var, pdf, epsilon=0.001):
     return var
 
 
-def get_workspace_parameters(workspace, workspace_name="w", config_name="ModelConfig"):
+def get_workspace_parameters(workspace, workspace_name="w", config_name="ModelConfig",
+        only_names=False):
     """
     Takes a workspace stored in a ROOT file *workspace* with the name *workspace_name* and gathers
     information on all non-constant parameters. The return value is an ordered dictionary that maps
     parameter names to dicts with fields ``name``, ``type``, ``groups`` and ``prefit``. The
-    functionality is loosely based on ``CombineHarvester.CombineTools.combine.utils``.
+    functionality is loosely based on ``CombineHarvester.CombineTools.combine.utils``. When
+    *only_names* is *True*, only the parameter names are returned in a list.
     """
     ROOT = import_ROOT()
     from HiggsAnalysis.CombinedLimit.RooAddPdfFixer import FixAll
@@ -1121,6 +1123,11 @@ def get_workspace_parameters(workspace, workspace_name="w", config_name="ModelCo
     params = OrderedDict()
     for param in iterate(all_params):
         if not isinstance(param, ROOT.RooRealVar) or param.isConstant():
+            continue
+
+        # just store the name when requested
+        if only_names:
+            params[param.GetName()] = None
             continue
 
         # get the type of the pdf
@@ -1159,4 +1166,4 @@ def get_workspace_parameters(workspace, workspace_name="w", config_name="ModelCo
     # cleanup
     f.Close()
 
-    return params
+    return list(params.keys()) if only_names else params

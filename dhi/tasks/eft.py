@@ -233,13 +233,13 @@ class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
     def build_command(self):
         return (
             "combine -M AsymptoticLimits {workspace}"
+            " {self.custom_args}"
             " --verbose 1"
             " --mass {self.mass}"
             " {self.blinded_args}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {self.combine_optimization_args}"
-            " {self.custom_args}"
             " && "
             "mv higgsCombineTest.AsymptoticLimits.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(

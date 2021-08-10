@@ -77,6 +77,7 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
     def build_command(self):
         return (
             "combine -M Significance {workspace}"
+            " {self.custom_args}"
             " --verbose 1"
             " --mass {self.mass}"
             " {self.blinded_args}"
@@ -86,7 +87,6 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {self.combine_optimization_args}"
-            " {self.custom_args}"
             " && "
             "mv higgsCombineTest.Significance.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
