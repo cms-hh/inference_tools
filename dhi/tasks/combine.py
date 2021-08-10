@@ -1421,10 +1421,10 @@ class CombineCommandTask(CommandTask):
             for j, param in enumerate(params):
                 indices[param[0]].append(j)
 
-            # remove last occurences of options that are allowed only once
+            # remove all but the first occurrence of options that are allowed only once
             params = [
                 param for j, param in enumerate(params)
-                if param[0] in self.multi_options or j == max(indices[param[0]])
+                if param[0] in self.multi_options or j == min(indices[param[0]])
             ]
 
             # remove params with existing, but all empty values
@@ -1598,10 +1598,10 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
         # build the t2w command
         cmd = (
             "text2workspace.py {datacard}"
+            " {self.custom_args}"
             " --out workspace.root"
             " --mass {self.mass}"
             " {model_args}"
-            " {self.custom_args}"
         ).format(
             self=self,
             datacard=self.input().path,

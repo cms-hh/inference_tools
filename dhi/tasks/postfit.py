@@ -99,6 +99,7 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
 
         return (
             "combine -M FitDiagnostics {workspace}"
+            " {self.custom_args}"
             " --verbose 1"
             " --mass {self.mass}"
             " {self.blinded_args}"
@@ -110,7 +111,6 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
             " {flags}"
             " {self.combine_optimization_args_hesse}"
             " --robustHesse 1"
-            " {self.custom_args}"
             " && "
             "mv higgsCombineTest.FitDiagnostics.mH{self.mass_int}{postfix}.root {output_result}"
             " && "
