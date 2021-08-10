@@ -21,34 +21,30 @@ setup() {
     export DHI_BASE="$this_dir"
     interactive_setup "$setup_name" || return "$?"
     export DHI_STORE_REPO="$DHI_BASE/data/store"
+
     export DHI_EXAMPLE_CARDS_GGF="$( echo /afs/cern.ch/user/m/mfackeld/public/datacards/dnn_score_max/*_dnn_node_HH_2B2VTo2L2Nu_GluGlu_NLO/datacard.txt | sed 's/ /,/g' )"
     export DHI_EXAMPLE_CARDS_VBF="$( echo /afs/cern.ch/user/m/mfackeld/public/datacards/dnn_score_max/*_dnn_node_HH_2B2VTo2L2Nu_VBF_NLO/datacard.txt | sed 's/ /,/g' )"
     [ -z "$DHI_EXAMPLE_CARDS" ] && export DHI_EXAMPLE_CARDS="$DHI_EXAMPLE_CARDS_GGF,$DHI_EXAMPLE_CARDS_VBF"
     [ -z "$DHI_EXAMPLE_CARDS_EFT_BM" ] && export DHI_EXAMPLE_CARDS_EFT_BM="$( echo /eos/user/m/mrieger/dhi/example_cards/eft_benchmarks/datacard_*.txt | sed 's/ /,/g' )"
     [ -z "$DHI_EXAMPLE_CARDS_EFT_C2" ] && export DHI_EXAMPLE_CARDS_EFT_C2="$( echo /eos/user/m/mrieger/dhi/example_cards/eft_c2_scan/datacard_c2_*.txt | sed 's/ /,/g' )"
-    export DHI_ORIG_PATH="$PATH"
-    export DHI_ORIG_PYTHONPATH="$PYTHONPATH"
-    export DHI_ORIG_PYTHON3PATH="$PYTHON3PATH"
-    export DHI_ORIG_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
+
     export DHI_SLACK_TOKEN="${DHI_SLACK_TOKEN:-}"
     export DHI_SLACK_CHANNEL="${DHI_SLACK_CHANNEL:-}"
     export DHI_TELEGRAM_TOKEN="${DHI_TELEGRAM_TOKEN:-}"
     export DHI_TELEGRAM_CHAT="${DHI_TELEGRAM_CHAT:-}"
+
+    export DHI_ORIG_PATH="$PATH"
+    export DHI_ORIG_PYTHONPATH="$PYTHONPATH"
+    export DHI_ORIG_PYTHON3PATH="$PYTHON3PATH"
+    export DHI_ORIG_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
 
     # lang defaults
     [ -z "$LANGUAGE" ] && export LANGUAGE="en_US.UTF-8"
     [ -z "$LANG" ] && export LANG="en_US.UTF-8"
     [ -z "$LC_ALL" ] && export LC_ALL="en_US.UTF-8"
 
-    # warning about missing backwards compatibilty with old setups
-    if [ -z "$DHI_COMBINE_STANDALONE" ]; then
-        >&2 echo ""
-        >&2 echo "WARNING: you appear to use an existing, deprecated inference tools setup, please run"
-        >&2 echo "         > rm -f \$DHI_BASE/.setups/${setup_name}.sh"
-        >&2 echo "         > DHI_REINSTALL_COMBINE=1 DHI_REINSTALL_SOFTWARE=1 source setup.sh $( $setup_is_default || echo "$setup_name" )"
-        >&2 echo ""
-        return "1"
-    fi
+    # backwards compatibility with old setups
+    export DHI_COMBINE_STANDALONE="${DHI_COMBINE_STANDALONE:-True}"
 
 
     #
@@ -73,6 +69,9 @@ setup() {
         source "/cvmfs/cms.cern.ch/cmsset_default.sh" "" || return "$?"
         export SCRAM_ARCH="slc7_amd64_gcc700"
         export CMSSW_VERSION="CMSSW_10_2_13"
+        flag_file_combine="${flag_file_combine}_${SCRAM_ARCH}_${CMSSW_VERSION}"
+    else
+        flag_file_combine="${flag_file_combine}_standalone"
     fi
 
     [ "$DHI_REINSTALL_COMBINE" = "1" ] && rm -f "$flag_file_combine"
@@ -296,8 +295,18 @@ interactive_setup() {
         local varname="$1"
         local value="$2"
 
-        export $varname="$value"
+        # strip " and '
+        value=${value%\"}
+        value=${value%\'}
+        value=${value#\"}
+        value=${value#\'}
+
+        # write to the env file
         ! $setup_is_default && echo "export $varname=\"$value\"" >> "$env_file_tmp"
+
+        # expand and export
+        value="$( eval "echo $value" )"
+        export $varname="$value"
     }
 
     query() {
@@ -325,13 +334,7 @@ interactive_setup() {
                 [ "X$query_response" = "X" ] && query_response="$default"
             done
 
-            # save the expanded value
-            value="$( eval "echo $query_response" )"
-            # strip " and '
-            value=${value%\"}
-            value=${value%\'}
-            value=${value#\"}
-            value=${value#\'}
+            value="$query_response"
         fi
 
         export_and_save "$varname" "$value"
@@ -353,7 +356,7 @@ interactive_setup() {
     query DHI_STORE_BUNDLES "Output store for software bundles when submitting jobs" "$DHI_STORE" "\$DHI_STORE"
     query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "/eos/user/${DHI_USER:0:1}/${DHI_USER}/dhi/store"
     query DHI_SOFTWARE "Directory for installing software" "$DHI_DATA/software" "\$DHI_DATA/software"
-    query DHI_COMBINE_STANDALONE "Whether combine should be installed standalone instead of within CMSSW" "False"
+    query DHI_COMBINE_STANDALONE "Whether combine should be installed standalone instead of within CMSSW" "True"
     query DHI_DATACARDS_RUN2 "Location of the datacards_run2 repository (optional)" "" "''"
     query DHI_TASK_NAMESPACE "Namespace (i.e. the prefix) of law tasks" "" "''"
     query DHI_LOCAL_SCHEDULER "Use a local scheduler for law tasks" "True"
