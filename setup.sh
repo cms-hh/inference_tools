@@ -235,23 +235,26 @@ setup() {
     # initialze some submodules
     #
 
-    if [ -d "$DHI_BASE/.git" ]; then
-        for m in law plotlib; do
-            local mpath="$DHI_BASE/modules/$m"
-            # initialize the submodule when the directory is empty
-            local mfiles=( "$mpath"/* )
-            if [ "${#mfiles}" = "0" ]; then
-                git submodule update --init --recursive "$mpath"
-            else
-                # update when not on a working branch and there are no changes
-                local detached_head="$( ( cd "$mpath"; git symbolic-ref -q HEAD &> /dev/null ) && echo true || echo false )"
-                local changed_files="$( cd "$mpath"; git status --porcelain=v1 2> /dev/null | wc -l )"
-                if ! $detached_head && [ "$changed_files" = "0" ]; then
+    dhi_update_submodules() {
+        if [ -d "$DHI_BASE/.git" ]; then
+            for m in law plotlib; do
+                local mpath="$DHI_BASE/modules/$m"
+                # initialize the submodule when the directory is empty
+                if [ "$( ls -1q "$mpath" )" = "0" ]; then
                     git submodule update --init --recursive "$mpath"
+                else
+                    # update when not on a working branch and there are no changes
+                    local detached_head="$( ( cd "$mpath"; git symbolic-ref -q HEAD &> /dev/null ) && echo true || echo false )"
+                    local changed_files="$( cd "$mpath"; git status --porcelain=v1 2> /dev/null | wc -l )"
+                    if ! $detached_head && [ "$changed_files" = "0" ]; then
+                        git submodule update --init --recursive "$mpath"
+                    fi
                 fi
-            fi
-        done
-    fi
+            done
+        fi
+    }
+    [ ! -z "$BASH_VERSION" ] && export -f dhi_update_submodules
+    dhi_update_submodules
 
 
     #
@@ -280,20 +283,31 @@ interactive_setup() {
     [ "$setup_name" = "default" ] && setup_is_default="true"
 
     # when the setup already exists and it's not the default one,
-    # source the corresponding env file and stop
+    # source the corresponding env file and set a flag to use defaults of missing vars below
+    local env_file_exists="false"
     if ! $setup_is_default; then
         if [ -f "$env_file" ]; then
             echo -e "using variables for setup '\x1b[0;49;35m$setup_name\x1b[0m' from $env_file"
             source "$env_file" ""
-            return "0"
+            env_file_exists="true"
         else
             echo -e "no setup file $env_file found for setup '\x1b[0;49;35m$setup_name\x1b[0m'"
         fi
     fi
 
+    variable_exists() {
+        local varname="$1"
+        eval [ ! -z "\${${varname}+x}" ]
+    }
+
     export_and_save() {
         local varname="$1"
         local value="$2"
+
+        # nothing to do when the env file exists and already contains the value
+        if $env_file_exists && variable_exists "$varname"; then
+            return "0"
+        fi
 
         # strip " and '
         value=${value%\"}
@@ -301,8 +315,13 @@ interactive_setup() {
         value=${value#\"}
         value=${value#\'}
 
-        # write to the env file
-        ! $setup_is_default && echo "export $varname=\"$value\"" >> "$env_file_tmp"
+        if $env_file_exists; then
+            # write into the existing file
+            echo "export $varname=\"$value\"" >> "$env_file"
+        elif ! $setup_is_default; then
+            # write into the tmp file
+            echo "export $varname=\"$value\"" >> "$env_file_tmp"
+        fi
 
         # expand and export
         value="$( eval "echo $value" )"
@@ -318,8 +337,8 @@ interactive_setup() {
         # when the setup is the default one, use the default value when the env variable is empty,
         # otherwise, query interactively
         local value="$default"
-        if $setup_is_default; then
-            [ ! -z "${!varname}" ] && value="${!varname}"
+        if $setup_is_default || $env_file_exists; then
+            variable_exists "$varname" && value="$( eval echo "\$$varname" )"
         else
             printf "$text (\x1b[1;49;39m$varname\x1b[0m, default \x1b[1;49;39m$default_text\x1b[0m):  "
             read query_response
@@ -341,11 +360,12 @@ interactive_setup() {
     }
 
     # prepare the tmp env file
-    if ! $setup_is_default; then
+    if ! $setup_is_default && ! $env_file_exists; then
         rm -rf "$env_file_tmp"
         mkdir -p "$( dirname "$env_file_tmp" )"
 
-        echo -e "Start querying variables for setup '\x1b[0;49;35m$setup_name\x1b[0m', press enter to accept default values\n"
+        echo -e "\nStart querying variables for setup '\x1b[0;49;35m$setup_name\x1b[0m'"
+        echo -e "Please use \x1b[1;49;39mabsolute\x1b[0m values for paths, and press enter to accept default values\n"
     fi
 
     # start querying for variables
@@ -369,7 +389,7 @@ interactive_setup() {
     fi
 
     # move the env file to the correct location for later use
-    if ! $setup_is_default; then
+    if ! $setup_is_default && ! $env_file_exists; then
         mv "$env_file_tmp" "$env_file"
         echo -e "\nsetup variables written to $env_file"
     fi
