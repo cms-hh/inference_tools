@@ -1318,13 +1318,13 @@ class CombineCommandTask(CommandTask):
         "likelihoods with containing discrete parameters; default: False",
     )
     minimizer = law.MultiCSVParameter(
-        default=(("0", "0.1"), ("1", "0.2"), ("0", "0.2")),
+        default=(("0", "0.1"), ("0", "0.2"), ("0", "0.4")),
         min_len=2,
         max_len=4,
         significant=False,
         description="multiple, colon-separated minimizer configurations in the format "
         "'[algo,][subalgo,]strategy,tolerance'; algo defaults to Minuit2; subalgo has no default; "
-        "default: 0,0.1:1,0.2:0,0.2",
+        "default: 0,0.1:0,0.2:0,0.4",
     )
 
     combine_discrete_options = (
