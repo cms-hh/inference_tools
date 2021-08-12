@@ -19,7 +19,7 @@ import law
 import luigi
 import six
 
-from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, LocalFileTarget, ModelParameters
+from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
 from dhi.config import poi_data, br_hh
 from dhi.util import linspace, try_int, real_path, expand_path
 from dhi.datacard_tools import bundle_datacard
@@ -1214,11 +1214,11 @@ class POIScanTask(POITask, ParameterScanTask):
         if self.force_scan_parameters_equal_pois:
             missing = set(self.pois) - set(self.scan_parameter_names)
             if missing:
-                raise Exception("scan parameters {} must match POIs {} or vice versa".format(
+                raise Exception("scan parameters {} must match POIs {} and vice versa".format(
                     self.joined_scan_parameter_names, self.joined_pois))
             unknown = set(self.scan_parameter_names) - set(self.pois)
             if unknown:
-                raise Exception("scan parameters {} must match POIs {} or vice versa".format(
+                raise Exception("scan parameters {} must match POIs {} and vice versa".format(
                     self.joined_scan_parameter_names, self.joined_pois))
 
         # check if scan parameters and pois diverge
@@ -1578,7 +1578,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
 
     def output(self):
         if self.input_is_workspace:
-            return LocalFileTarget(self.datacards[0], external=True)
+            return law.LocalFileTarget(self.datacards[0], external=True)
         else:
             return self.local_target("workspace.root")
 

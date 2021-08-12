@@ -20,52 +20,6 @@ law.contrib.load(
 )
 
 
-class LocalTarget(law.LocalTarget):
-    def __init__(self, *args, **kwargs):
-        self._repr_path = kwargs.pop("repr_path", None)
-        super(LocalTarget, self).__init__(*args, **kwargs)
-
-    def _repr_pairs(self, *args, **kwargs):
-        pairs = super(LocalTarget, self)._repr_pairs(*args, **kwargs)
-        if self._repr_path:
-            pairs = [(key, self._repr_path if key == "path" else value) for key, value in pairs]
-        return pairs
-
-    def _parent_args(self):
-        args, kwargs = super(LocalTarget, self)._parent_args()
-        if self._repr_path:
-            kwargs["repr_path"] = os.path.dirname(self._repr_path)
-        return args, kwargs
-
-
-class LocalFileTarget(LocalTarget, law.LocalFileTarget):
-    pass
-
-
-class LocalDirectoryTarget(LocalTarget, law.LocalDirectoryTarget):
-
-    def _child_args(self, path):
-        args, kwargs = law.LocalDirectoryTarget._child_args(self, path)
-        if self._repr_path:
-            basename = os.path.relpath(path, self.path)
-            if os.sep not in basename:
-                kwargs["repr_path"] = os.path.join(self._repr_path, basename)
-        return args, kwargs
-
-
-LocalTarget.file_class = LocalFileTarget
-LocalTarget.directory_class = LocalDirectoryTarget
-
-
-class SiblingFileCollection(law.SiblingFileCollection):
-
-    def _repr_pairs(self, *args, **kwargs):
-        pairs = super(SiblingFileCollection, self)._repr_pairs(*args, **kwargs)
-        if pairs[-1][0] == "dir" and getattr(self.dir, "_repr_path", None):
-            pairs[-1] = ("dir", self.dir._repr_path)
-        return pairs
-
-
 class BaseTask(law.Task):
 
     print_command = law.CSVParameter(
@@ -129,7 +83,7 @@ class AnalysisTask(BaseTask):
 
     version = luigi.Parameter(description="mandatory version that is encoded into output paths")
 
-    output_collection_cls = SiblingFileCollection
+    output_collection_cls = law.SiblingFileCollection
     default_store = "$DHI_STORE"
     store_by_family = False
 
@@ -161,15 +115,13 @@ class AnalysisTask(BaseTask):
     def local_path(self, *path, **kwargs):
         store = kwargs.get("store") or self.default_store
         parts = tuple(self.store_parts().values()) + tuple(self.store_parts_ext().values()) + path
-        repr_path = os.path.join(store, *(str(p) for p in parts))
-        local_path = os.path.expandvars(os.path.expanduser(repr_path))
-        return (local_path, repr_path) if kwargs.get("repr_path") else local_path
+        return os.path.join(store, *(str(p) for p in parts))
 
     def local_target(self, *path, **kwargs):
-        cls = LocalFileTarget if not kwargs.pop("dir", False) else LocalDirectoryTarget
+        cls = law.LocalFileTarget if not kwargs.pop("dir", False) else law.LocalDirectoryTarget
         store = kwargs.pop("store", None)
-        local_path, repr_path = self.local_path(*path, store=store, repr_path=True)
-        return cls(local_path, repr_path=repr_path, **kwargs)
+        path = self.local_path(*path, store=store)
+        return cls(path, **kwargs)
 
     def join_postfix(self, parts, sep1="__", sep2="_"):
         repl = lambda s: re.sub(r"[^a-zA-Z0-9\.\_\-\+]", "", str(s))
