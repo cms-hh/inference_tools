@@ -51,10 +51,11 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         super(PullsAndImpacts, self).__init__(*args, **kwargs)
 
         # encourage using snapshots when running unblinded
-        if self.unblinded and not self.use_snapshot and self.is_workflow:
-            self.logger.warning("you are running ublinded without using the initial fit as a "
-                "snapshot for nuisance fits; you might consider to do so by adding "
-                "'--use snapshot' to your command as this can lead to more stable results")
+        if self.unblinded and not self.use_snapshot and self.is_workflow() and self.branches != (0,):
+            self.logger.warning_once("unblinded_no_snapshot", "you are running ublinded without "
+                "using the initial fit as a snapshot for nuisance fits; you might consider to do "
+                "so by adding '--use-snapshot' to your command as this can lead to more stable "
+                "results")
 
         self._cache_branches = False
 
@@ -120,8 +121,13 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         parts = [self.branch_data]
         if self.branch > 0 and self.use_snapshot:
             parts.append("fromsnapshot")
-        name = self.join_postfix(["fit", self.get_output_postfix()] + parts) + ".root"
-        return self.local_target(name)
+        name = lambda s: self.join_postfix([s, self.get_output_postfix()] + parts) + ".root"
+
+        outputs = {"fit": self.local_target(name("fit"))}
+        if self.branch == 0:
+            outputs["fitresult"] = self.local_target(name("fitresult"), optional=True)
+
+        return outputs
 
     @property
     def blinded_args(self):
@@ -140,17 +146,25 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         # define branch dependent options
         if self.branch == 0:
             # initial fit
-            branch_opts = "--algo singles --saveWorkspace"
+            branch_opts = (
+                " --algo singles"
+                " --saveWorkspace"
+                " --saveFitResult"
+            )
         else:
             # nuisance fits
             branch_opts = (
-                "--algo impact --parameters {} "
-                " --floatOtherPOIs 1 --saveInactivePOI 1"
+                " --algo impact "
+                " --parameters {}"
+                " --floatOtherPOIs 1"
+                " --saveInactivePOI 1"
             ).format(self.branch_data)
             if use_snapshot:
                 branch_opts += " --snapshotName MultiDimFit"
 
-        return (
+        # define the basic command
+        outputs = self.output()
+        cmd = (
             "combine -M MultiDimFit {workspace}"
             " {self.custom_args}"
             " --verbose 1"
@@ -161,6 +175,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
+            " --saveNLL"
             " {self.combine_optimization_args}"
             " {branch_opts}"
             " && "
@@ -168,9 +183,15 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         ).format(
             self=self,
             workspace=workspace,
-            output=self.output().path,
+            output=outputs["fit"].path,
             branch_opts=branch_opts,
         )
+
+        # for the initial fit, also move the fitresult
+        if self.branch == 0:
+            cmd += " && mv multidimfitTest.root {}".format(outputs["fitresult"].path)
+
+        return cmd
 
     def htcondor_output_postfix(self):
         postfix = super(PullsAndImpacts, self).htcondor_output_postfix()
@@ -189,7 +210,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
     keep_failures = luigi.BoolParameter(
         default=False,
-        description="When True keep failed fits, proceed with plotting without restrictions. Failures will be marked as 'Invalid'. default: False",
+        description="keep failed fits and mark them as invalid; default: False",
     )
 
     def requires(self):
@@ -223,7 +244,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         fit_results = {}
         fail_info = []
         for b, name in branch_map.items():
-            inp = inputs[b]
+            inp = inputs[b]["fit"]
             if not inp.exists():
                 self.logger.warning("input of branch {} at {} does not exist".format(b, inp.path))
                 continue
