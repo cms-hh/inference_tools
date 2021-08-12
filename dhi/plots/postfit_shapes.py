@@ -31,6 +31,7 @@ def plot_s_over_b(
     signal_scale=1.,
     signal_scale_ratio=1.,
     show_signal=True,
+    show_uncertainty=True,
     show_best_fit=True,
     y1_min=None,
     y1_max=None,
@@ -54,7 +55,8 @@ def plot_s_over_b(
     superimposed, by *signal_scale_ratio* at the bottom ratio pad. When *signal_superimposed* is
     *True*, the signal at the top pad is not drawn stacked on top of the background but as a
     separate histogram. The signal is not shown at all when *show_signal* is *False*. When
-    *show_best_fit* is *False*, the value of the signal scale is not shown in the legend labels.
+    *show_uncertainty* is *False*, the postfit uncertainty is not drawn. When *show_best_fit* is
+    *False*, the value of the signal scale is not shown in the legend labels.
 
     *y1_min*, *y1_max*, *y2_min* and *y2_max* define the ranges of the y-axes of the upper pad and
     ratio pad, respectively. *model_parameters* can be a dictionary of key-value pairs of model
@@ -211,8 +213,9 @@ def plot_s_over_b(
     # postfit background uncertainty in the ratio
     graph_b_err2 = ROOT.TGraphAsymmErrors(len(bins) - 1)
     r.setup_hist(graph_b_err2, props={"FillColor": colors.black, "FillStyle": 3345, "LineWidth": 0})
-    draw_objs2.append((graph_b_err2, "SAME,2"))
-    legend_entries.insert(2, (graph_b_err2, "Uncertainty ({}-fit)".format(fit_type), "F"))
+    if show_uncertainty:
+        draw_objs2.append((graph_b_err2, "SAME,2"))
+        legend_entries.insert(2, (graph_b_err2, "Uncertainty ({}-fit)".format(fit_type), "F"))
 
     # data graph in the ratio
     graph_d2 = ROOT.TGraphAsymmErrors(len(bins) - 1)

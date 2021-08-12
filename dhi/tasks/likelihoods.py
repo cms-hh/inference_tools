@@ -85,7 +85,7 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
-            " --robustFit 1"
+            " --saveNLL"
             " {self.combine_optimization_args}"
             " && "
             "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root {output}"

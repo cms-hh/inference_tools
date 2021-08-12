@@ -109,8 +109,7 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {flags}"
-            " {self.combine_optimization_args_hesse}"
-            " --robustHesse 1"
+            " {self.combine_optimization_args}"
             " && "
             "mv higgsCombineTest.FitDiagnostics.mH{self.mass_int}{postfix}.root {output_result}"
             " && "
@@ -161,6 +160,12 @@ class PlotPostfitSOverB(POIPlotTask):
         significant=False,
         description="hide the signal contribution completely; default: False",
     )
+    hide_uncertainty = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="do not show postfit uncertainties (and also do not require FitDiagnostics to "
+        "produce them); default: False",
+    )
     ratio_min = luigi.FloatParameter(
         default=-1000.0,
         significant=False,
@@ -191,7 +196,12 @@ class PlotPostfitSOverB(POIPlotTask):
             self.logger.warning("running unblinded but not hiding the best fit value")
 
     def requires(self):
-        return FitDiagnostics.req(self)
+        # normally, we would require FitDiagnostics not matter what, but since it can take ages to
+        # complete, skip producing uncertainties when requested and the full fit does not exist yet
+        full_fd = FitDiagnostics.req(self)
+        if self.hide_uncertainty and not full_fd.complete():
+            return FitDiagnostics.req(self, skip_save=("WithUncertainties",))
+        return full_fd
 
     def output(self):
         name = "prefitsoverb" if self.prefit else "postfitsoverb"
@@ -221,6 +231,7 @@ class PlotPostfitSOverB(POIPlotTask):
             signal_scale=self.signal_scale,
             signal_scale_ratio=self.signal_scale_ratio,
             show_signal=not self.hide_signal,
+            show_uncertainty=not self.hide_uncertainty,
             show_best_fit=self.show_best_fit,
             y1_min=self.get_axis_limit("y_min"),
             y1_max=self.get_axis_limit("y_max"),
