@@ -93,6 +93,8 @@ def plot_likelihood_scan_1d(
 
     # evaluate the scan, run interpolation and error estimation
     scan = evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min)
+    if not scan:
+        warn("1D likelihood evaluation failed")
 
     # start plotting
     r.setup_style()
@@ -110,11 +112,12 @@ def plot_likelihood_scan_1d(
 
     if show_best_fit and show_best_fit_error:
         # 1 and 2 sigma indicators
-        for value in [scan.poi_p1, scan.poi_m1, scan.poi_p2, scan.poi_m2]:
-            if value is not None:
-                line = ROOT.TLine(value, y_min, value, scan.interp(value))
-                r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
-                draw_objs.append(line)
+        if scan:
+            for value in [scan.poi_p1, scan.poi_m1, scan.poi_p2, scan.poi_m2]:
+                if value is not None:
+                    line = ROOT.TLine(value, y_min, value, scan.interp(value))
+                    r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
+                    draw_objs.append(line)
 
         # lines at chi2_1 intervals
         for n in [chi2_levels[1][1], chi2_levels[1][2]]:
@@ -142,7 +145,7 @@ def plot_likelihood_scan_1d(
             legend_entries.append((line_thy, "Theory prediction", "L"))
 
     # line for best fit value
-    if show_best_fit:
+    if show_best_fit and scan:
         line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
         r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors.black)
         draw_objs.append(line_fit)
@@ -151,7 +154,7 @@ def plot_likelihood_scan_1d(
     g_nll = create_tgraph(len(poi_values), poi_values, dnll2_values)
     r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75})
     draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
-    if show_best_fit and show_best_fit_error:
+    if show_best_fit and show_best_fit_error and scan:
         fit_label = "{} = {}".format(to_root_latex(poi_data[poi].label),
             scan.num_min.str(format="%.2f", style="root"))
     else:
@@ -300,6 +303,8 @@ def plot_likelihood_scans_1d(
         # evaluate the scan, run interpolation and error estimation
         scan = evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"],
             poi_min=d["poi_min"])
+        if not scan:
+            warn("1D likelihood evaluation failed for entry '{}'".format(d["name"]))
 
         # draw the curve
         g_nll = create_tgraph(len(d["values"][poi]), d["values"][poi],
@@ -311,7 +316,7 @@ def plot_likelihood_scans_1d(
             "LP" if show_points else "L"))
 
         # line for best fit value
-        if show_best_fit:
+        if show_best_fit and scan:
             line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
             r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors[col])
             draw_objs.append(line_fit)
@@ -449,6 +454,8 @@ def plot_likelihood_scan_2d(
     # evaluate the scan, run interpolation and error estimation
     scan = evaluate_likelihood_scan_2d(joined_values[poi1], joined_values[poi2],
         joined_values["dnll2"], poi1_min=poi1_min, poi2_min=poi2_min, contours=contours[:1])
+    if not scan:
+        warn("2D likelihood evaluation failed")
 
     # start plotting
     r.setup_style()
@@ -522,7 +529,7 @@ def plot_likelihood_scan_2d(
         draw_objs.append((g, "SAME,C"))
 
     # draw the first contour box
-    if show_box:
+    if show_box and scan:
         box_num1, box_num2 = scan.box_nums[0]
         if box_num1 and box_num2:
             box_t = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("up"), box_num2("up"))
@@ -541,18 +548,19 @@ def plot_likelihood_scan_2d(
         draw_objs.insert(-1, (g_sm, "P"))
 
     # central best fit point
-    g_fit = ROOT.TGraphAsymmErrors(1)
-    g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
-    if scan.num1_min.uncertainties and show_best_fit_error:
-        g_fit.SetPointEXhigh(0, scan.num1_min.u(direction="up"))
-        g_fit.SetPointEXlow(0, scan.num1_min.u(direction="down"))
-    if scan.num2_min.uncertainties and show_best_fit_error:
-        g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
-        g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
-    props = {} if show_best_fit_error else {"MarkerStyle": 43, "MarkerSize": 2}
-    r.setup_graph(g_fit, props=props, color=colors.black)
-    if show_best_fit:
-        draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
+    if scan:
+        g_fit = ROOT.TGraphAsymmErrors(1)
+        g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
+        if scan.num1_min.uncertainties and show_best_fit_error:
+            g_fit.SetPointEXhigh(0, scan.num1_min.u(direction="up"))
+            g_fit.SetPointEXlow(0, scan.num1_min.u(direction="down"))
+        if scan.num2_min.uncertainties and show_best_fit_error:
+            g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
+            g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
+        props = {} if show_best_fit_error else {"MarkerStyle": 43, "MarkerSize": 2}
+        r.setup_graph(g_fit, props=props, color=colors.black)
+        if show_best_fit:
+            draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
 
     # legend
     def make_bf_label(num1, num2):
@@ -572,7 +580,7 @@ def plot_likelihood_scan_2d(
             )
 
     legend_entries = []
-    if show_best_fit:
+    if show_best_fit and scan:
         legend_entries.append((g_fit, make_bf_label(scan.num1_min, scan.num2_min),
             "PLE" if show_best_fit_error else "P"))
     if show_box:
@@ -713,6 +721,8 @@ def plot_likelihood_scans_2d(
             d["values"][poi1], d["values"][poi2], d["values"]["dnll2"],
             poi1_min=d["poi_mins"][0], poi2_min=d["poi_mins"][1],
         )
+        if not scan:
+            warn("2D likelihood evaluation failed for entry '{}'".format(d["name"]))
 
         # plot 1 and 2 sigma contours
         for g1 in cont1:
@@ -725,9 +735,10 @@ def plot_likelihood_scans_2d(
         legend_entries.insert(-1, (g1, name, "L"))
 
         # best fit point
-        g_fit = create_tgraph(1, scan.num1_min(), scan.num2_min())
-        r.setup_graph(g_fit, props={"MarkerStyle": 33, "MarkerSize": 2}, color=colors[col])
-        draw_objs.append((g_fit, "SAME,PEZ"))
+        if scan:
+            g_fit = create_tgraph(1, scan.num1_min(), scan.num2_min())
+            r.setup_graph(g_fit, props={"MarkerStyle": 33, "MarkerSize": 2}, color=colors[col])
+            draw_objs.append((g_fit, "SAME,PEZ"))
 
     # append legend entries to show styles
     g_fit_style = g_fit.Clone()
@@ -783,6 +794,7 @@ def plot_likelihood_scans_2d(
         canvas.SaveAs(path)
 
 
+@use_style("dhi_default")
 def plot_nuisance_likelihood_scans(
     paths,
     poi,
@@ -1108,7 +1120,10 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
 
     # first, obtain an interpolation function
     # interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="linear")
-    interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="cubic")
+    try:
+        interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="cubic")
+    except:
+        return None
 
     # recompute the minimum and compare with the existing one when given
     xcheck = poi_min is not None
@@ -1243,7 +1258,10 @@ def evaluate_likelihood_scan_2d(
     # interp = scipy.interpolate.SmoothBivariateSpline(poi1_values, poi2_values, dnll2_values,
     #     kx=2, ky=2)
     coords = np.stack([poi1_values, poi2_values], axis=1)
-    interp = scipy.interpolate.CloughTocher2DInterpolator(coords, dnll2_values)
+    try:
+        interp = scipy.interpolate.CloughTocher2DInterpolator(coords, dnll2_values)
+    except:
+        return None
 
     # recompute the minimum and compare with the existing one when given
     xcheck = poi1_min is not None and poi2_min is not None

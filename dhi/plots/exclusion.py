@@ -9,7 +9,7 @@ import math
 import numpy as np
 
 from dhi.config import poi_data, campaign_labels, colors, br_hh_names, cms_postfix
-from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, make_list
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, make_list, warn
 from dhi.plots.limits import evaluate_limit_scan_1d, _print_excluded_ranges
 from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
 from dhi.plots.util import (
@@ -528,23 +528,26 @@ def plot_exclusion_and_bestfit_2d(
             poi1_min=scan_minima[0] if scan_minima and show_best_fit_error else None,
             poi2_min=scan_minima[1] if scan_minima and show_best_fit_error else None,
         )
-        g_fit = ROOT.TGraphAsymmErrors(1)
-        g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
-        if show_best_fit_error:
-            if scan.num1_min.uncertainties:
-                g_fit.SetPointEXhigh(0, scan.num1_min.u(direction="up"))
-                g_fit.SetPointEXlow(0, scan.num1_min.u(direction="down"))
-            if scan.num2_min.uncertainties:
-                g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
-                g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
-            r.setup_graph(g_fit, props={"FillStyle": 0}, color=colors.black)
-            draw_objs.append((g_fit, "PEZ"))
-            legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "PEL")
+        if not scan:
+            warn("2D likelihood evaluation failed")
         else:
-            r.setup_graph(g_fit, props={"FillStyle": 0, "MarkerStyle": 43, "MarkerSize": 2},
-                color=colors.black)
-            draw_objs.append((g_fit, "PZ"))
-            legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "P")
+            g_fit = ROOT.TGraphAsymmErrors(1)
+            g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
+            if show_best_fit_error:
+                if scan.num1_min.uncertainties:
+                    g_fit.SetPointEXhigh(0, scan.num1_min.u(direction="up"))
+                    g_fit.SetPointEXlow(0, scan.num1_min.u(direction="down"))
+                if scan.num2_min.uncertainties:
+                    g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
+                    g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
+                r.setup_graph(g_fit, props={"FillStyle": 0}, color=colors.black)
+                draw_objs.append((g_fit, "PEZ"))
+                legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "PEL")
+            else:
+                r.setup_graph(g_fit, props={"FillStyle": 0, "MarkerStyle": 43, "MarkerSize": 2},
+                    color=colors.black)
+                draw_objs.append((g_fit, "PZ"))
+                legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "P")
 
     # SM point
     if show_sm_point:
