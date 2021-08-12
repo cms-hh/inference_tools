@@ -1317,24 +1317,14 @@ class CombineCommandTask(CommandTask):
         description="when set, use additional combine flags to optimize the minimization of "
         "likelihoods with containing discrete parameters; default: False",
     )
-
-    # default minimizer options with initial strategy 0
-    combine_stable_options = (
-        " --cminDefaultMinimizerType Minuit2"
-        " --cminDefaultMinimizerStrategy 0"
-        " --cminDefaultMinimizerTolerance 0.1"
-        " --cminFallbackAlgo Minuit2,1:0.2"
-        " --cminFallbackAlgo Minuit2,0:0.2"
-    )
-
-    # default minimizer options with initial strategy 1, i.e., for fits requiring Hesse
-    # see http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/runningthetool#generic-minimizer-options
-    combine_stable_options_hesse = (
-        " --cminDefaultMinimizerType Minuit2"
-        " --cminDefaultMinimizerStrategy 1"
-        " --cminDefaultMinimizerTolerance 0.1"
-        " --cminFallbackAlgo Minuit2,1:0.2"
-        " --cminFallbackAlgo Minuit2,1:0.4"
+    minimizer = law.MultiCSVParameter(
+        default=(("0", "0.1"), ("1", "0.2"), ("0", "0.2")),
+        min_len=2,
+        max_len=4,
+        significant=False,
+        description="multiple, colon-separated minimizer configurations in the format "
+        "'[algo,][subalgo,]strategy,tolerance'; algo defaults to Minuit2; subalgo has no default; "
+        "default: 0,0.1:1,0.2:0,0.2",
     )
 
     combine_discrete_options = (
@@ -1365,16 +1355,37 @@ class CombineCommandTask(CommandTask):
 
     exclude_index = True
 
-    @property
-    def combine_optimization_args(self):
-        args = self.combine_stable_options
-        if self.optimize_discretes:
-            args += " " + self.combine_discrete_options
+    def get_minimizer_args(self, skip_default=False):
+        args = ""
+        if not self.minimizer:
+            return args
+
+        def parse(m):
+            # returns algo, subalgo, strategy, tolerance
+            if len(m) == 2:
+                return "Minuit2", None, m[0], m[1]
+            elif len(m) == 3:
+                return m[0], None, m[1], m[2]
+            return m
+
+        if not skip_default:
+            algo, subalgo, strat, tol = parse(self.minimizer[0])
+            args += " --cminDefaultMinimizerType {}".format(algo)
+            args += " --cminDefaultMinimizerStrategy {}".format(strat)
+            args += " --cminDefaultMinimizerTolerance {}".format(tol)
+            if subalgo:
+                args += " --cminDefaultMinimizerAlgo {}".format(subalgo)
+
+        for m in self.minimizer[(0 if skip_default else 1):]:
+            algo, subalgo, strat, tol = parse(m)
+            subalgo = ("," + subalgo) if subalgo else ""
+            args += " --cminFallbackAlgo {}{},{}:{}".format(algo, subalgo, strat, tol)
+
         return args
 
     @property
-    def combine_optimization_args_hesse(self):
-        args = self.combine_stable_options_hesse
+    def combine_optimization_args(self):
+        args = self.get_minimizer_args()
         if self.optimize_discretes:
             args += " " + self.combine_discrete_options
         return args
