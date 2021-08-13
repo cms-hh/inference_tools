@@ -126,7 +126,8 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                             if multi_match(proc_name, proc_pattern[int(neg):]) == neg:
                                 continue
 
-                            if not multi_match(param_name, param_pattern):
+                            neg = param_pattern.startswith("!")
+                            if multi_match(param_name, param_pattern[int(neg):]) == neg:
                                 continue
 
                             effects.append("-")
@@ -140,8 +141,7 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                     if effects.count("-") == len(effects):
                         to_remove.append(i)
                         removed_nuisances.append(param_name)
-                        logger.info("no effect left for {} parameter {}, remove parameter".format(
-                            param_type, param_name))
+                        logger.info("remove {} parameter {}".format(param_type, param_name))
                     else:
                         blocks["parameters"][i] = " ".join([param_name, param_type] + effects)
 
@@ -167,7 +167,8 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                         if multi_match(proc_name, proc_pattern[int(neg):]) == neg:
                             continue
 
-                        if not multi_match(param_name, param_pattern):
+                        neg = param_pattern.startswith("!")
+                        if multi_match(param_name, param_pattern[int(neg):]) == neg:
                             continue
 
                         to_remove.append(i)

@@ -503,6 +503,8 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, nom_f
 
     # save
     r.update_canvas(canvas)
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
     canvas.SaveAs(path)
 
 
