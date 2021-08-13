@@ -3,7 +3,7 @@
 
 """
 Script to plot histogram shapes of a datacard using configurable rules.
-Shapes stored in workspaces are not supported. Example usage:
+Shapes stored in workspaces are not supported at the moment. Example usage:
 
 # plot all nominal shapes in a certain datacard bin
 # (note the quotes)
@@ -168,7 +168,7 @@ def plot_datacard_shapes(datacard, rules, stack=False, directory=".",
         _expanded_rules = []
         for bin_name, proc_data, syst_pattern in expanded_rules:
             if not syst_pattern:
-                _expanded_rules.append([bin_name, proc_data, syst_pattern])
+                _expanded_rules.append([bin_name, proc_data, None])
                 continue
 
             for param in content["parameters"]:
@@ -177,11 +177,11 @@ def plot_datacard_shapes(datacard, rules, stack=False, directory=".",
                     continue
 
                 # handle special systematic names
-                if syst_pattern == "S":
+                if syst_pattern == "S":  # all shapes
                     if multi_match(param["type"], "shape*"):
                         _expanded_rules.append([bin_name, proc_data, param])
                     continue
-                if syst_pattern == "R":
+                if syst_pattern == "R":  # all rates
                     if param["type"] in ["lnN", "lnU"]:
                         _expanded_rules.append([bin_name, proc_data, param])
                     continue
@@ -193,6 +193,10 @@ def plot_datacard_shapes(datacard, rules, stack=False, directory=".",
 
                 # check if it applies to the bin
                 if bin_name not in param["spec"]:
+                    continue
+
+                # check if it applies to any process in that bin
+                if all(param["spec"][bin_name].get(proc, "-") == "-" for proc in proc_data[1]):
                     continue
 
                 # store the rule
@@ -270,6 +274,10 @@ def plot_datacard_shapes(datacard, rules, stack=False, directory=".",
 
                     # store the shape info
                     proc_shapes[proc_name] = (nom_shape, d, u)
+
+                # do nothing when a parameter is set, but no shape was found (likely a misconfig)
+                if param and all(d is None for _, d, _ in proc_shapes.values()):
+                    continue
 
                 # draw the shape
                 create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, nom_format,
@@ -477,7 +485,7 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, nom_f
     draw_objs1.insert(-1, legend_box)
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad1)
+    cms_labels = r.routines.create_cms_labels(pad=pad1, layout="outside_horizontal")
     draw_objs1.extend(cms_labels)
 
     # campaign label
@@ -557,9 +565,9 @@ if __name__ == "__main__":
     parser.add_argument("--directory", "-d", default=".", help="directory in which produced plots "
         "are saved; defaults to the current directory")
     parser.add_argument("--nom-format", default="{bin}__{process}.pdf", help="format for created "
-        "files when plotting only nominal shapes; default: {bin}__{process}.pdf")
+        "files when creating only nominal shapes; default: {bin}__{process}.pdf")
     parser.add_argument("--syst-format", default="{bin}__{process}__{syst}.pdf", help="format for "
-        "created files when plotting only nominal shapes; default: {bin}__{process}__{syst}.pdf")
+        "created files when creating systematic shapes; default: {bin}__{process}__{syst}.pdf")
     parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
     parser.add_argument("--binning", "-b", default="original", choices=["original", "numbers",
         "numbers_width"], help="the binning strategy; 'original': use original bin edges; "

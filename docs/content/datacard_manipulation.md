@@ -803,7 +803,7 @@ usage: plot_datacard_shapes.py [-h] [--stack] [--directory DIRECTORY]
                                [BIN,PROCESS[,SYSTEMATIC] ...]
 
 Script to plot histogram shapes of a datacard using configurable rules.
-Shapes stored in workspaces are not supported. Example usage:
+Shapes stored in workspaces are not supported at the moment. Example usage:
 
 # plot all nominal shapes in a certain datacard bin
 # (note the quotes)
@@ -849,10 +849,10 @@ optional arguments:
                         directory in which produced plots are saved; defaults
                         to the current directory
   --nom-format NOM_FORMAT
-                        format for created files when plotting only nominal
+                        format for created files when creating only nominal
                         shapes; default: {bin}__{process}.pdf
   --syst-format SYST_FORMAT
-                        format for created files when plotting only nominal
+                        format for created files when creating systematic
                         shapes; default: {bin}__{process}__{syst}.pdf
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --binning {original,numbers,numbers_width}, -b {original,numbers,numbers_width}
