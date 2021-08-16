@@ -51,11 +51,11 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         super(PullsAndImpacts, self).__init__(*args, **kwargs)
 
         # encourage using snapshots when running unblinded
-        # if self.unblinded and not self.use_snapshot and self.is_workflow() and self.branches != (0,):
-        #     self.logger.warning_once("unblinded_no_snapshot", "you are running ublinded without "
-        #         "using the initial fit as a snapshot for nuisance fits; you might consider to do "
-        #         "so by adding '--use-snapshot' to your command as this can lead to more stable "
-        #         "results")
+        if self.unblinded and not self.use_snapshot and self.is_workflow() and self.branches != (0,):
+            self.logger.info_once("unblinded_no_snapshot", "you are running unblinded pulls and "
+                "impacts without using the initial fit as a snapshot for nuisance fits; you might "
+                "consider to do so by adding '--use-snapshot' to your command as this can lead to "
+                "more stable results and faster fits")
 
         self._cache_branches = False
 
