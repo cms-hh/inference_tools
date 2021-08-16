@@ -64,7 +64,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         branches = ["nominal"]
 
         # read the nuisance parameters from the workspace file when present
-        params = self.workspace_parameter_names
+        params = self.workspace_parameters
         if params:
             # remove poi
             params = [p for p in params if p != self.pois[0]]
@@ -96,13 +96,6 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         if not ws_input.exists():
             return law.no_value
         return get_workspace_parameters(ws_input.path)
-
-    @law.cached_workflow_property(setter=False, empty_value=law.no_value)
-    def workspace_parameter_names(self):
-        ws_input = CreateWorkspace.req(self).output()
-        if not ws_input.exists():
-            return law.no_value
-        return get_workspace_parameters(ws_input.path, only_names=True)
 
     def workflow_requires(self):
         reqs = super(PullsAndImpacts, self).workflow_requires()
@@ -141,7 +134,10 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         use_snapshot = self.use_snapshot and self.branch > 0
 
         # the workspace to use
-        workspace = self.input()["snapshot" if use_snapshot else "workspace"].path
+        if use_snapshot:
+            workspace = self.input()["snapshot"]["fit"].path
+        else:
+            workspace = self.input()["workspace"].path
 
         # define branch dependent options
         if self.branch == 0:
@@ -176,6 +172,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --saveNLL"
+            " --X-rtd REMOVE_CONSTANT_ZERO_POINT=1"
             " {self.combine_optimization_args}"
             " {branch_opts}"
             " && "
