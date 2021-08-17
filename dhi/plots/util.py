@@ -108,7 +108,7 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
 
 def create_hh_process_label(poi="r", br=None):
     return "pp #rightarrow {}{}".format(
-        {"r": "HH (incl)", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH"),
+        {"r": "HH (incl.)", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH"),
         " ({})".format(to_root_latex(br_hh_names[br])) if br in br_hh_names else "",
     )
 

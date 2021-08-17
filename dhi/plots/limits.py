@@ -476,7 +476,8 @@ def plot_limit_points(
     - "theory" (optional), a single value or a sequence of three values, i.e., nominal value, and
       +1 sigma and -1 sigma variations (absolute values, not errors!),
     - "name", shown as the y-axis label and when it is a key of dhi.config.br_hh_names,
-      its value is used as a label instead.
+      its value is used as a label instead,
+    - "label", an extra label shown on the right side of the plot.
 
     Example:
 
@@ -490,6 +491,7 @@ def plot_limit_points(
                 "observed": 45.,
                 "theory": (38., 40., 36.),
                 "name": "bbXX",
+                "label": "CMS-HIG-XX-YYY",
             }, {
                 ...
             }],
@@ -716,12 +718,20 @@ def plot_limit_points(
         r.setup_line(tr, props={"NDC": False, "LineWidth": 1})
         draw_objs.extend([tl, tr])
 
+        # extra labels
+        if d.get("label"):
+            rlabel = to_root_latex(d["label"])
+            rlabel_x = r.get_x(10, pad, anchor="right")
+            rlabel = ROOT.TLatex(rlabel_x, label_y, rlabel)
+            r.setup_latex(rlabel, props={"NDC": True, "TextAlign": 32, "TextSize": 16})
+            draw_objs.append(rlabel)
+
     # model parameter labels
     if model_parameters:
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
+    legend = r.routines.create_legend(pad=pad, width=430, x2=-1, n=3, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 

@@ -4,6 +4,8 @@
 Tasks related to upper limits.
 """
 
+import os
+
 import law
 import luigi
 
@@ -707,6 +709,11 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask, BoxPlotTask):
         if self.datacard_names:
             for d, name in zip(data, self.datacard_names):
                 d["name"] = name
+
+        # set extra labels is set
+        if self.extra_labels:
+            for d, label in zip(data, self.extra_labels):
+                d["label"] = label
 
         # reoder if requested
         if self.datacard_order:
