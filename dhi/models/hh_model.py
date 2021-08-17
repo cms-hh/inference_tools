@@ -332,7 +332,9 @@ SM_HIGG_DECAYS = ["hww", "hzz", "hgg", "htt", "hbb", "hzg", "hmm", "hcc", "hglug
 # single H production modes that are supported in the scaling
 SM_HIGG_PROD = ["ggZH", "tHq", "tHW", "ggH", "qqH", "ZH", "WH", "VH", "ttH"]
 
-# coefficients for the BR scaling with kl (from https://arxiv.org/abs/1709.08649, Eq 22)
+# coefficients for the BR scaling with kl
+# formula from https://arxiv.org/abs/1709.08649, Eq 22
+# values from https://arxiv.org/pdf/1607.04251.pdf
 coeffs_br = {
     "hgg": 0.49e-2,
     "hzz": 0.83e-2,
