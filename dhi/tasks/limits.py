@@ -18,7 +18,7 @@ from dhi.tasks.combine import (
     POIPlotTask,
     CreateWorkspace,
 )
-from dhi.util import unique_recarray
+from dhi.util import unique_recarray, real_path
 from dhi.config import br_hh
 
 
@@ -570,13 +570,22 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask, BoxPlotTask):
         choices=(law.NO_STR, "expected", "observed"),
         significant=False,
         description="either 'expected' or 'observed' for sorting entries from top to bottom in "
-        "descending order; has precedence over --datacard-order when set; no default",
+        "descending order; has precedence over --datacard-order when set; default: empty",
     )
     h_lines = law.CSVParameter(
         cls=luigi.IntParameter,
         default=tuple(),
         significant=False,
-        description="comma-separated vertical positions of horizontal lines; no default",
+        description="comma-separated vertical positions of horizontal lines; default: empty",
+    )
+    extra_labels = law.CSVParameter(
+        default=tuple(),
+        description="comma-separated labels to be shown per entry; default: empty"
+    )
+    external_limits = law.CSVParameter(
+        default=tuple(),
+        description="one or multiple json files that contain externally computed limit values to "
+        "be shown below the ones computed with actual datacards; default: empty",
     )
 
     y_min = None
@@ -587,8 +596,12 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask, BoxPlotTask):
     force_n_pois = 1
 
     def __init__(self, *args, **kwargs):
+        # cached external limit values
+        self._external_limit_values = None
+
         super(PlotUpperLimitsAtPoint, self).__init__(*args, **kwargs)
 
+        # shorthand to the poi
         self.poi = self.pois[0]
 
         # this task depends on the UpperLimits task which does a scan over several parameters, but
@@ -607,6 +620,47 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask, BoxPlotTask):
                 hint = "when calculating limits on 'XS', nuisances related to signal cross " \
                     "sections should be frozen (nuisance group 'signal_norm_xs' in the combination)"
             self.logger.info("HINT: " + hint)
+
+        # check the length of extra labels
+        n = self.n_datacard_entries
+        if self.extra_labels and len(self.extra_labels) != n:
+            raise Exception("found {} entries in extra_labels whereas {} is expected".format(
+                len(self.extra_labels), n))
+
+    @property
+    def n_datacard_entries(self):
+        n = len(self.multi_datacards)
+
+        # add external limits when set
+        external_limits = self.read_external_limits()
+        if external_limits:
+            n += len(external_limits)
+
+        return n
+
+    def read_external_limits(self):
+        if self._external_limit_values is None and self.external_limits:
+            external_limits = []
+
+            for path in self.external_limits:
+                # check the file
+                path = real_path(path)
+                if not os.path.exists(path):
+                    raise Exception("external limit file '{}' does not exist".format(path))
+
+                # read it and store values
+                content = law.LocalFileTarget(path).load(formatter="json")
+                limits = content["limits"]
+
+                # optionally filter with "use" list
+                if "use" in content:
+                    limits = [l for l in limits if l["name"] in content["use"]]
+
+                external_limits.extend(limits)
+
+            self._external_limit_values = external_limits
+
+        return self._external_limit_values
 
     def requires(self):
         scan_parameter_value = self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.0)
@@ -634,6 +688,8 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask, BoxPlotTask):
                 parts.append(self.br)
         if self.x_log:
             parts.append("log")
+        if self.external_limits:
+            parts.append("ext" + law.util.create_hash(self.external_limits))
 
         names = self.create_plot_names(["limitsatpoint", self.get_output_postfix(), parts])
         return [self.local_target(name) for name in names]
@@ -660,6 +716,15 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask, BoxPlotTask):
             ],
             dtype=[(name, np.float32) for name in names],
         )
+
+        # append external values when given
+        external_limits = self.read_external_limits()
+        if external_limits:
+            ext = np.array(
+                [tuple(l[name] for name in names) for l in external_limits],
+                dtype=limit_values.dtype,
+            )
+            limit_values = np.concatenate([limit_values, ext], axis=0)
 
         # rescale from limit on r to limit on xsec when requested, depending on the poi
         thy_value = None

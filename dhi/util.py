@@ -130,6 +130,7 @@ def to_root_latex(s):
     """
     s = re.sub(r"(\$|\\,|\\;)", "", s)
     s = re.sub(r"\~", " ", s)
+    s = re.sub(r"\\(\{|\})", r"\1", s)
     s = re.sub(r"\\", "#", s)
     return s
 
