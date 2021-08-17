@@ -652,7 +652,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask, BoxPlotTask):
         # load limit values
         names = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
         if self.unblinded:
-            names .append("observed")
+            names.append("observed")
         limit_values = np.array(
             [
                 UpperLimits.load_limits(coll["collection"][0], unblinded=self.unblinded)

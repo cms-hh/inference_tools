@@ -614,15 +614,22 @@ def plot_limit_points(
         _data = [d for d in data if key in d]
         n = len(_data)
         zeros = np.zeros(n, dtype=np.float32)
-        y = (np.arange(n, dtype=np.float32))[::-1]
-        x_err_u, x_err_d = zeros, zeros
-        y_err_u, y_err_d = zeros + 1, zeros
+
         limits = np.array([d[key][0] for d in _data], dtype=np.float32)
-        if sigma:
-            x_err_d = np.array([d[key][sigma * 2] for d in _data], dtype=np.float32)
-            x_err_d = limits - x_err_d
-            x_err_u = np.array([d[key][sigma * 2 - 1] for d in _data], dtype=np.float32)
-            x_err_u = x_err_u - limits
+        y = np.arange(n, dtype=np.float32)[::-1]
+        x_err_u, x_err_d = zeros, zeros
+        if key == "observed":
+            y = np.arange(n, dtype=np.float32)[::-1] + 0.5
+            y_err_u, y_err_d = zeros + 0.5, zeros + 0.5
+        else:
+            y = np.arange(n, dtype=np.float32)[::-1]
+            y_err_u, y_err_d = zeros + 1, zeros
+            if sigma:
+                x_err_d = np.array([d[key][sigma * 2] for d in _data], dtype=np.float32)
+                x_err_d = limits - x_err_d
+                x_err_u = np.array([d[key][sigma * 2 - 1] for d in _data], dtype=np.float32)
+                x_err_u = x_err_u - limits
+
         return create_tgraph(n, limits, y, x_err_d, x_err_u, y_err_d, y_err_u)
 
     # 2 sigma band
@@ -647,8 +654,8 @@ def plot_limit_points(
     if has_obs:
         g_obs = create_graph(key="observed")
         r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1})
-        draw_objs.append((g_obs, "SAME,EZ"))
-        legend_entries[0] = (g_obs, "Observed", "L")
+        draw_objs.append((g_obs, "SAME,PEZ"))
+        legend_entries[0] = (g_obs, "Observed", "PL")
 
     # vertical line for theory prediction, represented by a graph in case of uncertainties
     if has_thy and any((d["theory"][0] >= x_min) for d in data):
