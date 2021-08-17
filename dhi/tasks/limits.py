@@ -254,7 +254,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
                     [self.scan_parameter],
                     thy_linspace,
                     normalize=True,
-                    skip_unc=False,
+                    skip_unc=True,
                     xsec_kwargs=self.parameter_values_dict,
                 )
 
@@ -394,7 +394,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
                         [self.scan_parameter],
                         thy_linspace,
                         normalize=True,
-                        skip_unc=False,
+                        skip_unc=True,
                         xsec_kwargs=self.parameter_values_dict,
                     )
 
@@ -513,7 +513,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
                         [self.scan_parameter],
                         thy_linspace,
                         normalize=True,
-                        skip_unc=False,
+                        skip_unc=True,
                         xsec_kwargs=self.parameter_values_dict,
                     )
 
@@ -754,7 +754,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask, BoxPlotTask):
                     [self.pseudo_scan_parameter],
                     [self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.0)],
                     normalize=True,
-                    skip_unc=False,
+                    skip_unc=True,
                     xsec_kwargs=self.parameter_values_dict,
                 )
 
