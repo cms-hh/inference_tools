@@ -602,8 +602,16 @@ def plot_limit_points(
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"TitleOffset": 1.2,
-        "LabelOffset": r.pixel_to_coord(canvas, y=4)})
+        "LabelOffset": r.pixel_to_coord(canvas, y=4), "NoExponent": True})
     draw_objs.append((h_dummy, "HIST"))
+
+    # show custom x axis values in log mode
+    # if x_log:
+    #     for v in [2, 3, 4, 5, 6, 50, 500]:
+    #         tick_label = ROOT.TLatex(float(v), -0.08, str(v))
+    #         r.setup_latex(tick_label, props={"NDC": False, "TextAlign": 23,
+    #             "TextSize": h_dummy.GetXaxis().GetLabelSize()})
+    #         draw_objs.append(tick_label)
 
     # setup up to 6 legend entries that are inserted by index downstream
     legend_entries = 6 * [(h_dummy, " ", "L")]
@@ -730,7 +738,7 @@ def plot_limit_points(
             rlabel = to_root_latex(d["label"])
             rlabel_x = r.get_x(10, pad, anchor="right")
             rlabel = ROOT.TLatex(rlabel_x, label_y, rlabel)
-            r.setup_latex(rlabel, props={"NDC": True, "TextAlign": 32, "TextSize": 16})
+            r.setup_latex(rlabel, props={"NDC": True, "TextAlign": 32, "TextSize": 14})
             draw_objs.append(rlabel)
 
     # model parameter labels
@@ -738,7 +746,7 @@ def plot_limit_points(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=430, x2=-1, n=3, props={"NColumns": 2})
+    legend = r.routines.create_legend(pad=pad, width=430, n=3, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
