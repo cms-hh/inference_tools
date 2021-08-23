@@ -108,7 +108,7 @@ def plot_limit_scan(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "95% CLs limit on #sigma({}) / {}".format(
+    y_title = "95% CL limit on #sigma({}) / {}".format(
         create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
@@ -347,7 +347,7 @@ def plot_limit_scans(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
+    y_title = "Upper 95% CL limit on #sigma({}) / {}".format(
         create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
@@ -597,7 +597,7 @@ def plot_limit_points(
     draw_objs = []
 
     # dummy histogram to control axes
-    x_title = "95% CLs limit on #sigma({}) / {}".format(
+    x_title = "95% CL limit on #sigma({}) / {}".format(
         create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
@@ -606,12 +606,14 @@ def plot_limit_points(
     draw_objs.append((h_dummy, "HIST"))
 
     # show custom x axis values in log mode
-    # if x_log:
-    #     for v in [2, 3, 4, 5, 6, 50, 500]:
-    #         tick_label = ROOT.TLatex(float(v), -0.08, str(v))
-    #         r.setup_latex(tick_label, props={"NDC": False, "TextAlign": 23,
-    #             "TextSize": h_dummy.GetXaxis().GetLabelSize()})
-    #         draw_objs.append(tick_label)
+    if x_log:
+        additional_x_values = []
+        # additional_x_values = [2, 3, 4, 5, 6, 50, 500]
+        for v in additional_x_values:
+            tick_label = ROOT.TLatex(float(v), -0.08, str(v))
+            r.setup_latex(tick_label, props={"NDC": False, "TextAlign": 23,
+                "TextSize": h_dummy.GetXaxis().GetLabelSize()})
+            draw_objs.append(tick_label)
 
     # setup up to 6 legend entries that are inserted by index downstream
     legend_entries = 6 * [(h_dummy, " ", "L")]
@@ -753,6 +755,11 @@ def plot_limit_points(
     # cms label
     cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
+
+    # energy label
+    # ecm_label = ROOT.TLatex(cms_labels[0].GetX(), cms_labels[0].GetY() - 0.088, "13 TeV")
+    # r.setup_latex(ecm_label, props={"TextSize": 20, "TextAlign": 13})
+    # draw_objs.append(ecm_label)
 
     # campaign label
     if campaign:
@@ -911,7 +918,7 @@ def plot_limit_scan_2d(
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter1].label)
     y_title = to_root_latex(poi_data[scan_parameter2].label)
-    z_title = "{} 95% CLs limit on #sigma({}) / #sigma_{{Theory}}".format(
+    z_title = "{} 95% CL limit on #sigma({}) / #sigma_{{Theory}}".format(
         "Observed" if has_obs else "Expected", create_hh_process_label(poi))
     h_dummy = ROOT.TH2F("h_dummy", ";{};{};{}".format(x_title, y_title, z_title),
         1, x_min, x_max, 1, y_min, y_max)
@@ -1098,7 +1105,7 @@ def plot_benchmark_limits(
 
     # dummy histogram to control axes
     x_title = "Shape benchmark"
-    y_title = "95% CLs limit on #sigma({}) / {}".format(
+    y_title = "95% CL limit on #sigma({}) / {}".format(
         create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), n, -0.5, n - 0.5)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
