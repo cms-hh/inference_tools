@@ -1256,11 +1256,11 @@ def create_model(name, skip_ggf=None, skip_vbf=None, skip_vhh=True, **kwargs):
 
 
 # some named, default models
-model_all = create_model("model_all")
+model_all     = create_model("model_all")
 model_all_vhh = create_model("model_all_vhh", skip_vhh=[])
 
 # model used for the combination
-model_default = create_model("model_default", skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)])
+model_default     = create_model("model_default", skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)])
 model_default_vhh = create_model("model_default_vhh", skip_ggf=[(0, 1)], skip_vbf=[(0.5, 1, 1)],
     skip_vhh=[])
 

@@ -222,12 +222,15 @@ def plot_limit_scan(
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors.red,
                 "FillStyle": 1001, "FillColor": colors.red_trans_50})
             draw_objs.append((g_thy, "SAME,C3"))
-            legend_entries[0 if observed_values is None else 1] = (g_thy, "Theory prediction", "LF")
+            legend_entry = (g_thy, "Theory prediction", "LF")
         else:
             g_thy = create_graph(values=theory_values, key="xsec")
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors.red})
             draw_objs.append((g_thy, "SAME,C"))
-            legend_entries[0 if observed_values is None else 1] = (g_thy, "Theory prediction", "L")
+            legend_entry = (g_thy, "Theory prediction", "L")
+        # only add to the legend if values are in terms of a cross section
+        if xsec_unit:
+            legend_entries[0 if observed_values is None else 1] = legend_entry
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
@@ -402,12 +405,15 @@ def plot_limit_scans(
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors.red,
                 "FillStyle": 1001, "FillColor": colors.red_trans_50})
             draw_objs.insert(1, (g_thy, "SAME,C3"))
-            legend_entries.append((g_thy, "Theory prediction", "LF"))
+            legend_entry = (g_thy, "Theory prediction", "LF")
         else:
             g_thy = create_tgraph(len(scan_values_thy), scan_values_thy, theory_values["xsec"])
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1}, color=colors.red)
             draw_objs.insert(1, (g_thy, "SAME,C"))
-            legend_entries.append((g_thy, "Theory prediction", "L"))
+            legend_entry = (g_thy, "Theory prediction", "L")
+        # only add to the legend if values are in terms of a cross section
+        if xsec_unit:
+            legend_entries.append(legend_entry)
 
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
@@ -681,7 +687,9 @@ def plot_limit_points(
                 "LineColor": colors.red, "FillStyle": 1001, "FillColor": colors.red_trans_50})
             draw_objs.append((g_thy_area, "SAME,2"))
             legend_entry = (g_thy_area, "Theory prediction", "LF")
-        legend_entries[1 if has_obs else 0] = legend_entry
+        # only add to the legend if values are in terms of a cross section
+        if xsec_unit:
+            legend_entries[1 if has_obs else 0] = legend_entry
 
     # horizontal guidance lines
     if h_lines:
@@ -697,8 +705,8 @@ def plot_limit_points(
         get_digits = lambda v: determine_limit_digits(v, is_xsec=bool(xsec_unit))
 
     # templates and helpers for y axis labels
-    y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{Expected %s}}"
-    y_label_tmpl_obs = "#splitline{#bf{%s}}{#scale[0.75]{#splitline{Expected %s}{Observed %s}}}"
+    y_label_tmpl = "#splitline{%s}{#scale[0.75]{Expected %s}}"
+    y_label_tmpl_obs = "#splitline{%s}{#scale[0.75]{#splitline{Expected %s}{Observed %s}}}"
 
     def make_y_label(name, exp, obs=None):
         if xsec_unit:

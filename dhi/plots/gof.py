@@ -222,7 +222,7 @@ def plot_gofs(
         "LabelOffset": r.pixel_to_coord(canvas, y=4)})
     h_dummy.GetYaxis().SetBinLabel(1, "")
     draw_objs.append((h_dummy, "HIST"))
-    y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{p = %.1f %%}}"
+    y_label_tmpl = "#splitline{%s}{#scale[0.75]{p = %.1f %%}}"
     stats_label_tmpl = "#splitline{#splitline{N = %d}{#mu = %.1f}}{#sigma = %.1f}"
 
     # vertical line at 1

@@ -213,8 +213,8 @@ def plot_exclusion_and_bestfit_1d(
 
     # y axis labels and ticks
     h_dummy.GetYaxis().SetBinLabel(1, "")
-    label_tmpl = "#bf{%s}"
-    label_tmpl_scan = "#splitline{#bf{%s}}{#scale[0.75]{%s = %s}}"
+    label_tmpl = "%s"
+    label_tmpl_scan = "#splitline{%s}{#scale[0.75]{%s = %s}}"
     for i, (d, scan) in enumerate(zip(data, scans)):
         # name labels
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
