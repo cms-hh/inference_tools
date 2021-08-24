@@ -172,7 +172,10 @@ setup() {
     export PYTHONWARNINGS="ignore"
     export PYTHONNOUSERSITE="1"
     export GLOBUS_THREAD_MODEL="none"
-    ulimit -s unlimited
+
+    # unlimited stack size (as fallback, set soft-limit only)
+    ulimit -s unlimited 2> /dev/null
+    [ "$?" != "0" ] && ulimit -S -s unlimited
 
     # local stack
     local sw_version="1"
