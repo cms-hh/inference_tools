@@ -276,7 +276,7 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         description="number of replicas to generate; default: 10",
     )
 
-    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2/*"]
+    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2/*", "*~"]
 
     version = None
     task_namespace = None

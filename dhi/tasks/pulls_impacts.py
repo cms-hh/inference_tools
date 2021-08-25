@@ -150,7 +150,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         else:
             # nuisance fits
             branch_opts = (
-                " --algo impact "
+                " --algo impact"
                 " --parameters {}"
                 " --floatOtherPOIs 1"
                 " --saveInactivePOI 1"
