@@ -132,7 +132,7 @@ def plot_likelihood_scan_1d(
         if has_thy_err:
             # theory graph
             g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1],
-                0, y_max_line)
+                0, y_max_line - y_min)
             r.setup_graph(g_thy, props={"LineColor": colors.red, "FillStyle": 1001,
                 "FillColor": colors.red_trans_50})
             draw_objs.append((g_thy, "SAME,02"))
@@ -327,7 +327,7 @@ def plot_likelihood_scans_1d(
         if has_thy_err:
             # theory graph
             g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1],
-                0, y_max_line)
+                0, y_max_line - y_min)
             r.setup_graph(g_thy, props={"LineColor": colors.red, "FillStyle": 1001,
                 "FillColor": colors.red_trans_50})
             draw_objs.insert(-len(data), (g_thy, "SAME,02"))
@@ -1061,7 +1061,7 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
 
     # when the previous step did not shift values to 0,
     # detect cases where the positive minimum is > 0 and shift values
-    if (not neg_mask.sum() or not shift_negative_values) and (dnll2_values > 0).sum():
+    if not neg_mask.sum() and (dnll2_values > 0).sum():
         pos_min = dnll2_values[dnll2_values > 0].min()
         if pos_min > 0:
             slightly_pos = pos_min < epsilon

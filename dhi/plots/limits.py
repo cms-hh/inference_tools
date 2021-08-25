@@ -176,7 +176,7 @@ def plot_limit_scan(
     if observed_values is not None:
         g_inj = create_graph(values=observed_values)
         r.setup_graph(g_inj, props={"LineWidth": 2, "LineStyle": 1})
-        draw_objs.append((g_inj, "SAME,C"))
+        draw_objs.append((g_inj, "SAME,CP" if show_points else "SAME,C"))
         legend_entries[0] = (g_inj, "Observed", "L")
         y_max_value = max(y_max_value, max(observed_values["limit"]))
         y_min_value = min(y_min_value, min(observed_values["limit"]))

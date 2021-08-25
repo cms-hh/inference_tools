@@ -112,8 +112,14 @@ class MergeLikelihoodScan(LikelihoodBase):
 
         data = []
         dtype = [(p, np.float32) for p in self.scan_parameter_names] + [
+            # raw nll0, nll and deltaNLL values from combine
+            ("nll0", np.float32),
+            ("nll", np.float32),
             ("dnll", np.float32),
+            # dnll2 times two
             ("dnll2", np.float32),
+            # absolute nll value of the fit
+            ("fit_nll", np.float32),
         ]
         poi_mins = self.n_pois * [np.nan]
         branch_map = self.requires().branch_map
@@ -139,8 +145,15 @@ class MergeLikelihoodScan(LikelihoodBase):
             # compute the dnll2 value
             dnll2 = dnll * 2.
 
+            # get the raw nll and nll0 values
+            nll0 = float(f["nll0"].array()[1])
+            nll = float(f["nll"].array()[1])
+
+            # absolute nll value of the particular fit
+            fit_nll = nll + dnll
+
             # store the value of that point
-            data.append(scan_values + (dnll, dnll2))
+            data.append(scan_values + (nll0, nll, dnll, dnll2, fit_nll))
 
         data = np.array(data, dtype=dtype)
         self.output().dump(data=data, poi_mins=np.array(poi_mins), formatter="numpy")
@@ -342,13 +355,14 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 paper=self.paper,
             )
 
-    def load_scan_data(self, inputs, merge_scans=True):
+    def load_scan_data(self, inputs, merge_scans=True, recompute_dnll2=True):
         return self._load_scan_data(inputs, self.scan_parameter_names,
-            self.get_scan_parameter_combinations(), merge_scans=merge_scans)
+            self.get_scan_parameter_combinations(), merge_scans=merge_scans,
+            recompute_dnll2=recompute_dnll2)
 
     @classmethod
     def _load_scan_data(cls, inputs, scan_parameter_names, scan_parameter_combinations,
-            merge_scans=True):
+            merge_scans=True, recompute_dnll2=True):
         import numpy as np
 
         # load values of each input
@@ -366,7 +380,14 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         if merge_scans:
             test_fn = lambda kept, removed: kept < 1e-7 or abs((kept - removed) / kept) < 0.001
             values = unique_recarray(values, cols=scan_parameter_names,
-                test_metric=("dnll2", test_fn))
+                test_metric=("fit_nll", test_fn))
+
+        # recompute dnll2 from the minimum nll and fit_nll
+        if recompute_dnll2:
+            _values = [values] if merge_scans else values
+            min_nll = min(np.nanmin(v["nll"]) for v in _values)
+            for v in _values:
+                v["dnll2"] = v["fit_nll"] - min_nll
 
         # pick the most appropriate poi mins
         poi_mins = cls._select_poi_mins(all_poi_mins, scan_parameter_combinations)

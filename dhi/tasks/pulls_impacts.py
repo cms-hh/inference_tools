@@ -133,7 +133,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         # check if a snapshot is used
         use_snapshot = self.use_snapshot and self.branch > 0
 
-        # the workspace to use
+        # get the workspace to use
         if use_snapshot:
             workspace = self.input()["snapshot"]["fit"].path
         else:

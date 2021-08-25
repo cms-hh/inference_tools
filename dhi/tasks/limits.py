@@ -45,21 +45,25 @@ class UpperLimits(UpperLimitsBase, CombineCommandTask, law.LocalWorkflow, HTCond
     def output(self):
         return self.local_target("limit__" + self.get_output_postfix() + ".root")
 
-    @property
-    def blinded_args(self):
-        if self.unblinded:
-            return "--seed {self.branch}".format(self=self)
-        else:
-            return "--seed {self.branch} --toys {self.toys} --run expected --noFitAsimov".format(
-                self=self)
-
     def build_command(self):
-        return (
+        # arguments for un/blinding
+        if self.unblinded:
+            blinded_args = "--seed {self.branch}".format(self=self)
+        else:
+            blinded_args = (
+                " --seed {self.branch}"
+                " --toys {self.toys}"
+                " --run expected"
+                " --noFitAsimov"
+            ).format(self=self)
+
+        # build the command
+        cmd = (
             "combine -M AsymptoticLimits {workspace}"
             " {self.custom_args}"
             " --verbose 1"
             " --mass {self.mass}"
-            " {self.blinded_args}"
+            " {blinded_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameterRanges {self.joined_parameter_ranges}"
             " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
@@ -72,7 +76,10 @@ class UpperLimits(UpperLimitsBase, CombineCommandTask, law.LocalWorkflow, HTCond
             self=self,
             workspace=self.input().path,
             output=self.output().path,
+            blinded_args=blinded_args,
         )
+
+        return cmd
 
     @classmethod
     def load_limits(cls, target, unblinded=False):
@@ -84,7 +91,6 @@ class UpperLimits(UpperLimitsBase, CombineCommandTask, law.LocalWorkflow, HTCond
         quantiles = data["quantileExpected"]
 
         # prepare limit values in the format (nominal, err1_up, err1_down, err2_up, err2_down)
-        # and extend by the observed value if requested
         indices = {0.5: 0, 0.84: 1, 0.16: 2, 0.975: 3, 0.025: 4}
         values = [np.nan] * len(indices)
         for l, q in zip(limits, quantiles)[:len(indices)]:
@@ -258,12 +264,19 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
                     xsec_kwargs=self.parameter_values_dict,
                 )
 
-        # some printing
-        for v in range(-2, 4 + 1):
+        # print some limits
+        msg = self.poi
+        if xsec_unit:
+            br = "" if self.br in (None, law.NO_STR) else " x BR({})".format(self.br)
+            msg = "cross section{} in {}, POI {}".format(br, xsec_unit, self.poi)
+        self.publish_message("selected limits on {}".format(msg))
+        for v in range(-3, 5 + 1):
             if v in limit_values[self.scan_parameter]:
                 record = limit_values[limit_values[self.scan_parameter] == v][0]
-                self.publish_message("{} = {} -> {} {}".format(self.scan_parameter, v,
-                    record["limit"], xsec_unit or "({})".format(self.poi)))
+                msg = "{} = {} -> {:.5f}".format(self.scan_parameter, v, record["limit"])
+                if self.unblinded:
+                    msg += " (obs. {:.5f})".format(record["observed"])
+                self.publish_message(msg)
 
         # prepare observed values
         obs_values = None
