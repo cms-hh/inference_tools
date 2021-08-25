@@ -116,7 +116,7 @@ class MergeLikelihoodScan(LikelihoodBase):
             ("nll0", np.float32),
             ("nll", np.float32),
             ("dnll", np.float32),
-            # dnll2 times two
+            # dnll times two
             ("dnll2", np.float32),
             # absolute nll value of the fit
             ("fit_nll", np.float32),
@@ -387,7 +387,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             _values = [values] if merge_scans else values
             min_nll = min(np.nanmin(v["nll"]) for v in _values)
             for v in _values:
-                v["dnll2"] = v["fit_nll"] - min_nll
+                v["dnll2"] = 2 * (v["fit_nll"] - min_nll)
 
         # pick the most appropriate poi mins
         poi_mins = cls._select_poi_mins(all_poi_mins, scan_parameter_combinations)
