@@ -31,6 +31,11 @@ class LikelihoodBase(POIScanTask):
 
 class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
+    snapshot_branch = luigi.IntParameter(
+        default=law.NO_INT,
+        description="when set, use the fit from this branch task as a snapshot; default: empty",
+    )
+
     run_command_in_tmp = True
 
     def create_branch_map(self):
@@ -50,31 +55,60 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
 
         return linspace
 
+    @property
+    def use_snapshot(self):
+        return self.snapshot_branch not in (None, law.NO_INT)
+
     def workflow_requires(self):
         reqs = super(LikelihoodScan, self).workflow_requires()
-        reqs["workspace"] = self.requires_from_branch()
+        reqs["workspace"] = CreateWorkspace.req(self)
+        if self.use_snapshot and set(self.branch_map) != {self.snapshot_branch}:
+            reqs["snapshot"] = self.req(self, branches=(self.snapshot_branch,))
         return reqs
 
     def requires(self):
-        return CreateWorkspace.req(self)
+        reqs = {"workspace": CreateWorkspace.req(self)}
+        if self.use_snapshot and self.branch != self.snapshot_branch:
+            reqs["snapshot"] = self.req(self, branch=self.snapshot_branch)
+        return reqs
 
     def output(self):
-        return self.local_target("likelihood__" + self.get_output_postfix() + ".root")
+        parts = []
+        if self.use_snapshot:
+            if self.branch == self.snapshot_branch:
+                parts.append("withsnapshot")
+            else:
+                parts.extend(["fromsnapshot"] + [
+                    "{}{}".format(*tpl) for tpl in
+                    zip(self.scan_parameter_names, self.branch_map[self.snapshot_branch])
+                ])
 
-    @property
-    def blinded_args(self):
-        if self.unblinded:
-            return "--seed {self.branch}".format(self=self)
-        else:
-            return "--seed {self.branch} --toys {self.toys}".format(self=self)
+        name = self.join_postfix(["likelihood", self.get_output_postfix(), parts]) + ".root"
+        return self.local_target(name)
 
     def build_command(self):
+        # get the workspace to use and define snapshot args
+        use_snapshot = self.use_snapshot and self.branch != self.snapshot_branch
+        if use_snapshot:
+            workspace = self.input()["snapshot"].path
+            snapshot_args = "--snapshotName MultiDimFit"
+        else:
+            workspace = self.input()["workspace"].path
+            snapshot_args = "--saveWorkspace" if self.use_snapshot else ""
+
+        # args for blinding / unblinding
+        if self.unblinded:
+            blinded_args = "--seed {self.branch}".format(self=self)
+        else:
+            blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
+
+        # build the command
         return (
             "combine -M MultiDimFit {workspace}"
             " {self.custom_args}"
             " --verbose 1"
             " --mass {self.mass}"
-            " {self.blinded_args}"
+            " {blinded_args}"
             " --algo grid"
             " --redefineSignalPOIs {self.joined_pois}"
             " --gridPoints {self.joined_scan_points}"
@@ -85,6 +119,7 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
+            " {snapshot_args}"
             " --saveNLL"
             " --X-rtd REMOVE_CONSTANT_ZERO_POINT=1"
             " {self.combine_optimization_args}"
@@ -92,8 +127,10 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
-            workspace=self.input().path,
+            workspace=workspace,
             output=self.output().path,
+            blinded_args=blinded_args,
+            snapshot_args=snapshot_args,
         )
 
 

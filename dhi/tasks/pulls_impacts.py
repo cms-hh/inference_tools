@@ -101,7 +101,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         reqs = super(PullsAndImpacts, self).workflow_requires()
         reqs["workspace"] = CreateWorkspace.req(self)
         if self.use_snapshot and set(self.branch_map) != {0}:
-            reqs["snapshot"] = self.req(self, branches=[0])
+            reqs["snapshot"] = self.req(self, branches=(0,))
         return reqs
 
     def requires(self):
