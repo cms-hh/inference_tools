@@ -159,18 +159,13 @@ def plot_limit_scan(
     y_max_value = max(y_max_value, max(expected_values["limit"]))
     y_min_value = min(y_min_value, min(expected_values["limit"]))
 
-    # print the excluded ranges when there is a sufficient amount of points
-    if len(expected_values[scan_parameter]) >= 5:
-        try:
-            print_excluded_ranges(scan_parameter, poi + " expected",
-                expected_values[scan_parameter],
-                expected_values["limit"],
-                theory_values[scan_parameter] if has_thy else None,
-                theory_values["xsec"] if has_thy else None,
-            )
-        except Exception:
-            print("1D limit scan evaluation failed")
-            traceback.print_exc()
+    # print the expected excluded ranges
+    print_excluded_ranges(scan_parameter, poi + " expected",
+        expected_values[scan_parameter],
+        expected_values["limit"],
+        theory_values[scan_parameter] if has_thy else None,
+        theory_values["xsec"] if has_thy else None,
+    )
 
     # observed values
     if observed_values is not None:
@@ -180,6 +175,7 @@ def plot_limit_scan(
         legend_entries[0] = (g_inj, "Observed", "L")
         y_max_value = max(y_max_value, max(observed_values["limit"]))
         y_min_value = min(y_min_value, min(observed_values["limit"]))
+        # print the observed excluded ranges
         print_excluded_ranges(scan_parameter, poi + " observed",
             observed_values[scan_parameter],
             observed_values["limit"],
@@ -376,6 +372,7 @@ def plot_limit_scans(
             "LP" if show_points else "L"))
         y_max_value = max(y_max_value, max(limit_values))
         y_min_value = min(y_min_value, min(limit_values))
+        # print excluded ranges
         print_excluded_ranges(scan_parameter, poi + " " + name,
             scan_values,
             limit_values,
@@ -1215,7 +1212,7 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
         print("WARNING: found {} NaN(s) in limit values for 1d evaluation".format(n_nans))
 
     # same for cross section values when given
-    if xsec_scan_values is not None and xsec_values is not None:
+    if xsec_scan_values is not None and xsec_values is not None and not (xsec_values == 1).all():
         mask = ~np.isnan(xsec_values)
         xsec_scan_values = xsec_scan_values[mask]
         xsec_values = xsec_values[mask]
@@ -1238,16 +1235,22 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
     def get_intersection(start):
         objective = lambda x: abs(diff_interp(x))
         res = minimize_1d(objective, bounds, start=start)
-        return res.x[0] if res.status == 0 and (bounds[0] <= res.x[0] <= bounds[1]) else None
+        # catch bad minimizations
+        if res.status != 0 or not (bounds[0] <= res.x[0] <= bounds[1]):
+            return None
+        # catch local minima by exploiting that objectives of actual minima must be close to 0
+        x = res.x[0]
+        if objective(x) > 1e-2:
+            return None
+        return x
 
     # get exclusion range edges from intersections
-    rnd = lambda v: round(float(v), 7)
+    rnd = lambda v: round(float(v), 6)
     edges = {rnd(scan_values.min()), rnd(scan_values.max())}
     for start in np.linspace(scan_values.min(), scan_values.max(), 20):
         x = get_intersection(start)
-        if x is None:
-            continue
-        edges.add(rnd(x))
+        if x is not None:
+            edges.add(rnd(x))
 
     # drop edges that are too close to one another (within 4 digits)
     _edges = []
@@ -1269,20 +1272,29 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
 
 
 def print_excluded_ranges(param_name, scan_name, scan_values, limit_values, xsec_scan_values=None,
-        xsec_values=None, interpolation="cubic"):
-    # get excluded ranges
-    ranges = evaluate_limit_scan_1d(
-        scan_values,
-        limit_values,
-        xsec_scan_values=xsec_scan_values,
-        xsec_values=xsec_values,
-        interpolation=interpolation,
-    ).excluded_ranges
+        xsec_values=None, interpolation="linear"):
+    # more than 5 points are required
+    if len(scan_values) <= 5:
+        print("insufficient number of scan points for extracting excluded ranges")
+        return
 
-    _print_excluded_ranges(param_name, scan_name, scan_values, ranges)
+    try:
+        ranges = evaluate_limit_scan_1d(
+            scan_values,
+            limit_values,
+            xsec_scan_values=xsec_scan_values,
+            xsec_values=xsec_values,
+            interpolation=interpolation,
+        ).excluded_ranges
+    except Exception:
+        print("1D limit scan evaluation failed")
+        traceback.print_exc()
+        return
+
+    _print_excluded_ranges(param_name, scan_name, scan_values, ranges, interpolation)
 
 
-def _print_excluded_ranges(param_name, scan_name, scan_values, ranges):
+def _print_excluded_ranges(param_name, scan_name, scan_values, ranges, interpolation):
     # helper to check if the granularity of scan values is too small at a certain point
     def granularity_check(value, digits=2):
         # get the closest values
@@ -1321,7 +1333,8 @@ def _print_excluded_ranges(param_name, scan_name, scan_values, ranges):
 
     # start printing
     print("")
-    title = "Excluded ranges of parameter '{}' in scan '{}'".format(param_name, scan_name)
+    title = "Excluded ranges of parameter '{}' in scan '{}' (from {} interpolation)".format(
+        param_name, scan_name, interpolation)
     print(title)
     print(len(title) * "=")
     print("(granularity potentially insufficient for accurate interpolation)")

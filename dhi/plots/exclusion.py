@@ -144,8 +144,9 @@ def plot_exclusion_and_bestfit_1d(
         for i, d in enumerate(data):
             if data_key not in d:
                 continue
-            ranges = evaluate_limit_scan_1d(scan_values, d[data_key]["limit"]).excluded_ranges
-            _print_excluded_ranges(scan_parameter, poi + " " + kind, scan_values, ranges)
+            scan = evaluate_limit_scan_1d(scan_values, d[data_key]["limit"], interpolation="linear")
+            ranges = scan.excluded_ranges
+            _print_excluded_ranges(scan_parameter, poi + " " + kind, scan_values, ranges, "linear")
             for start, stop in ranges:
                 is_left = start < 1 and stop < 1
                 excl_x.append(stop if is_left else start)
