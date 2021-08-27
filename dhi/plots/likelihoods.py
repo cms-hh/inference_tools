@@ -1121,7 +1121,8 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     # first, obtain an interpolation function
     # interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="linear")
     try:
-        interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="cubic")
+        interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="cubic",
+            fill_value="extrapolate")
     except:
         return None
 

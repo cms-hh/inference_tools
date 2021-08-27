@@ -62,7 +62,7 @@ setup() {
     # CMSSW & combine setup
     #
 
-    local combine_version="3"
+    local combine_version="4"
     local flag_file_combine="$DHI_SOFTWARE/.combine_good"
 
     if [ "$DHI_COMBINE_STANDALONE" != "True" ]; then
@@ -77,6 +77,9 @@ setup() {
     [ "$DHI_REINSTALL_COMBINE" = "1" ] && rm -f "$flag_file_combine"
     if [ ! -f "$flag_file_combine" ]; then
         mkdir -p "$DHI_SOFTWARE"
+        # the combine setup below uses a custom branch which adds only a single commit on top of
+        # the recommended v8.2.0 tag; once https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/pull/686
+        # is merged, we can transition back to the central repo
         if [ "$DHI_COMBINE_STANDALONE" != "True" ]; then
             # CMSSW based
             (
@@ -87,12 +90,12 @@ setup() {
                 cd "$CMSSW_VERSION/src" && \
                 eval "$( scramv1 runtime -sh )" && \
                 scram b && \
-                git clone --depth 1 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
+                git clone --depth 1 --branch parameter_ranges_for_grid https://github.com/riga/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
                 cd HiggsAnalysis/CombinedLimit && \
                 git fetch --tags && \
-                git checkout tags/v8.2.0 && \
+                git checkout parameter_ranges_for_grid && \
                 chmod ug+x test/diffNuisances.py && \
-                scram b -j
+                scram b -j ${DHI_INSTALL_CORES}
             ) || return "$?"
         else
             # standalone
@@ -100,10 +103,10 @@ setup() {
                 echo "installing standalone combine at $DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
                 cd "$DHI_SOFTWARE"
                 rm -rf HiggsAnalysis/CombinedLimit
-                git clone --depth 1 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
+                git clone --depth 1 --branch parameter_ranges_for_grid https://github.com/riga/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
                 cd HiggsAnalysis/CombinedLimit && \
                 git fetch --tags && \
-                git checkout tags/v8.2.0 && \
+                git checkout parameter_ranges_for_grid && \
                 chmod ug+x test/diffNuisances.py && \
                 source env_standalone.sh "" && \
                 make -j ${DHI_INSTALL_CORES} && \
