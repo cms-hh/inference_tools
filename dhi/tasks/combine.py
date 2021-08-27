@@ -25,10 +25,6 @@ from dhi.util import linspace, try_int, real_path, expand_path
 from dhi.datacard_tools import bundle_datacard
 
 
-DEFAULT_HH_MODULE = os.getenv("DHI_DEFAULT_HH_MODULE", "HHModelPinv")
-DEFAULT_HH_MODEL = os.getenv("DHI_DEFAULT_HH_MODEL", "model_default")
-
-
 def require_hh_model(func):
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
@@ -44,6 +40,9 @@ class HHModelTask(AnalysisTask):
     A task that essentially adds a hh_model parameter to locate the physics model file and that
     provides a few convenience functions for working with it.
     """
+
+    DEFAULT_HH_MODULE = "HHModelPinv"
+    DEFAULT_HH_MODEL = "model_default"
 
     valid_hh_model_options = {
         "noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc",
@@ -81,11 +80,11 @@ class HHModelTask(AnalysisTask):
 
         # when there is no "." in the string, assume it to be the default module
         if "." not in hh_model:
-            hh_model = "{}.{}".format(DEFAULT_HH_MODULE, hh_model)
+            hh_model = "{}.{}".format(cls.DEFAULT_HH_MODULE, hh_model)
 
         # split into module, model name and options
         front, options = hh_model.split("@", 1) if "@" in hh_model else (hh_model, "")
-        module_id, model_name = front.rsplit(".", 1) if "." in front else ("DEFAULT_HH_MODULE", front)
+        module_id, model_name = front.rsplit(".", 1) if "." in front else (cls.DEFAULT_HH_MODULE, front)
         options = options.split("@") if options else []
 
         # check if options are valid and split them into key value pairs
