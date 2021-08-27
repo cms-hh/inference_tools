@@ -791,6 +791,7 @@ optional arguments:
 > plot_datacard_shapes.py --help
 
 usage: plot_datacard_shapes.py [-h] [--stack] [--directory DIRECTORY]
+                               [--file-type FILE_TYPE]
                                [--nom-format NOM_FORMAT]
                                [--syst-format SYST_FORMAT] [--mass MASS]
                                [--binning {original,numbers,numbers_width}]
@@ -848,12 +849,14 @@ optional arguments:
   --directory DIRECTORY, -d DIRECTORY
                         directory in which produced plots are saved; defaults
                         to the current directory
+  --file-type FILE_TYPE, -f FILE_TYPE
+                        the file type to produce; default: pdf
   --nom-format NOM_FORMAT
                         format for created files when creating only nominal
-                        shapes; default: {bin}__{process}.pdf
+                        shapes; default: {bin}__{process}.{file_type}
   --syst-format SYST_FORMAT
                         format for created files when creating systematic
-                        shapes; default: {bin}__{process}__{syst}.pdf
+                        shapes; default: {bin}__{process}__{syst}.{file_type}
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --binning {original,numbers,numbers_width}, -b {original,numbers,numbers_width}
                         the binning strategy; 'original': use original bin
