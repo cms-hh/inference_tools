@@ -25,6 +25,10 @@ from dhi.util import linspace, try_int, real_path, expand_path
 from dhi.datacard_tools import bundle_datacard
 
 
+DEFAULT_HH_MODULE = os.getenv("DHI_DEFAULT_HH_MODULE", "HHModelPinv")
+DEFAULT_HH_MODEL = os.getenv("DHI_DEFAULT_HH_MODEL", "model_default")
+
+
 def require_hh_model(func):
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
@@ -47,11 +51,12 @@ class HHModelTask(AnalysisTask):
     }
 
     hh_model = luigi.Parameter(
-        default="HHModelPinv.model_default",
+        default="{}.{}".format(DEFAULT_HH_MODULE, DEFAULT_HH_MODEL),
         description="the location of the HH model to use with optional configuration options in "
-        "the format module.model_name[@opt1[@opt2...]]; when no module name is given, the default "
-        "one 'dhi.models.HHModelPinv' is assumed; valid options are {}; default: "
-        "HHModelPinv.model_default".format(",".join(valid_hh_model_options)),
+        "the format [module.]model_name[@opt1[@opt2...]]; when no module is given, the default "
+        "'{0}' is assumed; valid options are {2}; default: {0}.{1}".format(
+            DEFAULT_HH_MODULE, DEFAULT_HH_MODEL, ",".join(valid_hh_model_options),
+        ),
     )
 
     allow_empty_hh_model = False
@@ -74,14 +79,13 @@ class HHModelTask(AnalysisTask):
         # the format used to be "module:model_name" before so adjust it to support legacy commands
         hh_model = hh_model.replace(":", ".")
 
-        # when there is no "." in the string, assume it to be the name of a model in the default
-        # model file "HHModelPinv"
+        # when there is no "." in the string, assume it to be the default module
         if "." not in hh_model:
-            hh_model = "HHModelPinv.{}".format(hh_model)
+            hh_model = "{}.{}".format(DEFAULT_HH_MODULE, hh_model)
 
         # split into module, model name and options
         front, options = hh_model.split("@", 1) if "@" in hh_model else (hh_model, "")
-        module_id, model_name = front.rsplit(".", 1) if "." in front else ("HHModelPinv", front)
+        module_id, model_name = front.rsplit(".", 1) if "." in front else ("DEFAULT_HH_MODULE", front)
         options = options.split("@") if options else []
 
         # check if options are valid and split them into key value pairs
