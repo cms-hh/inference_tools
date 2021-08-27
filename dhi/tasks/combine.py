@@ -1265,14 +1265,6 @@ class POIScanTask(POITask, ParameterScanTask):
 
         return self.join_postfix(parts) if join else parts
 
-    def _joined_parameter_values_pois(self):
-        pois = super(POIScanTask, self)._joined_parameter_values_pois()
-
-        # skip scan parameters
-        pois = [p for p in pois if p not in self.scan_parameter_names]
-
-        return pois
-
 
 class POIPlotTask(PlotTask, POITask):
 

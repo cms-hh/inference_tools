@@ -1141,8 +1141,8 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
             # compare and optionally issue a warning (threshold to be optimized)
             if abs(poi_min - poi_min_new) >= 0.03:
                 warn(
-                    "WARNING: external POI minimum (from combine) {:.4f} differs from the "
-                    "recomputed value (from scipy.interpolate and scipy.minimize) {:.4f}".format(
+                    "WARNING: external POI minimum {:.4f} (from combine) differs from the "
+                    "recomputed value {:.4f} (from scipy.interpolate and scipy.minimize)".format(
                         poi_min, poi_min_new)
                 )
         else:

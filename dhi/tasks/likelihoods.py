@@ -5,9 +5,11 @@ Tasks related to likelihood scans.
 """
 
 import copy
+from operator import mul
 
 import law
 import luigi
+import six
 
 from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import (
@@ -27,6 +29,7 @@ class LikelihoodBase(POIScanTask):
     pois._default = ("kl",)
 
     force_scan_parameters_equal_pois = True
+    allow_parameter_values_in_pois = True
 
 
 class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
@@ -34,6 +37,11 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
     snapshot_branch = luigi.IntParameter(
         default=law.NO_INT,
         description="when set, use the fit from this branch task as a snapshot; default: empty",
+    )
+    save_snapshot = luigi.BoolParameter(
+        default=False,
+        description="when set, saves the best fit snapshot workspace in the output file; "
+        "default: False",
     )
 
     run_command_in_tmp = True
@@ -62,39 +70,39 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
     def workflow_requires(self):
         reqs = super(LikelihoodScan, self).workflow_requires()
         reqs["workspace"] = CreateWorkspace.req(self)
-        if self.use_snapshot and set(self.branch_map) != {self.snapshot_branch}:
-            reqs["snapshot"] = self.req(self, branches=(self.snapshot_branch,))
+        if self.use_snapshot:
+            reqs["snapshot"] = self.req(self, branches=(self.snapshot_branch,), save_snapshot=True,
+                snapshot_branch=law.NO_INT)
         return reqs
 
     def requires(self):
         reqs = {"workspace": CreateWorkspace.req(self)}
-        if self.use_snapshot and self.branch != self.snapshot_branch:
-            reqs["snapshot"] = self.req(self, branch=self.snapshot_branch)
+        if self.use_snapshot:
+            reqs["snapshot"] = self.req(self, branch=self.snapshot_branch, save_snapshot=True,
+                snapshot_branch=law.NO_INT)
         return reqs
 
     def output(self):
         parts = []
+        if self.save_snapshot:
+            parts.append("withsnapshot")
         if self.use_snapshot:
-            if self.branch == self.snapshot_branch:
-                parts.append("withsnapshot")
-            else:
-                parts.extend(["fromsnapshot"] + [
-                    "{}{}".format(*tpl) for tpl in
-                    zip(self.scan_parameter_names, self.branch_map[self.snapshot_branch])
-                ])
+            parts.extend(["fromsnapshot"] + [
+                "{}{}".format(*tpl) for tpl in
+                zip(self.scan_parameter_names, self.branch_map[self.snapshot_branch])
+            ])
 
         name = self.join_postfix(["likelihood", self.get_output_postfix(), parts]) + ".root"
         return self.local_target(name)
 
     def build_command(self):
         # get the workspace to use and define snapshot args
-        use_snapshot = self.use_snapshot and self.branch != self.snapshot_branch
-        if use_snapshot:
+        snapshot_args = "--saveWorkspace" if self.save_snapshot else ""
+        if self.use_snapshot:
             workspace = self.input()["snapshot"].path
-            snapshot_args = "--snapshotName MultiDimFit"
+            snapshot_args += " --snapshotName MultiDimFit"
         else:
             workspace = self.input()["workspace"].path
-            snapshot_args = "--saveWorkspace" if self.use_snapshot else ""
 
         # args for blinding / unblinding
         if self.unblinded:
@@ -103,7 +111,7 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
 
         # build the command
-        return (
+        cmd = (
             "combine -M MultiDimFit {workspace}"
             " {self.custom_args}"
             " --verbose 1"
@@ -132,6 +140,8 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             blinded_args=blinded_args,
             snapshot_args=snapshot_args,
         )
+
+        return cmd
 
 
 class MergeLikelihoodScan(LikelihoodBase):
@@ -392,14 +402,14 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 paper=self.paper,
             )
 
-    def load_scan_data(self, inputs, merge_scans=True, recompute_dnll2=True):
+    def load_scan_data(self, inputs, recompute_dnll2=True, merge_scans=True):
         return self._load_scan_data(inputs, self.scan_parameter_names,
-            self.get_scan_parameter_combinations(), merge_scans=merge_scans,
-            recompute_dnll2=recompute_dnll2)
+            self.get_scan_parameter_combinations(), recompute_dnll2=recompute_dnll2,
+            merge_scans=merge_scans)
 
     @classmethod
     def _load_scan_data(cls, inputs, scan_parameter_names, scan_parameter_combinations,
-            merge_scans=True, recompute_dnll2=True):
+            recompute_dnll2=True, merge_scans=True):
         import numpy as np
 
         # load values of each input
@@ -413,18 +423,27 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 for i in range(len(scan_parameter_names))
             ])
 
+        # nll0 values must be identical per input (otherwise there might be an issue with the model)
+        for v in values:
+            nll_unique = np.unique(v["nll0"])
+            nll_unique = nll_unique[~np.isnan(nll_unique)]
+            if len(nll_unique) != 1:
+                raise Exception("found {} different nll0 values in scan data which indicates in "
+                    "issue with the model: {}".format(len(nll_unique), nll_unique))
+
+        # recompute dnll2 from the minimum nll and fit_nll
+        if recompute_dnll2:
+            # use the overall minimal nll as a common reference value when merging
+            min_nll = min(np.nanmin(v["nll"]) for v in values)
+            for v in values:
+                _min_nll = min_nll if merge_scans else np.nanmin(v["nll"])
+                v["dnll2"] = 2 * (v["fit_nll"] - _min_nll)
+
         # concatenate values and safely remove duplicates when configured
         if merge_scans:
             test_fn = lambda kept, removed: kept < 1e-7 or abs((kept - removed) / kept) < 0.001
             values = unique_recarray(values, cols=scan_parameter_names,
-                test_metric=("fit_nll", test_fn))
-
-        # recompute dnll2 from the minimum nll and fit_nll
-        if recompute_dnll2:
-            _values = [values] if merge_scans else values
-            min_nll = min(np.nanmin(v["nll"]) for v in _values)
-            for v in _values:
-                v["dnll2"] = 2 * (v["fit_nll"] - min_nll)
+                test_metric=("dnll2", test_fn))
 
         # pick the most appropriate poi mins
         poi_mins = cls._select_poi_mins(all_poi_mins, scan_parameter_combinations)
@@ -433,22 +452,32 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
     @classmethod
     def _select_poi_mins(cls, poi_mins, scan_parameter_combinations):
-        # pick the poi mins for the scan range that has the lowest step size around the mins
-        # the combined step size of multiple dims is simply defined by their sum
-        min_step_size = 1e5
-        best_poi_mins = poi_mins[0]
-        for _poi_mins, scan_parameters in zip(poi_mins, scan_parameter_combinations):
-            if None in _poi_mins:
-                continue
-            # each min is required to be in the corresponding scan range
-            if not all((a <= v <= b) for v, (_, a, b, _) in zip(_poi_mins, scan_parameters)):
-                continue
-            # compute the merged step size
-            step_size = sum((b - a) / (n - 1.) for (_, a, b, n) in scan_parameters)
-            # store
-            if step_size < min_step_size:
-                min_step_size = step_size
-                best_poi_mins = _poi_mins
+        # pick the poi min corrsponding to the largest spanned region, i.e., range / area / volume
+        regions = [
+            (i, six.moves.reduce(mul, [stop - start for _, start, stop, _ in scan_range]))
+            for i, scan_range in enumerate(scan_parameter_combinations)
+        ]
+        best_i = sorted(regions, key=lambda pair: -pair[1])[0][0]
+        best_poi_mins = poi_mins[best_i]
+
+        # old algorithm:
+        # # pick the poi mins for the scan range that has the lowest step size around the mins
+        # # the combined step size of multiple dims is simply defined by their sum
+        # min_step_size = 1e5
+        # best_poi_mins = poi_mins[0]
+        # for _poi_mins, scan_parameters in zip(poi_mins, scan_parameter_combinations):
+        #     if None in _poi_mins:
+        #         continue
+        #     # each min is required to be in the corresponding scan range
+        #     if not all((a <= v <= b) for v, (_, a, b, _) in zip(_poi_mins, scan_parameters)):
+        #         continue
+        #     # compute the merged step size
+        #     step_size = sum((b - a) / (n - 1.) for (_, a, b, n) in scan_parameters)
+        #     # store
+        #     if step_size < min_step_size:
+        #         min_step_size = step_size
+        #         best_poi_mins = _poi_mins
+
         return best_poi_mins
 
 
