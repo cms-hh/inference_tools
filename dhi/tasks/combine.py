@@ -1250,6 +1250,14 @@ class POIScanTask(POITask, ParameterScanTask):
                 raise Exception("scan parameters are not allowed to be in parameter ranges, "
                     "but found {}".format(p))
 
+    def _joined_parameter_values_pois(self):
+        pois = super(POIScanTask, self)._joined_parameter_values_pois()
+
+        # skip scan parameters
+        pois = [p for p in pois if p not in self.scan_parameter_names]
+
+        return pois
+
     def get_output_postfix_pois(self):
         use_all_pois = self.allow_parameter_values_in_pois or self.force_scan_parameters_equal_pois
         return self.all_pois if use_all_pois else self.other_pois
