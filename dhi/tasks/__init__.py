@@ -4,6 +4,7 @@
 # import all task modules
 import dhi.tasks.base
 import dhi.tasks.combine
+import dhi.tasks.snapshot
 import dhi.tasks.limits
 import dhi.tasks.likelihoods
 import dhi.tasks.significances

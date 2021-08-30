@@ -20,10 +20,11 @@ from dhi.tasks.combine import (
     POIPlotTask,
     CreateWorkspace,
 )
+from dhi.tasks.snapshot import Snapshot, SnapshotUser
 from dhi.util import unique_recarray, extend_recarray, convert_dnll2
 
 
-class LikelihoodBase(POIScanTask):
+class LikelihoodBase(POIScanTask, SnapshotUser):
 
     pois = copy.copy(POIScanTask.pois)
     pois._default = ("kl",)
@@ -34,61 +35,40 @@ class LikelihoodBase(POIScanTask):
 
 class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
-    snapshot_branch = luigi.IntParameter(
-        default=law.NO_INT,
-        description="when set, use the fit from this branch task as a snapshot; default: empty",
-    )
-    save_snapshot = luigi.BoolParameter(
-        default=False,
-        description="when set, saves the best fit snapshot workspace in the output file; "
-        "default: False",
-    )
-
     run_command_in_tmp = True
 
     def create_branch_map(self):
         return self.get_scan_linspace()
 
-    @property
-    def use_snapshot(self):
-        return self.snapshot_branch not in (None, law.NO_INT)
-
     def workflow_requires(self):
         reqs = super(LikelihoodScan, self).workflow_requires()
         reqs["workspace"] = CreateWorkspace.req(self)
         if self.use_snapshot:
-            reqs["snapshot"] = self.req(self, branches=(self.snapshot_branch,), save_snapshot=True,
-                snapshot_branch=law.NO_INT)
+            reqs["snapshot"] = Snapshot.req(self)
         return reqs
 
     def requires(self):
         reqs = {"workspace": CreateWorkspace.req(self)}
         if self.use_snapshot:
-            reqs["snapshot"] = self.req(self, branch=self.snapshot_branch, save_snapshot=True,
-                snapshot_branch=law.NO_INT)
+            reqs["snapshot"] = Snapshot.req(self, branch=0)
         return reqs
 
     def output(self):
         parts = []
-        if self.save_snapshot:
-            parts.append("withsnapshot")
         if self.use_snapshot:
-            parts.extend(["fromsnapshot"] + [
-                "{}{}".format(*tpl) for tpl in
-                zip(self.scan_parameter_names, self.branch_map[self.snapshot_branch])
-            ])
+            parts.append("fromsnapshot")
 
         name = self.join_postfix(["likelihood", self.get_output_postfix(), parts]) + ".root"
         return self.local_target(name)
 
     def build_command(self):
         # get the workspace to use and define snapshot args
-        snapshot_args = "--saveWorkspace" if self.save_snapshot else ""
         if self.use_snapshot:
             workspace = self.input()["snapshot"].path
-            snapshot_args += " --snapshotName MultiDimFit"
+            snapshot_args = " --snapshotName MultiDimFit"
         else:
             workspace = self.input()["workspace"].path
+            snapshot_args = ""
 
         # args for blinding / unblinding
         if self.unblinded:
@@ -137,7 +117,12 @@ class MergeLikelihoodScan(LikelihoodBase):
         return LikelihoodScan.req(self)
 
     def output(self):
-        return self.local_target("limits__" + self.get_output_postfix() + ".npz")
+        parts = []
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+
+        name = self.join_postfix(["likelihoods", self.get_output_postfix(), parts]) + ".npz"
+        return self.local_target(name)
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -260,6 +245,8 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
     def output(self):
         # additional postfix
         parts = []
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
@@ -494,6 +481,8 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
     def output(self):
         # additional postfix
         parts = []
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
@@ -607,6 +596,8 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
     def output(self):
         # additional postfix
         parts = []
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 

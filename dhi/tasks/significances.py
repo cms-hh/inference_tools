@@ -15,10 +15,11 @@ from dhi.tasks.combine import (
     POIPlotTask,
     CreateWorkspace,
 )
+from dhi.tasks.snapshot import Snapshot, SnapshotUser
 from dhi.util import unique_recarray
 
 
-class SignificanceBase(POIScanTask):
+class SignificanceBase(POIScanTask, SnapshotUser):
 
     force_scan_parameters_unequal_pois = True
     allow_parameter_values_in_pois = True
@@ -56,44 +57,67 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
 
     def workflow_requires(self):
         reqs = super(SignificanceScan, self).workflow_requires()
-        reqs["workspace"] = self.requires_from_branch()
+        reqs["workspace"] = CreateWorkspace.req(self)
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self)
         return reqs
 
     def requires(self):
-        return CreateWorkspace.req(self)
+        reqs = {"workspace": CreateWorkspace.req(self)}
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self, branch=0)
+        return reqs
 
     def output(self):
-        return self.local_target("significance__" + self.get_output_postfix() + ".root")
+        parts = []
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
 
-    @property
-    def blinded_args(self):
-        if self.unblinded:
-            return "--seed {self.branch}".format(self=self)
-        elif self.frequentist_toys:
-            return "--seed {self.branch} --toys {self.toys} --toysFreq".format(self=self)
-        else:
-            return "--seed {self.branch} --toys {self.toys}".format(self=self)
+        name = self.join_postfix(["significance", self.get_output_postfix(), parts]) + ".root"
+        return self.local_target(name)
 
     def build_command(self):
-        return (
+        # get the workspace to use and define snapshot args
+        if self.use_snapshot:
+            workspace = self.input()["snapshot"].path
+            snapshot_args = " --snapshotName MultiDimFit"
+        else:
+            workspace = self.input()["workspace"].path
+            snapshot_args = ""
+
+        # arguments for un/blinding
+        if self.unblinded:
+            blinded_args = "--seed {self.branch}".format(self=self)
+        elif self.frequentist_toys:
+            blinded_args = "--seed {self.branch} --toys {self.toys} --toysFreq".format(self=self)
+        else:
+            blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
+
+        # build the command
+        cmd = (
             "combine -M Significance {workspace}"
             " {self.custom_args}"
             " --verbose 1"
             " --mass {self.mass}"
-            " {self.blinded_args}"
+            " {blinded_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameterRanges {self.joined_parameter_ranges}"
             " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
+            " {snapshot_args}"
             " {self.combine_optimization_args}"
             " && "
             "mv higgsCombineTest.Significance.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
-            workspace=self.input().path,
+            workspace=workspace,
             output=self.output().path,
+            blinded_args=blinded_args,
+            snapshot_args=snapshot_args,
         )
+
+        return cmd
 
 
 class MergeSignificanceScan(SignificanceBase):
@@ -102,7 +126,12 @@ class MergeSignificanceScan(SignificanceBase):
         return SignificanceScan.req(self)
 
     def output(self):
-        return self.local_target("significance__{}.npz".format(self.get_output_postfix()))
+        parts = []
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+
+        name = self.join_postfix(["significance", self.get_output_postfix(), parts]) + ".npz"
+        return self.local_target(name)
 
     @law.decorator.log
     def run(self):
@@ -178,6 +207,8 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
     def output(self):
         # additional postfix
         parts = []
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
         if self.y_log:
             parts.append("log")
 
@@ -268,6 +299,8 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
     def output(self):
         # additional postfix
         parts = []
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
         if self.y_log:
             parts.append("log")
 

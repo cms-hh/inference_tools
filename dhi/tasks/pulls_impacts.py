@@ -12,10 +12,11 @@ import numpy as np
 
 from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
+from dhi.tasks.snapshot import Snapshot, SnapshotUser
 from dhi.datacard_tools import get_workspace_parameters
 
 
-class PullsAndImpactsBase(POITask):
+class PullsAndImpactsBase(POITask, SnapshotUser):
 
     only_parameters = law.CSVParameter(
         default=(),
@@ -31,11 +32,6 @@ class PullsAndImpactsBase(POITask):
         description="when True, calculate pulls and impacts for MC stats nuisances as well; "
         "default: False",
     )
-    use_snapshot = luigi.BoolParameter(
-        default=False,
-        description="when True, run the initial fit first and use it as a snapshot for nuisance "
-        "fits; default: False",
-    )
 
     mc_stats_patterns = ["*prop_bin*"]
 
@@ -49,13 +45,6 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
 
     def __init__(self, *args, **kwargs):
         super(PullsAndImpacts, self).__init__(*args, **kwargs)
-
-        # encourage using snapshots when running unblinded
-        if self.unblinded and not self.use_snapshot and self.is_workflow() and self.branches != (0,):
-            self.logger.info_once("unblinded_no_snapshot", "you are running unblinded pulls and "
-                "impacts without using the initial fit as a snapshot for nuisance fits; you might "
-                "consider to do so by adding '--use-snapshot' to your command as this can lead to "
-                "more stable results and faster fits")
 
         self._cache_branches = False
 
@@ -100,51 +89,44 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
     def workflow_requires(self):
         reqs = super(PullsAndImpacts, self).workflow_requires()
         reqs["workspace"] = CreateWorkspace.req(self)
-        if self.use_snapshot and set(self.branch_map) != {0}:
-            reqs["snapshot"] = self.req(self, branches=(0,))
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self)
         return reqs
 
     def requires(self):
         reqs = {"workspace": CreateWorkspace.req(self)}
-        if self.branch > 0 and self.use_snapshot:
-            reqs["snapshot"] = self.req(self, branch=0)
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self, branch=0)
         return reqs
 
     def output(self):
         parts = [self.branch_data]
-        if self.branch > 0 and self.use_snapshot:
+        if self.use_snapshot:
             parts.append("fromsnapshot")
-        name = lambda s: self.join_postfix([s, self.get_output_postfix()] + parts) + ".root"
 
-        outputs = {"fit": self.local_target(name("fit"))}
-        if self.branch == 0:
-            outputs["fitresult"] = self.local_target(name("fitresult"), optional=True)
-
-        return outputs
-
-    @property
-    def blinded_args(self):
-        if self.unblinded:
-            return "--seed {self.branch}".format(self=self)
-        else:
-            return "--seed {self.branch} --toys {self.toys}".format(self=self)
+        name = self.join_postfix(["fit", self.get_output_postfix(), parts]) + ".root"
+        return self.local_target(name)
 
     def build_command(self):
-        # check if a snapshot is used
-        use_snapshot = self.use_snapshot and self.branch > 0
-
-        # get the workspace to use
-        if use_snapshot:
-            workspace = self.input()["snapshot"]["fit"].path
+        # get the workspace to use and define snapshot args
+        if self.use_snapshot:
+            workspace = self.input()["snapshot"].path
+            snapshot_args = " --snapshotName MultiDimFit"
         else:
             workspace = self.input()["workspace"].path
+            snapshot_args = ""
+
+        # args for blinding / unblinding
+        if self.unblinded:
+            blinded_args = "--seed {self.branch}".format(self=self)
+        else:
+            blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
 
         # define branch dependent options
         if self.branch == 0:
             # initial fit
             branch_opts = (
                 " --algo singles"
-                " --saveWorkspace"
                 " --saveFitResult"
             )
         else:
@@ -155,17 +137,14 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
                 " --floatOtherPOIs 1"
                 " --saveInactivePOI 1"
             ).format(self.branch_data)
-            if use_snapshot:
-                branch_opts += " --snapshotName MultiDimFit"
 
         # define the basic command
-        outputs = self.output()
         cmd = (
             "combine -M MultiDimFit {workspace}"
             " {self.custom_args}"
             " --verbose 1"
             " --mass {self.mass}"
-            " {self.blinded_args}"
+            " {blinded_args}"
             " --redefineSignalPOIs {self.pois[0]}"
             " --setParameterRanges {self.joined_parameter_ranges}"
             " --setParameters {self.joined_parameter_values}"
@@ -173,6 +152,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --saveNLL"
             " --X-rtd REMOVE_CONSTANT_ZERO_POINT=1"
+            " {snapshot_args}"
             " {self.combine_optimization_args}"
             " {branch_opts}"
             " && "
@@ -180,13 +160,11 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         ).format(
             self=self,
             workspace=workspace,
-            output=outputs["fit"].path,
+            output=self.output().path,
+            snapshot_args=snapshot_args,
+            blinded_args=blinded_args,
             branch_opts=branch_opts,
         )
-
-        # for the initial fit, also move the fitresult
-        if self.branch == 0:
-            cmd += " && mv multidimfitTest.root {}".format(outputs["fitresult"].path)
 
         return cmd
 
@@ -241,7 +219,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         fit_results = {}
         fail_info = []
         for b, name in branch_map.items():
-            inp = inputs[b]["fit"]
+            inp = inputs[b]
             if not inp.exists():
                 self.logger.warning("input of branch {} at {} does not exist".format(b, inp.path))
                 continue
