@@ -252,7 +252,11 @@ def plot_likelihood_scans_1d(
         # default name
         d.setdefault("name", str(i + 1))
         # keep only valid points
-        values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}
+        values = {
+            k: np.array(v, dtype=np.float32)
+            for k, v in values.items()
+            if k in [poi1, poi2, "dnll2"]
+        }
         # preprocess values (nan detection, negative shift)
         values["dnll2"], values[poi] = _preprocess_values(values["dnll2"], (poi, values[poi]),
             shift_negative_values=shift_negative_values, origin="entry '{}'".format(d["name"]),
@@ -671,7 +675,11 @@ def plot_likelihood_scans_2d(
         assert len(d["poi_mins"]) == 2
         # default name
         d.setdefault("name", str(i + 1))
-        values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}
+        values = {
+            k: np.array(v, dtype=np.float32)
+            for k, v in values.items()
+            if k in [poi1, poi2, "dnll2"]
+        }
         # preprocess values (nan detection, negative shift)
         values["dnll2"], values[poi1], values[poi2] = _preprocess_values(values["dnll2"],
             (poi1, values[poi1]), (poi2, values[poi2]), shift_negative_values=shift_negative_values,
@@ -1276,7 +1284,7 @@ def evaluate_likelihood_scan_2d(
             raise Exception("could not find minimum of nll2 interpolation: {}".format(res.message))
     else:
         poi1_min_new = res.x[0]
-        poi2_min_new = res.x[0]
+        poi2_min_new = res.x[1]
         print("done, found {:.4f}, {:.4f}".format(poi1_min_new, poi2_min_new))
         if xcheck:
             # compare and optionally issue a warning (threshold to be optimized)

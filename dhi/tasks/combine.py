@@ -1074,8 +1074,7 @@ class POITask(DatacardTask, ParameterValuesTask):
 
         # store available pois on task level and potentially update them according to the model
         if self.hh_model_empty:
-            self.r_pois = tuple(self.__class__.r_pois)
-            self.k_pois = tuple(self.__class__.k_pois)
+            self.r_pois, self.k_pois = self.get_empty_hh_model_pois()
         else:
             model = self.load_hh_model()[1]
             self.r_pois = tuple(model.r_pois)
@@ -1105,6 +1104,11 @@ class POITask(DatacardTask, ParameterValuesTask):
                 if p in self.pois:
                     raise Exception("{!r}: parameter values are not allowed to be in POIs, but "
                         "found '{}'".format(self, p))
+
+    def get_empty_hh_model_pois(self):
+        # hook that can be implemented to configure the r (and possibly k) POIs to be used
+        # when not hh model is configured
+        return tuple(self.__class__.r_pois), tuple(self.__class__.k_pois)
 
     def store_parts(self):
         parts = super(POITask, self).store_parts()
