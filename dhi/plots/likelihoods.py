@@ -251,7 +251,7 @@ def plot_likelihood_scans_1d(
         d.setdefault("poi_min", None)
         # default name
         d.setdefault("name", str(i + 1))
-        # keep only valid points
+        # drop all fields except for required ones
         values = {
             k: np.array(v, dtype=np.float32)
             for k, v in values.items()
@@ -441,6 +441,8 @@ def plot_likelihood_scan_2d(
         assert poi1 in _values
         assert poi2 in _values
         assert "dnll2" in _values
+        # drop all fields except for required ones
+        _values = {k: v for k, v in _values.items() if k in [poi1, poi2, "dnll2"]}
         # preprocess values (nan detection, negative shift)
         _values["dnll2"], _values[poi1], _values[poi2] = _preprocess_values(_values["dnll2"],
             (poi1, _values[poi1]), (poi2, _values[poi2]), remove_nans=interpolate_nans,
@@ -675,6 +677,7 @@ def plot_likelihood_scans_2d(
         assert len(d["poi_mins"]) == 2
         # default name
         d.setdefault("name", str(i + 1))
+        # drop all fields except for required ones and convert to arrays
         values = {
             k: np.array(v, dtype=np.float32)
             for k, v in values.items()
