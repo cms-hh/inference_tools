@@ -60,8 +60,16 @@ class BaseTask(law.Task):
 
                 cmd = dep.get_command()
                 if cmd:
-                    cmd = law.util.quote_cmd(cmd) if isinstance(cmd, (list, tuple)) else cmd
-                    text += law.util.colored(cmd, "cyan")
+                    # when cmd is a 2-tuple, i.e. the real command and a representation for printing
+                    # pick the second one
+                    if isinstance(cmd, tuple) and len(cmd) == 2:
+                        cmd = cmd[1]
+                    else:
+                        if isinstance(cmd, list):
+                            cmd = law.util.quote_cmd(cmd)
+                        # defaut highlighting
+                        cmd = law.util.colored(cmd, "cyan")
+                    text += cmd
                 else:
                     text += law.util.colored("empty", "red")
                 print(offset + text)
@@ -452,9 +460,13 @@ class CommandTask(AnalysisTask):
                 parent.touch()
                 handled_parent_uris.add(parent.uri())
 
-    def run_command(self, cmd, optional=False, **kwargs):
+    def run_command(self, cmd, highlighted_cmd=None, optional=False, **kwargs):
         # proper command encoding
         cmd = (law.util.quote_cmd(cmd) if isinstance(cmd, (list, tuple)) else cmd).strip()
+
+        # default highlighted command
+        if not highlighted_cmd:
+            highlighted_cmd = law.util.colored(cmd, "cyan")
 
         # when no cwd was set and run_command_in_tmp is True, create a tmp dir
         if "cwd" not in kwargs and self.run_command_in_tmp:
@@ -464,7 +476,7 @@ class CommandTask(AnalysisTask):
         self.publish_message("cwd: {}".format(kwargs.get("cwd", os.getcwd())))
 
         # call it
-        with self.publish_step("running '{}' ...".format(law.util.colored(cmd, "cyan"))):
+        with self.publish_step("running '{}' ...".format(highlighted_cmd)):
             p, lines = law.util.readable_popen(cmd, shell=True, executable="/bin/bash", **kwargs)
             for line in lines:
                 print(line)
@@ -487,6 +499,9 @@ class CommandTask(AnalysisTask):
 
         # get the command
         cmd = self.get_command()
+        if isinstance(cmd, tuple) and len(cmd) == 2:
+            kwargs["highlighted_cmd"] = cmd[1]
+            cmd = cmd[0]
 
         # run it
         self.run_command(cmd, **kwargs)

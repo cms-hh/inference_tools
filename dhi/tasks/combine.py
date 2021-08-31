@@ -1412,10 +1412,18 @@ class CombineCommandTask(CommandTask):
         def is_opt(s):
             return s.startswith("-") and not is_number(s[1:])
 
+        # highlighting
+        cyan = lambda s: law.util.colored(s, "cyan")
+        cyan_bright = lambda s: law.util.colored(s, "cyan", style="bright")
+        bright = lambda s: law.util.colored(s, "default", style="bright")
+
         # extract the "combine ..." part
-        cmds = [c.strip() for c in cmd.split(" && ")]
-        for i, c in enumerate(list(cmds)):
+        cmds = []
+        highlighted_cmds = []
+        for c in (c.strip() for c in cmd.split(" && ")):
             if not c.startswith("combine "):
+                cmds.append(c)
+                highlighted_cmds.append(cyan(c))
                 continue
 
             # first, replace aliases
@@ -1455,9 +1463,16 @@ class CombineCommandTask(CommandTask):
             ]
 
             # build the full command again
-            cmds[i] = law.util.quote_cmd(["combine"] + leading_values + law.util.flatten(params))
+            cmds.append(law.util.quote_cmd(["combine"] + leading_values + law.util.flatten(params)))
 
-        return " && ".join(cmds)
+            # add the highlighted command
+            highlighted_cmd = []
+            for i, p in enumerate(shlex.split(cmds[-1])):
+                func = cyan_bright if (i == 0 and p == "combine") or p.startswith("--") else cyan
+                highlighted_cmd.append(func(p))
+            highlighted_cmds.append(" ".join(highlighted_cmd))
+
+        return " && ".join(cmds), bright(" && ").join(highlighted_cmds)
 
 
 class InputDatacards(DatacardTask, law.ExternalTask):
