@@ -602,7 +602,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         )
 
 
-class PlotUpperLimitsAtPoint(POIPlotTask, MultiDatacardTask, BoxPlotTask):
+class PlotUpperLimitsAtPoint(POIPlotTask, SnapshotUser, MultiDatacardTask, BoxPlotTask):
 
     xsec = PlotUpperLimits.xsec
     br = PlotUpperLimits.br
