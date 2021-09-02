@@ -20,7 +20,7 @@ from dhi.tasks.combine import (
 )
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
 from dhi.util import unique_recarray, real_path
-from dhi.config import br_hh
+from dhi.config import br_hh, poi_data
 
 
 class UpperLimitsBase(POIScanTask, SnapshotUser):
@@ -708,12 +708,14 @@ class PlotUpperLimitsAtPoint(POIPlotTask, SnapshotUser, MultiDatacardTask, BoxPl
         return self._external_limit_values
 
     def requires(self):
-        scan_parameter_value = self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.0)
-        scan_parameter = (self.pseudo_scan_parameter, scan_parameter_value, scan_parameter_value, 1)
+        default = poi_data.get(self.pseudo_scan_parameter, {}).get("sm_value", 1.0)
+        value = self.parameter_values_dict.get(self.pseudo_scan_parameter, default)
+        scan_parameter = (self.pseudo_scan_parameter, value, value, 1)
         parameter_values = tuple(
-            pv for pv in self.parameter_values
-            if not pv.startswith(self.pseudo_scan_parameter + "=")
+            (p, v) for p, v in self.parameter_values_dict.items()
+            if p != self.pseudo_scan_parameter
         )
+
         return [
             UpperLimits.req(
                 self,
