@@ -328,7 +328,6 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
 
 class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
 
-    unblinded = None
 
     @classmethod
     def modify_param_values(cls, params):
@@ -431,6 +430,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
             scan_parameter=self.scan_parameter,
             names=names,
             expected_values=limit_values,
+            unblinded = self.unblinded,
             theory_values=thy_values,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),

@@ -23,7 +23,6 @@ from dhi.plots.util import (
     get_graph_points, get_y_range, get_contours, fill_hist_from_points, infer_binning_from_grid,
 )
 
-
 colors = colors.root
 
 
@@ -266,6 +265,7 @@ def plot_limit_scans(
     scan_parameter,
     names,
     expected_values,
+    unblinded = False,
     theory_values=None,
     y_log=False,
     x_min=None,
@@ -299,6 +299,9 @@ def plot_limit_scans(
     When *show_points* is *True*, the central scan points are drawn on top of the interpolated
     curve. When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
+    If unblinded is *True*, *expected_values* should also contain the observed limits,
+    so that both the expected and observed limits can be drawn.
+
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-on-poi-vs-scan-parameter
     """
     import plotlib.root as r
@@ -311,13 +314,14 @@ def plot_limit_scans(
             _ev = {key: _ev[key] for key in _ev.dtype.names}
         _expected_values.append(_ev)
     expected_values = _expected_values
-
     # input checks
     n_graphs = len(expected_values)
     assert n_graphs >= 1
     assert len(names) == n_graphs
     assert all(scan_parameter in ev for ev in expected_values)
     assert all("limit" in ev for ev in expected_values)
+    if unblinded:
+        assert all("observed" in ev for ev in expected_values)
     scan_values = expected_values[0][scan_parameter]
     has_thy = theory_values is not None
     has_thy_err = False
@@ -352,10 +356,17 @@ def plot_limit_scans(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
+    g_exp_dummy = None
+    g_obs_dummy = None
     # central values
     for i, (ev, col, ms) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1],
             marker_sequence[:n_graphs][::-1])):
         mask = ~np.isnan(ev["limit"])
+        limit_obs_values = None
+        if unblinded:
+            mask_obs = ~np.isnan(ev["observed"])
+            mask = np.logical_and(mask,mask_obs)
+            limit_obs_values = ev["observed"][mask]
         limit_values = ev["limit"][mask]
         scan_values = ev[scan_parameter][mask]
         n_nans = (~mask).sum()
@@ -363,13 +374,27 @@ def plot_limit_scans(
             print("WARNING: found {} NaN(s) in limit values at index {}".format(n_nans,
                 len(expected_values) - 1 - i))
 
-        g_exp = create_tgraph(mask.sum(), scan_values, limit_values)
-        r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
-            color=colors[col])
-        draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
         name = names[n_graphs - i - 1]
-        legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
-            "LP" if show_points else "L"))
+        if unblinded:
+            g_exp = create_tgraph(mask.sum(), scan_values, limit_values)
+            g_obs = create_tgraph(mask.sum(), scan_values, limit_obs_values)
+            r.setup_graph(g_obs, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
+                          color=colors[col])
+            r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2, "LineStyle": 2},
+                          color=colors[col])
+            draw_objs.append((g_exp, "SAME,C"))
+            draw_objs.append((g_obs, "SAME,CP" if show_points else "SAME,C"))
+            legend_entries.insert(0, (g_obs, to_root_latex(br_hh_names.get(name, name)),
+                                    "LP" if show_points else "L"))
+            g_exp_dummy = g_exp.Clone()
+            g_obs_dummy = g_obs.Clone()
+        else:
+            g_exp = create_tgraph(mask.sum(), scan_values, limit_values)
+            r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
+                          color=colors[col])
+            draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
+            legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
+                                  "LP" if show_points else "L"))
         y_max_value = max(y_max_value, max(limit_values))
         y_min_value = min(y_min_value, min(limit_values))
         # print excluded ranges
@@ -388,7 +413,13 @@ def plot_limit_scans(
     y_min, y_max, _ = get_y_range(y_min_value, y_max_value, y_min, y_max, log=y_log)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
-
+    if unblinded:
+        r.apply_properties(g_exp_dummy, {"LineColor": colors.black})
+        r.apply_properties(g_obs_dummy, {"LineColor": colors.black})
+        legend_entries.insert(0, (g_obs_dummy, to_root_latex("observed"),
+                                  "L"))
+        legend_entries.insert(0, (g_exp_dummy, to_root_latex("expected"),
+                                  "L"))
     # draw the theory prediction
     if has_thy:
         scan_values_thy = theory_values[scan_parameter]
