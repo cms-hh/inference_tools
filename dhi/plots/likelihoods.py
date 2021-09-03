@@ -21,7 +21,7 @@ from dhi.util import (
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, fill_hist_from_points, get_contours, get_y_range,
-    infer_binning_from_grid, get_contour_box,
+    infer_binning_from_grid, get_contour_box, make_parameter_label_map,
 )
 
 
@@ -817,6 +817,8 @@ def plot_nuisance_likelihood_scans(
     only_parameters=None,
     parameters_per_page=1,
     sort_max=False,
+    show_diff=False,
+    labels=None,
     scan_points=101,
     x_min=-2.,
     x_max=2,
@@ -827,7 +829,7 @@ def plot_nuisance_likelihood_scans(
     campaign=None,
     paper=False,
 ):
-    """
+    r"""
     Creates a plot showing the change of the negative log-likelihood, obtained *poi*, when varying
     values of nuisance paramaters and saves it at *paths*. The calculation of the likelihood change
     requires the RooFit *workspace* to read the model config, a RooDataSet *dataset* to construct
@@ -838,10 +840,21 @@ def plot_nuisance_likelihood_scans(
     Nuisances to skip, or to show exclusively can be configured via *skip_parameters* and
     *only_parameters*, respectively, which can be lists of patterns. *parameters_per_page* defines
     the number of parameter curves that are drawn in the same canvas page. When *sort_max* is
-    *True*, the parameter are sorted by their highest likelihood change in the full scan range. The
-    scan range and granularity is set via *scan_points*, *x_min* and *x_max*. *y_min* and *y_max*
-    define the range of the y-axis, which is plotted with a logarithmic scale when *y_log* is
-    *True*. *model_parameters* can be a dictionary of key-value pairs of model parameters.
+    *True*, the parameter are sorted by their highest likelihood change in the full scan range.
+    By default, the x-axis shows absolute variations of the nuisance parameters (in terms of the
+    prefit range). When *show_diff* is *True*, it shows differences with respect to the best fit
+    value instead.
+
+    *labels* should be a dictionary or a json file containing a dictionary that maps nuisances names
+    to labels shown in the plot, a python file containing a function named "rename_nuisance", or a
+    function itself. When it is a dictionary and a key starts with "^" and ends with "$" it is
+    interpreted as a regular expression. Matched groups can be reused in the substituted name via
+    '\n' to reference the n-th group (following the common re.sub format). When it is a function, it
+    should accept the current nuisance label as a single argument and return the new value.
+
+    The scan range and granularity is set via *scan_points*, *x_min* and *x_max*. *y_min* and
+    *y_max* define the range of the y-axis, which is plotted with a logarithmic scale when *y_log*
+    is *True*. *model_parameters* can be a dictionary of key-value pairs of model parameters.
     *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
     When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
@@ -897,8 +910,9 @@ def plot_nuisance_likelihood_scans(
         x_values, y_values = [], []
         print("scanning parameter {}".format(name))
         for x in scan_values:
-            param.setVal(param_bf + (pre_u if x >= 0 else -pre_d) * x)
-            x_values.append(param.getVal())
+            x_diff = x * (pre_u if x >= 0 else -pre_d)
+            param.setVal(param_bf + x_diff)
+            x_values.append(x_diff if show_diff else (param_bf + x_diff))
             y_values.append(2 * (nll.getVal() - nll_base))
         curve_data[name] = (x_values, y_values)
 
@@ -917,6 +931,9 @@ def plot_nuisance_likelihood_scans(
             param_groups[-1].append(name)
         else:
             param_groups.append([name])
+
+    # prepare labels
+    labels = make_parameter_label_map(param_names, labels)
 
     # go through nuisances
     canvas = None
@@ -941,7 +958,10 @@ def plot_nuisance_likelihood_scans(
             y_max, log=y_log)
 
         # dummy histogram to control axes
-        x_title = "(#theta - #theta_{best}) / #Delta#theta_{pre}"
+        if show_diff:
+            x_title = "(#theta - #theta_{best}) / #Delta#theta_{pre}"
+        else:
+            x_title = "#theta / #Delta#theta_{pre}"
         y_title = "Change in -2 log(L)"
         h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
         r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": _y_min, "Maximum": _y_max})
@@ -967,7 +987,8 @@ def plot_nuisance_likelihood_scans(
             g_nll = create_tgraph(len(x), x, y)
             r.setup_graph(g_nll, props={"LineWidth": 2, "LineStyle": 1}, color=colors[col])
             draw_objs.append((g_nll, "SAME,C"))
-            legend_entries.append((g_nll, to_root_latex(name), "L"))
+            label = to_root_latex(labels.get(name, name))
+            legend_entries.append((g_nll, label, "L"))
 
         # legend
         legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)

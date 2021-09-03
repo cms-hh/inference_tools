@@ -13,6 +13,7 @@ import luigi
 from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
+from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
 
 
 class SAVEFLAGS(str, enum.Enum):
@@ -313,6 +314,12 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
         description="when True, sort parameters by their hightest likelihood change in the scan "
         "range; mostly useful when the number of parameters per page is > 1; default: False",
     )
+    show_diff = luigi.BoolParameter(
+        default=False,
+        description="when True, the x-axis shows differences of nuisance parameters with respect "
+        "to the best fit value instead of absolute values; default: False",
+    )
+    labels = PlotPullsAndImpacts.labels
 
     mc_stats_patterns = ["*prop_bin*"]
 
@@ -323,10 +330,17 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
     force_n_pois = 1
 
     def requires(self):
-        return FitDiagnostics.req(self, skip_save=("WithUncertainties",))
+        # normally, we would require FitDiagnostics without saved uncertainties no matter what,
+        # but since it could be already complete, use it when it does exist
+        full_fd = FitDiagnostics.req(self)
+        if full_fd.complete():
+            return full_fd
+        return FitDiagnostics.req(self, skip_save=("WithUncertainties",), _prefer_cli=["skip_save"])
 
     def output(self):
         parts = ["nlls", "{}To{}".format(self.x_min, self.x_max), self.get_output_postfix()]
+        if self.show_diff:
+            parts.append("diffs")
         if self.y_log:
             parts.append("log")
         if self.sort_max:
@@ -375,6 +389,8 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
                 skip_parameters=skip_parameters,
                 parameters_per_page=self.parameters_per_page,
                 sort_max=self.sort_max,
+                show_diff=self.show_diff,
+                labels=None if self.labels == law.NO_STR else self.labels,
                 x_min=self.x_min,
                 x_max=self.x_max,
                 y_min=self.get_axis_limit("y_min"),
