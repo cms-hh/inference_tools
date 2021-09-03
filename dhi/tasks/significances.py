@@ -44,6 +44,8 @@ class SignificanceBase(POIScanTask, SnapshotUser):
 
         if not self.unblinded and self.frequentist_toys:
             parts.insert(0, ["postfit"])
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
 
         return self.join_postfix(parts) if join else parts
 
@@ -69,11 +71,7 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
         return reqs
 
     def output(self):
-        parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
-
-        name = self.join_postfix(["significance", self.get_output_postfix(), parts]) + ".root"
+        name = self.join_postfix(["significance", self.get_output_postfix()]) + ".root"
         return self.local_target(name)
 
     def build_command(self):
@@ -126,11 +124,7 @@ class MergeSignificanceScan(SignificanceBase):
         return SignificanceScan.req(self)
 
     def output(self):
-        parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
-
-        name = self.join_postfix(["significance", self.get_output_postfix(), parts]) + ".npz"
+        name = self.join_postfix(["significance", self.get_output_postfix()]) + ".npz"
         return self.local_target(name)
 
     @law.decorator.log
@@ -207,8 +201,6 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
     def output(self):
         # additional postfix
         parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
         if self.y_log:
             parts.append("log")
 
@@ -299,8 +291,6 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
     def output(self):
         # additional postfix
         parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
         if self.y_log:
             parts.append("log")
 

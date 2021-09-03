@@ -73,10 +73,16 @@ class FitDiagnostics(POITask, CombineCommandTask, SnapshotUser, law.LocalWorkflo
             reqs["snapshot"] = Snapshot.req(self, branch=0)
         return reqs
 
-    def output(self):
-        parts = []
+    def get_output_postfix(self, join=True):
+        parts = super(FitDiagnostics, self).get_output_postfix(join=False)
+
         if self.use_snapshot:
             parts.append("fromsnapshot")
+
+        return self.join_postfix(parts) if join else parts
+
+    def output(self):
+        parts = []
         if not self.skip_b_only:
             parts.append("withBOnly")
         if self.skip_save:
@@ -141,7 +147,18 @@ class FitDiagnostics(POITask, CombineCommandTask, SnapshotUser, law.LocalWorkflo
         )
 
 
-class PlotPostfitSOverB(POIPlotTask):
+class PostfitPlotBase(POIPlotTask, SnapshotUser):
+
+    def get_output_postfix(self, join=True):
+        parts = super(PostfitPlotBase, self).get_output_postfix(join=False)
+
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+
+        return self.join_postfix(parts) if join else parts
+
+
+class PlotPostfitSOverB(PostfitPlotBase):
 
     pois = FitDiagnostics.pois
     bins = law.CSVParameter(
@@ -262,7 +279,7 @@ class PlotPostfitSOverB(POIPlotTask):
         )
 
 
-class PlotNuisanceLikelihoodScans(POIPlotTask):
+class PlotNuisanceLikelihoodScans(PostfitPlotBase):
 
     x_min = copy.copy(POIPlotTask.x_min)
     x_max = copy.copy(POIPlotTask.x_max)

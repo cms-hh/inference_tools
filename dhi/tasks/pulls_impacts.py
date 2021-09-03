@@ -38,6 +38,14 @@ class PullsAndImpactsBase(POITask, SnapshotUser):
     force_n_pois = 1
     allow_parameter_values_in_pois = True
 
+    def get_output_postfix(self, join=True):
+        parts = super(PullsAndImpactsBase, self).get_output_postfix(join=False)
+
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+
+        return self.join_postfix(parts) if join else parts
+
 
 class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
@@ -101,9 +109,6 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
 
     def output(self):
         parts = [self.branch_data]
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
-
         name = self.join_postfix(["fit", self.get_output_postfix(), parts]) + ".root"
         return self.local_target(name)
 
@@ -196,8 +201,6 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         parts = []
         if self.mc_stats:
             parts.append("mcstats")
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
         if self.only_parameters:
             parts.append("only_" + law.util.create_hash(sorted(self.only_parameters)))
         if self.skip_parameters:
@@ -394,8 +397,6 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
         parts = []
         if self.mc_stats:
             parts.append("mcstats")
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
         if self.only_parameters:
             parts.append("only_" + law.util.create_hash(sorted(self.only_parameters)))
         if self.skip_parameters:

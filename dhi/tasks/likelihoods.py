@@ -32,6 +32,14 @@ class LikelihoodBase(POIScanTask, SnapshotUser):
     force_scan_parameters_equal_pois = True
     allow_parameter_values_in_pois = True
 
+    def get_output_postfix(self, join=True):
+        parts = super(LikelihoodBase, self).get_output_postfix(join=False)
+
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+
+        return self.join_postfix(parts) if join else parts
+
 
 class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
@@ -54,11 +62,7 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
         return reqs
 
     def output(self):
-        parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
-
-        name = self.join_postfix(["likelihood", self.get_output_postfix(), parts]) + ".root"
+        name = self.join_postfix(["likelihood", self.get_output_postfix()]) + ".root"
         return self.local_target(name)
 
     def build_command(self):
@@ -117,11 +121,7 @@ class MergeLikelihoodScan(LikelihoodBase):
         return LikelihoodScan.req(self)
 
     def output(self):
-        parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
-
-        name = self.join_postfix(["likelihoods", self.get_output_postfix(), parts]) + ".npz"
+        name = self.join_postfix(["likelihoods", self.get_output_postfix()]) + ".npz"
         return self.local_target(name)
 
     @law.decorator.log
@@ -245,8 +245,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
     def output(self):
         # additional postfix
         parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
@@ -481,8 +479,6 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
     def output(self):
         # additional postfix
         parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
@@ -596,8 +592,6 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
     def output(self):
         # additional postfix
         parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 

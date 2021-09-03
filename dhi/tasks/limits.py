@@ -27,6 +27,14 @@ class UpperLimitsBase(POIScanTask, SnapshotUser):
 
     force_scan_parameters_unequal_pois = True
 
+    def get_output_postfix(self, join=True):
+        parts = super(UpperLimitsBase, self).get_output_postfix(join=False)
+
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+
+        return self.join_postfix(parts) if join else parts
+
 
 class UpperLimits(UpperLimitsBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
@@ -49,11 +57,7 @@ class UpperLimits(UpperLimitsBase, CombineCommandTask, law.LocalWorkflow, HTCond
         return reqs
 
     def output(self):
-        parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
-
-        name = self.join_postfix(["limit", self.get_output_postfix(), parts]) + ".root"
+        name = self.join_postfix(["limit", self.get_output_postfix()]) + ".root"
         return self.local_target(name)
 
     def build_command(self):
@@ -132,11 +136,7 @@ class MergeUpperLimits(UpperLimitsBase):
         return UpperLimits.req(self)
 
     def output(self):
-        parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
-
-        name = self.join_postfix(["limits", self.get_output_postfix(), parts]) + ".npz"
+        name = self.join_postfix(["limits", self.get_output_postfix()]) + ".npz"
         return self.local_target(name)
 
     @law.decorator.log
@@ -231,8 +231,6 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
     def output(self):
         # additional postfix
         parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
             if self.br != law.NO_STR:
@@ -376,8 +374,6 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
     def output(self):
         # additional postfix
         parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
             if self.br != law.NO_STR:
@@ -494,8 +490,6 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
     def output(self):
         # additional postfix
         parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
             if self.br != law.NO_STR:
@@ -726,11 +720,17 @@ class PlotUpperLimitsAtPoint(POIPlotTask, SnapshotUser, MultiDatacardTask, BoxPl
             for datacards in self.multi_datacards
         ]
 
+    def get_output_postfix(self, join=True):
+        parts = super(PlotUpperLimitsAtPoint, self).get_output_postfix(join=False)
+
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+
+        return self.join_postfix(parts) if join else parts
+
     def output(self):
         # additional postfix
         parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
         if self.xsec in ["pb", "fb"]:
             parts.append(self.xsec)
             if self.br != law.NO_STR:
@@ -888,8 +888,6 @@ class PlotUpperLimits2D(UpperLimitsBase, POIPlotTask):
     def output(self):
         # additional postfix
         parts = []
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
         if self.z_log:
             parts.append("log")
 
