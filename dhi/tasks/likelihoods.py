@@ -21,7 +21,8 @@ from dhi.tasks.combine import (
     CreateWorkspace,
 )
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
-from dhi.util import unique_recarray, extend_recarray, convert_dnll2
+from dhi.config import poi_data
+from dhi.util import unique_recarray, extend_recarray, convert_dnll2, linspace
 
 
 class LikelihoodBase(POIScanTask, SnapshotUser):
@@ -80,6 +81,40 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
         else:
             blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
 
+        # ensure that ranges of scanned parameters contain their SM values (plus one step)
+        # in order for the likelihood scan to find the expected minimum and compute all deltaNLL
+        # values with respect that minimum; otherwise, results of different scans cannot be stitched
+        # together as they were potentially compared against different minima; this could be
+        # simplified by https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/pull/686 which
+        # would only require to set "--setParameterRangesForGrid {self.joined_scan_ranges}"
+        ext_ranges = []
+        for p, ranges in self.scan_parameters_dict.items():
+            # gather data
+            start, stop, points = ranges[0]
+            sm_value = poi_data.get(p, {}).get("sm_value", 1.)
+            step_size = (float(stop - start) / (points - 1)) if points > 1 else 1
+            assert step_size > 0
+            # decrease the starting point until the sm value is fully contained
+            while start >= sm_value:
+                start -= step_size
+                points += 1
+            # increase the stopping point until the sm value is fully contained
+            while stop <= sm_value:
+                stop += step_size
+                points += 1
+            # store the extended range
+            ext_ranges.append((start, stop, points))
+        # compute the new n-D point space
+        ext_space = self._get_scan_linspace(ext_ranges)
+        # get the point index of the current branch
+        ext_point = ext_space.index(self.branch_data)
+        # recreate joined expressions for the combine command
+        ext_joined_scan_points = ",".join(map(str, (p for _, _, p in ext_ranges)))
+        ext_joined_scan_ranges = ":".join(
+            "{}={},{}".format(name, start, stop)
+            for name, (start, stop, _) in zip(self.scan_parameter_names, ext_ranges)
+        )
+
         # build the command
         cmd = (
             "combine -M MultiDimFit {workspace}"
@@ -89,12 +124,11 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             " {blinded_args}"
             " --algo grid"
             " --redefineSignalPOIs {self.joined_pois}"
-            " --setParameterRangesForGrid {self.joined_scan_ranges}"
-            " --gridPoints {self.joined_scan_points}"
-            " --firstPoint {self.branch}"
-            " --lastPoint {self.branch}"
+            " --gridPoints {ext_joined_scan_points}"
+            " --firstPoint {ext_point}"
+            " --lastPoint {ext_point}"
             " --alignEdges 1"
-            " --setParameterRanges {self.joined_parameter_ranges}"
+            " --setParameterRanges {ext_joined_scan_ranges}:{self.joined_parameter_ranges}"
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
@@ -110,6 +144,9 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             output=self.output().path,
             blinded_args=blinded_args,
             snapshot_args=snapshot_args,
+            ext_joined_scan_points=ext_joined_scan_points,
+            ext_joined_scan_ranges=ext_joined_scan_ranges,
+            ext_point=ext_point,
         )
 
         return cmd
