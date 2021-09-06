@@ -367,7 +367,7 @@ interactive_setup() {
 
     # prepare the tmp env file
     if ! $setup_is_default && ! $env_file_exists; then
-        rm -rf "$env_file_tmp"
+        rm -f "$env_file_tmp"
         mkdir -p "$( dirname "$env_file_tmp" )"
 
         echo -e "\nStart querying variables for setup '\x1b[0;49;35m$setup_name\x1b[0m'"

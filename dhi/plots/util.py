@@ -433,6 +433,21 @@ def _get_contour(hist, level):
     return contours
 
 
+def get_contour_box(graphs):
+    assert graphs
+
+    x_values, y_values = [], []
+    for g in graphs:
+        x, y = get_graph_points(g, errors=False)
+        x_values.extend(x)
+        y_values.extend(y)
+
+    if not x_values or not y_values:
+        return None, None, None, None
+
+    return min(x_values), max(x_values), min(y_values), max(y_values)
+
+
 def get_graph_points(g, errors=False):
     ROOT = import_ROOT()
 
@@ -468,21 +483,6 @@ def get_graph_points(g, errors=False):
         return x_values, y_values, x_errors, y_errors
     else:
         return x_values, y_values
-
-
-def get_contour_box(graphs):
-    assert graphs
-
-    x_values, y_values = [], []
-    for g in graphs:
-        x, y = get_graph_points(g, errors=False)
-        x_values.extend(x)
-        y_values.extend(y)
-
-    if not x_values or not y_values:
-        return None, None, None, None
-
-    return min(x_values), max(x_values), min(y_values), max(y_values)
 
 
 def repeat_graph(g, n):

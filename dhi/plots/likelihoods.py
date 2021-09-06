@@ -49,10 +49,10 @@ def plot_likelihood_scan_1d(
     paper=False,
 ):
     """
-    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *paths*. *values* should be a
-    mapping to lists of values or a record array with keys "<poi_name>" and "dnll2". *theory_value*
-    can be a 3-tuple denoting the nominal theory prediction of the POI and its up and down
-    uncertainties which is drawn as a vertical bar.
+    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *paths*. *values* should be
+    a mapping to lists of values or a record array with keys "<poi_name>" and "dnll2".
+    *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
+    down uncertainties which is drawn as a vertical bar.
 
     When *poi_min* is set, it should be the value of the poi that leads to the best likelihood.
     Otherwise, it is estimated from the interpolated curve. When *show_best_fit*
@@ -819,7 +819,7 @@ def plot_nuisance_likelihood_scans(
     sort_max=False,
     show_diff=False,
     labels=None,
-    scan_points=101,
+    scan_points=401,
     x_min=-2.,
     x_max=2,
     y_min=None,
@@ -830,12 +830,12 @@ def plot_nuisance_likelihood_scans(
     paper=False,
 ):
     r"""
-    Creates a plot showing the change of the negative log-likelihood, obtained *poi*, when varying
-    values of nuisance paramaters and saves it at *paths*. The calculation of the likelihood change
-    requires the RooFit *workspace* to read the model config, a RooDataSet *dataset* to construct
-    the functional likelihood, and the output file *fit_diagnostics_path* of the combine fit
-    diagnostics for reading pre- and post-fit parameters for the fit named *fit_name*, defaulting
-    to ``"fit_s"``.
+    Creates a plot showing the change of the negative log-likelihood, previously obtained for a
+    *poi*, when varying values of nuisance paramaters and saves it at *paths*. The calculation of
+    the likelihood change requires the RooFit *workspace* to read the model config, a RooDataSet
+    *dataset* to construct the functional likelihood, and the output file *fit_diagnostics_path* of
+    the combine fit diagnostics for reading pre- and post-fit parameters for the fit named
+    *fit_name*, defaulting to ``"fit_s"``.
 
     Nuisances to skip, or to show exclusively can be configured via *skip_parameters* and
     *only_parameters*, respectively, which can be lists of patterns. *parameters_per_page* defines
@@ -892,8 +892,10 @@ def plot_nuisance_likelihood_scans(
         param_names.append(param_name)
     print("preparing scans of {} parameter(s)".format(len(param_names)))
 
-    # prepare the scan values, ensure that 0 is contained
-    scan_values = np.linspace(x_min, x_max, scan_points).tolist()
+    # prepare the scan values, extend the range by 10 points in each directon, ensure 0 is contained
+    assert scan_points > 1
+    width = float(x_max - x_min) / (scan_points - 1)
+    scan_values = np.linspace(x_min - 10 * width, x_max + 10 * width, scan_points + 20).tolist()
     if 0 not in scan_values:
         scan_values = sorted(scan_values + [0.])
 
@@ -962,7 +964,7 @@ def plot_nuisance_likelihood_scans(
             x_title = "(#theta - #theta_{best}) / #Delta#theta_{pre}"
         else:
             x_title = "#theta / #Delta#theta_{pre}"
-        y_title = "Change in -2 log(L)"
+        y_title = "-2 #Delta log(L)"
         h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
         r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": _y_min, "Maximum": _y_max})
         draw_objs = [(h_dummy, "HIST")]
