@@ -33,7 +33,7 @@ deploy_docs:
   script:
     - test ! -z "${PAGE_ROOT}"
     - cd docs
-    - mkdocs build --strict
+    - mkdocs build
     - cd site
     - tar -czf site.tgz *
     - sshpass -v -p ${KRB_PASS} ssh -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch "rm -rf ${PAGE_ROOT}/*"
