@@ -354,8 +354,6 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
 
 class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
 
-    unblinded = None
-
     @classmethod
     def modify_param_values(cls, params):
         params = PlotUpperLimits.modify_param_values.__func__.__get__(cls)(params)
@@ -444,10 +442,21 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         if self.datacard_names:
             names = list(self.datacard_names)
 
-        # reoder if requested
+        # reorder if requested
         if self.datacard_order:
             limit_values = [limit_values[i] for i in self.datacard_order]
             names = [names[i] for i in self.datacard_order]
+
+        # prepare observed values
+        obs_values = None
+        if self.unblinded:
+            obs_values = [
+                {
+                    self.scan_parameter: _limit_values[self.scan_parameter],
+                    "limit": _limit_values["observed"],
+                }
+                for _limit_values in limit_values
+            ]
 
         # call the plot function
         self.call_plot_func(
@@ -457,6 +466,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
             scan_parameter=self.scan_parameter,
             names=names,
             expected_values=limit_values,
+            observed_values=obs_values,
             theory_values=thy_values,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
@@ -473,8 +483,6 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
 
 
 class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
-
-    unblinded = None
 
     allow_empty_hh_model = True
 
@@ -568,10 +576,21 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         if self.hh_model_names:
             names = list(self.hh_model_names)
 
-        # reoder if requested
+        # reorder if requested
         if self.hh_model_order:
             limit_values = [limit_values[i] for i in self.hh_model_order]
             names = [names[i] for i in self.hh_model_order]
+
+        # prepare observed values
+        obs_values = None
+        if self.unblinded:
+            obs_values = [
+                {
+                    self.scan_parameter: _limit_values[self.scan_parameter],
+                    "limit": _limit_values["observed"],
+                }
+                for _limit_values in limit_values
+            ]
 
         # call the plot function
         self.call_plot_func(
@@ -581,6 +600,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
             scan_parameter=self.scan_parameter,
             names=names,
             expected_values=limit_values,
+            observed_values=obs_values,
             theory_values=thy_values,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
@@ -829,7 +849,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, SnapshotUser, MultiDatacardTask, BoxPl
             for d, label in zip(data, self.extra_labels):
                 d["label"] = label
 
-        # reoder if requested
+        # reorder if requested
         if self.datacard_order:
             data = [data[i] for i in self.datacard_order]
 

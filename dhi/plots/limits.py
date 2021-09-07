@@ -266,6 +266,7 @@ def plot_limit_scans(
     scan_parameter,
     names,
     expected_values,
+    observed_values=None,
     theory_values=None,
     y_log=False,
     x_min=None,
@@ -283,7 +284,9 @@ def plot_limit_scans(
     Creates a plot showing multiple upper limit scans of a *poi* over a *scan_parameter* and saves
     it at *paths*. *expected_values* should be a list of mappings to lists of values or a record
     array with keys "<scan_parameter>" and "limit". Each mapping in *expected_values* will result in
-    a different curve. When *theory_values* is set, it should have a similar format with keys
+    a different curve. When *observed_values* is set, it should have a similar format with keys
+    "<scan_parameter>" and "limit", where the i-th element is corresponding to the i-th element in
+    *expected_values*. When *theory_values* is set, it should have a similar format with keys
     "<scan_parameter>" and "xsec", and optionally "xsec_p1" and "xsec_m1". *names* denote the names
     of limit curves shown in the legend. When a name is found to be in dhi.config.br_hh_names, its
     value is used as a label instead.
@@ -305,19 +308,26 @@ def plot_limit_scans(
     ROOT = import_ROOT()
 
     # convert record arrays to dicts mapping to arrays
-    _expected_values = []
-    for _ev in expected_values:
-        if isinstance(_ev, np.ndarray):
-            _ev = {key: _ev[key] for key in _ev.dtype.names}
-        _expected_values.append(_ev)
-    expected_values = _expected_values
+    def check_values(values):
+        _values = []
+        for v in values:
+            if isinstance(v, np.ndarray):
+                v = {key: v[key] for key in v.dtype.names}
+            assert "limit" in v
+            assert scan_parameter in v
+            _values.append(v)
+        return _values
 
     # input checks
+    expected_values = check_values(expected_values)
     n_graphs = len(expected_values)
     assert n_graphs >= 1
     assert len(names) == n_graphs
-    assert all(scan_parameter in ev for ev in expected_values)
-    assert all("limit" in ev for ev in expected_values)
+    has_obs = False
+    if observed_values:
+        assert len(observed_values) == n_graphs
+        observed_values = check_values(observed_values)
+        has_obs = True
     scan_values = expected_values[0][scan_parameter]
     has_thy = theory_values is not None
     has_thy_err = False
@@ -355,36 +365,74 @@ def plot_limit_scans(
     # central values
     for i, (ev, col, ms) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1],
             marker_sequence[:n_graphs][::-1])):
+        name = names[n_graphs - i - 1]
+
+        # expected graph
         mask = ~np.isnan(ev["limit"])
         limit_values = ev["limit"][mask]
         scan_values = ev[scan_parameter][mask]
         n_nans = (~mask).sum()
         if n_nans:
-            print("WARNING: found {} NaN(s) in limit values at index {}".format(n_nans,
-                len(expected_values) - 1 - i))
-
+            print("WARNING: found {} NaN(s) in expected limit values at index {}".format(n_nans,
+                n_graphs - 1 - i))
         g_exp = create_tgraph(mask.sum(), scan_values, limit_values)
-        r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
-            color=colors[col])
-        draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
-        name = names[n_graphs - i - 1]
+        r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2,
+            "LineStyle": 2 if has_obs else 1}, color=colors[col])
+        draw_objs.append((g_exp, "SAME,CP" if show_points and not has_obs else "SAME,C"))
         legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
-            "LP" if show_points else "L"))
+            "LP" if show_points and not has_obs else "L"))
         y_max_value = max(y_max_value, max(limit_values))
         y_min_value = min(y_min_value, min(limit_values))
-        # print excluded ranges
-        print_excluded_ranges(scan_parameter, poi + " " + name,
+
+        # print expected excluded ranges
+        print_excluded_ranges(scan_parameter, "{}, {}, expected".format(poi, name),
             scan_values,
             limit_values,
             theory_values[scan_parameter] if has_thy else None,
             theory_values["xsec"] if has_thy else None,
         )
 
+        # observed graph
+        if has_obs:
+            ov = observed_values[n_graphs - i - 1]
+            obs_mask = ~np.isnan(ov["limit"])
+            obs_limit_values = ov["limit"][obs_mask]
+            obs_scan_values = ov[scan_parameter][obs_mask]
+            n_nans = (~obs_mask).sum()
+            if n_nans:
+                print("WARNING: found {} NaN(s) in observed limit values at index {}".format(n_nans,
+                    n_graphs - 1 - i))
+            g_obs = create_tgraph(obs_mask.sum(), obs_scan_values, obs_limit_values)
+            r.setup_graph(g_obs, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
+                          color=colors[col])
+            draw_objs.append((g_obs, "SAME,CP" if show_points else "SAME,C"))
+            legend_entries[0] = (g_obs, to_root_latex(br_hh_names.get(name, name)),
+                "LP" if show_points else "L")
+            y_max_value = max(y_max_value, max(obs_limit_values))
+            y_min_value = min(y_min_value, min(obs_limit_values))
+
+            # print observed excluded ranges
+            print_excluded_ranges(scan_parameter, "{}, {}, observed".format(poi, name),
+                obs_scan_values,
+                obs_limit_values,
+                theory_values[scan_parameter] if has_thy else None,
+                theory_values["xsec"] if has_thy else None,
+            )
+
+    # add additional legend entries to distinguish expected and observed lines
+    if has_obs:
+        g_exp_dummy = g_exp.Clone()
+        g_obs_dummy = g_obs.Clone()
+        r.apply_properties(g_exp_dummy, {"LineColor": colors.black})
+        r.apply_properties(g_obs_dummy, {"LineColor": colors.black})
+        legend_entries.append((g_exp_dummy, "expected", "L"))
+        legend_entries.append((g_obs_dummy, "observed", "L"))
+
     # get theory prediction limits
     if has_thy:
         y_min_value = min(y_min_value, min(theory_values["xsec_m1" if has_thy_err else "xsec"]))
 
-    # set limits
+    # set axis limits
     y_min, y_max, _ = get_y_range(y_min_value, y_max_value, y_min, y_max, log=y_log)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
