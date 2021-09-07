@@ -77,9 +77,6 @@ setup() {
     [ "$DHI_REINSTALL_COMBINE" = "1" ] && rm -f "$flag_file_combine"
     if [ ! -f "$flag_file_combine" ]; then
         mkdir -p "$DHI_SOFTWARE"
-        # the combine setup below uses a custom branch which adds only a single commit on top of
-        # the recommended v8.2.0 tag; once https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/pull/686
-        # is merged, we can transition back to the central repo
         if [ "$DHI_COMBINE_STANDALONE" != "True" ]; then
             # CMSSW based
             (
