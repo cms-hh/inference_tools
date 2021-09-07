@@ -362,8 +362,6 @@ def plot_limit_scans(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
-    g_exp_dummy = None
-    g_obs_dummy = None
     # central values
     for i, (ev, col, ms) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1],
             marker_sequence[:n_graphs][::-1])):
@@ -387,7 +385,7 @@ def plot_limit_scans(
         y_min_value = min(y_min_value, min(limit_values))
 
         # print expected excluded ranges
-        print_excluded_ranges(scan_parameter, poi + " " + name + " (expected)",
+        print_excluded_ranges(scan_parameter, "{}, {}, expected".format(poi, name),
             scan_values,
             limit_values,
             theory_values[scan_parameter] if has_thy else None,
@@ -414,7 +412,7 @@ def plot_limit_scans(
             y_min_value = min(y_min_value, min(obs_limit_values))
 
             # print observed excluded ranges
-            print_excluded_ranges(scan_parameter, poi + " " + name + " (observed)",
+            print_excluded_ranges(scan_parameter, "{}, {}, observed".format(poi, name),
                 obs_scan_values,
                 obs_limit_values,
                 theory_values[scan_parameter] if has_thy else None,
