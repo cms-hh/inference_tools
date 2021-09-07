@@ -119,9 +119,9 @@ def plot_likelihood_scan_1d(
                     r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
                     draw_objs.append(line)
 
-        # lines at chi2_1 intervals
+        # horizontal lines at chi2_1 intervals
         for n in [chi2_levels[1][1], chi2_levels[1][2]]:
-            if n < y_max_line:
+            if y_min <= n <= y_max_line:
                 line = ROOT.TLine(x_min, n, x_max, n)
                 r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
                 draw_objs.append(line)
@@ -144,8 +144,8 @@ def plot_likelihood_scan_1d(
         if not has_thy_err:
             legend_entries.append((line_thy, "Theory prediction", "L"))
 
-    # line for best fit value
-    if show_best_fit and scan:
+    # vertical line for best fit value
+    if show_best_fit and scan and (x_min <= scan.poi_min <= x_max):
         line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
         r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors.black)
         draw_objs.append(line_fit)
@@ -255,7 +255,7 @@ def plot_likelihood_scans_1d(
         values = {
             k: np.array(v, dtype=np.float32)
             for k, v in values.items()
-            if k in [poi1, poi2, "dnll2"]
+            if k in [poi, "dnll2"]
         }
         # preprocess values (nan detection, negative shift)
         values["dnll2"], values[poi] = _preprocess_values(values["dnll2"], (poi, values[poi]),
@@ -294,9 +294,9 @@ def plot_likelihood_scans_1d(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
     draw_objs.append((h_dummy, "HIST"))
 
-    # lines at chi2_1 intervals
+    # horizontal lines at chi2_1 intervals
     for n in [chi2_levels[1][1], chi2_levels[1][2]]:
-        if n < y_max:
+        if y_min <= n <= y_max_line:
             line = ROOT.TLine(x_min, n, x_max, n)
             r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
             draw_objs.append(line)
@@ -319,8 +319,8 @@ def plot_likelihood_scans_1d(
         legend_entries.insert(0, (g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])),
             "LP" if show_points else "L"))
 
-        # line for best fit value
-        if show_best_fit and scan:
+        # vertical line for best fit value
+        if show_best_fit and scan and (x_min <= scan.poi_min <= x_max):
             line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
             r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors[col])
             draw_objs.append(line_fit)
