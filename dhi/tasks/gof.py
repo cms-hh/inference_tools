@@ -15,9 +15,10 @@ from dhi.tasks.combine import (
     POIPlotTask,
     CreateWorkspace,
 )
+from dhi.tasks.snapshot import Snapshot, SnapshotUser
 
 
-class GoodnessOfFitBase(POITask):
+class GoodnessOfFitBase(POITask, SnapshotUser):
 
     toys = luigi.IntParameter(
         default=1,
@@ -49,11 +50,19 @@ class GoodnessOfFitBase(POITask):
         parts["gof"] = self.algorithm
         return parts
 
+    def get_output_postfix(self, join=True):
+        parts = super(GoodnessOfFitBase, self).get_output_postfix(join=False)
+
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+        if self.frequentist_toys:
+            parts.append("freqtoys")
+
+        return self.join_postfix(parts) if join else parts
+
     @property
     def toys_postfix(self):
-        postfix = "t{}_pt{}".format(self.toys, self.toys_per_task)
-        if self.frequentist_toys:
-            postfix += "_freq"
+        return "t{}_pt{}".format(self.toys, self.toys_per_task)
         return postfix
 
 
@@ -82,23 +91,36 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
 
     def workflow_requires(self):
         reqs = super(GoodnessOfFit, self).workflow_requires()
-        reqs["workspace"] = self.requires_from_branch()
+        reqs["workspace"] = CreateWorkspace.req(self)
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self)
         return reqs
 
     def requires(self):
-        return CreateWorkspace.req(self)
+        reqs = {"workspace": CreateWorkspace.req(self)}
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self, branch=0)
+        return reqs
 
     def output(self):
+        parts = []
         if self.branch == 0:
-            postfix = "b0_data"
+            parts.append("b0_data")
         else:
-            postfix = "b{}_toy{}To{}".format(self.branch, self.branch_data[0], self.branch_data[-1])
-        if self.frequentist_toys:
-            postfix += "_freq"
-        name = self.join_postfix(["gof", self.get_output_postfix(), postfix])
+            parts.append("b{}_toy{}To{}".format(self.branch, self.branch_data[0], self.branch_data[-1]))
+
+        name = self.join_postfix(["gof", self.get_output_postfix(), parts])
         return self.local_target(name + ".root")
 
     def build_command(self):
+        # get the workspace to use and define snapshot args
+        if self.use_snapshot:
+            workspace = self.input()["snapshot"].path
+            snapshot_args = " --snapshotName MultiDimFit"
+        else:
+            workspace = self.input()["workspace"].path
+            snapshot_args = ""
+
         # toy options
         toy_opts = ""
         if self.branch > 0:
@@ -106,7 +128,8 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
             if self.frequentist_toys:
                 toy_opts += " --toysFrequentist"
 
-        return (
+        # build the command
+        cmd = (
             "combine -M GoodnessOfFit {workspace}"
             " {self.custom_args}"
             " --verbose 1"
@@ -119,15 +142,19 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
+            " {snapshot_args}"
             " {self.combine_optimization_args}"
             " && "
             "mv higgsCombineTest.GoodnessOfFit.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
-            workspace=self.input().path,
+            workspace=workspace,
             output=self.output().path,
             toy_opts=toy_opts,
+            snapshot_args=snapshot_args,
         )
+
+        return cmd
 
     def htcondor_output_postfix(self):
         postfix = super(GoodnessOfFit, self).htcondor_output_postfix()
@@ -257,10 +284,7 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask, BoxPlotTa
     @property
     def toys_postfix(self):
         tpl_to_str = lambda tpl: "_".join(map(str, tpl))
-        postfix = "t{}_pt{}".format(tpl_to_str(self.toys), tpl_to_str(self.toys_per_task))
-        if self.frequentist_toys:
-            postfix += "_freq"
-        return postfix
+        return "t{}_pt{}".format(tpl_to_str(self.toys), tpl_to_str(self.toys_per_task))
 
     def requires(self):
         return [

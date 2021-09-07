@@ -43,9 +43,9 @@ from dhi.config import colors
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
-def plot_datacard_shapes(datacard, rules, stack=False, directory=".",
-        nom_format="{bin}__{process}.pdf", syst_format="{bin}__{process}__{syst}.pdf", mass="125",
-        **plot_kwargs):
+def plot_datacard_shapes(datacard, rules, stack=False, directory=".", file_type="pdf",
+        nom_format="{bin}__{process}.{file_type}",
+        syst_format="{bin}__{process}__{syst}.{file_type}", mass="125", **plot_kwargs):
     """
     Reads a *datacard* and plots its histogram shapes according to certain *rules*. A rule should
     be a tuple consisting of a datacard bin, a datacard process and an optional name of a systematic
@@ -280,23 +280,24 @@ def plot_datacard_shapes(datacard, rules, stack=False, directory=".",
                     continue
 
                 # draw the shape
-                create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, nom_format,
-                    syst_format, **plot_kwargs)
+                create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, file_type,
+                    nom_format, syst_format, **plot_kwargs)
 
 
 @use_style("dhi_default")
-def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, nom_format, syst_format,
-        binning="original", x_title="Datacard shape", y_min=None, y_max=None, y_min2=None,
-        y_max2=None, y_log=False, campaign_label=None):
+def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, file_type, nom_format,
+        syst_format, binning="original", x_title="Datacard shape", y_min=None, y_max=None,
+        y_min2=None, y_max2=None, y_log=False, campaign_label=None):
     import plotlib.root as r
     ROOT = import_ROOT()
 
     # check if systematic shifts are to be plotted, determine the plot path
     plot_syst = param is not None and any(d is not None for _, d, _ in proc_shapes.values())
     if plot_syst:
-        path = syst_format.format(bin=bin_name, process=proc_label, syst=param["name"])
+        path = syst_format.format(bin=bin_name, process=proc_label, syst=param["name"],
+            file_type=file_type)
     else:
-        path = nom_format.format(bin=bin_name, process=proc_label)
+        path = nom_format.format(bin=bin_name, process=proc_label, file_type=file_type)
     path = path.replace("*", "X").replace("?", "Y").replace("!", "N")
     path = os.path.join(directory, path)
     logger.debug("going to create plot at {} for shapes in bin {} and process {}, stacking {} "
@@ -384,6 +385,7 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, nom_f
         r.setup_pad(pad2, props={"TopMargin": 0.7, "Gridy": 1})
     else:
         canvas, (pad1,) = r.routines.create_canvas()
+        r.setup_pad(pad1, props={"Logy": y_log})
     pad1.cd()
     draw_objs1 = []
     draw_objs2 = []
@@ -566,10 +568,13 @@ if __name__ == "__main__":
         "plots per process machted by a rule, stack distributions and create a single plot")
     parser.add_argument("--directory", "-d", default=".", help="directory in which produced plots "
         "are saved; defaults to the current directory")
-    parser.add_argument("--nom-format", default="{bin}__{process}.pdf", help="format for created "
-        "files when creating only nominal shapes; default: {bin}__{process}.pdf")
-    parser.add_argument("--syst-format", default="{bin}__{process}__{syst}.pdf", help="format for "
-        "created files when creating systematic shapes; default: {bin}__{process}__{syst}.pdf")
+    parser.add_argument("--file-type", "-f", default="pdf", help="the file type to produce; "
+        "default: pdf")
+    parser.add_argument("--nom-format", default="{bin}__{process}.{file_type}", help="format for "
+        "created files when creating only nominal shapes; default: {bin}__{process}.{file_type}")
+    parser.add_argument("--syst-format", default="{bin}__{process}__{syst}.{file_type}",
+        help="format for created files when creating systematic shapes; default: "
+        "{bin}__{process}__{syst}.{file_type}")
     parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
     parser.add_argument("--binning", "-b", default="original", choices=["original", "numbers",
         "numbers_width"], help="the binning strategy; 'original': use original bin edges; "
@@ -594,6 +599,7 @@ if __name__ == "__main__":
     # run the renaming
     with patch_object(logger, "name", args.log_name):
         plot_datacard_shapes(args.input, args.rules, stack=args.stack, directory=args.directory,
-            nom_format=args.nom_format, syst_format=args.syst_format, mass=args.mass,
-            binning=args.binning, x_title=args.x_title, y_min=args.y_min, y_max=args.y_max,
-            y_min2=args.y_min2, y_max2=args.y_max2, y_log=args.y_log, campaign_label=args.campaign)
+            file_type=args.file_type, nom_format=args.nom_format, syst_format=args.syst_format,
+            mass=args.mass, binning=args.binning, x_title=args.x_title, y_min=args.y_min,
+            y_max=args.y_max, y_min2=args.y_min2, y_max2=args.y_max2, y_log=args.y_log,
+            campaign_label=args.campaign)

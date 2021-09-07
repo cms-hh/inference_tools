@@ -41,17 +41,21 @@ class HHModelTask(AnalysisTask):
     provides a few convenience functions for working with it.
     """
 
+    DEFAULT_HH_MODULE = "HHModelPinv"
+    DEFAULT_HH_MODEL = "model_default"
+
     valid_hh_model_options = {
         "noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc",
         "doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V", "doProfileC2",
     }
 
     hh_model = luigi.Parameter(
-        default="HHModelPinv.model_default",
+        default="{}.{}".format(DEFAULT_HH_MODULE, DEFAULT_HH_MODEL),
         description="the location of the HH model to use with optional configuration options in "
-        "the format module.model_name[@opt1[@opt2...]]; when no module name is given, the default "
-        "one 'dhi.models.HHModelPinv' is assumed; valid options are {}; default: "
-        "HHModelPinv.model_default".format(",".join(valid_hh_model_options)),
+        "the format [module.]model_name[@opt1[@opt2...]]; when no module is given, the default "
+        "'{0}' is assumed; valid options are {2}; default: {0}.{1}".format(
+            DEFAULT_HH_MODULE, DEFAULT_HH_MODEL, ",".join(valid_hh_model_options),
+        ),
     )
 
     allow_empty_hh_model = False
@@ -74,14 +78,13 @@ class HHModelTask(AnalysisTask):
         # the format used to be "module:model_name" before so adjust it to support legacy commands
         hh_model = hh_model.replace(":", ".")
 
-        # when there is no "." in the string, assume it to be the name of a model in the default
-        # model file "HHModelPinv"
+        # when there is no "." in the string, assume it to be the default module
         if "." not in hh_model:
-            hh_model = "HHModelPinv.{}".format(hh_model)
+            hh_model = "{}.{}".format(cls.DEFAULT_HH_MODULE, hh_model)
 
         # split into module, model name and options
         front, options = hh_model.split("@", 1) if "@" in hh_model else (hh_model, "")
-        module_id, model_name = front.rsplit(".", 1) if "." in front else ("HHModelPinv", front)
+        module_id, model_name = front.rsplit(".", 1) if "." in front else (cls.DEFAULT_HH_MODULE, front)
         options = options.split("@") if options else []
 
         # check if options are valid and split them into key value pairs
@@ -1071,8 +1074,7 @@ class POITask(DatacardTask, ParameterValuesTask):
 
         # store available pois on task level and potentially update them according to the model
         if self.hh_model_empty:
-            self.r_pois = tuple(self.__class__.r_pois)
-            self.k_pois = tuple(self.__class__.k_pois)
+            self.r_pois, self.k_pois = self.get_empty_hh_model_pois()
         else:
             model = self.load_hh_model()[1]
             self.r_pois = tuple(model.r_pois)
@@ -1102,6 +1104,11 @@ class POITask(DatacardTask, ParameterValuesTask):
                 if p in self.pois:
                     raise Exception("{!r}: parameter values are not allowed to be in POIs, but "
                         "found '{}'".format(self, p))
+
+    def get_empty_hh_model_pois(self):
+        # hook that can be implemented to configure the r (and possibly k) POIs to be used
+        # when not hh model is configured
+        return tuple(self.__class__.r_pois), tuple(self.__class__.k_pois)
 
     def store_parts(self):
         parts = super(POITask, self).store_parts()
@@ -1243,6 +1250,14 @@ class POIScanTask(POITask, ParameterScanTask):
                 raise Exception("scan parameters are not allowed to be in parameter ranges, "
                     "but found {}".format(p))
 
+    def _joined_parameter_values_pois(self):
+        pois = super(POIScanTask, self)._joined_parameter_values_pois()
+
+        # skip scan parameters
+        pois = [p for p in pois if p not in self.scan_parameter_names]
+
+        return pois
+
     def get_output_postfix_pois(self):
         use_all_pois = self.allow_parameter_values_in_pois or self.force_scan_parameters_equal_pois
         return self.all_pois if use_all_pois else self.other_pois
@@ -1264,14 +1279,6 @@ class POIScanTask(POITask, ParameterScanTask):
             parts = parts[:i] + ParameterScanTask.get_output_postfix(self, join=False) + parts[i:]
 
         return self.join_postfix(parts) if join else parts
-
-    def _joined_parameter_values_pois(self):
-        pois = super(POIScanTask, self)._joined_parameter_values_pois()
-
-        # skip scan parameters
-        pois = [p for p in pois if p not in self.scan_parameter_names]
-
-        return pois
 
 
 class POIPlotTask(PlotTask, POITask):
@@ -1388,9 +1395,16 @@ class CombineCommandTask(CommandTask):
 
     @property
     def combine_optimization_args(self):
+        # start with minimizer args
         args = self.get_minimizer_args()
+
+        # additional args
+        args += " --X-rtd REMOVE_CONSTANT_ZERO_POINT=1"
+
+        # optimization for discrete parameters (as suggested by bbgg)
         if self.optimize_discretes:
             args += " " + self.combine_discrete_options
+
         return args
 
     def get_command(self):
@@ -1405,10 +1419,18 @@ class CombineCommandTask(CommandTask):
         def is_opt(s):
             return s.startswith("-") and not is_number(s[1:])
 
+        # highlighting
+        cyan = lambda s: law.util.colored(s, "cyan")
+        cyan_bright = lambda s: law.util.colored(s, "cyan", style="bright")
+        bright = lambda s: law.util.colored(s, "default", style="bright")
+
         # extract the "combine ..." part
-        cmds = [c.strip() for c in cmd.split(" && ")]
-        for i, c in enumerate(list(cmds)):
+        cmds = []
+        highlighted_cmds = []
+        for c in (c.strip() for c in cmd.split(" && ")):
             if not c.startswith("combine "):
+                cmds.append(c)
+                highlighted_cmds.append(cyan(c))
                 continue
 
             # first, replace aliases
@@ -1448,9 +1470,16 @@ class CombineCommandTask(CommandTask):
             ]
 
             # build the full command again
-            cmds[i] = law.util.quote_cmd(["combine"] + leading_values + law.util.flatten(params))
+            cmds.append(law.util.quote_cmd(["combine"] + leading_values + law.util.flatten(params)))
 
-        return " && ".join(cmds)
+            # add the highlighted command
+            highlighted_cmd = []
+            for i, p in enumerate(shlex.split(cmds[-1])):
+                func = cyan_bright if (i == 0 and p == "combine") or p.startswith("--") else cyan
+                highlighted_cmd.append(func(p))
+            highlighted_cmds.append(" ".join(highlighted_cmd))
+
+        return " && ".join(cmds), bright(" && ").join(highlighted_cmds)
 
 
 class InputDatacards(DatacardTask, law.ExternalTask):

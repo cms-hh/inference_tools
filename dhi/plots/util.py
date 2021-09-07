@@ -4,9 +4,12 @@
 Different helpers and ROOT style configurations to be used with plotlib.
 """
 
+import os
+import re
 import math
 import array
 import uuid
+import json
 import functools
 import itertools
 import contextlib
@@ -17,7 +20,7 @@ import numpy as np
 import scipy.interpolate
 
 from dhi.config import poi_data, br_hh_names
-from dhi.util import import_ROOT, try_int, to_root_latex, make_list
+from dhi.util import import_ROOT, import_file, try_int, to_root_latex, make_list
 
 
 _styles = {}
@@ -129,6 +132,48 @@ def determine_limit_digits(limit, is_xsec=False):
             return 1
         else:
             return 0
+
+
+def make_parameter_label_map(parameter_names, labels=None):
+    # prepare labels
+    if isinstance(labels, six.string_types):
+        labels = os.path.expandvars(os.path.expanduser(labels))
+        # try to load a renaming function called "rename_nuisance"
+        if labels.endswith(".py"):
+            labels = import_file(labels, attr="rename_nuisance")
+            if not callable(labels):
+                raise Exception("rename_nuisance loaded from {} is not callable".format(labels))
+        else:
+            with open(labels, "r") as f:
+                labels = json.load(f)
+    elif not labels:
+        labels = {}
+
+    if not isinstance(labels, dict):
+        # labels is a renaming function, call it for all parameters and store the result when
+        # names changed
+        _labels = {}
+        for name in parameter_names:
+            new_name = labels(name)
+            if new_name:
+                _labels[name] = new_name
+        labels = _labels
+    else:
+        # expand regular expressions through eager interpolation using parameter names
+        for k, v in labels.items():
+            if not k.startswith("^") or not k.endswith("$"):
+                continue
+            for name in parameter_names:
+                # skip explicit translations, effectively giving them priority
+                if name in labels:
+                    continue
+                # apply the pattern
+                new_name = re.sub(k, v, name)
+                # store a translation label when set
+                if new_name:
+                    labels[name] = new_name
+
+    return labels
 
 
 def get_y_range(y_min_value, y_max_value, y_min=None, y_max=None, log=False, y_min_log=1e-3,
@@ -388,6 +433,21 @@ def _get_contour(hist, level):
     return contours
 
 
+def get_contour_box(graphs):
+    assert graphs
+
+    x_values, y_values = [], []
+    for g in graphs:
+        x, y = get_graph_points(g, errors=False)
+        x_values.extend(x)
+        y_values.extend(y)
+
+    if not x_values or not y_values:
+        return None, None, None, None
+
+    return min(x_values), max(x_values), min(y_values), max(y_values)
+
+
 def get_graph_points(g, errors=False):
     ROOT = import_ROOT()
 
@@ -423,21 +483,6 @@ def get_graph_points(g, errors=False):
         return x_values, y_values, x_errors, y_errors
     else:
         return x_values, y_values
-
-
-def get_contour_box(graphs):
-    assert graphs
-
-    x_values, y_values = [], []
-    for g in graphs:
-        x, y = get_graph_points(g, errors=False)
-        x_values.extend(x)
-        y_values.extend(y)
-
-    if not x_values or not y_values:
-        return None, None, None, None
-
-    return min(x_values), max(x_values), min(y_values), max(y_values)
 
 
 def repeat_graph(g, n):
