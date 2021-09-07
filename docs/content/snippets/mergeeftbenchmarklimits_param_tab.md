@@ -1,4 +1,4 @@
-The `MergeEFTUpperLimits` task collects the limits from each of the `EFTUpperLimits` tasks and merges them into a single file.
+The `MergeEFTBenchmarkLimits` task collects the limits from each of the `EFTBenchmarkLimits` tasks and merges them into a single file.
 
 <div class="dhi_parameter_table">
 

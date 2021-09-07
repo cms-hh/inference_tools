@@ -21,7 +21,7 @@ from dhi.util import (
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, fill_hist_from_points, get_contours, get_y_range,
-    infer_binning_from_grid, get_contour_box,
+    infer_binning_from_grid, get_contour_box, make_parameter_label_map,
 )
 
 
@@ -49,10 +49,10 @@ def plot_likelihood_scan_1d(
     paper=False,
 ):
     """
-    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *paths*. *values* should be a
-    mapping to lists of values or a record array with keys "<poi_name>" and "dnll2". *theory_value*
-    can be a 3-tuple denoting the nominal theory prediction of the POI and its up and down
-    uncertainties which is drawn as a vertical bar.
+    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *paths*. *values* should be
+    a mapping to lists of values or a record array with keys "<poi_name>" and "dnll2".
+    *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
+    down uncertainties which is drawn as a vertical bar.
 
     When *poi_min* is set, it should be the value of the poi that leads to the best likelihood.
     Otherwise, it is estimated from the interpolated curve. When *show_best_fit*
@@ -119,9 +119,9 @@ def plot_likelihood_scan_1d(
                     r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
                     draw_objs.append(line)
 
-        # lines at chi2_1 intervals
+        # horizontal lines at chi2_1 intervals
         for n in [chi2_levels[1][1], chi2_levels[1][2]]:
-            if n < y_max_line:
+            if y_min <= n <= y_max_line:
                 line = ROOT.TLine(x_min, n, x_max, n)
                 r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
                 draw_objs.append(line)
@@ -144,8 +144,8 @@ def plot_likelihood_scan_1d(
         if not has_thy_err:
             legend_entries.append((line_thy, "Theory prediction", "L"))
 
-    # line for best fit value
-    if show_best_fit and scan:
+    # vertical line for best fit value
+    if show_best_fit and scan and (x_min <= scan.poi_min <= x_max):
         line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
         r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors.black)
         draw_objs.append(line_fit)
@@ -251,8 +251,12 @@ def plot_likelihood_scans_1d(
         d.setdefault("poi_min", None)
         # default name
         d.setdefault("name", str(i + 1))
-        # keep only valid points
-        values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}
+        # drop all fields except for required ones
+        values = {
+            k: np.array(v, dtype=np.float32)
+            for k, v in values.items()
+            if k in [poi, "dnll2"]
+        }
         # preprocess values (nan detection, negative shift)
         values["dnll2"], values[poi] = _preprocess_values(values["dnll2"], (poi, values[poi]),
             shift_negative_values=shift_negative_values, origin="entry '{}'".format(d["name"]),
@@ -290,9 +294,9 @@ def plot_likelihood_scans_1d(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
     draw_objs.append((h_dummy, "HIST"))
 
-    # lines at chi2_1 intervals
+    # horizontal lines at chi2_1 intervals
     for n in [chi2_levels[1][1], chi2_levels[1][2]]:
-        if n < y_max:
+        if y_min <= n <= y_max_line:
             line = ROOT.TLine(x_min, n, x_max, n)
             r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
             draw_objs.append(line)
@@ -315,8 +319,8 @@ def plot_likelihood_scans_1d(
         legend_entries.insert(0, (g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])),
             "LP" if show_points else "L"))
 
-        # line for best fit value
-        if show_best_fit and scan:
+        # vertical line for best fit value
+        if show_best_fit and scan and (x_min <= scan.poi_min <= x_max):
             line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
             r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors[col])
             draw_objs.append(line_fit)
@@ -437,6 +441,8 @@ def plot_likelihood_scan_2d(
         assert poi1 in _values
         assert poi2 in _values
         assert "dnll2" in _values
+        # drop all fields except for required ones
+        _values = {k: v for k, v in _values.items() if k in [poi1, poi2, "dnll2"]}
         # preprocess values (nan detection, negative shift)
         _values["dnll2"], _values[poi1], _values[poi2] = _preprocess_values(_values["dnll2"],
             (poi1, _values[poi1]), (poi2, _values[poi2]), remove_nans=interpolate_nans,
@@ -671,7 +677,12 @@ def plot_likelihood_scans_2d(
         assert len(d["poi_mins"]) == 2
         # default name
         d.setdefault("name", str(i + 1))
-        values = {k: np.array(v, dtype=np.float32) for k, v in values.items()}
+        # drop all fields except for required ones and convert to arrays
+        values = {
+            k: np.array(v, dtype=np.float32)
+            for k, v in values.items()
+            if k in [poi1, poi2, "dnll2"]
+        }
         # preprocess values (nan detection, negative shift)
         values["dnll2"], values[poi1], values[poi2] = _preprocess_values(values["dnll2"],
             (poi1, values[poi1]), (poi2, values[poi2]), shift_negative_values=shift_negative_values,
@@ -806,7 +817,9 @@ def plot_nuisance_likelihood_scans(
     only_parameters=None,
     parameters_per_page=1,
     sort_max=False,
-    scan_points=101,
+    show_diff=False,
+    labels=None,
+    scan_points=401,
     x_min=-2.,
     x_max=2,
     y_min=None,
@@ -816,21 +829,32 @@ def plot_nuisance_likelihood_scans(
     campaign=None,
     paper=False,
 ):
-    """
-    Creates a plot showing the change of the negative log-likelihood, obtained *poi*, when varying
-    values of nuisance paramaters and saves it at *paths*. The calculation of the likelihood change
-    requires the RooFit *workspace* to read the model config, a RooDataSet *dataset* to construct
-    the functional likelihood, and the output file *fit_diagnostics_path* of the combine fit
-    diagnostics for reading pre- and post-fit parameters for the fit named *fit_name*, defaulting
-    to ``"fit_s"``.
+    r"""
+    Creates a plot showing the change of the negative log-likelihood, previously obtained for a
+    *poi*, when varying values of nuisance paramaters and saves it at *paths*. The calculation of
+    the likelihood change requires the RooFit *workspace* to read the model config, a RooDataSet
+    *dataset* to construct the functional likelihood, and the output file *fit_diagnostics_path* of
+    the combine fit diagnostics for reading pre- and post-fit parameters for the fit named
+    *fit_name*, defaulting to ``"fit_s"``.
 
     Nuisances to skip, or to show exclusively can be configured via *skip_parameters* and
     *only_parameters*, respectively, which can be lists of patterns. *parameters_per_page* defines
     the number of parameter curves that are drawn in the same canvas page. When *sort_max* is
-    *True*, the parameter are sorted by their highest likelihood change in the full scan range. The
-    scan range and granularity is set via *scan_points*, *x_min* and *x_max*. *y_min* and *y_max*
-    define the range of the y-axis, which is plotted with a logarithmic scale when *y_log* is
-    *True*. *model_parameters* can be a dictionary of key-value pairs of model parameters.
+    *True*, the parameter are sorted by their highest likelihood change in the full scan range.
+    By default, the x-axis shows absolute variations of the nuisance parameters (in terms of the
+    prefit range). When *show_diff* is *True*, it shows differences with respect to the best fit
+    value instead.
+
+    *labels* should be a dictionary or a json file containing a dictionary that maps nuisances names
+    to labels shown in the plot, a python file containing a function named "rename_nuisance", or a
+    function itself. When it is a dictionary and a key starts with "^" and ends with "$" it is
+    interpreted as a regular expression. Matched groups can be reused in the substituted name via
+    '\n' to reference the n-th group (following the common re.sub format). When it is a function, it
+    should accept the current nuisance label as a single argument and return the new value.
+
+    The scan range and granularity is set via *scan_points*, *x_min* and *x_max*. *y_min* and
+    *y_max* define the range of the y-axis, which is plotted with a logarithmic scale when *y_log*
+    is *True*. *model_parameters* can be a dictionary of key-value pairs of model parameters.
     *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
     When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
@@ -868,8 +892,10 @@ def plot_nuisance_likelihood_scans(
         param_names.append(param_name)
     print("preparing scans of {} parameter(s)".format(len(param_names)))
 
-    # prepare the scan values, ensure that 0 is contained
-    scan_values = np.linspace(x_min, x_max, scan_points).tolist()
+    # prepare the scan values, extend the range by 10 points in each directon, ensure 0 is contained
+    assert scan_points > 1
+    width = float(x_max - x_min) / (scan_points - 1)
+    scan_values = np.linspace(x_min - 10 * width, x_max + 10 * width, scan_points + 20).tolist()
     if 0 not in scan_values:
         scan_values = sorted(scan_values + [0.])
 
@@ -886,8 +912,9 @@ def plot_nuisance_likelihood_scans(
         x_values, y_values = [], []
         print("scanning parameter {}".format(name))
         for x in scan_values:
-            param.setVal(param_bf + (pre_u if x >= 0 else -pre_d) * x)
-            x_values.append(param.getVal())
+            x_diff = x * (pre_u if x >= 0 else -pre_d)
+            param.setVal(param_bf + x_diff)
+            x_values.append(x_diff if show_diff else (param_bf + x_diff))
             y_values.append(2 * (nll.getVal() - nll_base))
         curve_data[name] = (x_values, y_values)
 
@@ -906,6 +933,9 @@ def plot_nuisance_likelihood_scans(
             param_groups[-1].append(name)
         else:
             param_groups.append([name])
+
+    # prepare labels
+    labels = make_parameter_label_map(param_names, labels)
 
     # go through nuisances
     canvas = None
@@ -930,8 +960,11 @@ def plot_nuisance_likelihood_scans(
             y_max, log=y_log)
 
         # dummy histogram to control axes
-        x_title = "(#theta - #theta_{best}) / #Delta#theta_{pre}"
-        y_title = "Change in -2 log(L)"
+        if show_diff:
+            x_title = "(#theta - #theta_{best}) / #Delta#theta_{pre}"
+        else:
+            x_title = "#theta / #Delta#theta_{pre}"
+        y_title = "-2 #Delta log(L)"
         h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
         r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": _y_min, "Maximum": _y_max})
         draw_objs = [(h_dummy, "HIST")]
@@ -956,7 +989,8 @@ def plot_nuisance_likelihood_scans(
             g_nll = create_tgraph(len(x), x, y)
             r.setup_graph(g_nll, props={"LineWidth": 2, "LineStyle": 1}, color=colors[col])
             draw_objs.append((g_nll, "SAME,C"))
-            legend_entries.append((g_nll, to_root_latex(name), "L"))
+            label = to_root_latex(labels.get(name, name))
+            legend_entries.append((g_nll, label, "L"))
 
         # legend
         legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
@@ -1121,7 +1155,8 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     # first, obtain an interpolation function
     # interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="linear")
     try:
-        interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="cubic")
+        interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="cubic",
+            fill_value="extrapolate")
     except:
         return None
 
@@ -1141,8 +1176,8 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
             # compare and optionally issue a warning (threshold to be optimized)
             if abs(poi_min - poi_min_new) >= 0.03:
                 warn(
-                    "WARNING: external POI minimum (from combine) {:.4f} differs from the "
-                    "recomputed value (from scipy.interpolate and scipy.minimize) {:.4f}".format(
+                    "WARNING: external POI minimum {:.4f} (from combine) differs from the "
+                    "recomputed value {:.4f} (from scipy.interpolate and scipy.minimize)".format(
                         poi_min, poi_min_new)
                 )
         else:
@@ -1275,7 +1310,7 @@ def evaluate_likelihood_scan_2d(
             raise Exception("could not find minimum of nll2 interpolation: {}".format(res.message))
     else:
         poi1_min_new = res.x[0]
-        poi2_min_new = res.x[0]
+        poi2_min_new = res.x[1]
         print("done, found {:.4f}, {:.4f}".format(poi1_min_new, poi2_min_new))
         if xcheck:
             # compare and optionally issue a warning (threshold to be optimized)

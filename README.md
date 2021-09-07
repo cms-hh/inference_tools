@@ -98,6 +98,9 @@ module 'dhi.tasks.base', 3 task(s):
     - BundleRepo
     - BundleSoftware
 
+module 'dhi.tasks.snapshot', 1 task(s):
+    - Snapshot
+
 module 'dhi.tasks.limits', 7 task(s):
     - UpperLimits
     - PlotUpperLimitsAtPoint
@@ -154,7 +157,7 @@ module 'dhi.tasks.exclusion', 2 task(s):
     - PlotExclusionAndBestFit
     - PlotExclusionAndBestFit2D
 
-written 44 task(s) to index file '/your/path/inference/.law/index'
+written 45 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type

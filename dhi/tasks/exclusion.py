@@ -11,12 +11,13 @@ import luigi
 
 from dhi.tasks.base import BoxPlotTask, view_output_plots
 from dhi.tasks.combine import MultiDatacardTask, POIScanTask, POIPlotTask
+from dhi.tasks.snapshot import SnapshotUser
 from dhi.tasks.limits import MergeUpperLimits, PlotUpperLimits
 from dhi.tasks.likelihoods import MergeLikelihoodScan, PlotLikelihoodScan
 from dhi.config import br_hh
 
 
-class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, BoxPlotTask):
+class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, SnapshotUser, BoxPlotTask):
 
     show_best_fit = PlotLikelihoodScan.show_best_fit
     show_best_fit_error = PlotLikelihoodScan.show_best_fit_error
@@ -54,6 +55,14 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, BoxPl
             reqs.append(req)
 
         return reqs
+
+    def get_output_postfix(self, join=True):
+        parts = super(PlotExclusionAndBestFit, self).get_output_postfix(join=False)
+
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+
+        return self.join_postfix(parts) if join else parts
 
     def output(self):
         names = self.create_plot_names(["exclusionbestfit", self.get_output_postfix()])
@@ -129,7 +138,7 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, BoxPl
         )
 
 
-class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
+class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
 
     show_best_fit = PlotLikelihoodScan.show_best_fit
     show_best_fit_error = copy.copy(PlotLikelihoodScan.show_best_fit_error)
@@ -189,6 +198,14 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask):
                 pois=tuple(self.scan_parameter_names))
 
         return reqs
+
+    def get_output_postfix(self, join=True):
+        parts = super(PlotExclusionAndBestFit2D, self).get_output_postfix(join=False)
+
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+
+        return self.join_postfix(parts) if join else parts
 
     def output(self):
         names = self.create_plot_names(["exclusionbestfit2d", self.get_output_postfix()])
