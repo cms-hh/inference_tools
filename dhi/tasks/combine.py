@@ -1395,9 +1395,16 @@ class CombineCommandTask(CommandTask):
 
     @property
     def combine_optimization_args(self):
+        # start with minimizer args
         args = self.get_minimizer_args()
+
+        # additional args
+        args += " --X-rtd REMOVE_CONSTANT_ZERO_POINT=1"
+
+        # optimization for discrete parameters (as suggested by bbgg)
         if self.optimize_discretes:
             args += " " + self.combine_discrete_options
+
         return args
 
     def get_command(self):

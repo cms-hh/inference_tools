@@ -134,7 +134,6 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {snapshot_args}"
             " --saveNLL"
-            " --X-rtd REMOVE_CONSTANT_ZERO_POINT=1"
             " {self.combine_optimization_args}"
             " && "
             "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root {output}"

@@ -81,7 +81,6 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --saveWorkspace"
             " --saveNLL"
-            " --X-rtd REMOVE_CONSTANT_ZERO_POINT=1"
             " {self.combine_optimization_args}"
             " && "
             "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root {output}"
