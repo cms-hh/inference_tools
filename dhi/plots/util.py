@@ -554,10 +554,7 @@ def get_text_extent(t, text_size=None, text_font=None):
     ROOT = import_ROOT()
 
     # convert to a tlatex if t is a string, otherwise clone
-    if isinstance(t, six.string_types):
-        t = ROOT.TLatex(0., 0., t)
-    else:
-        t = t.Clone()
+    t = ROOT.TLatex(0., 0., t) if isinstance(t, six.string_types) else t.Clone()
 
     # set size and font when set
     if text_size is not None:
@@ -566,7 +563,7 @@ def get_text_extent(t, text_size=None, text_font=None):
         t.SetTextFont(text_font)
 
     # only available when the font precision is 3
-    assert t.GetTextFont() % 10 == 3
+    assert t.GetTextFont() % 10 == 3, "font precision must be 3 to estimate text extent"
 
     # create a temporary canvas and draw the text
     with temporary_canvas() as c:

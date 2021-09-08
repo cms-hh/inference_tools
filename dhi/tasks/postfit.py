@@ -14,6 +14,7 @@ from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
 from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
+from dhi.util import real_path
 
 
 class SAVEFLAGS(str, enum.Enum):
@@ -221,6 +222,12 @@ class PlotPostfitSOverB(PostfitPlotBase):
         description="comma-separated list of category names or name patterns to select; consider "
         "adjusting --campaign accordingly; all categories are used when empty; default: empty",
     )
+    backgrounds = luigi.Parameter(
+        default=law.NO_STR,
+        description="a json file containing a list of objects that configure background processes "
+        "to split instead of showing the combined shape; possible object fields are 'name', "
+        "'label', 'processes', 'fill_color', and 'line_color'; no default",
+    )
     x_min = None
     x_max = None
     z_max = None
@@ -246,7 +253,10 @@ class PlotPostfitSOverB(PostfitPlotBase):
     def output(self):
         parts = []
         if self.categories:
-            parts.append(["cats"] + list(self.categories))
+            cats = sorted(self.categories)
+            parts.append(["cats"] + (cats if len(cats) < 4 else [law.util.create_hash(cats)]))
+        if self.backgrounds != law.NO_STR:
+            parts.append(["bkgs", law.util.create_hash(real_path(self.backgrounds))])
 
         name = "prefitsoverb" if self.prefit else "postfitsoverb"
         names = self.create_plot_names([name, self.get_output_postfix()] + parts)
@@ -278,6 +288,7 @@ class PlotPostfitSOverB(PostfitPlotBase):
             show_uncertainty=not self.hide_uncertainty,
             show_best_fit=self.show_best_fit,
             categories=self.categories,
+            backgrounds=None if self.backgrounds == law.NO_STR else self.backgrounds,
             y1_min=self.get_axis_limit("y_min"),
             y1_max=self.get_axis_limit("y_max"),
             y2_min=self.get_axis_limit("ratio_min"),

@@ -816,9 +816,14 @@ class ROOTColorGetter(object):
     def create_color(cls, obj):
         ROOT = import_ROOT()
 
-        if isinstance(obj, int):
-            return obj
-        elif isinstance(obj, str):
+        if isinstance(obj, six.integer_types):
+            return int(obj)
+        elif isinstance(obj, six.string_types):
+            obj = str(obj)
+            # hex color
+            if obj.startswith("#"):
+                return ROOT.TColor.GetColor(obj)
+            # named color
             c = getattr(ROOT, "k" + obj.capitalize(), None)
             if c is not None:
                 return c

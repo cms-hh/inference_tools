@@ -4,9 +4,11 @@
 Postfit shape plots using ROOT.
 """
 
+import os
 import math
+import json
 import array
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 import six
 import uproot
@@ -35,6 +37,7 @@ def plot_s_over_b(
     show_uncertainty=True,
     show_best_fit=True,
     categories=None,
+    backgrounds=None,
     y1_min=None,
     y1_max=None,
     y2_min=None,
@@ -62,6 +65,16 @@ def plot_s_over_b(
     select only a subset, *categories* can be a sequence of names or name patterns of categories to
     select.
 
+    When *backgrounds* is set, it can be either a sequence of dictionaries or a json file containing
+    such a sequence. In this case, the overall background shape in the top pad is split into
+    particular processes, with each process being defined by a dictionary with fields:
+      - name:       the name of the background
+      - label:      an optional label for the background, defaults to name
+      - processes:  an optional sequence of names or patterns that match the processes to merge
+                    for this background
+      - fill_color: an optional fill color, defaults to white
+      - line_color: an optional line color, no line is drawn when not set
+
     *y1_min*, *y1_max*, *y2_min* and *y2_max* define the ranges of the y-axes of the upper pad and
     ratio pad, respectively. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
@@ -80,9 +93,13 @@ def plot_s_over_b(
     assert signal_scale_ratio != 0
     if not signal_superimposed:
         signal_scale_ratio = signal_scale
+    if isinstance(backgrounds, six.string_types):
+        backgrounds = os.path.expandvars(os.path.expanduser(backgrounds))
+        with open(backgrounds, "r") as f:
+            backgrounds = json.load(f)
 
     # load the shape data from the fit diagnostics file
-    bin_data = load_bin_data(fit_diagnostics_path)
+    bin_data = load_bin_data(fit_diagnostics_path, per_process=bool(backgrounds))
 
     # select categories when set
     if categories:
@@ -122,11 +139,11 @@ def plot_s_over_b(
     # compute prefit log(s/b) where possible
     x_min = 1.e5
     x_max = -1.e5
-    for b in bin_data:
-        if b.pre_signal > 0:
-            b["pre_s_over_b"] = math.log(b.pre_signal / b.pre_background, 10.)
-            x_min = min(x_min, b.pre_s_over_b)
-            x_max = max(x_max, b.pre_s_over_b)
+    for _bin in bin_data:
+        if _bin.pre_signal > 0:
+            _bin["pre_s_over_b"] = math.log(_bin.pre_signal / _bin.pre_background, 10.)
+            x_min = min(x_min, _bin.pre_s_over_b)
+            x_max = max(x_max, _bin.pre_s_over_b)
 
     # infer bin edges when only a number of bins is passed
     if isinstance(bins, six.integer_types):
@@ -147,6 +164,7 @@ def plot_s_over_b(
     draw_objs1 = []
     draw_objs2 = []
     legend_entries = []
+    legend_entries_procs = []
 
     # dummy histograms for both pads to control axes
     h_dummy1 = ROOT.TH1F("dummy1", ";;Events", 1, x_min, x_max)
@@ -169,14 +187,14 @@ def plot_s_over_b(
         return label
 
     # superimposed signal histogram at the top
-    hist_s1 = ROOT.TH1F("s_post1", "", len(bins) - 1, array.array("f", bins))
+    hist_s1 = ROOT.TH1F("s1", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_s1, props={"LineColor": colors.blue_signal})
     if signal_superimposed and show_signal:
         draw_objs1.append((hist_s1, "SAME,HIST"))
         legend_entries.append((hist_s1, signal_label(signal_scale), "L"))
 
-    # postfit signal histogram at the top
-    hist_sb1 = ROOT.TH1F("sb_post1", "", len(bins) - 1, array.array("f", bins))
+    # signal histogram at the top
+    hist_sb1 = ROOT.TH1F("sb1", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_sb1, props={"FillColor": colors.blue_signal})
     if show_signal:
         if signal_superimposed:
@@ -185,9 +203,9 @@ def plot_s_over_b(
             legend_entries.append((hist_sb1, signal_label(signal_scale), "AF"))
             draw_objs1.append((hist_sb1, "SAME,HIST"))
 
-    # postfit B histogram at the top
+    # background histogram at the top
     fit_type = "pre" if prefit else "post"
-    hist_b1 = ROOT.TH1F("b_post1", "", len(bins) - 1, array.array("f", bins))
+    hist_b1 = ROOT.TH1F("b1", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_b1, props={"FillColor": colors.white})
     legend_entries.insert(0, (hist_b1, "Background ({}-fit)".format(fit_type), "L"))
     if signal_superimposed:
@@ -205,12 +223,12 @@ def plot_s_over_b(
     draw_objs1.append((graph_d1, "PEZ0,SAME"))
     legend_entries.insert(0, (graph_d1, "Data" + data_postfix, "LP"))
 
-    # postfit S+B ratio histogram and a mask histogram to mimic errors
-    hist_sb2 = ROOT.TH1F("sb_post2", "", len(bins) - 1, array.array("f", bins))
+    # S+B ratio histogram and a mask histogram to mimic errors
+    hist_sb2 = ROOT.TH1F("sb2", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_sb2, props={"FillColor": colors.blue_signal})
     if show_signal:
         draw_objs2.append((hist_sb2, "SAME,HIST"))
-    hist_mask2 = ROOT.TH1F("mask_post2", "", len(bins) - 1, array.array("f", bins))
+    hist_mask2 = ROOT.TH1F("mask2", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_mask2, props={"FillColor": colors.white})
     draw_objs2.append((hist_mask2, "SAME,HIST"))
 
@@ -218,7 +236,7 @@ def plot_s_over_b(
     hist_b_err_up1 = ROOT.TH1F("b_err_up1", "", len(bins) - 1, array.array("f", bins))
     hist_b_err_down1 = ROOT.TH1F("b_err_down1", "", len(bins) - 1, array.array("f", bins))
 
-    # postfit background uncertainty in the ratio
+    # background uncertainty in the ratio
     graph_b_err2 = ROOT.TGraphAsymmErrors(len(bins) - 1)
     r.setup_hist(graph_b_err2, props={"FillColor": colors.black, "FillStyle": 3345, "LineWidth": 0})
     if show_uncertainty:
@@ -229,6 +247,19 @@ def plot_s_over_b(
     graph_d2 = ROOT.TGraphAsymmErrors(len(bins) - 1)
     r.setup_hist(graph_d2, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 1}, color=1)
     draw_objs2.append((graph_d2, "SAME,PEZ0"))
+
+    # per-process histograms
+    hists_bg1 = []
+    if backgrounds:
+        for i, bg in enumerate(backgrounds):
+            hist_bg1 = ROOT.TH1F("bg{}".format(i), "", len(bins) - 1, array.array("f", bins))
+            props = {"FillColor": colors(bg.get("fill_color", "white")), "LineWidth": 0}
+            if "line_color" in bg:
+                props["LineColor"] = colors(bg.get("line_color", props["FillColor"]))
+                props["LineWidth"] = 1
+            r.setup_hist(hist_bg1, props)
+            legend_entries_procs.append((hist_bg1, to_root_latex(bg.get("label", bg["name"])), "F"))
+            hists_bg1.append(hist_bg1)
 
     # fill histograms by traversing bin data
     for _bin in bin_data:
@@ -248,6 +279,14 @@ def plot_s_over_b(
         # background uncertainty histogram for binning
         hist_b_err_up1.Fill(s_over_b, b_err_up)
         hist_b_err_down1.Fill(s_over_b, b_err_down)
+        # per process backgrounds
+        if backgrounds:
+            for bg, hist_bg1 in zip(backgrounds, hists_bg1):
+                patterns = bg.get("processes", [bg["name"]])
+                for proc_name, proc_data in _bin.processes.items():
+                    if not multi_match(proc_name, patterns):
+                        continue
+                    hist_bg1.Fill(s_over_b, proc_data[fit_type])
 
     # fill remaining objects
     for i in range(hist_sb1.GetNbinsX()):
@@ -278,7 +317,8 @@ def plot_s_over_b(
 
     # set y ranges in both pads
     if y1_min is None:
-        y1_min = 5.
+        y1_min = (0.75 * hist_b1.GetMinimum())
+        y1_min = 0.75 if not y1_min else min(y1_min, 0.75)
     if y1_max is None:
         y1_max_value = hist_b1.GetMaximum()
         y1_max = y1_min * 10**(1.35 * math.log10(y1_max_value / y1_min))
@@ -299,12 +339,32 @@ def plot_s_over_b(
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs1.insert(-1, legend_box)
 
+    # background stack and dedicated legend
+    if backgrounds:
+        stack_bg1 = ROOT.THStack("bgstack1", "")
+        for hist_bg1 in hists_bg1:
+            stack_bg1.Add(hist_bg1)
+        r.setup_hist(stack_bg1, props={"LineWidth": 4, "LineColor": colors.black})
+        draw_objs1.insert(-3, (stack_bg1, "SAME,HIST"))
+        hist_b1_frame = hist_b1.Clone(hist_b1.GetName() + "_frame")
+        hist_b1_frame.SetFillStyle(0)
+        draw_objs1.insert(-3, (hist_b1_frame, "SAME,HIST"))
+
+        legend_cols = min(int(math.ceil(len(legend_entries_procs) / 4.)), 3)
+        legend_rows = int(math.ceil(len(legend_entries_procs) / float(legend_cols)))
+        legend_procs = r.routines.create_legend(pad=pad1, width=legend_cols * 160, n=legend_rows,
+            x2=0.53, props={"NColumns": legend_cols})
+        r.fill_legend(legend_procs, legend_entries_procs[::-1])
+        draw_objs1.append(legend_procs)
+
     # model parameter labels
     if model_parameters:
         draw_objs1.extend(create_model_parameters(model_parameters, pad1, x_offset=200))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad1)
+    layout = "outside_horizontal" if backgrounds else "inside_vertical"
+    cms_labels = r.routines.create_cms_labels(layout=layout, pad=pad1,
+        postfix="" if paper else cms_postfix,)
     draw_objs1.extend(cms_labels)
 
     # campaign label
@@ -325,7 +385,7 @@ def plot_s_over_b(
         canvas.SaveAs(path)
 
 
-def load_bin_data(fit_diagnostics_path):
+def load_bin_data(fit_diagnostics_path, per_process=False):
     ROOT = import_ROOT()
 
     # the returned list contains information per bin in a dict
@@ -356,6 +416,15 @@ def load_bin_data(fit_diagnostics_path):
         a_post = cat_dir_post.Get("total")
         d_post = cat_dir_post.Get("data")
 
+        # get per-process histograms
+        proc_hists = OrderedDict()
+        if per_process:
+            proc_hists = OrderedDict(
+                (proc_name, (cat_dir_pre.Get(proc_name), cat_dir_post.Get(proc_name)))
+                for proc_name in (proc_key.GetName() for proc_key in cat_dir_post.GetListOfKeys())
+                if not multi_match(proc_name, ["data", "total*"])
+            )
+
         # some dimension checks
         n = b_pre.GetNbinsX()
         assert b_pre.GetNbinsX() == a_pre.GetNbinsX() == n
@@ -366,6 +435,15 @@ def load_bin_data(fit_diagnostics_path):
         # data might be missing when blinded
         if d_pre:
             assert d_pre.GetN() == d_post.GetN() == n
+        # check per-process histograms
+        if proc_hists:
+            for proc_name, (h_pre, h_post) in proc_hists.items():
+                if h_pre.GetNbinsX() != n:
+                    raise Exception("{} pre-fit bins found for process {}, should be {}".format(
+                        h_pre.GetNbinsX(), proc_name, n))
+                if h_post.GetNbinsX() != n:
+                    raise Exception("{} post-fit bins found for process {}, should be {}".format(
+                        h_post.GetNbinsX(), proc_name, n))
 
         # read bins one by one
         for i in range(n):
@@ -378,6 +456,7 @@ def load_bin_data(fit_diagnostics_path):
             bin_data.append(DotDict(
                 category=cat_name,
                 bin=i,
+                data=d_post.GetY()[i] if d_post else None,
                 pre_signal=s_pre.GetBinContent(i + 1) if s_pre else None,
                 pre_signal_err_up=s_pre.GetBinErrorUp(i + 1) if s_pre else None,
                 pre_signal_err_down=s_pre.GetBinErrorLow(i + 1) if s_pre else None,
@@ -396,7 +475,17 @@ def load_bin_data(fit_diagnostics_path):
                 post_all=a_post.GetBinContent(i + 1),
                 post_all_err_up=a_post.GetBinErrorUp(i + 1),
                 post_all_err_down=a_post.GetBinErrorLow(i + 1),
-                data=d_post.GetY()[i] if d_post else None,
+                processes=DotDict(
+                    (proc_name, DotDict(
+                        pre=h_pre.GetBinContent(i + 1),
+                        pre_err_up=h_pre.GetBinErrorUp(i + 1),
+                        pre_err_down=h_pre.GetBinErrorLow(i + 1),
+                        post=h_post.GetBinContent(i + 1),
+                        post_err_up=h_post.GetBinErrorUp(i + 1),
+                        post_err_down=h_post.GetBinErrorLow(i + 1),
+                    ))
+                    for proc_name, (h_pre, h_post) in proc_hists.items()
+                ),
             ))
 
     return bin_data
