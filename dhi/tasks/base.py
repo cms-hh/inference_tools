@@ -132,7 +132,13 @@ class AnalysisTask(BaseTask):
         return cls(path, **kwargs)
 
     def join_postfix(self, parts, sep1="__", sep2="_"):
-        repl = lambda s: re.sub(r"[^a-zA-Z0-9\.\_\-\+]", "", str(s))
+        def repl(s):
+            # replace certain characters
+            s = str(s).replace("*", "X").replace("?", "Y")
+            # remove remaining unknown characters
+            s = re.sub(r"[^a-zA-Z0-9\.\_\-\+]", "", s)
+            return s
+
         return sep1.join(
             (sep2.join(repl(p) for p in part) if isinstance(part, (list, tuple)) else repl(part))
             for part in parts

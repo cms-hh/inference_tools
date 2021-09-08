@@ -14,6 +14,7 @@ import uproot
 from dhi.config import poi_data, campaign_labels, colors, cms_postfix
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors, make_list, warn,
+    multi_match,
 )
 from dhi.plots.util import use_style, create_model_parameters
 
@@ -33,6 +34,7 @@ def plot_s_over_b(
     show_signal=True,
     show_uncertainty=True,
     show_best_fit=True,
+    categories=None,
     y1_min=None,
     y1_max=None,
     y2_min=None,
@@ -49,14 +51,16 @@ def plot_s_over_b(
     produced by combine. *bins* can either be a single number of bins to use, or a list of n+1 bin
     edges.
 
-    When *signal_superimposed* is *True*, the signal at the top pad
-    is not drawn stacked on top of the background but as a separate histogram. For visualization
-    purposes, the fitted signal can be scaled by *signal_scale*, and, when drawing the signal
-    superimposed, by *signal_scale_ratio* at the bottom ratio pad. When *signal_superimposed* is
-    *True*, the signal at the top pad is not drawn stacked on top of the background but as a
-    separate histogram. The signal is not shown at all when *show_signal* is *False*. When
-    *show_uncertainty* is *False*, the postfit uncertainty is not drawn. When *show_best_fit* is
-    *False*, the value of the signal scale is not shown in the legend labels.
+    When *signal_superimposed* is *True*, the signal at the top pad is not drawn stacked on top of
+    the background but as a separate histogram. For visualization purposes, the fitted signal can be
+    scaled by *signal_scale*, and, when drawing the signal superimposed, by *signal_scale_ratio* at
+    the bottom ratio pad. When *signal_superimposed* is *True*, the signal at the top pad is not
+    drawn stacked on top of the background but as a separate histogram. The signal is not shown at
+    all when *show_signal* is *False*. When *show_uncertainty* is *False*, the postfit uncertainty
+    is not drawn. When *show_best_fit* is *False*, the value of the signal scale is not shown in the
+    legend labels. By default, all categories found in the fit diagnostics file are stacked. To
+    select only a subset, *categories* can be a sequence of names or name patterns of categories to
+    select.
 
     *y1_min*, *y1_max*, *y2_min* and *y2_max* define the ranges of the y-axes of the upper pad and
     ratio pad, respectively. *model_parameters* can be a dictionary of key-value pairs of model
@@ -79,6 +83,10 @@ def plot_s_over_b(
 
     # load the shape data from the fit diagnostics file
     bin_data = load_bin_data(fit_diagnostics_path)
+
+    # select categories when set
+    if categories:
+        bin_data = filter(lambda _bin: multi_match(_bin.category, categories), bin_data)
 
     # warn about categories with missing signal or data contributions
     bad_signal_indices = set()

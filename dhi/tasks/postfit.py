@@ -216,6 +216,11 @@ class PlotPostfitSOverB(PostfitPlotBase):
         description="plot prefit distributions and uncertainties instead of postfit ones; only "
         "available when not --unblinded; default: False",
     )
+    categories = law.CSVParameter(
+        default=(),
+        description="comma-separated list of category names or name patterns to select; consider "
+        "adjusting --campaign accordingly; all categories are used when empty; default: empty",
+    )
     x_min = None
     x_max = None
     z_max = None
@@ -239,8 +244,12 @@ class PlotPostfitSOverB(PostfitPlotBase):
         return full_fd
 
     def output(self):
+        parts = []
+        if self.categories:
+            parts.append(["cats"] + list(self.categories))
+
         name = "prefitsoverb" if self.prefit else "postfitsoverb"
-        names = self.create_plot_names([name, self.get_output_postfix()])
+        names = self.create_plot_names([name, self.get_output_postfix()] + parts)
         return [self.local_target(name) for name in names]
 
     @law.decorator.log
@@ -268,6 +277,7 @@ class PlotPostfitSOverB(PostfitPlotBase):
             show_signal=not self.hide_signal,
             show_uncertainty=not self.hide_uncertainty,
             show_best_fit=self.show_best_fit,
+            categories=self.categories,
             y1_min=self.get_axis_limit("y_min"),
             y1_max=self.get_axis_limit("y_max"),
             y2_min=self.get_axis_limit("ratio_min"),
