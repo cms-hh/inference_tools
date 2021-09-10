@@ -267,7 +267,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             msg += " You can proceed with the converging fits only by adding\n\n"
             msg += c("       --PullsAndImpacts-branches {}\n\n".format(working_branches),
                 style="bright")
-            msg += "     which effectively skips all failing fits.\n"
+            msg += "     which effectively skips all failing fits in your case.\n"
             raise Exception(msg)
 
         # merge values and parameter infos into data structure similar to the one produced by

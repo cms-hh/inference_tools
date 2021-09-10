@@ -150,6 +150,13 @@ def plot_likelihood_scan_1d(
         r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors.black)
         draw_objs.append(line_fit)
 
+    # print values
+    if scan:
+        unc = lambda v: "--" if v is None else "{:+.3f}".format(v - scan.poi_min)
+        print("best fit value: {:+.3f}".format(scan.poi_min))
+        print("       1 sigma: {} / {}".format(unc(scan.poi_p1), unc(scan.poi_m1)))
+        print("       2 sigma: {} / {}".format(unc(scan.poi_p2), unc(scan.poi_m2)))
+
     # nll curve
     g_nll = create_tgraph(len(poi_values), poi_values, dnll2_values)
     r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75})
@@ -463,6 +470,10 @@ def plot_likelihood_scan_2d(
     if not scan:
         warn("2D likelihood evaluation failed")
 
+    # reset the box flag if necessary
+    if show_box and (not scan or not scan.box_nums[0][0] or not scan.box_nums[0][1]):
+        show_box = False
+
     # start plotting
     r.setup_style()
     canvas, (pad,) = r.routines.create_canvas(pad_props={"RightMargin": 0.17, "Logz": True})
@@ -535,17 +546,17 @@ def plot_likelihood_scan_2d(
         draw_objs.append((g, "SAME,C"))
 
     # draw the first contour box
-    if show_box and scan:
+    if show_box:
         box_num1, box_num2 = scan.box_nums[0]
-        if box_num1 and box_num2:
-            box_t = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("up"), box_num2("up"))
-            box_b = ROOT.TLine(box_num1("down"), box_num2("down"), box_num1("up"), box_num2("down"))
-            box_r = ROOT.TLine(box_num1("up"), box_num2("up"), box_num1("up"), box_num2("down"))
-            box_l = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("down"), box_num2("down"))
-            for box_line in [box_t, box_r, box_b, box_l]:
-                r.setup_line(box_line, props={"LineColor": colors.black, "LineStyle": 2,
-                    "NDC": False})
-                draw_objs.append(box_line)
+        box_t = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("up"), box_num2("up"))
+        box_b = ROOT.TLine(box_num1("down"), box_num2("down"), box_num1("up"), box_num2("down"))
+        box_r = ROOT.TLine(box_num1("up"), box_num2("up"), box_num1("up"), box_num2("down"))
+        box_l = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("down"), box_num2("down"))
+        for box_line in [box_t, box_r, box_b, box_l]:
+            r.setup_line(box_line, props={"LineColor": colors.black, "NDC": False})
+            draw_objs.append(box_line)
+        box_legend_entry = ROOT.TH1F("box_hist", "", 1, 0, 1)
+        r.setup_hist(box_legend_entry, props={"FillStyle": 0})
 
     # SM point
     if show_sm_point:
@@ -590,8 +601,7 @@ def plot_likelihood_scan_2d(
         legend_entries.append((g_fit, make_bf_label(scan.num1_min, scan.num2_min),
             "PLE" if show_best_fit_error else "P"))
     if show_box:
-        legend_entries.append((box_t, make_bf_label(box_num1, box_num2),
-            "PLE" if show_best_fit_error else "P"))
+        legend_entries.append((box_legend_entry, make_bf_label(box_num1, box_num2), "F"))
     if legend_entries:
         legend = r.routines.create_legend(pad=pad, width=340, n=len(legend_entries))
         r.fill_legend(legend, legend_entries)
