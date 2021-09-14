@@ -67,13 +67,13 @@ def plot_s_over_b(
 
     When *backgrounds* is set, it can be either a sequence of dictionaries or a json file containing
     such a sequence. In this case, the overall background shape in the top pad is split into
-    particular processes, with each process being defined by a dictionary with fields:
-      - name:       the name of the background
-      - label:      an optional label for the background, defaults to name
-      - processes:  an optional sequence of names or patterns that match the processes to merge
-                    for this background
+    particular channels and/or processes, with each shape being defined by a dictionary with fields:
+      - shapes:     a sequence of names in the format "CHANNEL/PROCESS" that match the channels and
+                    processes to merge for this background; both support patterns
+      - label:      the label to be shown in the legend
       - fill_color: an optional fill color, defaults to white
       - line_color: an optional line color, no line is drawn when not set
+      - fill_style: an optional fill style, defaults to 1001
 
     *y1_min*, *y1_max*, *y2_min* and *y2_max* define the ranges of the y-axes of the upper pad and
     ratio pad, respectively. *model_parameters* can be a dictionary of key-value pairs of model
@@ -97,6 +97,12 @@ def plot_s_over_b(
         backgrounds = os.path.expandvars(os.path.expanduser(backgrounds))
         with open(backgrounds, "r") as f:
             backgrounds = json.load(f)
+    if backgrounds:
+        for i, bg in enumerate(backgrounds):
+            if "label" not in bg:
+                raise Exception("no label found in background {}: {}".format(i, bg))
+            if "shapes" not in bg or not isinstance(bg["shapes"], list):
+                raise Exception("no shapes found in background {} or not a list: {}".format(i, bg))
 
     # load the shape data from the fit diagnostics file
     bin_data = load_bin_data(fit_diagnostics_path, per_process=bool(backgrounds))
@@ -173,6 +179,7 @@ def plot_s_over_b(
     r.setup_hist(h_dummy2, pad=pad2, props={"LineWidth": 0})
     r.setup_y_axis(h_dummy2.GetYaxis(), pad2, props={"Ndivisions": 6, "CenterTitle": True})
     r.setup_x_axis(h_dummy2.GetXaxis(), pad2, props={"TitleOffset": 1.23})
+    r.setup_x_axis(h_dummy1.GetXaxis(), pad1, props={"LabelSize": 0})
     draw_objs1.append((h_dummy1, "HIST"))
     draw_objs2.append((h_dummy2, "HIST"))
 
@@ -253,12 +260,14 @@ def plot_s_over_b(
     if backgrounds:
         for i, bg in enumerate(backgrounds):
             hist_bg1 = ROOT.TH1F("bg{}".format(i), "", len(bins) - 1, array.array("f", bins))
-            props = {"FillColor": colors(bg.get("fill_color", "white")), "LineWidth": 0}
-            if "line_color" in bg:
-                props["LineColor"] = colors(bg.get("line_color", props["FillColor"]))
-                props["LineWidth"] = 1
-            r.setup_hist(hist_bg1, props)
-            legend_entries_procs.append((hist_bg1, to_root_latex(bg.get("label", bg["name"])), "F"))
+            props = {
+                "FillColor": colors(bg.get("fill_color", "white")),
+                "FillStyle": bg.get("fill_style", 1001),
+                "LineColor": colors(bg.get("line_color", bg.get("fill_color", "white"))),
+                "LineWidth": 1,
+            }
+            r.setup_hist(hist_bg1, props=props)
+            legend_entries_procs.append((hist_bg1, to_root_latex(bg["label"]), "F"))
             hists_bg1.append(hist_bg1)
 
     # fill histograms by traversing bin data
@@ -282,9 +291,9 @@ def plot_s_over_b(
         # per process backgrounds
         if backgrounds:
             for bg, hist_bg1 in zip(backgrounds, hists_bg1):
-                patterns = bg.get("processes", [bg["name"]])
+                patterns = bg["shapes"]
                 for proc_name, proc_data in _bin.processes.items():
-                    if not multi_match(proc_name, patterns):
+                    if not multi_match("{}/{}".format(_bin.category, proc_name), patterns):
                         continue
                     hist_bg1.Fill(s_over_b, proc_data[fit_type])
 
@@ -422,7 +431,7 @@ def load_bin_data(fit_diagnostics_path, per_process=False):
             proc_hists = OrderedDict(
                 (proc_name, (cat_dir_pre.Get(proc_name), cat_dir_post.Get(proc_name)))
                 for proc_name in (proc_key.GetName() for proc_key in cat_dir_post.GetListOfKeys())
-                if not multi_match(proc_name, ["data", "total*"])
+                if proc_name not in ["data", "total_covar"]
             )
 
         # some dimension checks

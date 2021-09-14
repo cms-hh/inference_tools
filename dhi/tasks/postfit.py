@@ -225,8 +225,9 @@ class PlotPostfitSOverB(PostfitPlotBase):
     backgrounds = luigi.Parameter(
         default=law.NO_STR,
         description="a json file containing a list of objects that configure background processes "
-        "to split instead of showing the combined shape; possible object fields are 'name', "
-        "'label', 'processes', 'fill_color', and 'line_color'; no default",
+        "and/or channels to split instead of showing the combined shape; accepted fields are "
+        "'label', 'shapes', 'fill_color', 'fill_style' and 'line_color'; 'shapes' should be a list "
+        "of strings in the format 'CHANNEL/PROCESS'; patterns are supported; no default",
     )
     x_min = None
     x_max = None
