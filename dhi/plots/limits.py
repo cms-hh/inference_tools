@@ -19,7 +19,7 @@ from dhi.util import (
     make_list, try_int, dict_to_recarray,
 )
 from dhi.plots.util import (
-    use_style, create_model_parameters, create_hh_process_label, determine_limit_digits,
+    use_style, create_model_parameters, create_hh_xsbr_label, determine_limit_digits,
     get_graph_points, get_y_range, get_contours, fill_hist_from_points, infer_binning_from_grid,
 )
 
@@ -108,8 +108,8 @@ def plot_limit_scan(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "95% CL limit on #sigma({}) / {}".format(
-        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
+    y_title = "95% CL limit on {} / {}".format(
+        create_hh_xsbr_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
@@ -356,8 +356,8 @@ def plot_limit_scans(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "Upper 95% CL limit on #sigma({}) / {}".format(
-        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
+    y_title = "Upper 95% CL limit on {} / {}".format(
+        create_hh_xsbr_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
@@ -648,8 +648,8 @@ def plot_limit_points(
     draw_objs = []
 
     # dummy histogram to control axes
-    x_title = "95% CL limit on #sigma({}) / {}".format(
-        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
+    x_title = "95% CL limit on {} / {}".format(
+        create_hh_xsbr_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"TitleOffset": 1.2,
@@ -935,8 +935,6 @@ def plot_limit_scan_2d(
     r.setup_style()
     canvas, (pad,) = r.routines.create_canvas(pad_props={"RightMargin": 0.17, "Logz": z_log})
     pad.cd()
-    draw_objs = []
-    legend_entries = []
 
     # custom palette, requires that the z range is symmetrical around 1
     rvals = np.array([ROOT.gROOT.GetColor(colors.red).GetRed(), 1., 0.])
@@ -971,12 +969,13 @@ def plot_limit_scan_2d(
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter1].label)
     y_title = to_root_latex(poi_data[scan_parameter2].label)
-    z_title = "{} 95% CL limit on #sigma({}) / #sigma_{{Theory}}".format(
-        "Observed" if has_obs else "Expected", create_hh_process_label(poi))
+    z_title = "{} 95% CL limit on {} / #sigma_{{Theory}}".format(
+        "Observed" if has_obs else "Expected", create_hh_xsbr_label(poi))
     h_dummy = ROOT.TH2F("h_dummy", ";{};{};{}".format(x_title, y_title, z_title),
         1, x_min, x_max, 1, y_min, y_max)
     r.setup_hist(h_dummy, pad=pad, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
-    draw_objs.append((h_dummy, ""))
+    draw_objs = [(h_dummy, "")]
+    legend_entries = 4 * [(h_dummy, " ", "")]
 
     # setup actual histograms
     for i, h in enumerate(hists):
@@ -1021,40 +1020,38 @@ def plot_limit_scan_2d(
         r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black, "LineStyle": 2})
         draw_objs.append((g, "SAME,C"))
         if i == 0:
-            legend_entries.append((g, "Excluded (expected)", "L"))
+            legend_entries[2] = (g, "Excluded (exp.)", "L")
 
     if has_unc:
         for i, g in enumerate(exp_p1_contours + exp_m1_contours):
             r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black, "LineStyle": 3})
             draw_objs.append((g, "SAME,C"))
             if i == 0:
-                legend_entries.append((g, r"68% expected", "L"))
+                legend_entries[3] = (g, r"68% expected", "L")
 
     if has_obs:
         for i, g in enumerate(obs_contours):
             r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black})
             draw_objs.append((g, "SAME,C"))
             if i == 0:
-                legend_entries.append((g, "Observed", "L"))
+                legend_entries[0] = (g, "Excluded (obs.)", "L")
 
     # SM point
     if draw_sm_point:
         g_sm = create_tgraph(1, 1, 1)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.black)
         draw_objs.append((g_sm, "P"))
-        legend_entries.append((g_sm, "Standard model", "P"))
+        legend_entries[1] = (g_sm, "Standard model", "P")
 
     # legend
-    n_cols = int(math.ceil(len(legend_entries) / 3.))
-    n_rows = min(len(legend_entries), 3)
-    legend = r.routines.create_legend(pad=pad, x2=-20, width=n_cols * 220, n=n_rows,
-        props={"NColumns": n_cols})
+    legend = r.routines.create_legend(pad=pad, x2=-20, width=380, n=2,
+        props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
@@ -1158,8 +1155,8 @@ def plot_benchmark_limits(
 
     # dummy histogram to control axes
     x_title = "Shape benchmark"
-    y_title = "95% CL limit on #sigma({}) / {}".format(
-        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit))
+    y_title = "95% CL limit on {} / {}".format(
+        create_hh_xsbr_label(poi, hh_process), to_root_latex(xsec_unit))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), n, -0.5, n - 0.5)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"Ndivisions": n})

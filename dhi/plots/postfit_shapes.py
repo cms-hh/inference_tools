@@ -361,14 +361,14 @@ def plot_s_over_b(
 
         legend_cols = min(int(math.ceil(len(legend_entries_procs) / 4.)), 3)
         legend_rows = int(math.ceil(len(legend_entries_procs) / float(legend_cols)))
-        legend_procs = r.routines.create_legend(pad=pad1, width=legend_cols * 160, n=legend_rows,
+        legend_procs = r.routines.create_legend(pad=pad1, width=legend_cols * 140, n=legend_rows,
             x2=0.53, props={"NColumns": legend_cols})
         r.fill_legend(legend_procs, legend_entries_procs[::-1])
         draw_objs1.append(legend_procs)
 
     # model parameter labels
     if model_parameters:
-        draw_objs1.extend(create_model_parameters(model_parameters, pad1, x_offset=200))
+        draw_objs1.extend(create_model_parameters(model_parameters, pad1))
 
     # cms label
     layout = "outside_horizontal" if backgrounds else "inside_vertical"

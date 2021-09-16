@@ -419,7 +419,7 @@ def plot_exclusion_and_bestfit_2d(
             r.setup_graph(g, props={"LineStyle": 2, "FillColor": color_95})
             draw_objs.append((g, "SAME,F"))
             if i == 0:
-                legend_entries[2] = (g, "95% expected", "LF")
+                legend_entries[5] = (g, "95% expected", "LF")
 
     # -1 and +1 sigma exclusion
     if has_unc1:
@@ -427,7 +427,7 @@ def plot_exclusion_and_bestfit_2d(
             r.setup_graph(g, props={"LineStyle": 2, "FillColor": color_68})
             draw_objs.append((g, "SAME,F"))
             if i == 0:
-                legend_entries[1] = (g, "68% expected", "LF")
+                legend_entries[4] = (g, "68% expected", "LF")
 
         p1_col = color_95 if has_unc2 else colors.white
         for g in contours["limit_m1"]:
@@ -489,7 +489,7 @@ def plot_exclusion_and_bestfit_2d(
         r.setup_graph(g, props={"LineStyle": 2})
         draw_objs.append((g, "SAME,L"))
         if i == 0:
-            legend_entries[0] = (g, "Excluded (expected)", "L")
+            legend_entries[3] = (g, "Excluded (expected)", "L")
 
     # observed exclusion
     # for testing
@@ -518,7 +518,7 @@ def plot_exclusion_and_bestfit_2d(
             draw_objs.append((g, "SAME,L"))
             draw_objs.append((g_inv, "SAME,F"))
             if i == 0:
-                legend_entries[1 + 2 * has_uncs] = (g_inv, "Excluded (observed)", "AF")
+                legend_entries[0] = (g_inv, "Excluded (observed)", "AF")
 
     # best fit point
     if nll_values:
@@ -543,12 +543,12 @@ def plot_exclusion_and_bestfit_2d(
                     g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
                 r.setup_graph(g_fit, props={"FillStyle": 0}, color=colors.black)
                 draw_objs.append((g_fit, "PEZ"))
-                legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "PEL")
+                legend_entries[1] = (g_fit, "Best fit value", "PEL")
             else:
                 r.setup_graph(g_fit, props={"FillStyle": 0, "MarkerStyle": 43, "MarkerSize": 2},
                     color=colors.black)
                 draw_objs.append((g_fit, "PZ"))
-                legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "P")
+                legend_entries[1] = (g_fit, "Best fit value", "P")
 
     # SM point
     if show_sm_point:
@@ -556,7 +556,7 @@ def plot_exclusion_and_bestfit_2d(
             poi_data[scan_parameter2]["sm_value"])
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
-        legend_entries[1 + 2 * has_uncs + has_obs + has_best_fit] = (g_sm, "Standard model", "P")
+        legend_entries[2 if has_best_fit else 1] = (g_sm, "Standard model", "P")
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=480, n=3, x2=-44, props={"NColumns": 2})
