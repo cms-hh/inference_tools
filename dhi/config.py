@@ -4,6 +4,8 @@
 Constants such as cross sections and branchings, and common configs such as labels and colors.
 """
 
+import os
+
 from dhi.util import DotDict, ROOTColorGetter
 
 
@@ -175,4 +177,4 @@ chi2_levels = {
 }
 
 # postfix after "CMS" labels in plots, shwon when the --paper flag is not used
-cms_postfix = "Preliminary"
+cms_postfix = os.getenv("DHI_CMS_POSTFIX", "Work in progress")

@@ -22,7 +22,7 @@ from dhi.tasks.combine import (
 )
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
 from dhi.config import poi_data
-from dhi.util import unique_recarray, extend_recarray, convert_dnll2, linspace
+from dhi.util import unique_recarray, extend_recarray, convert_dnll2
 
 
 class LikelihoodBase(POIScanTask, SnapshotUser):
@@ -351,7 +351,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
         # call the plot function
         if self.n_pois == 1:
-            # theory value when this is an r poi
+            # get the theory value when this is a poi
             theory_value = None
             if self.pois[0] in self.r_pois:
                 get_xsec = self.create_xsec_func(self.pois[0], "fb", safe_signature=True)
@@ -364,6 +364,8 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                     theory_value = (get_xsec(**self.parameter_values_dict),)
                 # normalize
                 theory_value = tuple(v / theory_value[0] for v in theory_value)
+            elif self.pois[0] in poi_data:
+                theory_value = (poi_data[self.pois[0]].sm_value,)
 
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scan_1d",

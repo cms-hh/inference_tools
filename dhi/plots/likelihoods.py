@@ -152,10 +152,18 @@ def plot_likelihood_scan_1d(
 
     # print values
     if scan:
-        unc = lambda v: "--" if v is None else "{:+.3f}".format(v - scan.poi_min)
+        def sigma_line(n, p, m):
+            rnd = lambda v: "{:+.3f}".format(v)
+            return "{} sigma: {} / {} ([{}, {}])".format(
+                n,
+                "--" if p is None else rnd(p - scan.poi_min),
+                "--" if m is None else rnd(m - scan.poi_min),
+                "--" if m is None else rnd(m),
+                "--" if p is None else rnd(p),
+            )
         print("best fit value: {:+.3f}".format(scan.poi_min))
-        print("       1 sigma: {} / {}".format(unc(scan.poi_p1), unc(scan.poi_m1)))
-        print("       2 sigma: {} / {}".format(unc(scan.poi_p2), unc(scan.poi_m2)))
+        print("       " + sigma_line(1, scan.poi_p1, scan.poi_m1))
+        print("       " + sigma_line(2, scan.poi_p2, scan.poi_m2))
 
     # nll curve
     g_nll = create_tgraph(len(poi_values), poi_values, dnll2_values)
@@ -363,7 +371,8 @@ def plot_likelihood_scans_1d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
+        draw_objs.extend(create_model_parameters(model_parameters, pad,
+            y_offset=40 if len(legend_entries) < 9 else 180))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
