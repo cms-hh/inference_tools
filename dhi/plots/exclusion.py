@@ -146,7 +146,8 @@ def plot_exclusion_and_bestfit_1d(
                 continue
             scan = evaluate_limit_scan_1d(scan_values, d[data_key]["limit"], interpolation="linear")
             ranges = scan.excluded_ranges
-            _print_excluded_ranges(scan_parameter, poi + " " + kind, scan_values, ranges, "linear")
+            _print_excluded_ranges(scan_parameter, "{} {}, {}".format(poi, kind, d["name"]),
+                scan_values, ranges, "linear")
             for start, stop in ranges:
                 is_left = start < 1 and stop < 1
                 excl_x.append(stop if is_left else start)
@@ -359,7 +360,6 @@ def plot_exclusion_and_bestfit_2d(
     # store content flags
     has_unc1 = "limit_p1" in expected_limits and "limit_m1" in expected_limits
     has_unc2 = "limit_p2" in expected_limits and "limit_m2" in expected_limits
-    has_uncs = has_unc1 and has_unc2
     has_obs = bool(observed_limits)
     has_best_fit = bool(nll_values)
 
@@ -499,7 +499,7 @@ def plot_exclusion_and_bestfit_2d(
     #     "limit": expected_limits["limit"] * 1.2,
     # }
     # has_obs = True
-    if observed_limits:
+    if has_obs:
         # get contours
         obs_contours = get_contours(
             observed_limits[scan_parameter1],

@@ -88,10 +88,10 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, Snaps
             # load likelihoods
             nll_values, scan_min = None, None
             if "likelihoods" in inp:
-                nll_values, scan_min = PlotLikelihoodScan._load_scan_data(inp["likelihoods"],
+                nll_values, _scan_min = PlotLikelihoodScan._load_scan_data(inp["likelihoods"],
                     self.scan_parameter_names, self.get_scan_parameter_combinations())
-                if not self.recompute_best_fit and not np.isnan(scan_min[0]):
-                    scan_min = float(scan_min[0])
+                if not self.recompute_best_fit and not np.isnan(_scan_min[0]):
+                    scan_min = float(_scan_min[0])
 
             # store data
             entry = dict(
