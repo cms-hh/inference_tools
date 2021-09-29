@@ -142,7 +142,7 @@ class HHModel(DefaultHHModel):
         ("kt", (1, -10, 10)),
         ("CV", (1, -10, 10)),
         ("C2V", (1, -10, 10)),
-        ("C2", (0, -5, 5)),
+        ("C2", (0, -10, 10)),
     ])
 
     def __init__(self, name, ggf_samples=None, vbf_samples=None):
