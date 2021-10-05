@@ -45,6 +45,8 @@ This is an example of dictionary booking one plot, that should be saved in a .js
 
 ## Plot options
 
+The name of the file containing the plot will contain the main key, in the example above `"plotXX_2018"`.
+
 The keys of the dictionary are the names of the bins to plot distributions for (declared on the combineCards command). The entries are bellow:
 
 - "datacard_original": the datacard.root file with shapes for that bin (what goes along with datacard.txt)
