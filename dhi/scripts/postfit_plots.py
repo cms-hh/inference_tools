@@ -71,8 +71,12 @@ def create_postfit_plots(
 
     minY = bin["minY"]
     maxY = bin["maxY"]
-    minYerr = bin["minYerr"]
-    maxYerr = bin["maxYerr"]
+    if doPostFit and bin["minYerr_postfit"] :
+        minYerr = bin["minYerr_postfit"]
+        maxYerr = bin["maxYerr_postfit"]
+    else :
+        minYerr = bin["minYerr"]
+        maxYerr = bin["maxYerr"]
     useLogPlot = bin["useLogPlot"]
     era = bin["era"]
     labelX = bin["labelX"]
