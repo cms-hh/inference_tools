@@ -7,54 +7,12 @@ Script to extract and plot shapes from a ROOT file create by combine's FitDiagno
 
 import os
 from collections import OrderedDict
-
+import json
 from dhi.util import import_ROOT
+#from os import path
+import os.path
 
 ROOT = import_ROOT()
-
-
-def get_parser():
-    """
-    Creates a new argument parser.
-    """
-    # from optparse import OptionParser
-    # parser = OptionParser()
-    from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-
-    parser = ArgumentParser(description=__doc__, formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.add_argument(
-        "--plot_options_dict",
-        # type="string",
-        metavar="FILE",
-        dest="plot_options_dict",
-        help="Dictionary with list of bins to plot and options",
-    )
-    parser.add_argument(
-        "--output_folder",
-        # type="string",
-        metavar="FILE",
-        dest="output_folder",
-        help="Where the plots will be saved",
-    )
-    parser.add_argument(
-        "--unblind", action="store_true", dest="unblind", help="Draw data", default=False
-    )
-    parser.add_argument(
-        "--doPostFit",
-        action="store_true",
-        dest="doPostFit",
-        help="Take shapes from postfit, if not added will take prefit shapes.",
-        default=False,
-    )
-    parser.add_argument(
-        "--not_do_bottom",
-        action="store_true",
-        dest="not_do_bottom",
-        help="Do not do bottom pad.",
-        default=False,
-    )
-    return parser
-
 
 def create_postfit_plots(
     path,
@@ -65,6 +23,7 @@ def create_postfit_plots(
     bin,
     binToRead,
     unblind,
+    options_dat
 ):
     ROOT.gROOT.SetBatch(True)
     ROOT.gStyle.SetOptStat(0)
@@ -84,7 +43,14 @@ def create_postfit_plots(
     datacard_original = bin["datacard_original"]
     bin_name_original = bin["bin_name_original"]
     number_columns_legend = bin["number_columns_legend"]
-    procs_plot_options_sig = bin["procs_plot_options_sig"]
+
+    #procs_plot_options_sig = bin["procs_plot_options_sig"]
+    #procs_plot_options_sig = eval(open(bin["procs_plot_options_sig"], "r").read())
+    #with open(bin["procs_plot_options_sig"].replace(".dat", ".json"), 'w') as outfile: json.dump(procs_plot_options_sig, outfile)
+    #basename_options = os.path.basename(options_dat)
+    file_sig_options = str(bin["procs_plot_options_sig"]) if str(bin["procs_plot_options_sig"]).startswith("/") else options_dat.replace(os.path.basename(options_dat), bin["procs_plot_options_sig"])
+    print("Reading %s for signal options/process" % file_sig_options)
+    with open(file_sig_options) as ff : procs_plot_options_sig = json.load(ff, object_pairs_hook=OrderedDict)
 
     typeFit = None
     if doPostFit:
@@ -120,7 +86,13 @@ def create_postfit_plots(
     # list of folders to read from
     catcats = bin["align_cats"]
 
-    dprocs = bin["procs_plot_options_bkg"]
+    #dprocs = bin["procs_plot_options_bkg"]
+    #dprocs = eval(open(bin["procs_plot_options_bkg"], "r").read())
+    #with open(bin["procs_plot_options_bkg"].replace(".dat", ".json"), 'w') as outfile: json.dump(dprocs, outfile)
+    file_bkg_options = str(bin["procs_plot_options_bkg"]) if str(bin["procs_plot_options_bkg"]).startswith("/") else options_dat.replace(os.path.basename(options_dat), bin["procs_plot_options_bkg"])
+    print("Reading %s for BKG options/process" % file_bkg_options)
+    with open(file_bkg_options) as ff : dprocs = json.load(ff, object_pairs_hook=OrderedDict)
+
     # add stack of single H as second
     hprocs = ["ggH", "qqH", "bbH", "ttH", "WH", "ZH", "TH", "tHq", "tHW", "VH"]
     hdecays = ["hbb", "hgg", "hmm", "htt", "hww", "hzz", "hcc",]
@@ -134,7 +106,7 @@ def create_postfit_plots(
     countOnce = 0
     for sh in singleH:
         if countOnce == 0:
-            hist = fin.Get(folder + "/" + catcats[0] + "/" + sh)
+            hist = fin.Get(str("%s/%s/%s" % (folder, catcats[0], sh)))
             try:
                 hist.Integral()
             except:
@@ -156,7 +128,7 @@ def create_postfit_plots(
         fileorriginal = ROOT.TFile(fileOrig, "READ")
         histRead = list(dprocs.keys())[0]
         readFromOriginal = (
-            "%s/%s" % (bin_name_original, histRead) if not bin_name_original == "none" else histRead
+            str("%s/%s" % (bin_name_original, histRead)) if not bin_name_original == "none" else histRead
         )
         print("original readFrom ", readFromOriginal)
         template = fileorriginal.Get(readFromOriginal)
@@ -168,13 +140,13 @@ def create_postfit_plots(
         nbinstotal = 0
         nbinscatlist = []
         for catcat in catcats:
-            readFrom = folder + "/" + catcat
-            hist = fin.Get(readFrom + "/" + name_total)
-            print("reading shapes", readFrom + "/" + name_total)
+            readFromTot = str("%s/%s/%s" % (folder, catcat, name_total))
+            hist = fin.Get(readFromTot)
+            print("reading shapes", readFromTot)
             print(hist.Integral())
             nbinscat = GetNonZeroBins(hist)
             nbinscatlist += [nbinscat]
-            print(readFrom, nbinscat)
+            print(readFromTot, nbinscat)
             nbinstotal += nbinscat
         template = ROOT.TH1F("my_hist", "", nbinstotal, 0 - 0.5, nbinstotal - 0.5)
         template.GetYaxis().SetTitle(labelY)
@@ -203,9 +175,10 @@ def create_postfit_plots(
         dataTGraph1.Set(template.GetXaxis().GetNbins())
         lastbin = 0
         for cc, catcat in enumerate(catcats):
-            readFrom = folder + "/" + catcat
-            print(" histtotal ", readFrom + "/" + name_total)
-            histtotal = fin.Get(readFrom + "/" + name_total)
+            readFrom = str("%s/%s" % (folder, catcat))
+            readFromTot = str("%s/%s/%s" % (folder, catcat, name_total))
+            print(" histtotal ", readFromTot)
+            histtotal = fin.Get(readFromTot)
             lastbin += process_data_histo(
                 template,
                 dataTGraph1,
@@ -224,7 +197,7 @@ def create_postfit_plots(
     lastbin = 0
     hist_total = template.Clone()
     for cc, catcat in enumerate(catcats):
-        readFrom = folder + "/" + catcat
+        readFrom = str("%s/%s" % (folder, catcat))
         print("read the hist with total uncertainties", readFrom, catcat)
         lastbin += process_total_histo(
             hist_total,
@@ -322,7 +295,7 @@ def create_postfit_plots(
                 addlegend = False
             if kk == 0:
                 firstHisto = ROOT.TH1F()
-            readFrom = folder + "/" + catcat
+            readFrom = str("%s/%s" % (folder, catcat))
             info_hist = stack_histo(
                 hist_rebin,
                 fin,
@@ -403,7 +376,8 @@ def create_postfit_plots(
         for cc, catcat in enumerate(catcats):
             ### make the single H stack entry
             sigs_to_stack = []
-            fin.cd(folder + "/" + catcat)
+            readFrom = str("%s/%s" % (folder, catcat))
+            fin.cd(readFrom)
             for key0 in ROOT.gDirectory.GetListOfKeys():
                 obj_name = key0.GetName()
                 if key in obj_name:
@@ -413,7 +387,7 @@ def create_postfit_plots(
         for sig in sigs_to_stack:  # procs_plot_options_sig[key]["processes"] :
             lastbin = 0
             for cc, catcat in enumerate(catcats):
-                readFrom = folder + "/" + catcat
+                readFrom = str("%s/%s" % (folder, catcat))
                 lastbin += process_total_histo(
                     hist_sig_part,
                     readFrom,
@@ -475,7 +449,7 @@ def create_postfit_plots(
         hist_total_err = template.Clone()
         lastbin = 0
         for cc, catcat in enumerate(catcats):
-            readFrom = folder + "/" + catcat
+            readFrom = str("%s/%s" % (folder, catcat))
             histtotal = hist_total
             lastbin += do_hist_total_err(hist_total_err, labelX, histtotal, minYerr, maxYerr, era)
             print(readFrom, lastbin)
@@ -485,8 +459,9 @@ def create_postfit_plots(
             dataTGraph2 = ROOT.TGraphAsymmErrors()
             lastbin = 0
             for cc, catcat in enumerate(catcats):
-                readFrom = folder + "/" + catcat
-                histtotal = fin.Get(readFrom + "/" + name_total)
+                readFrom = str("%s/%s" % (folder, catcat))
+                readFromTot = str("%s/%s/%s" % (folder, catcat, name_total))
+                histtotal = fin.Get(readFromTot)
                 lastbin += err_data(
                     dataTGraph2,
                     hist_total,
@@ -559,8 +534,9 @@ def GetNonZeroBins(template):
 def process_data_histo(
     template, dataTGraph1, folder, fin, lastbin, histtotal, catbin, minY, maxY, divideByBinWidth
 ):
-    dataTGraph = fin.Get(folder + "/data")
-    print("adding", folder + "/data")
+    readFrom = str("%s/data" % folder)
+    dataTGraph = fin.Get(readFrom)
+    print("adding", readFrom)
     allbins = catbin
     for ii in xrange(0, allbins):
         bin_width = 1.0
@@ -610,7 +586,7 @@ def process_total_histo(
     maxY,
     totalBand,
 ):
-    total_hist_name = folder + "/" + name_total
+    total_hist_name = str("%s/%s" % (folder, name_total))
     total_hist = fin.Get(total_hist_name)
     allbins = catbins
     try:
@@ -718,7 +694,7 @@ def stack_histo(
     era,
     legend,
 ):
-    histo_name = folder + "/" + name
+    histo_name = str("%s/%s" % (folder, name))
     print("try find %s" % histo_name)
     hist = fin.Get(histo_name)
     allbins = catbin
@@ -856,7 +832,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--plot_options_dict",
         dest="plot_options_dict",
-        help="Dictionary with list of bins to plot and options",
+        help="Dictionary with list of bins to plot and general options",
     )
     parser.add_argument(
         "--output_folder", dest="output_folder", help="Where the plots will be saved"
@@ -886,9 +862,11 @@ if __name__ == "__main__":
     divideByBinWidth = False
     output_folder = args.output_folder
 
-    options_dat = args.plot_options_dict
+    options_dat = os.path.normpath(args.plot_options_dict) # args.plot_options_dict
     print("Reading plot options from %s" % options_dat)
-    info_bin = eval(open(options_dat, "r").read())
+    #info_bin = eval(open(options_dat, "r").read())
+    #with open(options_dat.replace(".dat", ".json"), 'w') as outfile: json.dump(info_bin, outfile)
+    with open(options_dat) as ff : info_bin = json.load(ff)
 
     for key, bin in info_bin.iteritems():
 
@@ -907,4 +885,5 @@ if __name__ == "__main__":
             bin=bin,
             binToRead=key,
             unblind=unblind,
+            options_dat=options_dat
         )
