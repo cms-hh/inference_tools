@@ -8,9 +8,9 @@ Script to extract and plot shapes from a ROOT file create by combine's FitDiagno
 import os
 from collections import OrderedDict
 import json
-from dhi.util import import_ROOT
-#from os import path
+from shutil import copyfile
 import os.path
+from dhi.util import import_ROOT
 
 ROOT = import_ROOT()
 
@@ -860,6 +860,12 @@ if __name__ == "__main__":
         help="If a value is given it will replace all instances of 'ERA' in the dictionary with the given value. Values can be 2016, 2017, 2018, 20172018.",
         default="no",
     )
+    parser.add_argument(
+        "--overwrite_fitdiag",
+        dest="overwrite_fitdiag",
+        help="If a value is given it will replace all instances of 'PATH_FITDIAGNOSIS' in the dictionary with the given value.",
+        default="no",
+    )
     args = parser.parse_args()
 
     unblind = args.unblind
@@ -868,24 +874,31 @@ if __name__ == "__main__":
     divideByBinWidth = False
     output_folder = args.output_folder
     overwrite_era = args.overwrite_era
+    overwrite_fitdiag = args.overwrite_fitdiag
 
     options_dat = os.path.normpath(args.plot_options_dict) # args.plot_options_dict
     print("Reading plot options from %s" % options_dat)
     #info_bin = eval(open(options_dat, "r").read())
     #with open(options_dat.replace(".dat", ".json"), 'w') as outfile: json.dump(info_bin, outfile)
-    if not overwrite_era=="no" :
+    if overwrite_era=="no" and overwrite_fitdiag=="no":
+        with open(options_dat) as ff : info_bin = json.load(ff)
+    else :
         dict_for_era = options_dat.replace(os.path.dirname(options_dat), output_folder).replace(os.path.basename(options_dat), "Era%s_%s" % (overwrite_era, os.path.basename(options_dat)))
 
         print("Replacing the ERA in a new dictionary %s" % dict_for_era )
         fin = open(options_dat, "rt")
         fout = open(dict_for_era, "wt")
-        for line in fin : fout.write(line.replace('ERA', overwrite_era))
+        for line in fin :
+            if not overwrite_era=="no"     : line = line.replace('ERA', overwrite_era)
+            if not overwrite_fitdiag=="no" : line = line.replace('PATH_FITDIAGNOSIS', overwrite_fitdiag)
+            fout.write(line)
         fin.close()
         fout.close()
-
         with open(dict_for_era) as ff : info_bin = json.load(ff)
-    else :
-        with open(options_dat) as ff : info_bin = json.load(ff)
+        # copy the dict files for processes options to the output_folder for keepsafe
+        #for key in info_bin :
+        #    copyfile(info_bin[key]["procs_plot_options_bkg"], output_folder)
+        #    copyfile(info_bin[key]["procs_plot_options_sig"], output_folder)
 
     for key, bin in info_bin.iteritems():
 
