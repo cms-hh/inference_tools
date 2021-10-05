@@ -854,6 +854,12 @@ if __name__ == "__main__":
         help="Do not do bottom pad.",
         default=False,
     )
+    parser.add_argument(
+        "--overwrite_era",
+        dest="overwrite_era",
+        help="If a value is given it will replace all instances of 'ERA' in the dictionary with the given value. Values can be 2016, 2017, 2018, 20172018.",
+        default="no",
+    )
     args = parser.parse_args()
 
     unblind = args.unblind
@@ -861,12 +867,25 @@ if __name__ == "__main__":
     do_bottom = not args.not_do_bottom
     divideByBinWidth = False
     output_folder = args.output_folder
+    overwrite_era = args.overwrite_era
 
     options_dat = os.path.normpath(args.plot_options_dict) # args.plot_options_dict
     print("Reading plot options from %s" % options_dat)
     #info_bin = eval(open(options_dat, "r").read())
     #with open(options_dat.replace(".dat", ".json"), 'w') as outfile: json.dump(info_bin, outfile)
-    with open(options_dat) as ff : info_bin = json.load(ff)
+    if not overwrite_era=="no" :
+        dict_for_era = options_dat.replace(os.path.dirname(options_dat), output_folder).replace(os.path.basename(options_dat), "Era%s_%s" % (overwrite_era, os.path.basename(options_dat)))
+
+        print("Replacing the ERA in a new dictionary %s" % dict_for_era )
+        fin = open(options_dat, "rt")
+        fout = open(dict_for_era, "wt")
+        for line in fin : fout.write(line.replace('ERA', overwrite_era))
+        fin.close()
+        fout.close()
+
+        with open(dict_for_era) as ff : info_bin = json.load(ff)
+    else :
+        with open(options_dat) as ff : info_bin = json.load(ff)
 
     for key, bin in info_bin.iteritems():
 
