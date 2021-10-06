@@ -83,6 +83,7 @@ def create_postfit_plots(
     # list of folders to read from
     catcats = bin["align_cats"]
     yiels_list = dict.fromkeys(catcats, {})
+    round_yiels_list = 4
 
     print("Reading %s for BKG options/process" % file_bkg_options)
     with open(file_bkg_options) as ff : dprocs = json.load(ff, object_pairs_hook=OrderedDict)
@@ -212,7 +213,7 @@ def create_postfit_plots(
             totalBand=True,
         )
         lastbin += info_bin["allbins"]
-        yiels_list[catcat]["Total"] = info_bin["yield_cat"]
+        yiels_list[catcat]["Total"] = round(info_bin["yield_cat"], round_yiels_list)
     print("hist_total", hist_total.Integral())
 
     ## declare canvases sizes accordingly
@@ -316,7 +317,7 @@ def create_postfit_plots(
                 era,
                 legend1
             )
-            yiels_list[catcat][key] = info_hist["yield_cat"]
+            yiels_list[catcat][key] = round(info_hist["yield_cat"], round_yiels_list)
             lastbin += info_hist["lastbin"]
             if kk == 0:
                 print(info_hist)
@@ -409,7 +410,7 @@ def create_postfit_plots(
                     totalBand=False,
                 )
                 lastbin += info_bin["allbins"]
-                yiels_list[catcat][key] = info_bin["yield_cat"]
+                yiels_list[catcat][key] = round(info_bin["yield_cat"], round_yiels_list)
                 if not hist_sig[kk].Integral() > 0:
                     hist_sig[kk] = hist_sig_part.Clone()
                 else:
@@ -510,9 +511,6 @@ def create_postfit_plots(
 
     with open(savepdf + "_yield.json", 'w') as outfile : json.dump(yiels_list, outfile, sort_keys=True, indent=4)
     print("saved", savepdf + "_yield.json")
-
-    #json.dumps({'4': 5, '6': 7}, sort_keys=True, indent=4)
-    #print(yiels_list)
 
 
 def test_print():
