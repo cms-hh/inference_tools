@@ -9,7 +9,7 @@ import os
 from collections import OrderedDict
 import json
 from shutil import copyfile
-import os.path
+#import os.path
 from dhi.util import import_ROOT
 
 ROOT = import_ROOT()
@@ -23,7 +23,9 @@ def create_postfit_plots(
     bin,
     binToRead,
     unblind,
-    options_dat
+    options_dat,
+    file_sig_options,
+    file_bkg_options
 ):
     ROOT.gROOT.SetBatch(True)
     ROOT.gStyle.SetOptStat(0)
@@ -44,11 +46,6 @@ def create_postfit_plots(
     bin_name_original = bin["bin_name_original"]
     number_columns_legend = bin["number_columns_legend"]
 
-    #procs_plot_options_sig = bin["procs_plot_options_sig"]
-    #procs_plot_options_sig = eval(open(bin["procs_plot_options_sig"], "r").read())
-    #with open(bin["procs_plot_options_sig"].replace(".dat", ".json"), 'w') as outfile: json.dump(procs_plot_options_sig, outfile)
-    #basename_options = os.path.basename(options_dat)
-    file_sig_options = str(bin["procs_plot_options_sig"]) if str(bin["procs_plot_options_sig"]).startswith("/") else options_dat.replace(os.path.basename(options_dat), bin["procs_plot_options_sig"])
     print("Reading %s for signal options/process" % file_sig_options)
     with open(file_sig_options) as ff : procs_plot_options_sig = json.load(ff, object_pairs_hook=OrderedDict)
 
@@ -65,7 +62,7 @@ def create_postfit_plots(
     name_total = "total_background"
 
     if normalize_X_original:
-        fileOrig = datacard_original
+        fileOrig = datacard_original.replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
         print("template on ", fileOrig)
     else:
         fileOrig = fit_diagnostics_path
@@ -86,10 +83,6 @@ def create_postfit_plots(
     # list of folders to read from
     catcats = bin["align_cats"]
 
-    #dprocs = bin["procs_plot_options_bkg"]
-    #dprocs = eval(open(bin["procs_plot_options_bkg"], "r").read())
-    #with open(bin["procs_plot_options_bkg"].replace(".dat", ".json"), 'w') as outfile: json.dump(dprocs, outfile)
-    file_bkg_options = str(bin["procs_plot_options_bkg"]) if str(bin["procs_plot_options_bkg"]).startswith("/") else options_dat.replace(os.path.basename(options_dat), bin["procs_plot_options_bkg"])
     print("Reading %s for BKG options/process" % file_bkg_options)
     with open(file_bkg_options) as ff : dprocs = json.load(ff, object_pairs_hook=OrderedDict)
 
@@ -126,12 +119,16 @@ def create_postfit_plots(
 
     if normalize_X_original:
         fileorriginal = ROOT.TFile(fileOrig, "READ")
-        histRead = list(dprocs.keys())[0]
-        readFromOriginal = (
-            str("%s/%s" % (bin_name_original, histRead)) if not bin_name_original == "none" else histRead
-        )
-        print("original readFrom ", readFromOriginal)
-        template = fileorriginal.Get(readFromOriginal)
+        FoundHist = False
+
+        for histRead in list(dprocs.keys()) :
+            if not FoundHist :
+                readFromOriginal = str("%s/%s" % (bin_name_original, histRead)) if not bin_name_original == "none" else str(histRead)
+                print("try original readFrom ", readFromOriginal)
+                template = fileorriginal.Get(readFromOriginal)
+                if template.Integral() > 0 : FoundHist = True
+
+        print("Getting original readFrom ", readFromOriginal)
         template.GetYaxis().SetTitle(labelY)
         template.SetTitle(" ")
         nbinscatlist = [template.GetNbinsX()]
@@ -286,8 +283,13 @@ def create_postfit_plots(
     poslinebinW_X = []
     pos_linebinW_Y = []
     y0 = bin["cats_labels_height"]
+
+    hist_template = template.Clone()
+    for ii in xrange(1, hist_template.GetNbinsX() + 1):
+        hist_template.SetBinContent(ii, 0)
+
     for kk, key in enumerate(dprocs.keys()):
-        hist_rebin = template.Clone()
+        hist_rebin = hist_template.Clone()
         lastbin = 0  # for putting histograms from different bins in same plot side by side
         addlegend = True
         for cc, catcat in enumerate(catcats):
@@ -534,8 +536,13 @@ def GetNonZeroBins(template):
 def process_data_histo(
     template, dataTGraph1, folder, fin, lastbin, histtotal, catbin, minY, maxY, divideByBinWidth
 ):
-    readFrom = str("%s/data" % folder)
+    readFrom = str("%s/data" % folder) # data_obs
     dataTGraph = fin.Get(readFrom)
+    #try :
+    #    dataTGraph.Integral()
+    #except :
+    #    readFrom = str("%s/data_obs" % folder)
+    #    dataTGraph = fin.Get(readFrom)
     print("adding", readFrom)
     allbins = catbin
     for ii in xrange(0, allbins):
@@ -833,7 +840,14 @@ if __name__ == "__main__":
         "--plot_options_dict",
         dest="plot_options_dict",
         help="Dictionary with list of bins to plot and general options",
+        #default="no",
     )
+    #parser.add_argument(
+    #    "--plot_options_full",
+    #    dest="plot_options_full",
+    #    help="Dictionary with list of channels with its respective bins to plot and general options",
+    #    default="no",
+    #)
     parser.add_argument(
         "--output_folder", dest="output_folder", help="Where the plots will be saved"
     )
@@ -857,13 +871,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--overwrite_era",
         dest="overwrite_era",
-        help="If a value is given it will replace all instances of 'ERA' in the dictionary with the given value. Values can be 2016, 2017, 2018, 20172018.",
+        help="If a value is given it will replace all instances of 'ERA' in the dictionary with the given value. Values can be 2016, 2017, 2018, 20172018 or all. If the value is all it will loop on {2016, 2017, 2018}",
         default="no",
     )
     parser.add_argument(
         "--overwrite_fitdiag",
         dest="overwrite_fitdiag",
         help="If a value is given it will replace all instances of 'PATH_FITDIAGNOSIS' in the dictionary with the given value.",
+        default="no",
+    )
+    parser.add_argument(
+        "--overwrite",
+        dest="overwrite",
+        help="If a value is given in the form \"{'TEXT':'newtext'}\" it will replace all instances of 'TEXT' in the dictionary with 'newtext'. Cases are separated by virgula, eg \"{'TEXT':'newtext','TEXT2':'newtext2'}\". A .json file with multiple entries can also be entered. It superseeds the option overwrite_era = all",
         default="no",
     )
     args = parser.parse_args()
@@ -875,47 +895,98 @@ if __name__ == "__main__":
     output_folder = args.output_folder
     overwrite_era = args.overwrite_era
     overwrite_fitdiag = args.overwrite_fitdiag
+    overwrite = args.overwrite
+    #plot_options_full = args.plot_options_full
+    plot_options_dict = args.plot_options_dict
 
-    options_dat = os.path.normpath(args.plot_options_dict) # args.plot_options_dict
+    #if not plot_options_full == "no" :
+    #    with open(plot_options_full) as ff : info_plot_options_full = json.load(ff)
+    #    options_dat = os.path.normpath(info_plot_options_full["plot_options"].replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2')))
+    #    overwrite = info_plot_options_full["plot_list"]
+    #elif not plot_options_dict == "no" :
+    #    options_dat = os.path.normpath(plot_options_dict)
+    #else :
+    #    print("ERROR: you should give plot_options_full OR plot_options_dict")
+
+    options_dat = os.path.normpath(plot_options_dict)
     print("Reading plot options from %s" % options_dat)
-    #info_bin = eval(open(options_dat, "r").read())
-    #with open(options_dat.replace(".dat", ".json"), 'w') as outfile: json.dump(info_bin, outfile)
-    if overwrite_era=="no" and overwrite_fitdiag=="no":
-        with open(options_dat) as ff : info_bin = json.load(ff)
+
+    if not overwrite=="no" :
+        if not ".json" in overwrite :
+            # interpret the command line
+            modifications = {"plot1" :  eval(str(overwrite)) }
+        else :
+            with open(overwrite) as ff : modifications = json.load(ff)
     else :
-        dict_for_era = options_dat.replace(os.path.dirname(options_dat), output_folder).replace(os.path.basename(options_dat), "Era%s_%s" % (overwrite_era, os.path.basename(options_dat)))
+        if overwrite_era=="all" :
+            modifications = {"plot1" : {'ERA' : 2016}, "plot2" : {'ERA' : 2017}, "plot3" : {'ERA' : 2018}}
+        else :
+            modifications = {"plots1" : {'NONE' : 'NONE'}}
 
-        print("Replacing the ERA in a new dictionary %s" % dict_for_era )
-        fin = open(options_dat, "rt")
-        fout = open(dict_for_era, "wt")
-        for line in fin :
-            if not overwrite_era=="no"     : line = line.replace('ERA', overwrite_era)
-            if not overwrite_fitdiag=="no" : line = line.replace('PATH_FITDIAGNOSIS', overwrite_fitdiag)
-            fout.write(line)
-        fin.close()
-        fout.close()
-        with open(dict_for_era) as ff : info_bin = json.load(ff)
-        # copy the dict files for processes options to the output_folder for keepsafe
-        #for key in info_bin :
-        #    copyfile(info_bin[key]["procs_plot_options_bkg"], output_folder)
-        #    copyfile(info_bin[key]["procs_plot_options_sig"], output_folder)
+    for item_modify in modifications :
+        this_plot = modifications[item_modify]
+        print(this_plot)
 
-    for key, bin in info_bin.iteritems():
+        if overwrite_era=="no" and overwrite_fitdiag=="no" and overwrite=="no":
+            with open(options_dat) as ff : info_bin = json.load(ff)
+        else :
+            dict_for_era = options_dat.replace(os.path.dirname(options_dat), output_folder).replace(os.path.basename(options_dat), "temp_" + os.path.basename(options_dat))
 
-        normalize_X_original = True
-        if bin["datacard_original"] == "none":
-            normalize_X_original = False
+            print("Replacing strings in a new dictionary %s" % dict_for_era )
+            for key_modify in this_plot :
+                print(key_modify, this_plot[key_modify])
+            fin = open(options_dat, "rt")
+            fout = open(dict_for_era, "wt")
 
-        data_dir = bin["fitdiagnosis"]
-        print("Drawing %s" % key)
-        create_postfit_plots(
-            path="%s/plot_%s" % (output_folder, key),
-            fit_diagnostics_path=data_dir,
-            normalize_X_original=normalize_X_original,
-            doPostFit=doPostFit,
-            divideByBinWidth=divideByBinWidth,
-            bin=bin,
-            binToRead=key,
-            unblind=unblind,
-            options_dat=options_dat
-        )
+            for line in fin :
+                if not overwrite_era=="no" and not overwrite_era=="all" :
+                    line = line.replace('ERA', overwrite_era)
+                if not overwrite_fitdiag=="no"  :
+                    line = line.replace('PATH_FITDIAGNOSIS', overwrite_fitdiag)
+                for key_modify in this_plot :
+                    line = line.replace(key_modify, str(this_plot[key_modify]))
+                fout.write(line)
+            fin.close()
+            fout.close()
+
+            with open(dict_for_era) as ff : info_bin = json.load(ff)
+
+            # rename the file to the plot name for safekeeping
+            name_plot = "plot_" + list(info_bin.keys())[0]
+            # copy the dict files for processes options for each plot to the output_folder for keepsafe
+            copyfile(dict_for_era, dict_for_era.replace("temp", name_plot))
+            for key_bin in info_bin :
+                for pp in [str(info_bin[key_bin]["procs_plot_options_bkg"]), str(info_bin[key_bin]["procs_plot_options_sig"])] :
+                    pp = pp.replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
+                    if str(pp).startswith("/") :
+                        copyfile(pp, os.path.join(output_folder, os.path.basename(pp)))
+                    else :
+                        copyfile( os.path.join(os.path.dirname(options_dat), pp),  os.path.join(output_folder, pp))
+
+        for key, bin in info_bin.iteritems():
+
+            normalize_X_original = True
+            if bin["datacard_original"] == "none":
+                normalize_X_original = False
+
+            procs_plot = str(bin["procs_plot_options_sig"]).replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
+            file_sig_options = procs_plot if procs_plot.startswith("/") else options_dat.replace(os.path.basename(options_dat), procs_plot)
+
+            procs_plot = str(bin["procs_plot_options_bkg"]).replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
+            file_bkg_options = procs_plot if procs_plot.startswith("/") else options_dat.replace(os.path.basename(options_dat), procs_plot)
+
+            data_dir = bin["fitdiagnosis"]
+            print("Drawing %s" % key)
+            create_postfit_plots(
+                path="%s/plot_%s" % (output_folder, key),
+                fit_diagnostics_path=data_dir,
+                normalize_X_original=normalize_X_original,
+                doPostFit=doPostFit,
+                divideByBinWidth=divideByBinWidth,
+                bin=bin,
+                binToRead=key,
+                unblind=unblind,
+                options_dat=options_dat,
+                file_sig_options=file_sig_options,
+                file_bkg_options=file_bkg_options
+            )
