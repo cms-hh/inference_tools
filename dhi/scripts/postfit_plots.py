@@ -82,6 +82,7 @@ def create_postfit_plots(
 
     # list of folders to read from
     catcats = bin["align_cats"]
+    yiels_list = dict.fromkeys(catcats, {})
 
     print("Reading %s for BKG options/process" % file_bkg_options)
     with open(file_bkg_options) as ff : dprocs = json.load(ff, object_pairs_hook=OrderedDict)
@@ -196,7 +197,7 @@ def create_postfit_plots(
     for cc, catcat in enumerate(catcats):
         readFrom = str("%s/%s" % (folder, catcat))
         print("read the hist with total uncertainties", readFrom, catcat)
-        lastbin += process_total_histo(
+        info_bin = process_total_histo(
             hist_total,
             readFrom,
             fin,
@@ -210,6 +211,8 @@ def create_postfit_plots(
             maxY,
             totalBand=True,
         )
+        lastbin += info_bin["allbins"]
+        yiels_list[catcat]["Total"] = info_bin["yield_cat"]
     print("hist_total", hist_total.Integral())
 
     ## declare canvases sizes accordingly
@@ -311,8 +314,9 @@ def create_postfit_plots(
                 normalize_X_original,
                 firstHisto,
                 era,
-                legend1,
+                legend1
             )
+            yiels_list[catcat][key] = info_hist["yield_cat"]
             lastbin += info_hist["lastbin"]
             if kk == 0:
                 print(info_hist)
@@ -390,7 +394,7 @@ def create_postfit_plots(
             lastbin = 0
             for cc, catcat in enumerate(catcats):
                 readFrom = str("%s/%s" % (folder, catcat))
-                lastbin += process_total_histo(
+                info_bin = process_total_histo(
                     hist_sig_part,
                     readFrom,
                     fin,
@@ -404,6 +408,8 @@ def create_postfit_plots(
                     maxY,
                     totalBand=False,
                 )
+                lastbin += info_bin["allbins"]
+                yiels_list[catcat][key] = info_bin["yield_cat"]
                 if not hist_sig[kk].Integral() > 0:
                     hist_sig[kk] = hist_sig_part.Clone()
                 else:
@@ -501,6 +507,12 @@ def create_postfit_plots(
     print("saved", savepdf + ".png")
     del dumb
     canvas.IsA().Destructor(canvas)
+
+    with open(savepdf + "_yield.json", 'w') as outfile : json.dump(yiels_list, outfile, sort_keys=True, indent=4)
+    print("saved", savepdf + "_yield.json")
+
+    #json.dumps({'4': 5, '6': 7}, sort_keys=True, indent=4)
+    #print(yiels_list)
 
 
 def test_print():
@@ -633,7 +645,11 @@ def process_total_histo(
     hist.GetYaxis().SetTitleSize(0.055)
     hist.GetYaxis().SetTickLength(0.04)
     hist.GetYaxis().SetLabelSize(0.050)
-    return allbins
+    #return allbins
+    return {
+        "allbins"   : allbins,
+        "yield_cat" : total_hist.Integral()
+    }
 
 
 def addLabel_CMS_preliminary(era, do_bottom):
@@ -699,7 +715,7 @@ def stack_histo(
     original,
     firstHisto,
     era,
-    legend,
+    legend
 ):
     histo_name = str("%s/%s" % (folder, name))
     print("try find %s" % histo_name)
@@ -713,6 +729,7 @@ def stack_histo(
             "lastbin": allbins,
             "binEdge": lastbin - 0.5,
             "labelPos": 0 if not original == "none" else float(allbins / 2),
+            "yield_cat" : 0.0
         }
     if not firstHisto.Integral() > 0:
         firstHisto = hist.Clone()
@@ -763,6 +780,7 @@ def stack_histo(
         + hist.GetXaxis().GetBinWidth(lastbin)
         - 0.5,  # if lastbin > 0 else 0
         "labelPos": float(allbins / 2),
+        "yield_cat" : hist.Integral()
     }
 
 
