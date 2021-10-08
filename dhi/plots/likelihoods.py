@@ -21,7 +21,8 @@ from dhi.util import (
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, fill_hist_from_points, get_contours, get_y_range,
-    infer_binning_from_grid, get_contour_box, make_parameter_label_map,
+    infer_binning_from_grid, get_contour_box, make_parameter_label_map, get_text_extent,
+    locate_contour_labels,
 )
 
 
@@ -37,6 +38,7 @@ def plot_likelihood_scan_1d(
     poi_min=None,
     show_best_fit=True,
     show_best_fit_error=True,
+    show_significances=True,
     shift_negative_values=False,
     x_min=None,
     x_max=None,
@@ -57,8 +59,10 @@ def plot_likelihood_scan_1d(
     When *poi_min* is set, it should be the value of the poi that leads to the best likelihood.
     Otherwise, it is estimated from the interpolated curve. When *show_best_fit*
     (*show_best_fit_error*) is *False*, the nominal (uncertainty on the) best fit value is not
-    shown. In case there are negative dnll2 values, *shift_negative_values* can be set to *True* to
-    shift them vertically so that the minimum is located at 0 again.
+    shown. To overlay lines and labels denoting integer significances corresponding to 1D likelihood
+    scans, *show_significances* can be set to *True*. In case there are negative dnll2 values,
+    *shift_negative_values* can be set to *True* to shift them vertically so that the minimum is
+    located at 0 again.
 
     *x_min* and *x_max* define the x-axis range of POI, and *y_min* and
     *y_max* control the range of the y-axis. When *y_log* is *True*, the y-axis is plotted with a
@@ -111,7 +115,7 @@ def plot_likelihood_scan_1d(
     draw_objs.append((h_dummy, "HIST"))
 
     if show_best_fit and show_best_fit_error:
-        # 1 and 2 sigma indicators
+        # vertical 1 and 2 sigma indicators
         if scan:
             for value in [scan.poi_p1, scan.poi_m1, scan.poi_p2, scan.poi_m2]:
                 if value is not None:
@@ -119,12 +123,31 @@ def plot_likelihood_scan_1d(
                     r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
                     draw_objs.append(line)
 
-        # horizontal lines at chi2_1 intervals
-        for n in [chi2_levels[1][1], chi2_levels[1][2]]:
-            if y_min <= n <= y_max_line:
-                line = ROOT.TLine(x_min, n, x_max, n)
-                r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
-                draw_objs.append(line)
+        # horizontal lines matching the vertical indicators above
+        if not show_significances:
+            for n in [chi2_levels[1][1], chi2_levels[1][2]]:
+                if y_min <= n <= y_max_line:
+                    line = ROOT.TLine(x_min, n, x_max, n)
+                    r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2,
+                        "NDC": False})
+                    draw_objs.append(line)
+
+    if show_significances:
+        # horizontal significance lines and labels
+        for sig, dnll2 in chi2_levels[1].items():
+            if y_max_line <= dnll2:
+                break
+            sig_line = ROOT.TLine(x_min, dnll2, x_max, dnll2)
+            r.setup_line(sig_line, props={"NDC": False, "LineWidth": 1}, color=colors.grey)
+            draw_objs.append(sig_line)
+
+            # convert y to a value relative to the pad height
+            sig_label_y = math.log(dnll2 / y_min) / math.log(y_max / y_min)
+            sig_label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
+            sig_label_y += pad.GetBottomMargin() + 0.0035
+            sig_label = r.routines.create_top_right_label("{} #sigma".format(sig), pad=pad,
+                x_offset=12, y=sig_label_y, props={"TextSize": 18, "TextColor": colors.grey})
+            draw_objs.append(sig_label)
 
     # theory prediction with uncertainties
     if theory_value:
@@ -213,6 +236,7 @@ def plot_likelihood_scans_1d(
     data,
     theory_value=None,
     show_best_fit=True,
+    show_significances=True,
     shift_negative_values=False,
     x_min=None,
     x_max=None,
@@ -237,9 +261,10 @@ def plot_likelihood_scans_1d(
 
     *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
     down uncertainties which is drawn as a vertical bar. When *show_best_fit* is *False*, the best
-    fit value indicator per data entry is not shown. In case there are negative dnll2 values,
-    *shift_negative_values* can be set to *True* to shift them vertically so that the minimum is
-    located at 0 again.
+    fit value indicator per data entry is not shown. To overlay lines and labels denoting integer
+    significances corresponding to 1D likelihood scans, *show_significances* can be set to *True*.
+    In case there are negative dnll2 values, *shift_negative_values* can be set to *True* to shift
+    them vertically so that the minimum is located at 0 again.
 
     *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
     the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. When
@@ -309,12 +334,22 @@ def plot_likelihood_scans_1d(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
     draw_objs.append((h_dummy, "HIST"))
 
-    # horizontal lines at chi2_1 intervals
-    for n in [chi2_levels[1][1], chi2_levels[1][2]]:
-        if y_min <= n <= y_max_line:
-            line = ROOT.TLine(x_min, n, x_max, n)
-            r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
-            draw_objs.append(line)
+    if show_significances:
+        # horizontal significance lines and labels
+        for sig, dnll2 in chi2_levels[1].items():
+            if y_max_line <= dnll2:
+                break
+            sig_line = ROOT.TLine(x_min, dnll2, x_max, dnll2)
+            r.setup_line(sig_line, props={"NDC": False, "LineWidth": 1}, color=colors.grey)
+            draw_objs.append(sig_line)
+
+            # convert y to a value relative to the pad height
+            sig_label_y = math.log(dnll2 / y_min) / math.log(y_max / y_min)
+            sig_label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
+            sig_label_y += pad.GetBottomMargin() + 0.0035
+            sig_label = r.routines.create_top_right_label("{} #sigma".format(sig), pad=pad,
+                x_offset=12, y=sig_label_y, props={"TextSize": 18, "TextColor": colors.grey})
+            draw_objs.append(sig_label)
 
     # perform scans and draw nll curves
     for d, col, ms in zip(data[::-1], color_sequence[:len(data)][::-1],
@@ -404,6 +439,7 @@ def plot_likelihood_scan_2d(
     poi2_min=None,
     show_best_fit=False,
     show_best_fit_error=False,
+    show_significances=True,
     shift_negative_values=False,
     interpolate_nans=False,
     show_sm_point=True,
@@ -426,17 +462,18 @@ def plot_likelihood_scan_2d(
     curve.
 
     When *show_best_fit* (*show_best_fit_error*) is *True*, the nominal (uncertainty on the) best
-    fit value is drawn. In case there are negative dnll2 values, *shift_negative_values* can be set
-    to *True* to shift them vertically so that the minimum is located at 0 again. Points where the
-    dnll2 value is NaN are visualized as white pixels by default. However, when *interpolate_nans*
-    is set, these values are smoothed out with information from neighboring pixels through ROOT's
-    TGraph2D.Interpolate feature (similar to how its line interpolation draws values between two
-    discrete points in a 1D graph).The standard model point at (1, 1) as drawn as well unless
-    *show_sm_point* is *False*. The best fit value is drawn with uncertainties on one POI being
-    estimated while setting the other POI to its best value. When *show_box* is *True*, a box
-    containing the 1 sigma contour is shown and used to estimate the dimensions of the standard
-    error following the prescription at https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf
-    (e.g. Fig. 40.5).
+    fit value is drawn. To overlay lines and labels denoting integer significances corresponding to
+    1D likelihood scans, *show_significances* can be set to *True*. In case there are negative dnll2
+    values, *shift_negative_values* can be set to *True* to shift them vertically so that the
+    minimum is located at 0 again. Points where the dnll2 value is NaN are visualized as white
+    pixels by default. However, when *interpolate_nans* is set, these values are smoothed out with
+    information from neighboring pixels through ROOT's TGraph2D.Interpolate feature (similar to how
+    its line interpolation draws values between two discrete points in a 1D graph).The standard
+    model point at (1, 1) as drawn as well unless *show_sm_point* is *False*. The best fit value is
+    drawn with uncertainties on one POI being estimated while setting the other POI to its best
+    value. When *show_box* is *True*, a box containing the 1 sigma contour is shown and used to
+    estimate the dimensions of the standard error following the prescription at
+    https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf (e.g. Fig. 40.5).
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
     and default to the ranges of the poi values. *z_min* and *z_max* limit the range of the z-axis.
@@ -470,8 +507,10 @@ def plot_likelihood_scan_2d(
     joined_values = unique_recarray(dict_to_recarray(values), cols=[poi1, poi2])
 
     # determine contours independent of plotting
+    contour_levels = [1, 2, 3]
+    contour_colors = [colors.green, colors.yellow, colors.blue_cream]
     contours = get_contours(joined_values[poi1], joined_values[poi2], joined_values["dnll2"],
-        levels=[chi2_levels[2][1], chi2_levels[2][2]], frame_kwargs=[{"mode": "edge", "width": 1.}])
+        levels=[chi2_levels[2][l] for l in contour_levels], frame_kwargs=[{"mode": "edge", "width": 1.}])
 
     # evaluate the scan, run interpolation and error estimation
     scan = evaluate_likelihood_scan_2d(joined_values[poi1], joined_values[poi2],
@@ -547,13 +586,40 @@ def plot_likelihood_scan_2d(
         # for debugging purposes
         # draw_objs.append((h, "SAME,TEXT"))
 
-    # 1 and 2 sigma contours
-    for g in contours[0]:
-        r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.green})
-        draw_objs.append((g, "SAME,C"))
-    for g in contours[1]:
-        r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.yellow})
-        draw_objs.append((g, "SAME,C"))
+    # 1 and 2 sigma significance contours
+    if show_significances:
+        # conversion factor from pixel to x-axis range
+        pad_width = canvas.GetWindowWidth() * (1. - pad.GetLeftMargin() - pad.GetRightMargin())
+        pad_height = canvas.GetWindowHeight() * (1. - pad.GetTopMargin() - pad.GetBottomMargin())
+        px_to_x = (x_max - x_min) / pad_width
+        py_to_y = (y_max - y_min) / pad_height
+
+        # cache for label positions
+        all_positions = []
+        for graphs, sigma, col in zip(contours, contour_levels, contour_colors):
+            for g in graphs:
+                r.setup_graph(g, props={"LineWidth": 2, "LineColor": col})
+                draw_objs.append((g, "SAME,C"))
+
+            # get the approximate label width
+            text = "{} #sigma".format(sigma)
+            label_width, label_height = get_text_extent(text, 16, 43)
+            label_width *= px_to_x
+            label_height *= py_to_y
+
+            # calculate and store the position
+            label_positions = locate_contour_labels(graphs, label_width, label_height, pad_width,
+                pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions,
+                label_offset=1.2)
+            all_positions.extend(label_positions)
+            pad.cd()
+
+            # draw them
+            for x, y, rot in label_positions:
+                sig_label = ROOT.TLatex(0., 0., text)
+                r.setup_latex(sig_label, props={"NDC": False, "TextSize": 18, "TextAlign": 21,
+                    "TextColor": col, "TextAngle": rot, "X": x, "Y": y})
+                draw_objs.append((sig_label, "SAME"))
 
     # draw the first contour box
     if show_box:

@@ -165,7 +165,6 @@ def plot_significance_scan_1d(
             label_y = math.log(y / y_min) / math.log(y_max / y_min)
             label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
             label_y += pad.GetBottomMargin() + 0.005
-            # from IPython import embed; embed()
             sig_label = r.routines.create_top_left_label("{}#sigma".format(sig), pad=pad,
                 x_offset=8, y=label_y, props={"TextSize": 18, "TextColor": colors.grey})
             draw_objs.insert(1, sig_label)

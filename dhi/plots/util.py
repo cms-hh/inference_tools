@@ -601,8 +601,8 @@ def temporary_canvas(*args, **kwargs):
             c.Close()
 
 
-def locate_contour_labels(graphs, level, label_width, label_height, pad_width, pad_height, x_min,
-        x_max, y_min, y_max, other_positions=None, min_points=10, label_offset=None):
+def locate_contour_labels(graphs, label_width, label_height, pad_width, pad_height, x_min, x_max,
+        y_min, y_max, other_positions=None, min_points=10, label_offset=None):
     positions = []
     other_positions = other_positions or []
 

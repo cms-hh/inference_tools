@@ -472,8 +472,8 @@ def plot_exclusion_and_bestfit_2d(
             label_height *= py_to_y
 
             # calculate and store the position
-            label_positions = locate_contour_labels(graphs, level, label_width, label_height,
-                pad_width, pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions,
+            label_positions = locate_contour_labels(graphs, label_width, label_height, pad_width,
+                pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions,
                 label_offset=1.2)
             all_positions.extend(label_positions)
 

@@ -6,6 +6,9 @@ Constants such as cross sections and branchings, and common configs such as labe
 
 import os
 
+import scipy as sp
+import scipy.stats
+
 from dhi.util import DotDict, ROOTColorGetter
 
 
@@ -171,10 +174,16 @@ marker_sequence += 10 * [20]
 # cumulative, inverse chi2 values in a mapping "n_dof -> n_sigma -> level"
 # for the geometrical determination of errors of nll curves
 # (computed with "sp.stats.chi2.ppf(g, n_dof)" with g being the gaussian intervals)
+# chi2_levels = {
+#     1: {1: 1.000, 2: 4.000},
+#     2: {1: 2.296, 2: 6.180},
+#     ...
+# }
+get_gaus_interval = lambda sigma: 2 * sp.stats.norm.cdf(sigma) - 1.
+get_chi2_level = lambda sigma, ndof: sp.stats.chi2.ppf(get_gaus_interval(sigma), ndof)
 chi2_levels = {
-    1: {1: 1.000, 2: 4.000},
-    2: {1: 2.296, 2: 6.180},
-    3: {1: 3.527, 2: 8.025},
+    ndof: {sigma: get_chi2_level(sigma, ndof) for sigma in range(1, 8 + 1)}
+    for ndof in range(1, 3 + 1)
 }
 
 # postfix after "CMS" labels in plots, shwon when the --paper flag is not used

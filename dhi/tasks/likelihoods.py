@@ -22,7 +22,7 @@ from dhi.tasks.combine import (
 )
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
 from dhi.config import poi_data
-from dhi.util import unique_recarray, extend_recarray, convert_dnll2
+from dhi.util import unique_recarray
 
 
 class LikelihoodBase(POIScanTask, SnapshotUser):
@@ -216,11 +216,6 @@ class MergeLikelihoodScan(LikelihoodBase):
 
 class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
-    convert = luigi.ChoiceParameter(
-        default=law.NO_STR,
-        choices=[law.NO_STR, "significance", "pvalue"],
-        description="convert dnll2 values to either a 'significance' or 'pvalue'; no default",
-    )
     y_log = luigi.BoolParameter(
         default=False,
         description="apply log scaling to the y-axis; 1D only; default: False",
@@ -241,6 +236,12 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         significant=False,
         description="when True, do not use the best fit value as reported from combine but "
         "recompute it using scipy.interpolate and scipy.minimize; default: False",
+    )
+    show_significances = luigi.BoolParameter(
+        default=True,
+        significant=False,
+        description="when True, overlay lines and lables denoting integer significances; "
+        "default: True",
     )
     shift_negative_values = luigi.BoolParameter(
         default=False,
@@ -284,9 +285,8 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
-        prefix = "nll" if self.convert == law.NO_STR else self.convert
         names = self.create_plot_names(
-            ["{}{}d".format(prefix, self.n_pois), self.get_output_postfix(), parts]
+            ["nll{}d".format(self.n_pois), self.get_output_postfix(), parts]
         )
         return [self.local_target(name) for name in names]
 
@@ -301,53 +301,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
         # load scan data
         values, poi_mins = self.load_scan_data(self.input(), merge_scans=self.n_pois == 1)
-
-        # use significance plots if requested
-        if self.convert in ["significance", "pvalue"]:
-            if self.n_pois == 1:
-                sig = convert_dnll2(values["dnll2"], n=1)[1]
-                values = extend_recarray(values, ("significance", float, sig))
-                self.call_plot_func(
-                    "dhi.plots.significances.plot_significance_scan_1d",
-                    paths=[outp.path for outp in outputs],
-                    scan_parameter=self.pois[0],
-                    expected_values=None if self.unblinded else values,
-                    observed_values=values if self.unblinded else None,
-                    show_p_values=self.convert == "pvalue",
-                    x_min=self.get_axis_limit("x_min"),
-                    x_max=self.get_axis_limit("x_max"),
-                    y_min=self.get_axis_limit("y_min"),
-                    y_max=self.get_axis_limit("y_max"),
-                    y_log=self.y_log,
-                    model_parameters=self.get_shown_parameters(),
-                    campaign=self.campaign if self.campaign != law.NO_STR else None,
-                    show_points=self.show_points,
-                    paper=self.paper,
-                )
-            else:  # 2
-                values = [
-                    extend_recarray(vals, ("significance", float,
-                        convert_dnll2(vals["dnll2"], n=2)[1]))
-                    for vals in values
-                ]
-                self.call_plot_func(
-                    "dhi.plots.significances.plot_significance_scan_2d",
-                    paths=[outp.path for outp in outputs],
-                    scan_parameter1=self.pois[0],
-                    scan_parameter2=self.pois[1],
-                    values=values,
-                    show_p_values=self.convert == "pvalue",
-                    x_min=self.get_axis_limit("x_min"),
-                    x_max=self.get_axis_limit("x_max"),
-                    y_min=self.get_axis_limit("y_min"),
-                    y_max=self.get_axis_limit("y_max"),
-                    z_min=self.get_axis_limit("z_min"),
-                    z_max=self.get_axis_limit("z_max"),
-                    model_parameters=self.get_shown_parameters(),
-                    campaign=self.campaign if self.campaign != law.NO_STR else None,
-                    paper=self.paper,
-                )
-            return
 
         # call the plot function
         if self.n_pois == 1:
@@ -376,6 +329,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 poi_min=None if self.recompute_best_fit else poi_mins[0],
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
+                show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
@@ -398,6 +352,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 poi2_min=None if self.recompute_best_fit else poi_mins[1],
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
+                show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 interpolate_nans=self.interpolate_nans,
                 show_box=self.show_box,
@@ -493,7 +448,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
 class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
-    convert = law.NO_STR
     show_best_fit_error = None
     z_min = None
     z_max = None
@@ -581,6 +535,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 data=data,
                 theory_value=theory_value,
                 show_best_fit=self.show_best_fit,
+                show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
@@ -612,7 +567,6 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
 class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
 
-    convert = law.NO_STR
     show_best_fit_error = None
     z_min = None
     z_max = None
@@ -700,6 +654,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 data=data,
                 theory_value=theory_value,
                 show_best_fit=self.show_best_fit,
+                show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
