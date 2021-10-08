@@ -535,6 +535,7 @@ def plot_likelihood_scan_2d(
         1, x_min, x_max, 1, y_min, y_max)
     r.setup_hist(h_dummy, pad=pad, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
     draw_objs.append((h_dummy, ""))
+    legend_entries = []
 
     # setup actual histograms
     for i, h in enumerate(hists):
@@ -572,6 +573,7 @@ def plot_likelihood_scan_2d(
         g_sm = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
+        legend_entries.append((g_sm, "Standard model", "P"))
 
     # central best fit point
     if scan:
@@ -605,12 +607,11 @@ def plot_likelihood_scan_2d(
                 "-" if num2 is None else num2(),
             )
 
-    legend_entries = []
-    if show_best_fit and scan:
-        legend_entries.append((g_fit, make_bf_label(scan.num1_min, scan.num2_min),
-            "PLE" if show_best_fit_error else "P"))
     if show_box:
-        legend_entries.append((box_legend_entry, make_bf_label(box_num1, box_num2), "F"))
+        legend_entries.insert(0, (box_legend_entry, make_bf_label(box_num1, box_num2), "F"))
+    if show_best_fit and scan:
+        legend_entries.insert(0, (g_fit, make_bf_label(scan.num1_min, scan.num2_min),
+            "PLE" if show_best_fit_error else "P"))
     if legend_entries:
         legend = r.routines.create_legend(pad=pad, width=340, n=len(legend_entries))
         r.fill_legend(legend, legend_entries)

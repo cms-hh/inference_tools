@@ -63,7 +63,6 @@ class GoodnessOfFitBase(POITask, SnapshotUser):
     @property
     def toys_postfix(self):
         return "t{}_pt{}".format(self.toys, self.toys_per_task)
-        return postfix
 
 
 class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
@@ -93,13 +92,13 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
         reqs = super(GoodnessOfFit, self).workflow_requires()
         reqs["workspace"] = CreateWorkspace.req(self)
         if self.use_snapshot:
-            reqs["snapshot"] = Snapshot.req(self)
+            reqs["snapshot"] = Snapshot.req(self, _exclude={"toys"})
         return reqs
 
     def requires(self):
         reqs = {"workspace": CreateWorkspace.req(self)}
         if self.use_snapshot:
-            reqs["snapshot"] = Snapshot.req(self, branch=0)
+            reqs["snapshot"] = Snapshot.req(self, branch=0, _exclude={"toys"})
         return reqs
 
     def output(self):
