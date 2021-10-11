@@ -41,7 +41,7 @@ class HHModelTask(AnalysisTask):
     provides a few convenience functions for working with it.
     """
 
-    DEFAULT_HH_MODULE = "HHModelPinv"
+    DEFAULT_HH_MODULE = "hh_model"
     DEFAULT_HH_MODEL = "model_default"
 
     valid_hh_model_options = {
