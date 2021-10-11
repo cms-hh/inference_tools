@@ -637,7 +637,7 @@ class HHModelBase(PhysicsModelBase):
         self.name = name
 
         # names and values of physics options
-        self.hh_options = {}
+        self.hh_options = OrderedDict()
 
         # actual r and k pois, depending on used formulae and profiling options, set in reset_pois
         self.r_pois = None
@@ -815,10 +815,10 @@ class HHModel(HHModelBase):
     - doHscaling (bool)      : Enable scaling single Higgs cross sections with model parameters.
     - doklDependentUnc (bool): Add a theory uncertainty on ggf HH production that depends on model
                                parameters.
-    - doProfileX (string)    : Either "flat" to enable the profiling of kappa parameter X with a
-      X in {kl,kt,CV,C2V}      flat prior, or "gauss,FLOAT" (or "gauss,-FLOAT/+FLOAT") to use a
-                               gaussian (asymmetric) prior. In any case, X will be profiled and is
-                               hence removed from the list of POIs.
+    - doProfileX (string)    : Either "flat" to enable the profiling of parameter X with a flat
+      X in {rgghh,rqqhh,       prior, or "gauss,FLOAT" (or "gauss,-FLOAT/+FLOAT") to use a gaussian
+        rvhh,kl,kt,CV,C2V}     (asymmetric) prior. In any case, X will be profiled and is hence
+                               removed from the list of POIs.
 
     A string encoded boolean flag is interpreted as *True* when it is either ``"yes"``, ``"true"``
     or ``1`` (case-insensitive).
@@ -856,8 +856,9 @@ class HHModel(HHModelBase):
         self.register_opt("doklDependentUnc", True, is_flag=True)
         self.register_opt("doBRscaling", True, is_flag=True)
         self.register_opt("doHscaling", True, is_flag=True)
-        for p in self.K_POIS:
-            self.register_opt("doProfile{}".format(p), None)
+        for p in self.R_POIS.keys() + self.K_POIS.keys():
+            if p != "r":
+                self.register_opt("doProfile" + p.replace("_", ""), None)
 
         # reset instance-level pois
         self.reset_pois()
@@ -865,9 +866,14 @@ class HHModel(HHModelBase):
     def reset_pois(self):
         super(HHModel, self).reset_pois()
 
+        # remove profiled r pois
+        for p in list(self.r_pois):
+            if self.opt("doProfile" + p.replace("_", ""), False):
+                del self.r_pois[p]
+
         # remove profiled k pois
         for p in list(self.k_pois):
-            if self.opt("doProfile" + p):
+            if self.opt("doProfile" + p.replace("_", ""), False):
                 del self.k_pois[p]
 
     def get_formulae(self):
@@ -905,21 +911,22 @@ class HHModel(HHModelBase):
         re-initialize the MH parameter. By default, the main r POI will be the only floating one,
         whereas the others are either fixed or fully profiled.
         """
-        # add rate POIs and freeze r_* by default
-        pois = []
-        for p, (value, start, stop) in self.r_pois.items():
+        # first, add all known r and k POIs
+        for p in self.R_POIS:
+            value, start, stop = self.r_pois.get(p, self.R_POIS[p])
             self.make_var("{}[{},{},{}]".format(p, value, start, stop))
-            # freeze anything but r
-            if p != "r":
-                self.get_var(p).setConstant(True)
-            pois.append(p)
-
-        # first, add all known coupling modifiers
         for p in self.K_POIS:
             value, start, stop = self.k_pois.get(p, self.K_POIS[p])
             self.make_var("{}[{},{},{}]".format(p, value, start, stop))
 
-        # then, configure coupling modifiers used as potential POIs
+        # make certain r parameters pois, freeze all but the main r
+        pois = []
+        for p, (value, start, stop) in self.r_pois.items():
+            if p != "r":
+                self.get_var(p).setConstant(True)
+            pois.append(p)
+
+        # make certain coupling modifiers pois
         for p, (value, start, stop) in self.k_pois.items():
             self.get_var(p).setConstant(True)
             pois.append(p)
@@ -1138,9 +1145,9 @@ class HHModel(HHModelBase):
         - kl-dependent ggf theory uncertainty
         - parameters of coupling modifiers when profiling
         """
-        # enable profiling of k POIs with a configurable prior when requested
-        for p in self.K_POIS:
-            value = self.opt("doProfile" + p, False)
+        # enable profiling of r and k POIs with a configurable prior when requested
+        for p in self.R_POIS.keys() + self.K_POIS.keys():
+            value = self.opt("doProfile" + p.replace("_", ""), False)
             if not value:
                 continue
 
