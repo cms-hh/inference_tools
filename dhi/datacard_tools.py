@@ -74,8 +74,9 @@ class DatacardRenamer(object):
         self.logger = logger or logging.getLogger(
             "{}_{}".format(self.__class__.__name__, hex(id(self))))
 
-        # datacard object if required
+        # datacard and shape builder objects if required
         self._dc = None
+        self._sb = None
 
         # setup file and object caches
         self._tfile_cache = TFileCache(logger=self.logger)
@@ -141,8 +142,14 @@ class DatacardRenamer(object):
     @property
     def dc(self):
         if self._dc is None:
-            self._dc = create_datacard_instance(self.datacard)
+            self._dc, self._sb = create_datacard_instance(self.datacard, create_shape_builder=True)
         return self._dc
+
+    @property
+    def sb(self):
+        if self._sb is None:
+            self.dc
+        return self._sb
 
     def has_rule(self, name):
         return name in self.rules
@@ -161,13 +168,21 @@ class DatacardRenamer(object):
     def get_bin_process_to_systs_mapping(self):
         shape_syst_names = defaultdict(list)
 
+        def has_shape(bin_name, process_name, syst_name):
+            try:
+                # check the Up shape
+                self.sb.getShape(bin_name, process_name, syst_name + "Up")
+                return True
+            except RuntimeError:
+                return False
+
         # determine shape systematic names per (bin, process) pair
         for syst_name, _, syst_type, _, syst_data in self.dc.systs:
             if not syst_type.startswith("shape"):
                 continue
             for bin_name, bin_syst_data in syst_data.items():
                 for process_name, syst_effect in bin_syst_data.items():
-                    if syst_effect:
+                    if syst_effect and has_shape(bin_name, process_name, syst_name):
                         key = (bin_name, process_name)
                         if syst_name in shape_syst_names[key]:
                             self.logger.warning("shape systematic {} appears more than once for "
