@@ -136,7 +136,7 @@ def remove_unused_shapes(datacard, rules, directory=None, mass="125", inplace_sh
             tfile = cache.open_tfile(shape_file, "UPDATE", tmp=not inplace_shapes)
 
             # recursively get keys of all non-directory objects
-            keys = []
+            keys = set()
             lookup = [(tfile, None)]
             while lookup:
                 tdir, owner_key = lookup.pop(0)
@@ -147,8 +147,9 @@ def remove_unused_shapes(datacard, rules, directory=None, mass="125", inplace_sh
                     if isinstance(tobj, ROOT.TDirectory):
                         lookup.append((tobj, abs_key))
                     elif isinstance(tobj, ROOT.TH1):
-                        keys.append(abs_key)
+                        keys.add(abs_key)
 
+            keep &= keys
             logger.info("keeping {} of {} shapes in file {}".format(
                 len(keep), len(keys), shape_file))
 

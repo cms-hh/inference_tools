@@ -13,7 +13,9 @@ import luigi
 from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
+from dhi.tasks.limits import UpperLimits
 from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
+from dhi.config import poi_data
 from dhi.util import real_path
 
 
@@ -191,6 +193,12 @@ class PlotPostfitSOverB(PostfitPlotBase):
         description="scale the postfit signal in the ratio plot by this value; only considered "
         "when drawing the signal superimposed; default: 1.0",
     )
+    signal_from_limit = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when True, instead of using the best fit value, scale the signal shape by the "
+        "upper limit as computed by UpperLimits; default: False",
+    )
     hide_signal = luigi.BoolParameter(
         default=False,
         significant=False,
@@ -243,13 +251,33 @@ class PlotPostfitSOverB(PostfitPlotBase):
         if self.unblinded and not self.paper and self.show_best_fit:
             self.logger.warning("running unblinded but not hiding the best fit value")
 
+        # when the signal limit is requested, define a pseudo scan parameter
+        self.pseudo_scan_parameter = None
+        if self.signal_from_limit:
+            pois_with_values = [p for p in self.parameter_values_dict if p in self.all_pois]
+            other_pois = [p for p in (self.k_pois + self.r_pois) if p != self.pois[0]]
+            self.pseudo_scan_parameter = (pois_with_values + other_pois)[0]
+
     def requires(self):
         # normally, we would require FitDiagnostics not matter what, but since it can take ages to
         # complete, skip producing uncertainties when requested and the full fit does not exist yet
-        full_fd = FitDiagnostics.req(self)
-        if self.hide_uncertainty and not full_fd.complete():
-            return FitDiagnostics.req(self, skip_save=("WithUncertainties",))
-        return full_fd
+        reqs = {"fitdiagnostics": FitDiagnostics.req(self)}
+        if self.hide_uncertainty and not reqs["fitdiagnostics"].complete():
+            reqs["fitdiagnostics"] = FitDiagnostics.req(self, skip_save=("WithUncertainties",))
+
+        # require upper limit when requested
+        if self.signal_from_limit:
+            default = poi_data.get(self.pseudo_scan_parameter, {}).get("sm_value", 1.0)
+            value = self.parameter_values_dict.get(self.pseudo_scan_parameter, default)
+            scan_parameter = (self.pseudo_scan_parameter, value, value, 1)
+            parameter_values = tuple(
+                (p, v) for p, v in self.parameter_values_dict.items()
+                if p != self.pseudo_scan_parameter
+            )
+            reqs["limit"] = UpperLimits.req(self, scan_parameters=(scan_parameter,),
+                parameter_values=parameter_values)
+
+        return reqs
 
     def output(self):
         parts = []
@@ -273,7 +301,15 @@ class PlotPostfitSOverB(PostfitPlotBase):
         outputs[0].parent.touch()
 
         # get the path to the fit diagnostics file
-        fit_diagnostics_path = self.input()["collection"][0]["diagnostics"].path
+        inputs = self.input()
+        fit_diagnostics_path = inputs["fitdiagnostics"]["collection"][0]["diagnostics"].path
+
+        # load the limit when requested
+        signal_limit = None
+        if self.signal_from_limit:
+            target = inputs["limit"]["collection"][0]
+            limits = UpperLimits.load_limits(target, unblinded=self.unblinded)
+            signal_limit = limits[-1 if self.unblinded else 0]
 
         # call the plot function
         self.call_plot_func(
@@ -288,6 +324,7 @@ class PlotPostfitSOverB(PostfitPlotBase):
             show_signal=not self.hide_signal,
             show_uncertainty=not self.hide_uncertainty,
             show_best_fit=self.show_best_fit,
+            signal_limit=signal_limit,
             categories=self.categories,
             backgrounds=None if self.backgrounds == law.NO_STR else self.backgrounds,
             y1_min=self.get_axis_limit("y_min"),

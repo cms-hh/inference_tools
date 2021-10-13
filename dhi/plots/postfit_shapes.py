@@ -36,6 +36,7 @@ def plot_s_over_b(
     show_signal=True,
     show_uncertainty=True,
     show_best_fit=True,
+    signal_limit=None,
     categories=None,
     backgrounds=None,
     y1_min=None,
@@ -56,15 +57,18 @@ def plot_s_over_b(
 
     When *signal_superimposed* is *True*, the signal at the top pad is not drawn stacked on top of
     the background but as a separate histogram. For visualization purposes, the fitted signal can be
-    scaled by *signal_scale*, and, when drawing the signal superimposed, by *signal_scale_ratio* at
+    scaled by *signal_scale*, and, when drawing the signal superimposed, by *signal_scale_ratio* in
     the bottom ratio pad. When *signal_superimposed* is *True*, the signal at the top pad is not
     drawn stacked on top of the background but as a separate histogram. The signal is not shown at
     all when *show_signal* is *False*. When *show_uncertainty* is *False*, the postfit uncertainty
     is not drawn. When *show_best_fit* is *False*, the value of the signal scale is not shown in the
-    legend labels. By default, all categories found in the fit diagnostics file are stacked. To
-    select only a subset, *categories* can be a sequence of names or name patterns of categories to
-    select.
+    legend labels. When a *signal_limit* is given, it will be used to scale the signal shape by this
+    value times the prefit expectation and the legend entry is adjusted to reflect that. In this
+    case, both *signal_scale* and *signal_scale_ratio* are considered to be one, and *show_best_fit*
+    is set to *True*.
 
+    By default, all categories found in the fit diagnostics file are stacked. To select only a
+    subset, *categories* can be a sequence of names or name patterns of categories to select.
     When *backgrounds* is set, it can be either a sequence of dictionaries or a json file containing
     such a sequence. In this case, the overall background shape in the top pad is split into
     particular channels and/or processes, with each shape being defined by a dictionary with fields:
@@ -93,6 +97,11 @@ def plot_s_over_b(
     assert signal_scale_ratio != 0
     if not signal_superimposed:
         signal_scale_ratio = signal_scale
+    from_limit = signal_limit is not None
+    if from_limit:
+        signal_scale = 1.0
+        signal_scale_ratio = 1.0
+        show_best_fit = True
     if isinstance(backgrounds, six.string_types):
         backgrounds = os.path.expandvars(os.path.expanduser(backgrounds))
         with open(backgrounds, "r") as f:
@@ -106,6 +115,7 @@ def plot_s_over_b(
 
     # load the shape data from the fit diagnostics file
     bin_data = load_bin_data(fit_diagnostics_path, per_process=bool(backgrounds))
+    print("found {} bins to merge".format(len(bin_data)))
 
     # select categories when set
     if categories:
@@ -186,15 +196,18 @@ def plot_s_over_b(
     # helper to create a signal label
     def signal_label(scale):
         label = "Signal"
-        if not show_best_fit:
-            return label
-        if scale != 1:
-            label += " x {}".format(try_int(scale))
-        label += " ({} = {:.2f})".format(to_root_latex(poi_data[poi].label), signal_strength)
+        poi_label = to_root_latex(poi_data[poi].label)
+        if from_limit:
+            label += " ({} = {:.2f},#scale[0.6]{{ 95% CL}})".format(poi_label, signal_limit)
+        elif show_best_fit:
+            if scale != 1:
+                label += " x {}".format(try_int(scale))
+            label += " ({} = {:.2f})".format(poi_label, signal_strength)
         return label
 
     # superimposed signal histogram at the top
     hist_s1 = ROOT.TH1F("s1", "", len(bins) - 1, array.array("f", bins))
+    hist_s1_pre = ROOT.TH1F("s1_pre", "", len(bins) - 1, array.array("f", bins))
     r.setup_hist(hist_s1, props={"LineColor": colors.blue_signal})
     if signal_superimposed and show_signal:
         draw_objs1.append((hist_s1, "SAME,HIST"))
@@ -255,6 +268,9 @@ def plot_s_over_b(
     r.setup_hist(graph_d2, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 1}, color=1)
     draw_objs2.append((graph_d2, "SAME,PEZ0"))
 
+    # histogram for debugging the number of bins per merged bin
+    hist_bin_debug = ROOT.TH1I("bin_debug", "", len(bins) - 1, array.array("f", bins))
+
     # per-process histograms
     hists_bg1 = []
     if backgrounds:
@@ -271,23 +287,27 @@ def plot_s_over_b(
             hists_bg1.append(hist_bg1)
 
     # fill histograms by traversing bin data
+    sob_values = []
     for _bin in bin_data:
-        s_over_b = min(x_max - 1e-5, max(_bin.get("pre_s_over_b", x_min), x_min + 1e-5))
+        sob = min(x_max - 1e-5, max(_bin.get("pre_s_over_b", x_min), x_min + 1e-5))
+        sob_values.append(_bin.get("pre_s_over_b", x_min))
         # get values to fill
         s = _bin[fit_type + "_signal"]
+        s_pre = _bin["pre_signal"]
         b = _bin[fit_type + "_background"]
         b_err_up = _bin[fit_type + "_background_err_up"]
         b_err_down = _bin[fit_type + "_background_err_down"]
         d = _bin.data
-        # signal and background
-        hist_b1.Fill(s_over_b, b)
-        hist_s1.Fill(s_over_b, s * signal_scale)
-        hist_sb1.Fill(s_over_b, b + s * signal_scale)
+        # background
+        hist_b1.Fill(sob, b)
+        # signal for the requested fit type, and prefit separately
+        hist_s1.Fill(sob, s * signal_scale)
+        hist_s1_pre.Fill(sob, s_pre * signal_scale)
         # data histogram for binning
-        hist_d1.Fill(s_over_b, d)
+        hist_d1.Fill(sob, d)
         # background uncertainty histogram for binning
-        hist_b_err_up1.Fill(s_over_b, b_err_up)
-        hist_b_err_down1.Fill(s_over_b, b_err_down)
+        hist_b_err_up1.Fill(sob, b_err_up)
+        hist_b_err_down1.Fill(sob, b_err_down)
         # per process backgrounds
         if backgrounds:
             for bg, hist_bg1 in zip(backgrounds, hists_bg1):
@@ -295,10 +315,26 @@ def plot_s_over_b(
                 for proc_name, proc_data in _bin.processes.items():
                     if not multi_match("{}/{}".format(_bin.category, proc_name), patterns):
                         continue
-                    hist_bg1.Fill(s_over_b, proc_data[fit_type])
+                    hist_bg1.Fill(sob, proc_data[fit_type])
+        # debug bins
+        hist_bin_debug.Fill(sob)
+
+    # when an external limit is set, scale the signal to this value times the prefit expectation
+    if from_limit:
+        hist_s1.Scale(signal_limit * hist_s1_pre.Integral() / hist_s1.Integral())
+
+    # compose the sb hist from s + b
+    hist_sb1.Add(hist_b1)
+    hist_sb1.Add(hist_s1)
+
+    # print the 25 highest sob values
+    highest_sobs = list(map("{:.4f}".format, sorted(sob_values)[-25:]))
+    print("{} highest log s-over-b values: {}".format(len(highest_sobs), ", ".join(highest_sobs)))
 
     # fill remaining objects
     for i in range(hist_sb1.GetNbinsX()):
+        # print the number of input bins
+        print("input bins in bin {}: {}".format(i + 1, int(hist_bin_debug.GetBinContent(i + 1))))
         # get values from top histograms
         s = hist_s1.GetBinContent(i + 1) / signal_scale
         x = hist_b1.GetBinCenter(i + 1)
