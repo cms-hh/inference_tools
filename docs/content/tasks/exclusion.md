@@ -34,14 +34,14 @@ Output:
 ```mermaid
 graph LR;
     A(PlotExclusionAndBestFit) --> B1(MergeUpperLimits);
-    A --> C1(MergeLikelihoodScan);
+    A -. optional .-> C1(MergeLikelihoodScan);
     B1 --> D1([UpperLimits]);
     D1 --> F1(CreateWorkspace);
     F1 --> G1(CombineDatacards);
     C1 --> E1([LikelihoodScan]);
     E1 --> F1;
     A --> B2(MergeUpperLimits);
-    A --> C2(MergeLikelihoodScan);
+    A -. optional .-> C2(MergeLikelihoodScan);
     B2 --> D2([UpperLimits]);
     D2 --> F2(CreateWorkspace);
     F2 --> G2(CombineDatacards);
@@ -51,6 +51,7 @@ graph LR;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
+Please note that dependencies to [snapshots](snapshot.md) are omitted in this diagram for visual clearness.
 
 
 #### Parameters
@@ -146,12 +147,16 @@ Output:
 ```mermaid
 graph LR;
     A(PlotExclusionAndBestFit2D) --> B(MergeUpperLimits);
-    A(PlotExclusionAndBestFit2D) --> C(MergeLikelihoodScan);
+    A -. optional .-> C(MergeLikelihoodScan);
     B --> D([UpperLimits]);
     D --> F(CreateWorkspace);
     F --> G(CombineDatacards);
     C --> E([LikelihoodScan]);
     E --> F;
+    D -. optional .-> H([Snapshot]);
+    E -. optional .-> I([Snapshot]);
+    H --> F;
+    I --> F;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.

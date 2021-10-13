@@ -71,7 +71,7 @@ markdown_extensions:
       check_paths: true
 
 extra_javascript:
-  - https://unpkg.com/mermaid@8.12/dist/mermaid.min.js
+  - https://unpkg.com/mermaid@8.13/dist/mermaid.min.js
 
 extra_css:
   - extra/styles.css

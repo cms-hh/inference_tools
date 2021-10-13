@@ -55,6 +55,8 @@ Output:
     B --> C([LikelihoodScan]);
     C --> D(CreateWorkspace);
     D --> E(CombineDatacards);
+    C -. optional .-> F([Snapshot]);
+    F --> D;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
@@ -176,6 +178,10 @@ Output:
     C2 --> D2(CreateWorkspace);
     D1 --> E1(CombineDatacards);
     D2 --> E2(CombineDatacards);
+    C1 -. optional .-> F1([Snapshot]);
+    C2 -. optional .-> F2([Snapshot]);
+    F1 --> D1;
+    F2 --> D2;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
@@ -297,6 +303,10 @@ Output:
     C2 --> D2(CreateWorkspace);
     D1 --> E(CombineDatacards);
     D2 --> E;
+    C1 -. optional .-> F1([Snapshot]);
+    C2 -. optional .-> F2([Snapshot]);
+    F1 --> D1;
+    F2 --> D2;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.

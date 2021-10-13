@@ -28,8 +28,13 @@ Output:
 ```mermaid
     graph LR;
     A(PlotPostfitSOverB) --> B([FitDiagnostics]);
-    B --> C(CreateWorkspace);
-    C --> D(CombineDatacards);
+    A -. optional .-> C([UpperLimits]);
+    B --> D(CreateWorkspace);
+    C --> D;
+    D --> E(CombineDatacards);
+    B -. optional .-> F([Snapshot]);
+    C -. optional .-> F;
+    F --> D;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
@@ -106,6 +111,8 @@ Output:
     A(PlotNuisanceLikelihoodScans) --> B([FitDiagnostics]);
     B --> C(CreateWorkspace);
     C --> D(CombineDatacards);
+    B -. optional .-> E([Snapshot]);
+    E --> C;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
