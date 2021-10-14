@@ -117,7 +117,7 @@ def create_hh_process_label(poi="r"):
 def create_hh_br_label(br):
     if not br or br not in br_hh_names:
         return ""
-    return "BR({})".format(to_root_latex(br_hh_names[br]))
+    return "B({})".format(to_root_latex(br_hh_names[br]))
 
 
 def create_hh_xsbr_label(poi="r", br=None):
@@ -133,15 +133,13 @@ def determine_limit_digits(limit, is_xsec=False):
             return 2
         elif limit < 200:
             return 1
-        else:
-            return 0
+        return 0
     else:
         if limit < 10:
             return 2
         elif limit < 100:
             return 1
-        else:
-            return 0
+        return 0
 
 
 def make_parameter_label_map(parameter_names, labels=None):

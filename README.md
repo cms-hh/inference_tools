@@ -39,7 +39,7 @@ source setup.sh some_name
 ```
 
 where the value of `some_name` is your choice, and the script interactively guides you through the quick setup process.
-To use the same configuration the next time, ==make sure to use the same value you passed before.==
+To use the same configuration the next time, **make sure to use the same value you passed before**.
 Internally, a file `.setups/some_name.sh` is created which contains export statements line by lines that you can be update anytime.
 
 
@@ -56,6 +56,8 @@ git clone --recursive ssh://git@gitlab.cern.ch:7999/hh/results/datacards_run2.gi
 ```
 
 (note that using `ssh://...` is recommended), and then use `/your/path` for the `DHI_DATACARDS_RUN2` variable later on.
+
+After that, you can use the names of the HH channels in the `--datacards` parameters of the inference tasks, e.g. `--datacards bbww` or `--datacards bbww,bbbb` to get results of the latest bbWW or bbWW+bbbb channels, respectively.
 
 
 #### Reinstalling software
@@ -153,11 +155,14 @@ module 'dhi.tasks.studies.model_selection', 3 task(s):
     - study.PlotMorphedDiscriminant
     - study.PlotStatErrorScan
 
+module 'dhi.tasks.studies.model_plots', 1 task(s):
+    - study.PlotSignalEnhancement
+
 module 'dhi.tasks.exclusion', 2 task(s):
     - PlotExclusionAndBestFit
     - PlotExclusionAndBestFit2D
 
-written 45 task(s) to index file '/your/path/inference/.law/index'
+written 46 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type

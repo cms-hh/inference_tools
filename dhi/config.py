@@ -160,6 +160,7 @@ colors = DotDict(
         blue_cream=38,
         blue_signal=(67, 118, 201),
         blue_signal_trans=(67, 118, 201, 0.5),
+        purple=881,
     ),
 )
 
