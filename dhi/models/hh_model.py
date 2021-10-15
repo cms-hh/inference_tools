@@ -816,8 +816,8 @@ class HHModel(HHModelBase):
     - doklDependentUnc (bool): Add a theory uncertainty on ggf HH production that depends on model
                                parameters.
     - doProfileX (string)    : Either "flat" to enable the profiling of parameter X with a flat
-      X in {rgghh,rqqhh,       prior, or "gauss,FLOAT" (or "gauss,-FLOAT/+FLOAT") to use a gaussian
-        rvhh,kl,kt,CV,C2V}     (asymmetric) prior. In any case, X will be profiled and is hence
+      X in {rgghh,rqqhh,rvhh,  prior, or "gauss,FLOAT" (or "gauss,-FLOAT/+FLOAT") to use a gaussian
+      kl,kt,CV,C2V}            (asymmetric) prior. In any case, X will be profiled and is hence
                                removed from the list of POIs.
 
     A string encoded boolean flag is interpreted as *True* when it is either ``"yes"``, ``"true"``

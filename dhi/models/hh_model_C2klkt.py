@@ -122,10 +122,10 @@ class HHModel(DefaultHHModel):
     - doHscaling (bool)      : Enable scaling single Higgs cross sections with model parameters.
     - doklDependentUnc (bool): Add a theory uncertainty on ggF HH production that depends on model
                                parameters.
-    - doProfileX (string)    : Either "flat" to enable the profiling of kappa parameter X with a
-      X in {kl,kt,C2,CV,C2V}   flat prior, or "gauss,FLOAT" (or "gauss,-FLOAT/+FLOAT") to use a
-                               gaussian (asymmetric) prior. In any case, X will be profiled and is
-                               hence removed from the list of POIs.
+    - doProfileX (string)    : Either "flat" to enable the profiling of parameter X with a flat
+      X in {rgghh,rqqhh,rvhh,  prior, or "gauss,FLOAT" (or "gauss,-FLOAT/+FLOAT") to use a gaussian
+      kl,kt,CV,C2V,C2}         (asymmetric) prior. In any case, X will be profiled and is hence
+                               removed from the list of POIs.
 
     A string encoded boolean flag is interpreted as *True* when it is either ``"yes"``, ``"true"``
     or ``1`` (case-insensitive).
@@ -161,8 +161,9 @@ class HHModel(DefaultHHModel):
         self.register_opt("doklDependentUnc", True, is_flag=True)
         self.register_opt("doBRscaling", True, is_flag=True)
         self.register_opt("doHscaling", True, is_flag=True)
-        for p in self.K_POIS:
-            self.register_opt("doProfile{}".format(p), None)
+        for p in self.R_POIS.keys() + self.K_POIS.keys():
+            if p != "r":
+                self.register_opt("doProfile" + p.replace("_", ""), None)
 
         # reset instance-level pois
         self.reset_pois()

@@ -4,6 +4,7 @@
 Tasks related to plotting quantities of the physics model.
 """
 
+import copy
 import inspect
 
 import luigi
@@ -26,6 +27,8 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
     DEFAULT_HH_MODULE = "hh_model"
     DEFAULT_HH_MODEL = "model_default_vhh"
 
+    hh_model = copy.copy(HHModelTask.hh_model)
+    hh_model._default = "{}.{}".format(DEFAULT_HH_MODULE, DEFAULT_HH_MODEL)
     signal = luigi.ChoiceParameter(
         default="hh",
         choices=["hh", "ggf", "vbf", "vhh"],
@@ -146,6 +149,12 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
         h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, self.x_min, self.x_max)
         r.setup_hist(h_dummy, pad=pad, props={"Minimum": y_min, "Maximum": y_max, "LineWidth": 0})
         draw_objs.append((h_dummy, "HIST"))
+
+        # dashed line at 1
+        if y_min < 1. <= y_max:
+            line_sm = ROOT.TLine(self.x_min, 1, self.x_max, 1)
+            r.setup_line(line_sm, props={"NDC": False, "LineStyle": 2}, color=12)
+            draw_objs.append(line_sm)
 
         # write graphs
         for k, graph, label in zip(self.kappas, graphs, labels):
