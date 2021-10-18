@@ -5,7 +5,7 @@ This entails two major differences in the preparation of datacards and the steer
 **Datacards**
 
 The datacards for the various EFT benchmarks should be prepared according to the central [EFT documentation](https://gitlab.cern.ch/hh/eft-benchmarks).
-In particular, please make sure that your ggF signal is normalized to a hypothetical cross section of 1fb times the branching ratio of your channel, and that VBF processes (`qqHH_*`) are marked as background by attributing them a positive process id.
+In particular, please make sure that your ggF signal is normalized to a hypothetical cross section of 1fb times the branching ratio of your channel, and that VBF processes (`qqHH_*`) are dropped except for the SM VBF signal, which should be marked as background by attributing a positive process id.
 Names of EFT benchmark datacard files should have the format
 
 `datacard_<NAME>.txt`,
