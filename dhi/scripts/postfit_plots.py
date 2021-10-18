@@ -32,12 +32,13 @@ def create_postfit_plots(
 
     minY = bin["minY"]
     maxY = bin["maxY"]
-    if doPostFit and bin["minYerr_postfit"] :
-        minYerr = bin["minYerr_postfit"]
-        maxYerr = bin["maxYerr_postfit"]
-    else :
-        minYerr = bin["minYerr"]
-        maxYerr = bin["maxYerr"]
+    minYerr = bin["minYerr"]
+    maxYerr = bin["maxYerr"]
+    if doPostFit :
+        try: minYerr = bin["minYerr_postfit"]
+        except: True
+        try: maxYerr = bin["maxYerr_postfit"]
+        except: True
     useLogPlot = bin["useLogPlot"]
     era = bin["era"]
     labelX = bin["labelX"]
@@ -48,6 +49,14 @@ def create_postfit_plots(
 
     print("Reading %s for signal options/process" % file_sig_options)
     with open(file_sig_options) as ff : procs_plot_options_sig = json.load(ff, object_pairs_hook=OrderedDict)
+    scale_GGF = 0
+    scale_VBF = 0
+    try: scale_GGF = bin["scale_ggf"]
+    except:
+        print("")
+    try: scale_VBF = bin["scale_vbf"]
+    except:
+        print("")
 
     typeFit = None
     if doPostFit:
@@ -391,7 +400,7 @@ def create_postfit_plots(
                     sigs_to_stack += [obj_name]
             print(catcat, key, "sigs_to_stack ", sigs_to_stack)
 
-        for sig in sigs_to_stack:  # procs_plot_options_sig[key]["processes"] :
+        for sig in sigs_to_stack :
             lastbin = 0
             for cc, catcat in enumerate(catcats):
                 readFrom = str("%s/%s" % (folder, catcat))
@@ -417,6 +426,13 @@ def create_postfit_plots(
                     hist_sig[kk].Add(hist_sig_part)
                 # print(catcat, key,  sig, lastbin, hist_sig_part.Integral(), hist_sig[kk].Integral())
                 hist_sig[kk].Scale(procs_plot_options_sig[key]["scaleBy"])
+                if "ggHH" in key and scale_GGF > 0 :
+                    print("Scaling GGF signal by %d" % scale_GGF )
+                    hist_sig[kk].Scale(scale_GGF)
+                if "qqHH" in key and scale_VBF > 0 :
+                    print("Scaling VBF signal by %d" % scale_VBF )
+                    hist_sig[kk].Scale(scale_VBF)
+
 
     for kk, key in enumerate(procs_plot_options_sig.keys()):
         try:
@@ -431,7 +447,12 @@ def create_postfit_plots(
         hist_sig[kk].SetLineWidth(2)
         dumb = hist_sig[kk].Draw("hist,same")
         del dumb
-        legend1.AddEntry(hist_sig[kk], procs_plot_options_sig[key]["label"], "f")
+        legend_signal = procs_plot_options_sig[key]["label"]
+        if "ggHH" in key and scale_GGF > 0 and not scale_GGF == 1 :
+            legend_signal = "%s X %i" % (legend_signal, scale_GGF)
+        if "qqHH" in key and scale_VBF > 0 and not scale_VBF == 1 :
+            legend_signal = "%s X %i" % (legend_signal, scale_VBF)
+        legend1.AddEntry(hist_sig[kk], legend_signal, "f")
 
     if unblind:
         dumb = dataTGraph1.Draw("e1P,same")
