@@ -1016,29 +1016,34 @@ optional arguments:
 ```
 
 
-### Extract fit results from FitDiagnostics
+### Extract fit results from FitDiagnostics and MultiDimFit
 
 ```shell hl_lines="1"
 > extract_fit_result.py --help
 
 usage: extract_fit_result.py [-h] [--keep KEEP] [--skip SKIP]
                              [--log-level LOG_LEVEL] [--log-name LOG_NAME]
-                             INPUT FIT OUTPUT
+                             INPUT NAME OUTPUT
 
-Script to extract values from a RooFitResult object in a ROOT file into a json
-file with configurable patterns for variable selection. Example usage:
+Script to extract values from a RooFitResult object or a RooWorkspace (snapshot)
+in a ROOT file into a json file with configurable patterns for variable selection.
+Example usage:
 
-# extract variables from a result 'fit_b' starting with 'CMS_'
+# extract variables from a fit result 'fit_b' starting with 'CMS_'
 # (note the quotes)
 > extract_fit_result.py fit.root fit_b output.json --keep 'CMS_*'
 
-# extract variables from a result 'fit_b' except thise starting with 'CMS_'
+# extract variables from a fit result 'fit_b' except thise starting with 'CMS_'
 # (note the quotes)
 > extract_fit_result.py fit.root fit_b output.json --skip 'CMS_*'
 
+# extract variables from a workspace snapshot starting with 'CMS_'
+# (note the quotes)
+> extract_fit_result.py workspace.root w:MultiDimFit output.json --keep 'CMS_*'
+
 positional arguments:
   INPUT                 the input root file to read
-  FIT                   the name of the RootFitResult
+  NAME                  name of the object to read values from
   OUTPUT                name of the output file to write
 
 optional arguments:
