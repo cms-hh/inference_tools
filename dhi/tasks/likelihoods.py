@@ -237,11 +237,12 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         description="when True, do not use the best fit value as reported from combine but "
         "recompute it using scipy.interpolate and scipy.minimize; default: False",
     )
-    show_significances = luigi.BoolParameter(
-        default=True,
+    show_significances = law.CSVParameter(
+        cls=luigi.IntParameter,
+        default=(1, 2, 3, 5),
         significant=False,
-        description="when True, overlay lines and lables denoting integer significances; "
-        "default: True",
+        description="values of integer significances to overlay with lines and lables; "
+        "default: 1,2,3,5",
     )
     shift_negative_values = luigi.BoolParameter(
         default=False,

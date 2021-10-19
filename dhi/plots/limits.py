@@ -474,7 +474,7 @@ def plot_limit_scans(
     # model parameter labels
     if model_parameters:
         draw_objs.extend(create_model_parameters(model_parameters, pad,
-            y_offset=40 if len(legend_entries) < 9 else 140))
+            y_offset=40 if len(legend_entries) < 9 else 130))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad,
