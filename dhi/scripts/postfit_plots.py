@@ -51,14 +51,11 @@ def create_postfit_plots(
 
     print("Reading %s for signal options/process" % file_sig_options)
     with open(file_sig_options) as ff : procs_plot_options_sig = json.load(ff, object_pairs_hook=OrderedDict)
-    scale_GGF = 0
-    scale_VBF = 0
+
     try: scale_GGF = bin["scale_ggf"]
-    except:
-        print("")
+    except: scale_GGF = 0
     try: scale_VBF = bin["scale_vbf"]
-    except:
-        print("")
+    except: scale_VBF = 0
 
     typeFit = None
     if doPostFit:
@@ -72,9 +69,17 @@ def create_postfit_plots(
 
     name_total = "total_background"
 
+    try :
+        norm_X_range_len = len(bin["norm_X_range"])
+    except :
+        norm_X_range_len = 0
+
     if normalize_X_original:
         fileOrig = datacard_original.replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
         print("template on ", fileOrig)
+    elif norm_X_range_len==2:
+        norm_X_range=bin["norm_X_range"]
+        print("Make X-axis between ", norm_X_range)
     else:
         fileOrig = fit_diagnostics_path
 
@@ -104,7 +109,7 @@ def create_postfit_plots(
     # add stack of single H as second
     hprocs = ["ggH", "qqH", "bbH", "ttH", "WH", "ZH", "TH", "tHq", "tHW", "VH"]
     hdecays = ["hbb", "hgg", "hmm", "htt", "hww", "hzz", "hcc",]
-    if bin["merged_eras_fit"] :
+    if bin["single_H_by_era"] :
         singleH = [ "%s_%s_%s" % (proc, erastr, decay) for proc in hprocs for erastr in ["2016", "2017", "2018"] for decay in hdecays ]
     else :
         singleH = [ "%s_%s" % (proc, decay) for proc in hprocs for decay in hdecays ]
@@ -141,12 +146,25 @@ def create_postfit_plots(
                 readFromOriginal = str("%s/%s" % (bin_name_original, histRead)) if not bin_name_original == "none" else str(histRead)
                 print("try original readFrom ", readFromOriginal)
                 template = fileorriginal.Get(readFromOriginal)
+                try :
+                    template.Integral()
+                except :
+                    continue
                 if template.Integral() > 0 : FoundHist = True
 
         print("Getting original readFrom ", readFromOriginal)
         template.GetYaxis().SetTitle(labelY)
         template.SetTitle(" ")
         nbinscatlist = [template.GetNbinsX()]
+    elif norm_X_range_len==2 :
+        readFromTot = str("%s/%s/%s" % (folder, catcat, name_total))
+        hist = fin.Get(readFromTot)
+        print("reading shapes", readFromTot)
+        print(hist.Integral())
+        nbinscat = GetNonZeroBins(hist)
+        nbinscatlist = [nbinscat]
+        template = ROOT.TH1F("", "", nbinscat, norm_X_range[0], norm_X_range[1])
+
     else:
         print("Drawing: ", catcats)
         nbinstotal = 0
@@ -456,12 +474,12 @@ def create_postfit_plots(
                     hist_sig[kk] = hist_sig_part.Clone()
                 else:
                     hist_sig[kk].Add(hist_sig_part)
-                # print(catcat, key,  sig, lastbin, hist_sig_part.Integral(), hist_sig[kk].Integral())
+                print(catcat, key,  sig, lastbin, hist_sig_part.Integral(), hist_sig[kk].Integral())
                 hist_sig[kk].Scale(procs_plot_options_sig[key]["scaleBy"])
-                if "ggHH" in key and scale_GGF > 0 :
+                if "ggHH" in key and scale_GGF > 0 and not scale_GGF == 1 :
                     print("Scaling GGF signal by %d" % scale_GGF )
                     hist_sig[kk].Scale(scale_GGF)
-                if "qqHH" in key and scale_VBF > 0 :
+                if "qqHH" in key and scale_VBF > 0 and not scale_VBF == 1 :
                     print("Scaling VBF signal by %d" % scale_VBF )
                     hist_sig[kk].Scale(scale_VBF)
 
@@ -796,7 +814,7 @@ def addLabel_CMS_preliminary(era, do_bottom):
         lumi = "59.74"
     if era == 20172018:
         lumi = "101.27"
-    if era == 0:
+    if era == 201620172018:
         lumi = "137"
     label_luminosity.AddText(lumi + " fb^{-1} (13 TeV)")
     label_luminosity.SetTextFont(42)

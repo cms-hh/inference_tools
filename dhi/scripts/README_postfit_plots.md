@@ -21,6 +21,7 @@ This is an example of dictionary booking one plot, that should be saved in a .js
     "fitdiagnosis": "/where/is/the/fitdiagnosis.root",
     "datacard_original": "none",
     "bin_name_original": "none",
+    "norm_X_range" : [100.0, 180.0],
     "procs_plot_options_bkg": "plot_options_BKG_colors.json",
     "procs_plot_options_sig": "plot_options_sig_colors.json",
     "header_legend": "bla bla can be latex",
@@ -51,6 +52,7 @@ The keys of the dictionary are the names of the bins to plot distributions for (
 
 - "datacard_original": the datacard.root file with shapes for that bin (what goes along with datacard.txt)
 - "bin_name_original" : For some analyses the bin can be in a folder inside the datacard.root , if this is the case put the name of this folder. If there is no internal folder, just put "none".
+- "norm_X_range": Normalize the X-axis using this range. It is superseed if you give "datacard_original". Usefull for the cases where the analysis provides directly the workspace, instead of shapes. 
 - Y-axis of the shapes distributions (top pad) : "minY" / "maxY"
 - Y-axis of the bottom pad for prefit plot: "minYerr", "maxYerr"
 - Y-axis of the bottom pad for postfit plot: "minYerr_postfit", "maxYerr_postfit" (if it is not given it will use the ones for prefit, defined above)
