@@ -485,9 +485,10 @@ class DatacardTask(HHModelTask):
             if not _paths and has_dcr2:
                 _paths = list(glob.glob(os.path.join(dc_path, pattern)))
 
-            # special handling when a single file from datacards_run2 was matched
+            # special handling when a single, non-workspace file from datacards_run2 was matched
             _single_dc_matched = False
-            if len(_paths) == 1 and has_dcr2 and _paths[0].startswith(dc_path + os.sep):
+            if len(_paths) == 1 and has_dcr2 and _paths[0].startswith(dc_path + os.sep) \
+                    and not cls.file_is_workspace(_paths[0]):
                 _single_dc_matched = True
 
                 # special case: when there is no bin_name defined, use the basename of the path;
@@ -591,7 +592,7 @@ class DatacardTask(HHModelTask):
 
         # complain when the input is a workspace and it's not allowed
         if not self.allow_workspace_input and self.input_is_workspace:
-            raise Exception("{!r}: input {} is a workspace which is now allowed".format(
+            raise Exception("{!r}: input {} is a workspace which is not allowed".format(
                 self, self.split_datacard_path(self.datacards[0])[0]))
 
     @property
@@ -1648,6 +1649,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
             " {self.custom_args}"
             " --out workspace.root"
             " --mass {self.mass}"
+            " --channel-masks"
             " {model_args}"
         ).format(
             self=self,
