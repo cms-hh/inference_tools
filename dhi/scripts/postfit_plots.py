@@ -11,6 +11,8 @@ import json
 from shutil import copyfile
 #import os.path
 from dhi.util import import_ROOT
+import math
+#import pandas as pd
 
 ROOT = import_ROOT()
 
@@ -91,8 +93,10 @@ def create_postfit_plots(
 
     # list of folders to read from
     catcats = bin["align_cats"]
-    yiels_list = dict.fromkeys(catcats, {})
-    round_yiels_list = 4
+    yiels_list = {}
+    for cc, catcat in enumerate(catcats):
+        yiels_list[catcat] = {}
+    round_yiels_list = 2
 
     print("Reading %s for BKG options/process" % file_bkg_options)
     with open(file_bkg_options) as ff : dprocs = json.load(ff, object_pairs_hook=OrderedDict)
@@ -369,6 +373,20 @@ def create_postfit_plots(
         dumb = histogramStack_mc.Add(hist_rebin)
         del dumb
 
+    ### make a single H entry in the yields table(sum the single H components quadratically)
+    for catcat in yiels_list.keys() :
+        singleH_central = 0
+        singleH_err = 0
+        for proc in yiels_list[catcat].keys() :
+            if "H" in proc and not "HH" in proc :
+                singleH_central += yiels_list[catcat][proc]["central"]
+                singleH_err += yiels_list[catcat][proc]["err"]*yiels_list[catcat][proc]["err"]
+
+        yiels_list[catcat]["single_H"] = {
+        "central" : singleH_central,
+        "err" : math.sqrt(singleH_err)
+        }
+
     dumb = hist_total.Draw("same")
     dumb = histogramStack_mc.Draw("hist,same")
     del dumb
@@ -545,6 +563,58 @@ def create_postfit_plots(
 
     with open(savepdf + "_yield.json", 'w') as outfile : json.dump(yiels_list, outfile, sort_keys=True, indent=2)
     print("saved", savepdf + "_yield.json")
+    #### Make human friendly table
+    human_readable_yield_table(yiels_list, bin, dprocs, procs_plot_options_sig, savepdf)
+
+def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig, savepdf) :
+    ## header
+    header_table = "|c"
+    header_label = "process "
+    header_label_confirm = "process "
+    bkg_proc_yields = ""
+    sig_proc_yields = ""
+    total_yield = "Total "
+    round_yiels_list = 2
+    for cc, catcat in enumerate(yields_list.keys()) :
+        header_table += "|c"
+        header_label += " & $%s$ " % bin["align_cats_labels"][cc][0]
+        header_label_confirm += " & %s " % bin["align_cats"][cc]
+    for proc in yields_list[catcat].keys() :
+        if not "H" in proc and not "HH" in proc and not proc=="Total" :
+            bkg_proc_yields += "%s " % dprocs[proc]["label"]
+            for catcat in yields_list.keys() :
+                bkg_proc_yields += " & %s $\pm$ %s " % (str(yields_list[catcat][proc]["central"]), str(yields_list[catcat][proc]["err"]))
+            bkg_proc_yields += " \\\ \n"
+        elif proc=="single_H" :
+            bkg_proc_yields += "single H "
+            for catcat in yields_list.keys() :
+                bkg_proc_yields += " & %s $\pm$ %s " % (str(round(yields_list[catcat][proc]["central"], round_yiels_list)), str(round(yields_list[catcat][proc]["err"], round_yiels_list)))
+            bkg_proc_yields += " \\\ \n"
+        elif  "HH" in proc :
+            sig_proc_yields += "%s " % procs_plot_options_sig[proc]["label"]
+            for catcat in yields_list.keys() :
+                sig_proc_yields += " & %s $\pm$ %s " % (str(yields_list[catcat][proc]["central"]), str(yields_list[catcat][proc]["err"]))
+            sig_proc_yields += " \\\ \n"
+        elif proc=="Total" :
+            for catcat in yields_list.keys() :
+                total_yield += " & %s $\pm$ %s " % (str(round(yields_list[catcat][proc]["central"], round_yiels_list)), str(round(yields_list[catcat][proc]["err"], round_yiels_list)))
+            total_yield += " \\\ \n"
+
+    header_table += "| \n"
+    header_label += "\\\ \\hline \n"
+    header_label_confirm += "\\\ \n"
+    print("saved", savepdf + "_yield.tex")
+    table_tex = open(savepdf + "_yield.tex", 'w')
+    table_tex.write("\\begin{tabular} \n")
+    table_tex.write(header_table)
+    table_tex.write(header_label)
+    #table_tex.write(header_label_confirm)
+    table_tex.write(sig_proc_yields)
+    table_tex.write("\\hline \n")
+    table_tex.write(bkg_proc_yields)
+    table_tex.write("\\hline \\hline \n")
+    table_tex.write(total_yield)
+    table_tex.write("\\end{tabular} \n")
 
 def ordered_dict_prepend(dct, key, value, dict_setitem=dict.__setitem__):
     root = dct._OrderedDict__root
