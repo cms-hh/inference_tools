@@ -577,11 +577,11 @@ def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig,
     round_yiels_list = 2
     for cc, catcat in enumerate(yields_list.keys()) :
         header_table += "|c"
-        header_label += " & $%s$ " % bin["align_cats_labels"][cc][0]
+        header_label += " & $%s$ " % bin["align_cats_labels"][cc][0].replace("#", "\\")
         header_label_confirm += " & %s " % bin["align_cats"][cc]
     for proc in yields_list[catcat].keys() :
         if not "H" in proc and not "HH" in proc and not proc=="Total" :
-            bkg_proc_yields += "%s " % dprocs[proc]["label"]
+            bkg_proc_yields += "%s " % dprocs[proc]["label"].replace("#", "\\")
             for catcat in yields_list.keys() :
                 bkg_proc_yields += " & %s $\pm$ %s " % (str(yields_list[catcat][proc]["central"]), str(yields_list[catcat][proc]["err"]))
             bkg_proc_yields += " \\\ \n"
@@ -591,7 +591,7 @@ def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig,
                 bkg_proc_yields += " & %s $\pm$ %s " % (str(round(yields_list[catcat][proc]["central"], round_yiels_list)), str(round(yields_list[catcat][proc]["err"], round_yiels_list)))
             bkg_proc_yields += " \\\ \n"
         elif  "HH" in proc :
-            sig_proc_yields += "%s " % procs_plot_options_sig[proc]["label"]
+            sig_proc_yields += "%s " % procs_plot_options_sig[proc]["label"].replace("#", "\\").replace("(", "($").replace(")", "$)")
             for catcat in yields_list.keys() :
                 sig_proc_yields += " & %s $\pm$ %s " % (str(yields_list[catcat][proc]["central"]), str(yields_list[catcat][proc]["err"]))
             sig_proc_yields += " \\\ \n"
