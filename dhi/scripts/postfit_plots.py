@@ -74,6 +74,16 @@ def create_postfit_plots(
     except :
         norm_X_range_len = 0
 
+    try :
+        only_yield_table = bin["only_yield_table"]
+    except :
+        only_yield_table = False
+
+    try :
+        scale_signal_in_table = bin["scale_signal_in_table"]
+    except :
+        scale_signal_in_table = 1.0
+
     if normalize_X_original:
         fileOrig = datacard_original.replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
         print("template on ", fileOrig)
@@ -137,7 +147,7 @@ def create_postfit_plots(
 
     print("will draw processes", list(dprocs.keys()))
 
-    if normalize_X_original:
+    if normalize_X_original and not only_yield_table:
         fileorriginal = ROOT.TFile(fileOrig, "READ")
         FoundHist = False
 
@@ -156,7 +166,7 @@ def create_postfit_plots(
         template.GetYaxis().SetTitle(labelY)
         template.SetTitle(" ")
         nbinscatlist = [template.GetNbinsX()]
-    elif norm_X_range_len==2 :
+    elif norm_X_range_len==2 and not only_yield_table:
         readFromTot = str("%s/%s/%s" % (folder, catcat, name_total))
         hist = fin.Get(readFromTot)
         print("reading shapes", readFromTot)
@@ -225,8 +235,9 @@ def create_postfit_plots(
             )
             yiels_list[catcat]["Data"] = info_bin["data_cat"]
             lastbin += info_bin["allbins"]
-        dataTGraph1.Draw()
-        legend1.AddEntry(dataTGraph1, "Data", "p")
+        if only_yield_table :
+            dataTGraph1.Draw()
+            legend1.AddEntry(dataTGraph1, "Data", "p")
 
     lastbin = 0
     hist_total = template.Clone()
@@ -314,6 +325,7 @@ def create_postfit_plots(
     if useLogPlot:
         topPad.SetLogy()
         oplin = "log"
+
 
     topPad.cd()
     dumb = hist_total.Draw()
@@ -467,8 +479,8 @@ def create_postfit_plots(
                 )
                 lastbin += info_bin["allbins"]
                 yiels_list[catcat][key] = {
-                "central" : round(info_bin["yield_cat"], round_yiels_list),
-                "err" : round(info_bin["yield_cat_err"], round_yiels_list)
+                "central" : round(info_bin["yield_cat"]*scale_signal_in_table, round_yiels_list),
+                "err" : round(info_bin["yield_cat_err"]*scale_signal_in_table, round_yiels_list)
                 }
                 if not hist_sig[kk].Integral() > 0:
                     hist_sig[kk] = hist_sig_part.Clone()
@@ -522,7 +534,7 @@ def create_postfit_plots(
             del dumb
 
     #################################
-    if do_bottom:
+    if do_bottom and not only_yield_table :
         bottomPad.cd()
         print("doing bottom pad")
         hist_total_err = template.Clone()
@@ -568,23 +580,25 @@ def create_postfit_plots(
         optbin = "divideByBinWidth"
 
     savepdf = path + "_%s_%s_unblind%s" % (typeFit, oplin, unblind)
-    if not do_bottom:
-        savepdf = savepdf + "_noBottom"
-    print("saving...", savepdf)
-    dumb = canvas.SaveAs(savepdf + ".pdf")
-    print("saved", savepdf + ".pdf")
-    del dumb
-    dumb = canvas.SaveAs(savepdf + ".png")
-    print("saved", savepdf + ".png")
-    del dumb
-    canvas.IsA().Destructor(canvas)
 
     with open(savepdf + "_yield.json", 'w') as outfile : json.dump(yiels_list, outfile, sort_keys=True, indent=2)
     print("saved", savepdf + "_yield.json")
-    #### Make human friendly table
-    human_readable_yield_table(yiels_list, bin, dprocs, procs_plot_options_sig, savepdf)
+    #### Make human friendly tab    if not only_yield_table :le
+    human_readable_yield_table(yiels_list, bin, dprocs, procs_plot_options_sig, savepdf, scale_signal_in_table)
 
-def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig, savepdf) :
+    if not only_yield_table :
+        if not do_bottom:
+            savepdf = savepdf + "_noBottom"
+        print("saving...", savepdf)
+        dumb = canvas.SaveAs(savepdf + ".pdf")
+        print("saved", savepdf + ".pdf")
+        del dumb
+        dumb = canvas.SaveAs(savepdf + ".png")
+        print("saved", savepdf + ".png")
+        del dumb
+    canvas.IsA().Destructor(canvas)
+
+def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig, savepdf, scale_signal_in_table) :
     ## header
     header_table = "|c"
     header_label = "process "
@@ -610,6 +624,8 @@ def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig,
             bkg_proc_yields += " \\\ \n"
         elif  "HH" in proc :
             sig_proc_yields += "%s " % procs_plot_options_sig[proc]["label"].replace("#", "\\").replace("(", "($").replace(")", "$)")
+            if not scale_signal_in_table==1 :
+                sig_proc_yields += "(times %s)" % str(int(scale_signal_in_table))
             for catcat in yields_list.keys() :
                 sig_proc_yields += " & %s $\pm$ %s " % (str(yields_list[catcat][proc]["central"]), str(yields_list[catcat][proc]["err"]))
             sig_proc_yields += " \\\ \n"

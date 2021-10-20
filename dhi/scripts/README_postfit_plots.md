@@ -39,7 +39,9 @@ This is an example of dictionary booking one plot, that should be saved in a .js
     "align_cats": ["ch1","ch2",],
     "align_cats_labelsX": [6, 20],
     "align_cats_labels": [["ch1 bla", "ch1 more details"], ["ch2 bla", "ch2 more details"]],
-    "merged_eras_fit": false
+    "single_H_by_era": false,
+    "only_yield_table" : true,
+    "scale_signal_in_table" : 100.0
     }
   }
 ```
@@ -52,7 +54,7 @@ The keys of the dictionary are the names of the bins to plot distributions for (
 
 - "datacard_original": the datacard.root file with shapes for that bin (what goes along with datacard.txt)
 - "bin_name_original" : For some analyses the bin can be in a folder inside the datacard.root , if this is the case put the name of this folder. If there is no internal folder, just put "none".
-- "norm_X_range": Normalize the X-axis using this range. It is superseed if you give "datacard_original". Usefull for the cases where the analysis provides directly the workspace, instead of shapes. 
+- "norm_X_range": Normalize the X-axis using this range. It is superseed if you give "datacard_original". Usefull for the cases where the analysis provides directly the workspace, instead of shapes. Optional, default is not normalize X-axis.
 - Y-axis of the shapes distributions (top pad) : "minY" / "maxY"
 - Y-axis of the bottom pad for prefit plot: "minYerr", "maxYerr"
 - Y-axis of the bottom pad for postfit plot: "minYerr_postfit", "maxYerr_postfit" (if it is not given it will use the ones for prefit, defined above)
@@ -67,7 +69,10 @@ The keys of the dictionary are the names of the bins to plot distributions for (
 -   "align_cats_labels" are the labels for "align_cats"
 -  "align_cats_labelsX" : the X positions for the labels "align_cats_labels"
 -   "cats_labels_height" : the Y positions for the labels "align_cats_labels"
-- "merged_eras_fit" : if true it will try to read the single H processes with era in name (e.g. "ttH_2017_hbb" instead of "ttH_hbb")
+- "single_H_by_era" : if true it will try to read the single H processes with era in name (e.g. "ttH_2017_hbb" instead of "ttH_hbb"). Optional, default is false.
+- "only_yield_table" : if true only saves the table. Optional, default is false.
+- "scale_signal_in_table" : factor to scale VBF HH and GGF HH on the json/tex tables of yields. Optional, default is not scale.
+
 
 
 - TODO: make the dictionary example on datacards_run2 repo, and make the path to the original datacard.root or relative to the datacards_run2 when I do the example with cards from datacards_run2 repo
