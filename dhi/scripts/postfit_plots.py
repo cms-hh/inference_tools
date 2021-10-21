@@ -13,7 +13,7 @@ from shutil import copyfile
 from dhi.util import import_ROOT
 import math
 #import pandas as pd
-
+import sys
 
 
 def create_postfit_plots(
@@ -29,8 +29,10 @@ def create_postfit_plots(
     file_sig_options,
     file_bkg_options
 ):
+
     ROOT = import_ROOT()
-    ROOT.gROOT.SetBatch(True)
+    #ROOT = imp.reload(ROOT)
+    ROOT.gROOT.SetBatch()
     ROOT.gROOT.SetMustClean(True)
     ROOT.gStyle.SetOptStat("0")
 
@@ -434,7 +436,6 @@ def create_postfit_plots(
         "err" : math.sqrt(singleH_err)
         }
 
-
     dumb = hist_total.Draw("same")
     dumb = histogramStack_mc.Draw("hist,same")
     del dumb
@@ -626,7 +627,12 @@ def create_postfit_plots(
         print("saved", savepdf + ".png")
         del dumb
     canvas.IsA().Destructor(canvas)
+    #ROOT.gROOT.Remove(canvas)
     #ROOT.gROOT.EndOfProcessCleanups()
+    #if 'ROOT' in sys.modules:
+    #    del sys.modules["ROOT"]
+    #
+    ROOT = None
 
 
 def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig, savepdf, scale_signal_in_table) :
