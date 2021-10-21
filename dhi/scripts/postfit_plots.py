@@ -31,7 +31,8 @@ def create_postfit_plots(
 ):
     ROOT = import_ROOT()
     ROOT.gROOT.SetBatch(True)
-    ROOT.gStyle.SetOptStat(0)
+    ROOT.gROOT.SetMustClean(True)
+    ROOT.gStyle.SetOptStat("0")
 
     minY = bin["minY"]
     maxY = bin["maxY"]
@@ -95,7 +96,6 @@ def create_postfit_plots(
         skip_draw_sig = False
 
 
-
     if normalize_X_original:
         fileOrig = datacard_original.replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
         print("template on ", fileOrig)
@@ -119,10 +119,12 @@ def create_postfit_plots(
         header_legend = header_legend + ", #mu(t#bar{t}H)=#hat{#mu}"
 
     # list of folders to read from
-    catcats = bin["align_cats"]
+    catcats = [cc.replace("ERA", str(era)) for cc in bin["align_cats"]]
     yiels_list = {}
-    for cc, catcat in enumerate(catcats):
+    for cc, catcat in enumerate(catcats) :
+        #catcat = catcat.replace("ERA", str(era))
         yiels_list[catcat] = {}
+
     round_yiels_list = 2
 
     print("Reading %s for BKG options/process" % file_bkg_options)
@@ -360,6 +362,7 @@ def create_postfit_plots(
         lastbin = 0  # for putting histograms from different bins in same plot side by side
         addlegend = True
         for cc, catcat in enumerate(catcats):
+
             if not cc == 0:
                 addlegend = False
             if kk == 0:
@@ -385,7 +388,6 @@ def create_postfit_plots(
             "central" : round(info_hist["yield_cat"], round_yiels_list),
             "err" : round(info_hist["yield_cat_err"], round_yiels_list)
             }
-            #round(info_hist["yield_cat"], round_yiels_list)
             lastbin += info_hist["lastbin"]
             if kk == 0:
                 print(info_hist)
@@ -413,7 +415,7 @@ def create_postfit_plots(
         ):
             #print("something went wrong here", hist_rebin.Integral(), hist_rebin, info_hist["lastbin"])
             continue
-        print(key, 0 if hist_rebin == 0 else hist_rebin.Integral())
+        #print(key, 0 if hist_rebin == 0 else hist_rebin.Integral())
         print("Stacking proocess %s, with yield %s " % (key, str(round(hist_rebin.Integral(), 2))))
         dumb = histogramStack_mc.Add(hist_rebin)
         del dumb
@@ -431,6 +433,7 @@ def create_postfit_plots(
         "central" : singleH_central,
         "err" : math.sqrt(singleH_err)
         }
+
 
     dumb = hist_total.Draw("same")
     dumb = histogramStack_mc.Draw("hist,same")
@@ -477,6 +480,8 @@ def create_postfit_plots(
 
         for sig in sigs_to_stack :
             lastbin = 0
+            sum_sig_yield = 0
+            sum_sig_yield_err_square = 0
             for cc, catcat in enumerate(catcats):
                 readFrom = str("%s/%s" % (folder, catcat))
                 info_bin = process_total_histo(
@@ -495,10 +500,12 @@ def create_postfit_plots(
                     totalBand=False
                 )
                 lastbin += info_bin["allbins"]
-                yiels_list[catcat][key] = {
+                yiels_list[catcat][sig] = {
                 "central" : round(info_bin["yield_cat"]*scale_signal_in_table, round_yiels_list),
                 "err" : round(info_bin["yield_cat_err"]*scale_signal_in_table, round_yiels_list)
                 }
+                sum_sig_yield += info_bin["yield_cat"]
+                sum_sig_yield_err_square += info_bin["yield_cat_err"]*info_bin["yield_cat_err"]
                 if not hist_sig[kk].Integral() > 0:
                     hist_sig[kk] = hist_sig_part.Clone()
                 else:
@@ -511,6 +518,10 @@ def create_postfit_plots(
                 if "qqHH" in key and scale_VBF > 0 and not scale_VBF == 1 :
                     print("Scaling VBF signal by %d" % scale_VBF )
                     hist_sig[kk].Scale(scale_VBF)
+            yiels_list[catcat][sig] = {
+            "central" : round(sum_sig_yield*scale_signal_in_table, round_yiels_list),
+            "err" : round(math.sqrt(sum_sig_yield_err_square)*scale_signal_in_table, round_yiels_list)
+            }
 
     if not skip_draw_sig :
       for kk, key in enumerate(procs_plot_options_sig.keys()):
@@ -617,6 +628,7 @@ def create_postfit_plots(
     canvas.IsA().Destructor(canvas)
     #ROOT.gROOT.EndOfProcessCleanups()
 
+
 def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig, savepdf, scale_signal_in_table) :
     ## header
     header_table = "|c"
@@ -632,7 +644,10 @@ def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig,
         header_label_confirm += " & %s " % bin["align_cats"][cc]
     for proc in yields_list[catcat].keys() :
         if not "H" in proc and not "HH" in proc and not proc=="Total" :
-            bkg_proc_yields += "%s " % dprocs[proc]["label"].replace("#", "\\")
+            #if not dprocs[proc]["label"]=="none" :
+            #    bkg_proc_yields += "%s " % dprocs[proc]["label"].replace("#", "\\")
+            #else :
+            bkg_proc_yields += "%s " % proc.replace("_", " ")
             for catcat in yields_list.keys() :
                 bkg_proc_yields += " & %s $\pm$ %s " % (str(yields_list[catcat][proc]["central"]), str(yields_list[catcat][proc]["err"]))
             bkg_proc_yields += " \\\ \n"
@@ -642,7 +657,10 @@ def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig,
                 bkg_proc_yields += " & %s $\pm$ %s " % (str(round(yields_list[catcat][proc]["central"], round_yiels_list)), str(round(yields_list[catcat][proc]["err"], round_yiels_list)))
             bkg_proc_yields += " \\\ \n"
         elif  "HH" in proc :
-            sig_proc_yields += "%s " % procs_plot_options_sig[proc]["label"].replace("#", "\\").replace("(", "($").replace(")", "$)")
+            #if not "_h" in proc :
+            #    sig_proc_yields += "%s " % procs_plot_options_sig[proc]["label"].replace("#", "\\").replace("(", "($").replace(")", "$)")
+            #else :
+            sig_proc_yields += "%s " % proc
             if not scale_signal_in_table==1 :
                 sig_proc_yields += "(times %s)" % str(int(scale_signal_in_table))
             for catcat in yields_list.keys() :
@@ -884,7 +902,7 @@ def stack_histo(
     ROOT
 ):
     histo_name = str("%s/%s" % (folder, name))
-    print("try find %s" % histo_name)
+    #print("try find %s" % histo_name)
     hist = fin.Get(histo_name)
     allbins = catbin
     try:
@@ -1124,7 +1142,8 @@ if __name__ == "__main__":
                 if not overwrite_fitdiag=="no"  :
                     line = line.replace('PATH_FITDIAGNOSIS', overwrite_fitdiag)
                 for key_modify in this_plot :
-                    line = line.replace(key_modify, str(this_plot[key_modify]))
+                    if not (key_modify=="ERA" and this_plot[key_modify]==0 and "align_cats" in line) :
+                        line = line.replace(key_modify, str(this_plot[key_modify]))
                 fout.write(line)
             fin.close()
             fout.close()
@@ -1135,13 +1154,17 @@ if __name__ == "__main__":
             name_plot = "plot_" + list(info_bin.keys())[0]
             # copy the dict files for processes options for each plot to the output_folder for keepsafe
             copyfile(dict_for_era, dict_for_era.replace("temp", name_plot))
+            print("saved %s" % dict_for_era.replace("temp", name_plot))
             for key_bin in info_bin :
                 for pp in [str(info_bin[key_bin]["procs_plot_options_bkg"]), str(info_bin[key_bin]["procs_plot_options_sig"])] :
                     pp = pp.replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
                     if str(pp).startswith("/") :
-                        copyfile(pp, os.path.join(output_folder, os.path.basename(pp)))
+                        dict_save = os.path.join(output_folder, os.path.basename(pp))
+                        copyfile(pp, dict_save)
                     else :
-                        copyfile( os.path.join(os.path.dirname(options_dat), pp),  os.path.join(output_folder, pp))
+                        dict_save = os.path.join(output_folder, pp)
+                        copyfile( os.path.join(os.path.dirname(options_dat), pp),  dict_save)
+                    print("saved %s" % dict_save)
 
         for key, bin in info_bin.iteritems():
 
@@ -1161,7 +1184,7 @@ if __name__ == "__main__":
             for era in loop_eras :
                 print("Drawing %s, for era %s" % (key, str(era)))
                 create_postfit_plots(
-                    path="%s/plot_%s" % (output_folder, key),
+                    path="%s/plot_%s" % (output_folder, key.replace("ERA", str(era))),
                     fit_diagnostics_path=data_dir,
                     doPostFit=doPostFit,
                     divideByBinWidth=divideByBinWidth,

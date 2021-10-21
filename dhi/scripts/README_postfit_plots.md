@@ -59,7 +59,7 @@ The keys of the dictionary are the names of the bins to plot distributions for (
 - Y-axis of the bottom pad for prefit plot: "minYerr", "maxYerr"
 - Y-axis of the bottom pad for postfit plot: "minYerr_postfit", "maxYerr_postfit" (if it is not given it will use the ones for prefit, defined above)
 - "useLogPlot", for the shapes distributions (top pad)
-- "era", to decide which lumi put on plot header
+- "era", to decide which lumi put on plot header. If era is set 0 and the bin names naming convention uses t in the name it will make plots from the same template looping on eras (2016, 2017, 2018) 
 - "labelX" is the variable being plotted
 - options for legends "header_legend", "number_columns_legend"
 - "procs_plot_options_bkg" is the name of the json file containing the list of BKG processes to be drawn and options for plotting. See point bellow.
