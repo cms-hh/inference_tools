@@ -15,7 +15,6 @@ import math
 #import pandas as pd
 import sys
 
-
 def create_postfit_plots(
     path,
     fit_diagnostics_path,
@@ -31,6 +30,7 @@ def create_postfit_plots(
 ):
 
     ROOT = import_ROOT()
+    ROOT.gROOT.CloseFiles()
     #ROOT = imp.reload(ROOT)
     ROOT.gROOT.SetBatch()
     ROOT.gROOT.SetMustClean(True)
@@ -96,7 +96,6 @@ def create_postfit_plots(
         skip_draw_sig = bin["skip_draw_sig"]
     except :
         skip_draw_sig = False
-
 
     if normalize_X_original:
         fileOrig = datacard_original.replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
@@ -622,18 +621,20 @@ def create_postfit_plots(
         print("saving...", savepdf)
         dumb = canvas.SaveAs(savepdf + ".pdf")
         print("saved", savepdf + ".pdf")
-        del dumb
         dumb = canvas.SaveAs(savepdf + ".png")
         print("saved", savepdf + ".png")
         del dumb
-    canvas.IsA().Destructor(canvas)
-    #ROOT.gROOT.Remove(canvas)
-    #ROOT.gROOT.EndOfProcessCleanups()
-    #if 'ROOT' in sys.modules:
-    #    del sys.modules["ROOT"]
-    #
-    ROOT = None
 
+    # desctructing files and canvases
+    if normalize_X_original and not only_yield_table:
+        fileorriginal.IsA().Destructor(fileorriginal)
+    fin.IsA().Destructor(fin)
+    if do_bottom and not only_yield_table :
+        bottomPad.IsA().Destructor(bottomPad)
+    topPad.IsA().Destructor(topPad)
+    canvas.IsA().Destructor(canvas)
+
+    return True
 
 def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig, savepdf, scale_signal_in_table) :
     ## header
@@ -1189,7 +1190,8 @@ if __name__ == "__main__":
 
             for era in loop_eras :
                 print("Drawing %s, for era %s" % (key, str(era)))
-                create_postfit_plots(
+
+                saved_all_plots = create_postfit_plots(
                     path="%s/plot_%s" % (output_folder, key.replace("ERA", str(era))),
                     fit_diagnostics_path=data_dir,
                     doPostFit=doPostFit,
