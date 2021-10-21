@@ -188,7 +188,6 @@ def create_postfit_plots(
         readFromTot = str("%s/%s/%s" % (folder, catcat, name_total))
         hist = fin.Get(readFromTot)
         print("reading shapes", readFromTot)
-        print(hist.Integral())
         nbinscat = GetNonZeroBins(hist)
         nbinscatlist = [nbinscat]
         template = ROOT.TH1F("", "", nbinscat, norm_X_range[0], norm_X_range[1])
@@ -201,10 +200,8 @@ def create_postfit_plots(
             readFromTot = str("%s/%s/%s" % (folder, catcat, name_total))
             hist = fin.Get(readFromTot)
             print("reading shapes", readFromTot)
-            print(hist.Integral())
             nbinscat = GetNonZeroBins(hist)
             nbinscatlist += [nbinscat]
-            print(readFromTot, nbinscat)
             nbinstotal += nbinscat
         template = ROOT.TH1F("my_hist", "", nbinstotal, 0 - 0.5, nbinstotal - 0.5)
         template.GetYaxis().SetTitle(labelY)
@@ -355,7 +352,6 @@ def create_postfit_plots(
     del dumb
     histogramStack_mc = ROOT.THStack()
     print("list of processes considered and their integrals")
-    print(nbinscatlist)
     linebin = []
     linebinW = []
     poslinebinW_X = []
@@ -400,8 +396,6 @@ def create_postfit_plots(
             }
             lastbin += info_hist["lastbin"]
             if kk == 0:
-                print(info_hist)
-                print("info_hist[binEdge]", info_hist["binEdge"])
                 if info_hist["binEdge"] > 0:
                     linebin += [
                         ROOT.TLine(info_hist["binEdge"], 0.0, info_hist["binEdge"], y0 * 1.1)
@@ -423,8 +417,8 @@ def create_postfit_plots(
             or not hist_rebin.Integral() > 0
             or (info_hist["labelPos"] == 0 and not normalize_X_original)
         ):
-            if hist_rebin.Integral() > 0 :
-                print("something went wrong here", key, hist_rebin.Integral(), hist_rebin, info_hist["lastbin"], info_hist["labelPos"] )
+            #if hist_rebin.Integral() > 0 :
+            #    print("something went wrong here", key, hist_rebin.Integral(), hist_rebin, info_hist["lastbin"], info_hist["labelPos"] )
             continue
         #print(key, 0 if hist_rebin == 0 else hist_rebin.Integral())
         print("Stacking proocess %s, with yield %s " % (key, str(round(hist_rebin.Integral(), 2))))
@@ -648,7 +642,7 @@ def create_postfit_plots(
     with open(savepdf + "_yield.json", 'w') as outfile : json.dump(yiels_list, outfile, sort_keys=False, indent=2)
     print("saved", savepdf + "_yield.json")
     #### Make human friendly tab    if not only_yield_table :le
-    human_readable_yield_table(yiels_list, bin, dprocs, procs_plot_options_sig, savepdf, scale_signal_in_table)
+    human_readable_yield_table(yiels_list, bin, savepdf, scale_signal_in_table, unblind)
 
     if not only_yield_table :
         if not do_bottom:
@@ -671,7 +665,7 @@ def create_postfit_plots(
 
     return True
 
-def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig, savepdf, scale_signal_in_table) :
+def human_readable_yield_table(yields_list, bin, savepdf, scale_signal_in_table, unblind) :
     ## header
     header_table = "|c"
     header_label = "process "
@@ -709,13 +703,14 @@ def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig,
                 data_yield += " & %s " % (str(round(yields_list[catcat][proc]["central"], round_yiels_list)))
             data_yield += " \\\ \n"
 
-    header_table += "| \n"
+    header_table += "|"
     header_label += "\\\ \\hline \n"
     header_label_confirm += "\\\ \n"
     print("saved", savepdf + "_yield.tex")
     table_tex = open(savepdf + "_yield.tex", 'w')
-    table_tex.write("\\begin{tabular} \n")
-    table_tex.write(header_table)
+    table_tex.write("\\begin{tabular}{%s} \n" % header_table)
+    #table_tex.write(header_table)
+    table_tex.write("\\hline  \n")
     table_tex.write(header_label)
     #table_tex.write(header_label_confirm)
     table_tex.write(sig_proc_yields)
@@ -723,8 +718,11 @@ def human_readable_yield_table(yields_list, bin, dprocs, procs_plot_options_sig,
     table_tex.write(bkg_proc_yields)
     table_tex.write("\\hline \\hline \n")
     table_tex.write(total_yield)
-    table_tex.write("\\hline \\hline \n")
-    table_tex.write(data_yield)
+    table_tex.write("\\hline  \n")
+    if unblind :
+        table_tex.write("\\hline  \n")
+        table_tex.write(data_yield)
+        table_tex.write("\\hline  \n")
     table_tex.write("\\end{tabular} \n")
 
 def ordered_dict_prepend(dct, key, value, dict_setitem=dict.__setitem__):
@@ -758,11 +756,6 @@ def process_data_histo(
 ):
     readFrom = str("%s/data" % folder)
     dataTGraph = fin.Get(readFrom)
-    #try :
-    #    dataTGraph.Integral()
-    #except :
-    #    readFrom = str("%s/data_obs" % folder)
-    #    dataTGraph = fin.Get(readFrom)
     print("adding", readFrom)
     allbins = catbin
     for ii in xrange(0, allbins):
@@ -1184,7 +1177,7 @@ if __name__ == "__main__":
                 if not overwrite_fitdiag=="no"  :
                     line = line.replace('PATH_FITDIAGNOSIS', overwrite_fitdiag)
                 for key_modify in this_plot :
-                    if not (key_modify=="ERA" and this_plot[key_modify]==0 and "align_cats" in line) :
+                    if not (key_modify=="ERA" and this_plot[key_modify]==0 and not "era" in line) :
                         line = line.replace(key_modify, str(this_plot[key_modify]))
                 fout.write(line)
             fin.close()
