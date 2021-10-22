@@ -480,6 +480,7 @@ class DatacardTask(HHModelTask):
             # get matching paths
             pattern = expand_path(pattern)
             _paths = [] if has_dcr2 and in_dc_path else list(glob.glob(pattern))
+            _paths = map(os.path.realpath, _paths)
 
             # when the pattern did not match anything, repeat relative to the datacards_run2 dir
             if not _paths and has_dcr2:
@@ -491,10 +492,9 @@ class DatacardTask(HHModelTask):
                     and not cls.file_is_workspace(_paths[0]):
                 _single_dc_matched = True
 
-                # special case: when there is no bin_name defined, use the basename of the path;
-                # this will most likely match the analysis channel name of cards to be combined
+                # special case: when there is no bin_name defined, use the analysis channel name
                 if not bin_name:
-                    bin_name = os.path.basename(_paths[0])
+                    bin_name = os.path.relpath(_paths[0], dc_path).split(os.path.sep)[0]
             single_dc_matched.append(_single_dc_matched)
 
             # when directories are given, assume to find a file "datacard.txt"
@@ -515,8 +515,9 @@ class DatacardTask(HHModelTask):
                 __paths.append(path)
             _paths = __paths
 
-            # keep only existing cards
+            # keep only existing cards and resolve them to get deterministic hashes later on
             _paths = filter(os.path.exists, _paths)
+            _paths = map(os.path.realpath, _paths)
 
             # complain when no files matched
             if not _paths:
@@ -524,9 +525,6 @@ class DatacardTask(HHModelTask):
                     raise Exception("no matching datacards found for pattern {}".format(pattern))
                 else:
                     raise Exception("datacard {} does not exist".format(pattern))
-
-            # resolve paths to make them fully deterministic as a hash might be built later on
-            _paths = map(os.path.realpath, _paths)
 
             # add datacard path and optional bin name
             for path in _paths:
@@ -1370,6 +1368,26 @@ class CombineCommandTask(CommandTask):
 
     exclude_index = True
 
+    def __init__(self, *args, **kwargs):
+        super(CombineCommandTask, self).__init__(*args, **kwargs)
+
+        # ugly hack for quick combination tests: force certain features for bbbb_boosted cards, i.e.
+        # when running blinded, avoid using snapshots and ensure that some mandatory custom args are
+        # set; this is highly messy, but there will be a clean, generic approach in the future
+        datacards = getattr(self, "datacards", ("NOTEXISTING",))
+        blinded = not getattr(self, "unblinded", True)
+        is_bbbb_boosted = all(
+            (bin_name and bin_name.startswith("bbbb_boosted"))
+            for bin_name in (self.split_datacard_path(path)[1] for path in datacards)
+        )
+        if is_bbbb_boosted and blinded:
+            if getattr(self, "use_snapshot", False):
+                self.use_snapshot = False
+            if "--toysFrequentist" not in self.custom_args:
+                self.custom_args += " --toysFrequentist"
+            if "--bypassFrequentistFit" not in self.custom_args:
+                self.custom_args += " --bypassFrequentistFit"
+
     def get_minimizer_args(self, skip_default=False):
         args = ""
         if not self.minimizer:
@@ -1649,7 +1667,6 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
             " {self.custom_args}"
             " --out workspace.root"
             " --mass {self.mass}"
-            " --channel-masks"
             " {model_args}"
         ).format(
             self=self,
