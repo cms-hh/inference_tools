@@ -8,7 +8,23 @@ python dhi/scripts/postfit_plots.py \
 --plot_options_dict /where/is/plot_options.json
 ```
 
-There are additional options, like eg  `--unblind` (the default is blinded). Please use `--help` to see further options.
+There are additional options, like eg  
+
+- `--unblind` will unblind all the plots on the booked list (the default is blinded).
+- In `--overwrite` you can give a dictionary with a list of plots, each plot is define by substituting keywords on `plot_options_dict`.
+- by default the command extract prefit, if you want postfit quantities add the option `--doPostFit`.
+
+Please use `--help` to see further options.
+
+The command will also produce:
+
+-  a json and tex file with a table of yields and uncertainties.
+  - The tex file ready to be compiled inside a `\begin{table}` will be formatted as the plot. E.g, if processes are merged for plotting, their yields will be summed up on the table (with the uncertainties added quadratically).
+  If datacard bins are plotted on a same canvas they will appear as columns on the tex table.
+- a copy  json file with the exact plot options of that made that plot along with the plot.
+
+[TODO]
+- add dumb example to this repo.
 
 # Explaining the dictionary
 
@@ -59,7 +75,7 @@ The keys of the dictionary are the names of the bins to plot distributions for (
 - Y-axis of the bottom pad for prefit plot: "minYerr", "maxYerr"
 - Y-axis of the bottom pad for postfit plot: "minYerr_postfit", "maxYerr_postfit" (if it is not given it will use the ones for prefit, defined above)
 - "useLogPlot", for the shapes distributions (top pad)
-- "era", to decide which lumi put on plot header. If era is set 0 and the bin names naming convention uses t in the name it will make plots from the same template looping on eras (2016, 2017, 2018) 
+- "era", to decide which lumi put on plot header. If era is set 0 and the bin names naming convention uses t in the name it will make plots from the same template looping on eras (2016, 2017, 2018)
 - "labelX" is the variable being plotted
 - options for legends "header_legend", "number_columns_legend"
 - "procs_plot_options_bkg" is the name of the json file containing the list of BKG processes to be drawn and options for plotting. See point bellow.
