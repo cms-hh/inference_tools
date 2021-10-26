@@ -688,14 +688,20 @@ def human_readable_yield_table(yields_list, bin, savepdf, scale_signal_in_table,
             bkg_proc_yields += "$%s$ " % bkg_proc_yields_test.replace("#", "\\") if "#" in bkg_proc_yields_test else " %s" % bkg_proc_yields_test
             bkg_proc_yields = bkg_proc_yields.replace(" + jets$", "$ + jets")
             for catcat in yields_list.keys() :
-                bkg_proc_yields += " & %s $\pm$ %s " % (str(yields_list[catcat][proc]["central"]), str(yields_list[catcat][proc]["err"]))
+                if yields_list[catcat][proc]["central"] < 0.04 :
+                    bkg_proc_yields += " & -- "
+                else :
+                    bkg_proc_yields += " & %s $\pm$ %s " % (str(yields_list[catcat][proc]["central"]), str(yields_list[catcat][proc]["err"]))
             bkg_proc_yields += " \\\ \n"
         elif  "HH" in proc :
             sig_proc_yields += yields_list[catcat][proc]["label"].replace("#", "\\").replace("(", "($").replace(")", "$)")
             if not scale_signal_in_table==1 :
                 sig_proc_yields += " (times %s)" % str(int(scale_signal_in_table))
             for catcat in yields_list.keys() :
-                sig_proc_yields += " & %s $\pm$ %s " % (str(yields_list[catcat][proc]["central"]), str(yields_list[catcat][proc]["err"]))
+                if yields_list[catcat][proc]["central"] < 0.04 :
+                    sig_proc_yields += " & -- "
+                else :
+                    sig_proc_yields += " & %s $\pm$ %s " % (str(yields_list[catcat][proc]["central"]), str(yields_list[catcat][proc]["err"]))
             sig_proc_yields += " \\\ \n"
         elif proc=="Total" :
             for catcat in yields_list.keys() :
