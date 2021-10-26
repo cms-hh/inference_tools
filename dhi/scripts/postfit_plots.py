@@ -11,35 +11,42 @@ import json
 from shutil import copyfile
 #import os.path
 from dhi.util import import_ROOT
-
-ROOT = import_ROOT()
+import math
+#import pandas as pd
+import sys
 
 def create_postfit_plots(
     path,
     fit_diagnostics_path,
-    normalize_X_original,
     doPostFit,
     divideByBinWidth,
     bin,
+    era,
     binToRead,
     unblind,
     options_dat,
     file_sig_options,
     file_bkg_options
 ):
-    ROOT.gROOT.SetBatch(True)
-    ROOT.gStyle.SetOptStat(0)
+
+    ROOT = import_ROOT()
+    ROOT.gROOT.CloseFiles()
+    #ROOT = imp.reload(ROOT)
+    ROOT.gROOT.SetBatch()
+    ROOT.gROOT.SetMustClean(True)
+    ROOT.gStyle.SetOptStat("0")
 
     minY = bin["minY"]
     maxY = bin["maxY"]
-    if doPostFit and bin["minYerr_postfit"] :
-        minYerr = bin["minYerr_postfit"]
-        maxYerr = bin["maxYerr_postfit"]
-    else :
-        minYerr = bin["minYerr"]
-        maxYerr = bin["maxYerr"]
+    minYerr = bin["minYerr"]
+    maxYerr = bin["maxYerr"]
+    if doPostFit :
+        try: minYerr = bin["minYerr_postfit"]
+        except: True
+        try: maxYerr = bin["maxYerr_postfit"]
+        except: True
     useLogPlot = bin["useLogPlot"]
-    era = bin["era"]
+    #era = bin["era"]
     labelX = bin["labelX"]
     header_legend = bin["header_legend"]
     datacard_original = bin["datacard_original"]
@@ -48,6 +55,11 @@ def create_postfit_plots(
 
     print("Reading %s for signal options/process" % file_sig_options)
     with open(file_sig_options) as ff : procs_plot_options_sig = json.load(ff, object_pairs_hook=OrderedDict)
+
+    try: scale_GGF = bin["scale_ggf"]
+    except: scale_GGF = 0
+    try: scale_VBF = bin["scale_vbf"]
+    except: scale_VBF = 0
 
     typeFit = None
     if doPostFit:
@@ -61,9 +73,36 @@ def create_postfit_plots(
 
     name_total = "total_background"
 
+    normalize_X_original = True
+    if bin["datacard_original"] == "none":
+        normalize_X_original = False
+
+    try :
+        norm_X_range_len = len(bin["norm_X_range"])
+    except :
+        norm_X_range_len = 0
+
+    try :
+        only_yield_table = bin["only_yield_table"]
+    except :
+        only_yield_table = False
+
+    try :
+        scale_signal_in_table = bin["scale_signal_in_table"]
+    except :
+        scale_signal_in_table = 1.0
+
+    try :
+        skip_draw_sig = bin["skip_draw_sig"]
+    except :
+        skip_draw_sig = False
+
     if normalize_X_original:
         fileOrig = datacard_original.replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
         print("template on ", fileOrig)
+    elif norm_X_range_len==2:
+        norm_X_range=bin["norm_X_range"]
+        print("Make X-axis between ", norm_X_range)
     else:
         fileOrig = fit_diagnostics_path
 
@@ -81,9 +120,13 @@ def create_postfit_plots(
         header_legend = header_legend + ", #mu(t#bar{t}H)=#hat{#mu}"
 
     # list of folders to read from
-    catcats = bin["align_cats"]
-    yiels_list = dict.fromkeys(catcats, {})
-    round_yiels_list = 4
+    catcats = [cc.replace("ERA", str(era)) for cc in bin["align_cats"]]
+    yiels_list = {}
+    for cc, catcat in enumerate(catcats) :
+        #catcat = catcat.replace("ERA", str(era))
+        yiels_list[catcat] = OrderedDict()
+
+    round_yiels_list = 2
 
     print("Reading %s for BKG options/process" % file_bkg_options)
     with open(file_bkg_options) as ff : dprocs = json.load(ff, object_pairs_hook=OrderedDict)
@@ -91,7 +134,7 @@ def create_postfit_plots(
     # add stack of single H as second
     hprocs = ["ggH", "qqH", "bbH", "ttH", "WH", "ZH", "TH", "tHq", "tHW", "VH"]
     hdecays = ["hbb", "hgg", "hmm", "htt", "hww", "hzz", "hcc",]
-    if bin["merged_eras_fit"] :
+    if bin["single_H_by_era"] :
         singleH = [ "%s_%s_%s" % (proc, erastr, decay) for proc in hprocs for erastr in ["2016", "2017", "2018"] for decay in hdecays ]
     else :
         singleH = [ "%s_%s" % (proc, decay) for proc in hprocs for decay in hdecays ]
@@ -99,7 +142,8 @@ def create_postfit_plots(
     singleH += ["TH", "VH", "TTH", "ttVH"]
     ## make a list without the major
     countOnce = 0
-    for sh in singleH:
+    label_singleH = "none"
+    for ss, sh in enumerate(singleH):
         if countOnce == 0:
             hist = fin.Get(str("%s/%s/%s" % (folder, catcats[0], sh)))
             try:
@@ -111,6 +155,8 @@ def create_postfit_plots(
             print("Add single H legend (proc %s)" % sh)
         else:
             label_singleH = "none"
+        if ss == 0 :
+            label_singleH = "single H"
         ordered_dict_prepend(
             dprocs,
             sh,
@@ -119,7 +165,7 @@ def create_postfit_plots(
 
     print("will draw processes", list(dprocs.keys()))
 
-    if normalize_X_original:
+    if normalize_X_original and not only_yield_table:
         fileorriginal = ROOT.TFile(fileOrig, "READ")
         FoundHist = False
 
@@ -128,12 +174,24 @@ def create_postfit_plots(
                 readFromOriginal = str("%s/%s" % (bin_name_original, histRead)) if not bin_name_original == "none" else str(histRead)
                 print("try original readFrom ", readFromOriginal)
                 template = fileorriginal.Get(readFromOriginal)
+                try :
+                    template.Integral()
+                except :
+                    continue
                 if template.Integral() > 0 : FoundHist = True
 
         print("Getting original readFrom ", readFromOriginal)
         template.GetYaxis().SetTitle(labelY)
         template.SetTitle(" ")
         nbinscatlist = [template.GetNbinsX()]
+    elif norm_X_range_len==2 and not only_yield_table:
+        readFromTot = str("%s/%s/%s" % (folder, catcat, name_total))
+        hist = fin.Get(readFromTot)
+        print("reading shapes", readFromTot)
+        nbinscat = GetNonZeroBins(hist)
+        nbinscatlist = [nbinscat]
+        template = ROOT.TH1F("", "", nbinscat, norm_X_range[0], norm_X_range[1])
+
     else:
         print("Drawing: ", catcats)
         nbinstotal = 0
@@ -142,10 +200,8 @@ def create_postfit_plots(
             readFromTot = str("%s/%s/%s" % (folder, catcat, name_total))
             hist = fin.Get(readFromTot)
             print("reading shapes", readFromTot)
-            print(hist.Integral())
             nbinscat = GetNonZeroBins(hist)
             nbinscatlist += [nbinscat]
-            print(readFromTot, nbinscat)
             nbinstotal += nbinscat
         template = ROOT.TH1F("my_hist", "", nbinstotal, 0 - 0.5, nbinstotal - 0.5)
         template.GetYaxis().SetTitle(labelY)
@@ -178,8 +234,11 @@ def create_postfit_plots(
             readFromTot = str("%s/%s/%s" % (folder, catcat, name_total))
             print(" histtotal ", readFromTot)
             histtotal = fin.Get(readFromTot)
-            lastbin += process_data_histo(
+            data_cat = 0
+            info_bin = process_data_histo(
+                ROOT,
                 template,
+                data_cat,
                 dataTGraph1,
                 readFrom,
                 fin,
@@ -188,16 +247,22 @@ def create_postfit_plots(
                 nbinscatlist[cc],
                 minY,
                 maxY,
-                divideByBinWidth,
+                divideByBinWidth
             )
-        dataTGraph1.Draw()
-        legend1.AddEntry(dataTGraph1, "Data", "p")
+            yiels_list[catcat]["Data"] = {
+                "central" : info_bin["data_cat"],
+                "label" : "Observed"
+            }
+            lastbin += info_bin["allbins"]
+        if only_yield_table :
+            dataTGraph1.Draw()
+            legend1.AddEntry(dataTGraph1, "Data", "p")
 
     lastbin = 0
     hist_total = template.Clone()
     for cc, catcat in enumerate(catcats):
         readFrom = str("%s/%s" % (folder, catcat))
-        print("read the hist with total uncertainties", readFrom, catcat)
+        #print("read the hist with total uncertainties", readFrom, catcat)
         info_bin = process_total_histo(
             hist_total,
             readFrom,
@@ -210,10 +275,15 @@ def create_postfit_plots(
             nbinscatlist[cc],
             minY,
             maxY,
-            totalBand=True,
+            ROOT,
+            totalBand=True
         )
         lastbin += info_bin["allbins"]
-        yiels_list[catcat]["Total"] = round(info_bin["yield_cat"], round_yiels_list)
+        yiels_list[catcat]["Total"] = {
+        "central" : round(info_bin["yield_cat"], round_yiels_list),
+        "err" : round(info_bin["yield_cat_err"], round_yiels_list),
+        "label" : "Total"
+        }
     print("hist_total", hist_total.Integral())
 
     ## declare canvases sizes accordingly
@@ -297,6 +367,7 @@ def create_postfit_plots(
         lastbin = 0  # for putting histograms from different bins in same plot side by side
         addlegend = True
         for cc, catcat in enumerate(catcats):
+
             if not cc == 0:
                 addlegend = False
             if kk == 0:
@@ -315,13 +386,16 @@ def create_postfit_plots(
                 normalize_X_original,
                 firstHisto,
                 era,
-                legend1
+                legend1,
+                ROOT
             )
-            yiels_list[catcat][key] = round(info_hist["yield_cat"], round_yiels_list)
+            yiels_list[catcat][key] = {
+            "central" : round(info_hist["yield_cat"], round_yiels_list),
+            "err" : round(info_hist["yield_cat_err"], round_yiels_list),
+            "label" :  dprocs[key]["label"]
+            }
             lastbin += info_hist["lastbin"]
             if kk == 0:
-                print(info_hist)
-                print("info_hist[binEdge]", info_hist["binEdge"])
                 if info_hist["binEdge"] > 0:
                     linebin += [
                         ROOT.TLine(info_hist["binEdge"], 0.0, info_hist["binEdge"], y0 * 1.1)
@@ -343,11 +417,14 @@ def create_postfit_plots(
             or not hist_rebin.Integral() > 0
             or (info_hist["labelPos"] == 0 and not normalize_X_original)
         ):
+            #if hist_rebin.Integral() > 0 :
+            #    print("something went wrong here", key, hist_rebin.Integral(), hist_rebin, info_hist["lastbin"], info_hist["labelPos"] )
             continue
-        print(key, 0 if hist_rebin == 0 else hist_rebin.Integral())
+        #print(key, 0 if hist_rebin == 0 else hist_rebin.Integral())
         print("Stacking proocess %s, with yield %s " % (key, str(round(hist_rebin.Integral(), 2))))
         dumb = histogramStack_mc.Add(hist_rebin)
         del dumb
+        del hist_rebin
 
     dumb = hist_total.Draw("same")
     dumb = histogramStack_mc.Draw("hist,same")
@@ -362,7 +439,6 @@ def create_postfit_plots(
         line1.Draw()
 
     for cc, cat in enumerate(bin["align_cats_labels"]):
-        print("Draw label cat", cat, cc)
         sumBottom = 0
         for ccf, cf in enumerate(cat):
             linebinW = ROOT.TLatex()
@@ -377,8 +453,9 @@ def create_postfit_plots(
                 sumBottom += -2.4
 
     ## draw signal
-    hist_sig = [ROOT.TH1F() for _ in range(len(procs_plot_options_sig.keys()))]
-    for kk, key in enumerate(procs_plot_options_sig.keys()):
+    if not skip_draw_sig :
+     hist_sig = [ROOT.TH1F() for _ in range(len(procs_plot_options_sig.keys()))]
+     for kk, key in enumerate(procs_plot_options_sig.keys()):
         hist_sig_part = template.Clone()
         for cc, catcat in enumerate(catcats):
             ### make the single H stack entry
@@ -391,7 +468,7 @@ def create_postfit_plots(
                     sigs_to_stack += [obj_name]
             print(catcat, key, "sigs_to_stack ", sigs_to_stack)
 
-        for sig in sigs_to_stack:  # procs_plot_options_sig[key]["processes"] :
+        for ss, sig in enumerate(sigs_to_stack) :
             lastbin = 0
             for cc, catcat in enumerate(catcats):
                 readFrom = str("%s/%s" % (folder, catcat))
@@ -407,18 +484,34 @@ def create_postfit_plots(
                     nbinscatlist[cc],
                     minY,
                     maxY,
-                    totalBand=False,
+                    ROOT,
+                    totalBand=False
                 )
                 lastbin += info_bin["allbins"]
-                yiels_list[catcat][key] = round(info_bin["yield_cat"], round_yiels_list)
+                label_sig = "none"
+                if ss == len(sigs_to_stack) - 1 :
+                    label_sig = procs_plot_options_sig[key]["label"]
+                yiels_list[catcat][sig] = {
+                "central" : round(info_bin["yield_cat"]*scale_signal_in_table, round_yiels_list),
+                "err" : round(info_bin["yield_cat_err"]*scale_signal_in_table, round_yiels_list),
+                "label" : label_sig
+                }
                 if not hist_sig[kk].Integral() > 0:
                     hist_sig[kk] = hist_sig_part.Clone()
                 else:
                     hist_sig[kk].Add(hist_sig_part)
-                # print(catcat, key,  sig, lastbin, hist_sig_part.Integral(), hist_sig[kk].Integral())
+                #print(catcat, key,  sig, lastbin, hist_sig_part.Integral(), hist_sig[kk].Integral())
                 hist_sig[kk].Scale(procs_plot_options_sig[key]["scaleBy"])
+                if "ggHH" in key and scale_GGF > 0 and not scale_GGF == 1 :
+                    print("Scaling GGF signal by %d" % scale_GGF )
+                    hist_sig[kk].Scale(scale_GGF)
+                if "qqHH" in key and scale_VBF > 0 and not scale_VBF == 1 :
+                    print("Scaling VBF signal by %d" % scale_VBF )
+                    hist_sig[kk].Scale(scale_VBF)
+        del hist_sig_part
 
-    for kk, key in enumerate(procs_plot_options_sig.keys()):
+    if not skip_draw_sig :
+      for kk, key in enumerate(procs_plot_options_sig.keys()):
         try:
             hist_sig[kk].Integral()
         except:
@@ -431,7 +524,50 @@ def create_postfit_plots(
         hist_sig[kk].SetLineWidth(2)
         dumb = hist_sig[kk].Draw("hist,same")
         del dumb
-        legend1.AddEntry(hist_sig[kk], procs_plot_options_sig[key]["label"], "f")
+        legend_signal = procs_plot_options_sig[key]["label"]
+        if "ggHH" in key and scale_GGF > 0 and not scale_GGF == 1 :
+            legend_signal = "%s X %i" % (legend_signal, scale_GGF)
+        if "qqHH" in key and scale_VBF > 0 and not scale_VBF == 1 :
+            legend_signal = "%s X %i" % (legend_signal, scale_VBF)
+        legend1.AddEntry(hist_sig[kk], legend_signal, "f")
+
+    ## make an entry with the sum of what is to sum
+    for catcat in yiels_list.keys() :
+        last_was_none = False
+        counter_last_was_none = 0
+        string_sum=""
+        for pp, proc in enumerate(yiels_list[catcat].keys()) :
+
+            if "Data" in proc :
+                continue
+            if not last_was_none  :
+                bkg_central = yiels_list[catcat][proc]["central"]
+                bkg_err_square = yiels_list[catcat][proc]["err"]*yiels_list[catcat][proc]["err"]
+            else :
+                bkg_central += yiels_list[catcat][proc]["central"]
+                bkg_err_square += yiels_list[catcat][proc]["err"]*yiels_list[catcat][proc]["err"]
+
+            if yiels_list[catcat][proc]["label"]=="none" :
+                last_was_none = True
+                counter_last_was_none += 1
+                if not "H" in proc :
+                    string_sum += "%s, " %proc
+                    #print("summing up on table %s" % proc)
+                continue
+
+            if counter_last_was_none > 0 :
+                string_sum += "%s, " %proc
+                print("summing up on table %s in %s" % (string_sum if not "H" in proc else "singleH" , proc + "_sum"))
+                yiels_list[catcat][proc + "_sum"] = {
+                "central" : bkg_central,
+                "err" : round(math.sqrt(bkg_err_square), round_yiels_list),
+                "label" : yiels_list[catcat][proc]["label"]
+                }
+                # mark that this last signal is not to go on the tex table
+                yiels_list[catcat][proc]["label"] = "none"
+                counter_last_was_none = 0
+                last_was_none = False
+                string_sum=""
 
     if unblind:
         dumb = dataTGraph1.Draw("e1P,same")
@@ -442,7 +578,7 @@ def create_postfit_plots(
     dumb = legend1.Draw("same")
     del dumb
 
-    labels = addLabel_CMS_preliminary(era, do_bottom)
+    labels = addLabel_CMS_preliminary(era, do_bottom, ROOT)
     for ll, label in enumerate(labels):
         if ll == 0:
             dumb = label.Draw("same")
@@ -452,7 +588,7 @@ def create_postfit_plots(
             del dumb
 
     #################################
-    if do_bottom:
+    if do_bottom and not only_yield_table :
         bottomPad.cd()
         print("doing bottom pad")
         hist_total_err = template.Clone()
@@ -480,6 +616,7 @@ def create_postfit_plots(
                     fin,
                     divideByBinWidth,
                     lastbin,
+                    ROOT
                 )
             dumb = dataTGraph2.Draw("e1P,same")
             del dumb
@@ -490,6 +627,9 @@ def create_postfit_plots(
         line.SetLineColor(1)
         dumb = line.Draw("same")
         del dumb
+        del hist_total
+        del dataTGraph1
+
         print("done bottom pad")
     ##################################
 
@@ -498,24 +638,101 @@ def create_postfit_plots(
         optbin = "divideByBinWidth"
 
     savepdf = path + "_%s_%s_unblind%s" % (typeFit, oplin, unblind)
-    if not do_bottom:
-        savepdf = savepdf + "_noBottom"
-    print("saving...", savepdf)
-    dumb = canvas.SaveAs(savepdf + ".pdf")
-    print("saved", savepdf + ".pdf")
-    del dumb
-    dumb = canvas.SaveAs(savepdf + ".png")
-    print("saved", savepdf + ".png")
-    del dumb
+
+    with open(savepdf + "_yield.json", 'w') as outfile : json.dump(yiels_list, outfile, sort_keys=False, indent=2)
+    print("saved", savepdf + "_yield.json")
+    #### Make human friendly tab    if not only_yield_table :le
+    human_readable_yield_table(yiels_list, bin, savepdf, scale_signal_in_table, unblind)
+
+    if not only_yield_table :
+        if not do_bottom:
+            savepdf = savepdf + "_noBottom"
+        print("saving...", savepdf)
+        dumb = canvas.SaveAs(savepdf + ".pdf")
+        print("saved", savepdf + ".pdf")
+        dumb = canvas.SaveAs(savepdf + ".png")
+        print("saved", savepdf + ".png")
+        del dumb
+
+    # desctructing files and canvases pointers
+    if normalize_X_original and not only_yield_table:
+        fileorriginal.IsA().Destructor(fileorriginal)
+    fin.IsA().Destructor(fin)
+    if do_bottom and not only_yield_table :
+        bottomPad.IsA().Destructor(bottomPad)
+    topPad.IsA().Destructor(topPad)
     canvas.IsA().Destructor(canvas)
 
-    with open(savepdf + "_yield.json", 'w') as outfile : json.dump(yiels_list, outfile, sort_keys=True, indent=4)
-    print("saved", savepdf + "_yield.json")
+    return True
 
+def human_readable_yield_table(yields_list, bin, savepdf, scale_signal_in_table, unblind) :
+    ## header
+    header_table = "|c"
+    header_label = "process "
+    header_label_confirm = "process "
+    bkg_proc_yields = ""
+    sig_proc_yields = ""
+    total_yield = "Total "
+    data_yield = "Data "
+    round_yiels_list = 2
+    for cc, catcat in enumerate(yields_list.keys()) :
+        header_table += "|c"
+        header_label_test = bin["align_cats_labels"][cc][0]
+        header_label += " & $%s$ " % header_label_test.replace("#", "\\") if "#" in header_label_test else " & %s " % header_label_test.replace("_", " ")
+        header_label_confirm += " & %s " % bin["align_cats"][cc]
+    for proc in yields_list[catcat].keys() :
+        if yields_list[catcat][proc]["label"]=="none" :
+            continue
+        if not "HH" in proc and not proc=="Total" and not proc=="Data" :
+            bkg_proc_yields_test = yields_list[catcat][proc]["label"]
+            bkg_proc_yields += "$%s$ " % bkg_proc_yields_test.replace("#", "\\") if "#" in bkg_proc_yields_test else " %s" % bkg_proc_yields_test
+            bkg_proc_yields = bkg_proc_yields.replace(" + jets$", "$ + jets")
+            for catcat in yields_list.keys() :
+                if yields_list[catcat][proc]["central"] < 0.04 :
+                    bkg_proc_yields += " & -- "
+                else :
+                    bkg_proc_yields += " & %s $\pm$ %s " % (str(yields_list[catcat][proc]["central"]), str(yields_list[catcat][proc]["err"]))
+            bkg_proc_yields += " \\\ \n"
+        elif  "HH" in proc :
+            sig_proc_yields += yields_list[catcat][proc]["label"].replace("#", "\\").replace("(", "($").replace(")", "$)")
+            if not scale_signal_in_table==1 :
+                sig_proc_yields += " (times %s)" % str(int(scale_signal_in_table))
+            for catcat in yields_list.keys() :
+                if yields_list[catcat][proc]["central"] < 0.04 :
+                    sig_proc_yields += " & -- "
+                else :
+                    sig_proc_yields += " & %s $\pm$ %s " % (str(yields_list[catcat][proc]["central"]), str(yields_list[catcat][proc]["err"]))
+            sig_proc_yields += " \\\ \n"
+        elif proc=="Total" :
+            for catcat in yields_list.keys() :
+                total_yield += " & %s $\pm$ %s " % (str(round(yields_list[catcat][proc]["central"], round_yiels_list)), str(round(yields_list[catcat][proc]["err"], round_yiels_list)))
+            total_yield += " \\\ \n"
+        elif proc=="Data" :
+            for catcat in yields_list.keys() :
+                data_yield += " & %s " % (str(round(yields_list[catcat][proc]["central"], round_yiels_list)))
+            data_yield += " \\\ \n"
 
-def test_print():
-    print("it works!")
-
+    header_table += "|"
+    header_label += "\\\ \\hline \n"
+    header_label_confirm += "\\\ \n"
+    print("saved", savepdf + "_yield.tex")
+    table_tex = open(savepdf + "_yield.tex", 'w')
+    table_tex.write("\\begin{tabular}{%s} \n" % header_table)
+    #table_tex.write(header_table)
+    table_tex.write("\\hline  \n")
+    table_tex.write(header_label)
+    #table_tex.write(header_label_confirm)
+    table_tex.write(sig_proc_yields)
+    table_tex.write("\\hline \n")
+    table_tex.write(bkg_proc_yields)
+    table_tex.write("\\hline \\hline \n")
+    table_tex.write(total_yield)
+    table_tex.write("\\hline  \n")
+    if unblind :
+        table_tex.write("\\hline  \n")
+        table_tex.write(data_yield)
+        table_tex.write("\\hline  \n")
+    table_tex.write("\\end{tabular} \n")
 
 def ordered_dict_prepend(dct, key, value, dict_setitem=dict.__setitem__):
     root = dct._OrderedDict__root
@@ -544,15 +761,10 @@ def GetNonZeroBins(template):
 
 
 def process_data_histo(
-    template, dataTGraph1, folder, fin, lastbin, histtotal, catbin, minY, maxY, divideByBinWidth
+    ROOT, template, data_cat, dataTGraph1, folder, fin, lastbin, histtotal, catbin, minY, maxY, divideByBinWidth
 ):
-    readFrom = str("%s/data" % folder) # data_obs
+    readFrom = str("%s/data" % folder)
     dataTGraph = fin.Get(readFrom)
-    #try :
-    #    dataTGraph.Integral()
-    #except :
-    #    readFrom = str("%s/data_obs" % folder)
-    #    dataTGraph = fin.Get(readFrom)
     print("adding", readFrom)
     allbins = catbin
     for ii in xrange(0, allbins):
@@ -577,6 +789,8 @@ def process_data_histo(
         dataTGraph1.SetPointEYhigh(ii + lastbin, errYhigh / bin_width)
         dataTGraph1.SetPointEXlow(ii + lastbin, template.GetBinWidth(ii + 1) / 2.0)
         dataTGraph1.SetPointEXhigh(ii + lastbin, template.GetBinWidth(ii + 1) / 2.0)
+
+        data_cat += yp
     del dataTGraph
     dataTGraph1.SetMarkerColor(1)
     dataTGraph1.SetMarkerStyle(20)
@@ -586,7 +800,11 @@ def process_data_histo(
     dataTGraph1.SetLineStyle(1)
     dataTGraph1.SetMinimum(minY)
     dataTGraph1.SetMaximum(maxY)
-    return allbins
+    #print("Data integral in %s = %d" % (folder, data_cat))
+    return {
+    "allbins" : allbins,
+    "data_cat" : data_cat
+    }
 
 
 def process_total_histo(
@@ -601,7 +819,8 @@ def process_total_histo(
     catbins,
     minY,
     maxY,
-    totalBand,
+    ROOT,
+    totalBand
 ):
     total_hist_name = str("%s/%s" % (folder, name_total))
     total_hist = fin.Get(total_hist_name)
@@ -609,8 +828,13 @@ def process_total_histo(
     try:
         total_hist.Integral()
     except:
-        print("Doesn't exist %s" % total_hist_name)
-        return allbins
+        if not "H" in total_hist_name :
+            print("Doesn't exist %s" % total_hist_name)
+        return {
+            "allbins"   : allbins,
+            "yield_cat" : 0.0,
+            "yield_cat_err" : 0.0
+        }
 
     hist.SetMarkerSize(0)
     hist.SetMarkerColor(16)
@@ -644,13 +868,17 @@ def process_total_histo(
     hist.GetYaxis().SetTickLength(0.04)
     hist.GetYaxis().SetLabelSize(0.050)
     #return allbins
+
+    error_hist =  ROOT.Double()
+    integral_histo = total_hist.IntegralAndError(0, total_hist.GetNbinsX()+1, error_hist, "")
     return {
         "allbins"   : allbins,
-        "yield_cat" : total_hist.Integral()
+        "yield_cat" : integral_histo,
+        "yield_cat_err" : error_hist
     }
 
 
-def addLabel_CMS_preliminary(era, do_bottom):
+def addLabel_CMS_preliminary(era, do_bottom, ROOT):
     x0 = 0.2
     y0 = 0.953 if do_bottom else 0.935
     ypreliminary = 0.95 if do_bottom else 0.935
@@ -687,7 +915,7 @@ def addLabel_CMS_preliminary(era, do_bottom):
         lumi = "59.74"
     if era == 20172018:
         lumi = "101.27"
-    if era == 0:
+    if era == 201620172018:
         lumi = "137"
     label_luminosity.AddText(lumi + " fb^{-1} (13 TeV)")
     label_luminosity.SetTextFont(42)
@@ -713,21 +941,24 @@ def stack_histo(
     original,
     firstHisto,
     era,
-    legend
+    legend,
+    ROOT
 ):
     histo_name = str("%s/%s" % (folder, name))
-    print("try find %s" % histo_name)
+
     hist = fin.Get(histo_name)
     allbins = catbin
     try:
         hist.Integral()
     except:
-        print("Doesn't exist %s" % histo_name)
+        if not "H" in histo_name :
+            print("Doesn't exist %s" % histo_name)
         return {
             "lastbin": allbins,
             "binEdge": lastbin - 0.5,
             "labelPos": 0 if not original == "none" else float(allbins / 2),
-            "yield_cat" : 0.0
+            "yield_cat" : 0.0,
+            "yield_cat_err" : 0.0
         }
     if not firstHisto.Integral() > 0:
         firstHisto = hist.Clone()
@@ -772,13 +1003,18 @@ def stack_histo(
             hist_rebin_local.SetBinContent(ii + lastbin, hist.GetBinContent(ii) / bin_width)
     if not hist.GetSumw2N():
         hist.Sumw2()
+
+    error_hist =  ROOT.Double()
+    integral_histo = hist.IntegralAndError(0, hist.GetNbinsX()+1, error_hist, "")
+
     return {
         "lastbin": allbins,
         "binEdge": hist.GetXaxis().GetBinLowEdge(lastbin)
         + hist.GetXaxis().GetBinWidth(lastbin)
         - 0.5,  # if lastbin > 0 else 0
-        "labelPos": float(allbins / 2),
-        "yield_cat" : hist.Integral()
+        "labelPos": float(float(allbins) / 2.0),
+        "yield_cat" : integral_histo,
+        "yield_cat_err" : error_hist
     }
 
 
@@ -811,7 +1047,7 @@ def do_hist_total_err(hist_total_err, labelX, total_hist, minBottom, maxBottom, 
     return allbins
 
 
-def err_data(dataTGraph1, template, dataTGraph, histtotal, folder, fin, divideByBinWidth, lastbin):
+def err_data(dataTGraph1, template, dataTGraph, histtotal, folder, fin, divideByBinWidth, lastbin, ROOT):
     print(" do unblided bottom pad")
     allbins = histtotal.GetXaxis().GetNbins()  # GetNonZeroBins(histtotal)
     print("allbins", allbins)
@@ -912,17 +1148,7 @@ if __name__ == "__main__":
     overwrite_era = args.overwrite_era
     overwrite_fitdiag = args.overwrite_fitdiag
     overwrite = args.overwrite
-    #plot_options_full = args.plot_options_full
     plot_options_dict = args.plot_options_dict
-
-    #if not plot_options_full == "no" :
-    #    with open(plot_options_full) as ff : info_plot_options_full = json.load(ff)
-    #    options_dat = os.path.normpath(info_plot_options_full["plot_options"].replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2')))
-    #    overwrite = info_plot_options_full["plot_list"]
-    #elif not plot_options_dict == "no" :
-    #    options_dat = os.path.normpath(plot_options_dict)
-    #else :
-    #    print("ERROR: you should give plot_options_full OR plot_options_dict")
 
     options_dat = os.path.normpath(plot_options_dict)
     print("Reading plot options from %s" % options_dat)
@@ -960,7 +1186,8 @@ if __name__ == "__main__":
                 if not overwrite_fitdiag=="no"  :
                     line = line.replace('PATH_FITDIAGNOSIS', overwrite_fitdiag)
                 for key_modify in this_plot :
-                    line = line.replace(key_modify, str(this_plot[key_modify]))
+                    if not (key_modify=="ERA" and this_plot[key_modify]==0 and not "era" in line) :
+                        line = line.replace(key_modify, str(this_plot[key_modify]))
                 fout.write(line)
             fin.close()
             fout.close()
@@ -971,19 +1198,19 @@ if __name__ == "__main__":
             name_plot = "plot_" + list(info_bin.keys())[0]
             # copy the dict files for processes options for each plot to the output_folder for keepsafe
             copyfile(dict_for_era, dict_for_era.replace("temp", name_plot))
+            print("saved %s" % dict_for_era.replace("temp", name_plot))
             for key_bin in info_bin :
                 for pp in [str(info_bin[key_bin]["procs_plot_options_bkg"]), str(info_bin[key_bin]["procs_plot_options_sig"])] :
                     pp = pp.replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
                     if str(pp).startswith("/") :
-                        copyfile(pp, os.path.join(output_folder, os.path.basename(pp)))
+                        dict_save = os.path.join(output_folder, os.path.basename(pp))
+                        copyfile(pp, dict_save)
                     else :
-                        copyfile( os.path.join(os.path.dirname(options_dat), pp),  os.path.join(output_folder, pp))
+                        dict_save = os.path.join(output_folder, pp)
+                        copyfile( os.path.join(os.path.dirname(options_dat), pp),  dict_save)
+                    print("saved %s" % dict_save)
 
         for key, bin in info_bin.iteritems():
-
-            normalize_X_original = True
-            if bin["datacard_original"] == "none":
-                normalize_X_original = False
 
             procs_plot = str(bin["procs_plot_options_sig"]).replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
             file_sig_options = procs_plot if procs_plot.startswith("/") else options_dat.replace(os.path.basename(options_dat), procs_plot)
@@ -992,17 +1219,25 @@ if __name__ == "__main__":
             file_bkg_options = procs_plot if procs_plot.startswith("/") else options_dat.replace(os.path.basename(options_dat), procs_plot)
 
             data_dir = bin["fitdiagnosis"]
-            print("Drawing %s" % key)
-            create_postfit_plots(
-                path="%s/plot_%s" % (output_folder, key),
-                fit_diagnostics_path=data_dir,
-                normalize_X_original=normalize_X_original,
-                doPostFit=doPostFit,
-                divideByBinWidth=divideByBinWidth,
-                bin=bin,
-                binToRead=key,
-                unblind=unblind,
-                options_dat=options_dat,
-                file_sig_options=file_sig_options,
-                file_bkg_options=file_bkg_options
-            )
+
+            if not bin["era"] == 0 :
+                loop_eras = [bin["era"]]
+            else :
+                loop_eras = [2016, 2017, 2018]
+
+            for era in loop_eras :
+                print("Drawing %s, for era %s" % (key, str(era)))
+
+                saved_all_plots = create_postfit_plots(
+                    path="%s/plot_%s" % (output_folder, key.replace("ERA", str(era))),
+                    fit_diagnostics_path=data_dir,
+                    doPostFit=doPostFit,
+                    divideByBinWidth=divideByBinWidth,
+                    bin=bin,
+                    era=era,
+                    binToRead=key,
+                    unblind=unblind,
+                    options_dat=options_dat,
+                    file_sig_options=file_sig_options,
+                    file_bkg_options=file_bkg_options
+                )

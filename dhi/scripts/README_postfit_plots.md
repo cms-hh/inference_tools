@@ -8,7 +8,23 @@ python dhi/scripts/postfit_plots.py \
 --plot_options_dict /where/is/plot_options.json
 ```
 
-There are additional options, like eg  `--unblind` (the default is blinded). Please use `--help` to see further options.
+There are additional options, like eg  
+
+- `--unblind` will unblind all the plots on the booked list (the default is blinded).
+- In `--overwrite` you can give a dictionary with a list of plots, each plot is define by substituting keywords on `plot_options_dict`.
+- by default the command extract prefit, if you want postfit quantities add the option `--doPostFit`.
+
+Please use `--help` to see further options.
+
+The command will also produce:
+
+-  a json and tex file with a table of yields and uncertainties.
+  - The tex file ready to be compiled inside a `\begin{table}` will be formatted as the plot. E.g, if processes are merged for plotting, their yields will be summed up on the table (with the uncertainties added quadratically).
+  If datacard bins are plotted on a same canvas they will appear as columns on the tex table.
+- a copy  json file with the exact plot options of that made that plot along with the plot.
+
+[TODO]
+- add dumb example to this repo.
 
 # Explaining the dictionary
 
@@ -21,6 +37,7 @@ This is an example of dictionary booking one plot, that should be saved in a .js
     "fitdiagnosis": "/where/is/the/fitdiagnosis.root",
     "datacard_original": "none",
     "bin_name_original": "none",
+    "norm_X_range" : [100.0, 180.0],
     "procs_plot_options_bkg": "plot_options_BKG_colors.json",
     "procs_plot_options_sig": "plot_options_sig_colors.json",
     "header_legend": "bla bla can be latex",
@@ -38,7 +55,9 @@ This is an example of dictionary booking one plot, that should be saved in a .js
     "align_cats": ["ch1","ch2",],
     "align_cats_labelsX": [6, 20],
     "align_cats_labels": [["ch1 bla", "ch1 more details"], ["ch2 bla", "ch2 more details"]],
-    "merged_eras_fit": false
+    "single_H_by_era": false,
+    "only_yield_table" : true,
+    "scale_signal_in_table" : 100.0
     }
   }
 ```
@@ -51,11 +70,12 @@ The keys of the dictionary are the names of the bins to plot distributions for (
 
 - "datacard_original": the datacard.root file with shapes for that bin (what goes along with datacard.txt)
 - "bin_name_original" : For some analyses the bin can be in a folder inside the datacard.root , if this is the case put the name of this folder. If there is no internal folder, just put "none".
+- "norm_X_range": Normalize the X-axis using this range. It is superseed if you give "datacard_original". Usefull for the cases where the analysis provides directly the workspace, instead of shapes. Optional, default is not normalize X-axis.
 - Y-axis of the shapes distributions (top pad) : "minY" / "maxY"
 - Y-axis of the bottom pad for prefit plot: "minYerr", "maxYerr"
 - Y-axis of the bottom pad for postfit plot: "minYerr_postfit", "maxYerr_postfit" (if it is not given it will use the ones for prefit, defined above)
 - "useLogPlot", for the shapes distributions (top pad)
-- "era", to decide which lumi put on plot header
+- "era", to decide which lumi put on plot header. If era is set 0 and the bin names naming convention uses t in the name it will make plots from the same template looping on eras (2016, 2017, 2018)
 - "labelX" is the variable being plotted
 - options for legends "header_legend", "number_columns_legend"
 - "procs_plot_options_bkg" is the name of the json file containing the list of BKG processes to be drawn and options for plotting. See point bellow.
@@ -65,7 +85,10 @@ The keys of the dictionary are the names of the bins to plot distributions for (
 -   "align_cats_labels" are the labels for "align_cats"
 -  "align_cats_labelsX" : the X positions for the labels "align_cats_labels"
 -   "cats_labels_height" : the Y positions for the labels "align_cats_labels"
-- "merged_eras_fit" : if true it will try to read the single H processes with era in name (e.g. "ttH_2017_hbb" instead of "ttH_hbb")
+- "single_H_by_era" : if true it will try to read the single H processes with era in name (e.g. "ttH_2017_hbb" instead of "ttH_hbb"). Optional, default is false.
+- "only_yield_table" : if true only saves the table. Optional, default is false.
+- "scale_signal_in_table" : factor to scale VBF HH and GGF HH on the json/tex tables of yields. Optional, default is not scale.
+
 
 
 - TODO: make the dictionary example on datacards_run2 repo, and make the path to the original datacard.root or relative to the datacards_run2 when I do the example with cards from datacards_run2 repo
