@@ -149,14 +149,16 @@ vbf_samples = OrderedDict([
 ])
 
 # vhh samples with keys (CV, C2V, kl)
-# cross section values are LO (no k-factor applied) and are only used in create_vhh_xsec_func below
+# cross section values are NLO WHH + NNLO ZHH (no k-factor applied) and are only used in create_vhh_xsec_func below
 vhh_samples = OrderedDict([
-    ((1.0, 1.0, 1.0), VHHSample(CV=1.0, C2V=1.0, kl=1.0, xs=0.0008095, label="VHH_CV_1_C2V_1_kl_1")),
-    ((1.0, 1.0, 2.0), VHHSample(CV=1.0, C2V=1.0, kl=2.0, xs=0.0013204, label="VHH_CV_1_C2V_1_kl_2")),
-    ((1.0, 0.0, 1.0), VHHSample(CV=1.0, C2V=0.0, kl=1.0, xs=0.0002850, label="VHH_CV_1_C2V_0_kl_1")),
-    ((1.0, 2.0, 1.0), VHHSample(CV=1.0, C2V=2.0, kl=1.0, xs=0.0021291, label="VHH_CV_1_C2V_2_kl_1")),
-    ((0.5, 1.0, 1.0), VHHSample(CV=0.5, C2V=1.0, kl=1.0, xs=0.0005371, label="VHH_CV_0p5_C2V_1_kl_1")),
-    ((1.5, 1.0, 1.0), VHHSample(CV=1.5, C2V=1.0, kl=1.0, xs=0.0017450, label="VHH_CV_1p5_C2V_1_kl_1")),
+    ((1.0, 1.0,  1.0), VHHSample(CV=1.0, C2V=1.0, kl=1.0,  xs=0.0008850, label="VHH_CV_1_C2V_1_kl_1")),
+    ((1.0, 1.0,  2.0), VHHSample(CV=1.0, C2V=1.0, kl=2.0,  xs=0.0014405, label="VHH_CV_1_C2V_1_kl_2")),
+    ((1.0, 0.0,  1.0), VHHSample(CV=1.0, C2V=0.0, kl=1.0,  xs=0.0003182, label="VHH_CV_1_C2V_0_kl_1")),
+    ((1.0, 2.0,  1.0), VHHSample(CV=1.0, C2V=2.0, kl=1.0,  xs=0.0023437, label="VHH_CV_1_C2V_2_kl_1")),
+    ((0.5, 1.0,  1.0), VHHSample(CV=0.5, C2V=1.0, kl=1.0,  xs=0.0005946, label="VHH_CV_0p5_C2V_1_kl_1")),
+    ((1.5, 1.0,  1.0), VHHSample(CV=1.5, C2V=1.0, kl=1.0,  xs=0.0019173, label="VHH_CV_1p5_C2V_1_kl_1")),
+    ((1.0, 1.0,  0.0), VHHSample(CV=1.0, C2V=1.0, kl=0.0,  xs=0.0005127, label="VHH_CV_1_C2V_1_kl_0")),
+    ((1.0, 1.0, 20.0), VHHSample(CV=1.0, C2V=1.0, kl=20.0, xs=0.0428974, label="VHH_CV_1_C2V_1_kl_20")),
 ])
 
 
