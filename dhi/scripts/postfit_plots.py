@@ -677,13 +677,16 @@ def human_readable_yield_table(yields_list, bin, savepdf, scale_signal_in_table,
     round_yiels_list = 2
     for cc, catcat in enumerate(yields_list.keys()) :
         header_table += "|c"
-        header_label += " & $%s$ " % bin["align_cats_labels"][cc][0].replace("#", "\\")
+        header_label_test = bin["align_cats_labels"][cc][0]
+        header_label += " & $%s$ " % header_label_test.replace("#", "\\") if "#" in header_label_test else " & %s " % header_label_test.replace("_", " ")
         header_label_confirm += " & %s " % bin["align_cats"][cc]
     for proc in yields_list[catcat].keys() :
         if yields_list[catcat][proc]["label"]=="none" :
             continue
         if not "HH" in proc and not proc=="Total" and not proc=="Data" :
-            bkg_proc_yields += "%s " % yields_list[catcat][proc]["label"].replace("#", "\\")
+            bkg_proc_yields_test = yields_list[catcat][proc]["label"]
+            bkg_proc_yields += "$%s$ " % bkg_proc_yields_test.replace("#", "\\") if "#" in bkg_proc_yields_test else " %s" % bkg_proc_yields_test
+            bkg_proc_yields = bkg_proc_yields.replace(" + jets$", "$ + jets")
             for catcat in yields_list.keys() :
                 bkg_proc_yields += " & %s $\pm$ %s " % (str(yields_list[catcat][proc]["central"]), str(yields_list[catcat][proc]["err"]))
             bkg_proc_yields += " \\\ \n"
