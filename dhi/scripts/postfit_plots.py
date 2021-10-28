@@ -32,8 +32,8 @@ def create_postfit_plots_binned(
     binToRead,
     unblind,
     options_dat,
-    file_sig_options,
-    file_bkg_options,
+    #file_sig_options,
+    #file_bkg_options,
     do_bottom,
     verbose
 ):
@@ -62,6 +62,9 @@ def create_postfit_plots_binned(
     datacard_original = bin["datacard_original"]
     bin_name_original = bin["bin_name_original"]
     number_columns_legend = bin["number_columns_legend"]
+
+    file_sig_options = get_full_path(bin["procs_plot_options_sig"], options_dat)
+    file_bkg_options = get_full_path(bin["procs_plot_options_bkg"], options_dat)
 
     if verbose : print("Reading %s for signal options/process" % file_sig_options)
     with open(file_sig_options) as ff : procs_plot_options_sig = json.load(ff, object_pairs_hook=OrderedDict)
@@ -758,6 +761,64 @@ def ordered_dict_prepend(dct, key, value, dict_setitem=dict.__setitem__):
         root[1] = first[0] = dct._OrderedDict__map[key] = [root, first, key]
         dict_setitem(dct, key, value)
 
+def load_and_save_plot_dict_locally(output_folder, dict_for_era, options_dat, verbose) :
+    with open(dict_for_era) as ff : info_bin = json.load(ff)
+    # copy the dict files for processes options for each plot to the output_folder for keepsafe, calling a local plot_options
+    name_plot_options_dict = dict_for_era.replace("temp", list(info_bin.keys())[0])
+    local_info_bin = info_bin
+    for key_bin in info_bin :
+        for pp in ["procs_plot_options_bkg", "procs_plot_options_sig"] :
+            info_bin[key_bin][pp] = info_bin[key_bin][pp].replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
+            if str(info_bin[key_bin][pp]).startswith("/") :
+                dict_save = os.path.join(output_folder, os.path.basename(info_bin[key_bin][pp]))
+                try : copyfile(info_bin[key_bin][pp], dict_save)
+                except :
+                    if verbose : print("Dictionary for %s already local" % pp)
+            else :
+                dict_save = os.path.join(output_folder, info_bin[key_bin][pp])
+                try : copyfile( os.path.join(os.path.dirname(options_dat), info_bin[key_bin][pp]),  dict_save)
+                except :
+                    if verbose : print("Dictionary for %s already local" % pp)
+            local_info_bin[key_bin][pp] = os.path.basename(info_bin[key_bin][pp])
+            if verbose : print("saved %s" % dict_save)
+    # make call local plot options
+    with open(name_plot_options_dict, 'w') as ff : json.dump(local_info_bin, ff, sort_keys=False, indent=2)
+    if verbose : print("saved %s" % name_plot_options_dict)
+    return info_bin, name_plot_options_dict
+
+def read_and_modify(output_folder, this_plot, options_dat, verbose, overwrite_fitdiag="no", overwrite_era="no") :
+    dict_for_era = options_dat.replace(os.path.dirname(options_dat), output_folder).replace(os.path.basename(options_dat), "temp_" + os.path.basename(options_dat))
+    if verbose :
+        print("Replacing strings in a new dictionary %s" % dict_for_era )
+        for key_modify in this_plot :
+            print(key_modify, this_plot[key_modify])
+    fin = open(options_dat, "rt")
+    fout = open(dict_for_era, "wt")
+
+    for line in fin :
+        if not overwrite_era=="no" and not overwrite_era=="all" :
+            line = line.replace('ERA', overwrite_era)
+        if not overwrite_fitdiag=="no"  :
+            line = line.replace('PATH_FITDIAGNOSIS', overwrite_fitdiag)
+        for key_modify in this_plot :
+            if not (key_modify=="ERA" and this_plot[key_modify]==0 and not "era" in line) :
+                line = line.replace(key_modify, str(this_plot[key_modify]))
+        fout.write(line)
+    fin.close()
+    fout.close()
+    return dict_for_era
+
+def get_full_path(test_path, in_directory_of_file="none") :
+    procs_plot = str(test_path).replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
+    # if not full path assume it is in the given directory
+    return procs_plot if procs_plot.startswith("/") or in_directory_of_file=="none" else in_directory_of_file.replace(os.path.basename(in_directory_of_file), procs_plot)
+
+def loop_eras(bin) :
+    if not bin["era"] == 0 :
+        loop_in = [bin["era"]]
+    else :
+        loop_in = [2016, 2017, 2018]
+    return loop_in
 
 def GetNonZeroBins(template):
     nbins = 0
@@ -766,7 +827,6 @@ def GetNonZeroBins(template):
         if binContent_original > 0:
             nbins += 1
     return nbins
-
 
 def process_data_histo(
     ROOT, template, data_cat, dataTGraph1, folder, fin, lastbin, histtotal, catbin, minY, maxY, divideByBinWidth, verbose
@@ -1129,6 +1189,13 @@ if __name__ == "__main__":
         default=False,
     )
     parser.add_argument(
+        "--not_verbose",
+        action="store_true",
+        dest="not_verbose",
+        help="Do not print verbose.",
+        default=False,
+    )
+    parser.add_argument(
         "--overwrite_era",
         dest="overwrite_era",
         help="If a value is given it will replace all instances of 'ERA' in the dictionary with the given value. Values can be 2016, 2017, 2018, 20172018 or all. If the value is all it will loop on {2016, 2017, 2018}",
@@ -1157,6 +1224,7 @@ if __name__ == "__main__":
     overwrite_fitdiag = args.overwrite_fitdiag
     overwrite = args.overwrite
     plot_options_dict = args.plot_options_dict
+    verbose = not args.not_verbose
 
     options_dat = os.path.normpath(plot_options_dict)
     if verbose : print("Reading plot options from %s" % options_dat)
@@ -1179,62 +1247,13 @@ if __name__ == "__main__":
         if overwrite_era=="no" and overwrite_fitdiag=="no" and overwrite=="no":
             with open(options_dat) as ff : info_bin = json.load(ff)
         else :
-            dict_for_era = options_dat.replace(os.path.dirname(options_dat), output_folder).replace(os.path.basename(options_dat), "temp_" + os.path.basename(options_dat))
-
-            print("Replacing strings in a new dictionary %s" % dict_for_era )
-            for key_modify in this_plot :
-                print(key_modify, this_plot[key_modify])
-            fin = open(options_dat, "rt")
-            fout = open(dict_for_era, "wt")
-
-            for line in fin :
-                if not overwrite_era=="no" and not overwrite_era=="all" :
-                    line = line.replace('ERA', overwrite_era)
-                if not overwrite_fitdiag=="no"  :
-                    line = line.replace('PATH_FITDIAGNOSIS', overwrite_fitdiag)
-                for key_modify in this_plot :
-                    if not (key_modify=="ERA" and this_plot[key_modify]==0 and not "era" in line) :
-                        line = line.replace(key_modify, str(this_plot[key_modify]))
-                fout.write(line)
-            fin.close()
-            fout.close()
-
-            with open(dict_for_era) as ff : info_bin = json.load(ff)
-
-            # rename the file to the plot name for safekeeping
-            name_plot = "plot_" + list(info_bin.keys())[0]
-            # copy the dict files for processes options for each plot to the output_folder for keepsafe
-            copyfile(dict_for_era, dict_for_era.replace("temp", name_plot))
-            print("saved %s" % dict_for_era.replace("temp", name_plot))
-            for key_bin in info_bin :
-                for pp in [str(info_bin[key_bin]["procs_plot_options_bkg"]), str(info_bin[key_bin]["procs_plot_options_sig"])] :
-                    pp = pp.replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
-                    if str(pp).startswith("/") :
-                        dict_save = os.path.join(output_folder, os.path.basename(pp))
-                        copyfile(pp, dict_save)
-                    else :
-                        dict_save = os.path.join(output_folder, pp)
-                        copyfile( os.path.join(os.path.dirname(options_dat), pp),  dict_save)
-                    print("saved %s" % dict_save)
+            temp_dict_for_era = read_and_modify(output_folder, this_plot, options_dat, verbose, overwrite_fitdiag, overwrite_era)
+            info_bin, name_plot_options_dict = load_and_save_plot_dict_locally(output_folder, temp_dict_for_era, options_dat, verbose)
 
         for key, bin in info_bin.iteritems():
-
-            procs_plot = str(bin["procs_plot_options_sig"]).replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
-            file_sig_options = procs_plot if procs_plot.startswith("/") else options_dat.replace(os.path.basename(options_dat), procs_plot)
-
-            procs_plot = str(bin["procs_plot_options_bkg"]).replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
-            file_bkg_options = procs_plot if procs_plot.startswith("/") else options_dat.replace(os.path.basename(options_dat), procs_plot)
-
             data_dir = bin["fitdiagnosis"]
-
-            if not bin["era"] == 0 :
-                loop_eras = [bin["era"]]
-            else :
-                loop_eras = [2016, 2017, 2018]
-
-            for era in loop_eras :
+            for era in loop_eras(bin) :
                 print("Drawing %s, for era %s" % (key, str(era)))
-
                 saved_all_plots = create_postfit_plots_binned(
                     path="%s/plot_%s" % (output_folder, key.replace("ERA", str(era))),
                     fit_diagnostics_path=data_dir,
@@ -1245,8 +1264,6 @@ if __name__ == "__main__":
                     binToRead=key,
                     unblind=unblind,
                     options_dat=options_dat,
-                    file_sig_options=file_sig_options,
-                    file_bkg_options=file_bkg_options,
                     do_bottom=do_bottom,
-                    verbose=True
+                    verbose=verbose
                 )
