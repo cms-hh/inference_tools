@@ -15,7 +15,7 @@ import luigi
 
 from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
-from dhi.scripts.postfit_plots import create_postfit_plots_binned, load_and_save_plot_dict_locally, loop_eras, read_and_modify, get_full_path
+from dhi.scripts.postfit_plots import create_postfit_plots_binned, load_and_save_plot_dict_locally, loop_eras, get_full_path
 
 
 class SAVEFLAGS(str, enum.Enum):
@@ -343,36 +343,35 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
             )
 
 class PlotDistributionsAndTables(POIPlotTask):
-    y_log = luigi.BoolParameter(
+    verbose = luigi.BoolParameter(
         default=False,
-        description="apply log scaling to the y-axis; default: False",
+        description="default: False",
     )
-    only_parameters = law.CSVParameter(
+    draw_for_channels = law.CSVParameter(
         default=(),
-        significant=False,
-        description="patterns of parameters to include; skips all others; no default",
+        significant=True,
+        description="comma-separated list of dictionary with pairs of options (plots_list, plot_option).",
     )
-    skip_parameters = law.CSVParameter(
-        default=(),
-        significant=False,
-        description="patterns of parameters to skip; no default",
-    )
-    mc_stats = luigi.BoolParameter(
+    unblind = luigi.BoolParameter(
         default=False,
         significant=False,
-        description="when True, include MC stats nuisances as well; default: False",
+        description="Unblind in drawing distributions and tables.",
     )
-    parameters_per_page = luigi.IntParameter(
-        default=1,
-        description="number of parameters per page; creates a single page when < 1; default: 1",
-    )
-    sort_max = luigi.BoolParameter(
+    not_do_bottom = luigi.BoolParameter(
         default=False,
-        description="when True, sort parameters by their hightest likelihood change in the scan "
-        "range; mostly useful when the number of parameters per page is > 1; default: False",
+        significant=False,
+        description="Do not do the bottom pad in distribution plots.",
     )
-
-    mc_stats_patterns = ["*prop_bin*"]
+    divideByBinWidth = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="In distribution plots.",
+    )
+    type_fit = law.CSVParameter(
+        default="prefit",
+        significant=False,
+        description="Which type of results to extract from the fitdiag. It can be 'prefit', 'postfit' (that will be from the S+B fit) or 'postfit_Bonly'",
+    )
 
     file_types = ("log",)
 
@@ -380,7 +379,7 @@ class PlotDistributionsAndTables(POIPlotTask):
         return FitDiagnostics.req(self)
 
     def output(self):
-        parts = ["commandd_plots_", self.get_output_postfix()]
+        parts = ["commandd_plots", self.type_fit, self.get_output_postfix()]
         names = self.create_plot_names(parts)
         return [self.local_target(name) for name in names]
 
@@ -398,68 +397,62 @@ class PlotDistributionsAndTables(POIPlotTask):
         fit_result = inputs["collection"][0]["result"]
         fit_diagnostics = inputs["collection"][0]["diagnostics"]
 
-        # skip parameter patterns
-        skip_parameters = list(self.skip_parameters)
-        if not self.mc_stats:
-            skip_parameters.extend(self.mc_stats_patterns)
-
         saved_all_plots = True
-        unblind = False
-        doPostFit = False
-        do_bottom = True
-        divideByBinWidth = False
-        verbose = False
+        do_bottom = not self.not_do_bottom
+        divideByBinWidth = self.divideByBinWidth
         output_folder = os.path.dirname(outputs[0].path)
-        #list_pairs = "$DHI_DATACARDS_RUN2/bbbb_boosted_vbf/list_pairs.json"
-        dict1 = "$DHI_DATACARDS_RUN2/bbbb_boosted_vbf/plots_list.json"
-        dict2 = "$DHI_DATACARDS_RUN2/bbbb_boosted_vbf/plot_options.json"
-        overwrite = get_full_path(dict1)
-        plot_options_dict = get_full_path(dict2)
-        options_dat = os.path.normpath(plot_options_dict)
+        list_pair_dict = {}
+        list_pairs = self.draw_for_channels
+        if len(list_pairs) == 0 :
+            raise Exception("You need to give input for --draw-for-channels. See documentation [LINK]")
+        for channel in list_pairs :
+            if not "json" in channel :
+                channel = "$DHI_DATACARDS_RUN2/%s/list_pairs.json" % channel
+            with open(get_full_path(channel)) as ff : list_pair_dict_local = json.load(ff)
+            list_pair_dict.update(list_pair_dict_local)
 
-        base_command = "python dhi/scripts/postfit_plots.py  "
-        file_output = open(outputs[0].path, 'a')
-        if not overwrite=="no" :
-            with open(overwrite) as ff : modifications = json.load(ff)
-        else :
-            modifications = {"plots1" : {'NONE' : 'NONE'}}
+        for channel in list_pair_dict.values() :
+            try :
+                overwrite = get_full_path(channel["plots_list"])
+                with open(overwrite) as ff : modifications = json.load(ff)
+            except :
+                modifications = {"plots1" : {'NONE' : 'NONE'}}
+            plot_options_dict = get_full_path(channel["plot_options"])
+            options_dat       = os.path.normpath(plot_options_dict)
 
-        # to save the locally with the plot the options to reproduce it
-        for item_modify in modifications :
-            this_plot = modifications[item_modify]
-            command_reproduce_plot = base_command
-            command_reproduce_plot += " --output_folder %s "     % output_folder
-            command_reproduce_plot += " --overwrite_fitdiag %s " % fit_diagnostics.path
+            base_command = "python dhi/scripts/postfit_plots.py  "
+            file_output = open(outputs[0].path, 'a')
 
-            if "no" in overwrite:
-                with open(options_dat) as ff : info_bin = json.load(ff)
-            else :
-                temp_dict_for_era = read_and_modify(output_folder, this_plot, options_dat, verbose, fit_diagnostics.path)
-                info_bin, name_plot_options_dict = load_and_save_plot_dict_locally(output_folder, temp_dict_for_era, options_dat, verbose)
+            # to save the locally with the plot the options to reproduce it
+            for this_plot in modifications.values() :
+                command_reproduce_plot = base_command
+                command_reproduce_plot += " --output_folder %s "     % output_folder
+                command_reproduce_plot += " --overwrite_fitdiag %s " % fit_diagnostics.path
+                info_bin, name_plot_options_dict = load_and_save_plot_dict_locally(output_folder, this_plot, options_dat, self.verbose, fit_diagnostics.path)
                 command_reproduce_plot += " --plot_options_dict %s " % name_plot_options_dict
 
-            for key, bin in info_bin.iteritems():
-                for era in loop_eras(bin) :
-                    print("Drawing %s, for era %s" % (key, str(era)))
-                    saved_all_plots = create_postfit_plots_binned(
-                        path="%s/plot_%s" % (output_folder, key.replace("ERA", str(era))),
-                        fit_diagnostics_path=fit_diagnostics.path,
-                        doPostFit=doPostFit,
-                        divideByBinWidth=divideByBinWidth,
-                        bin=bin,
-                        era=era,
-                        binToRead=key,
-                        unblind=unblind,
-                        options_dat=options_dat,
-                        do_bottom=do_bottom,
-                        verbose=verbose
-                    )
+                for key, bin in info_bin.iteritems():
+                    for era in loop_eras(bin) :
+                        print("Drawing %s, for era %s" % (key, str(era)))
+                        saved_all_plots = create_postfit_plots_binned(
+                            path="%s/plot_%s" % (output_folder, key.replace("ERA", str(era))),
+                            fit_diagnostics_path=fit_diagnostics.path,
+                            type_fit=self.type_fit,
+                            divideByBinWidth=divideByBinWidth,
+                            bin=bin,
+                            era=era,
+                            binToRead=key,
+                            unblind=self.unblind,
+                            options_dat=options_dat,
+                            do_bottom=do_bottom,
+                            verbose=self.verbose
+                        )
 
-                    if not saved_all_plots :
-                        self.logger.error("Failed to draw: %s, for era %s, to debug your dictionaries please run the command: '%s' . To rerun as a task delete the file '%s'. " % (key, str(era), command_reproduce_plot, name_plot_options_dict))
-                        file_output.close()
-                        # rm file_output
+                        if not saved_all_plots :
+                            self.logger.error("Failed to draw: %s, for era %s, to debug your dictionaries please run the command: '%s' . To rerun as a task delete the file '%s'. " % (key, str(era), command_reproduce_plot, name_plot_options_dict))
+                            file_output.write("[FAILED] %s\n" % command_reproduce_plot)
+                            # or do we raise Exception ?
 
-            file_output.write("%s\n" % command_reproduce_plot)
-        # use the check if a task is done also to save the plot log
-        file_output.close()
+                file_output.write("%s\n" % command_reproduce_plot)
+            # use the check if a task is done also to save the plot log
+            file_output.close()

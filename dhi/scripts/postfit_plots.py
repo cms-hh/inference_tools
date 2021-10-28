@@ -25,15 +25,13 @@ def hello_world(test_path, output):
 def create_postfit_plots_binned(
     path,
     fit_diagnostics_path,
-    doPostFit,
+    type_fit,
     divideByBinWidth,
     bin,
     era,
     binToRead,
     unblind,
     options_dat,
-    #file_sig_options,
-    #file_bkg_options,
     do_bottom,
     verbose
 ):
@@ -50,13 +48,12 @@ def create_postfit_plots_binned(
     maxY = bin["maxY"]
     minYerr = bin["minYerr"]
     maxYerr = bin["maxYerr"]
-    if doPostFit :
+    if "postfit" in type_fit :
         try: minYerr = bin["minYerr_postfit"]
         except: True
         try: maxYerr = bin["maxYerr_postfit"]
         except: True
     useLogPlot = bin["useLogPlot"]
-    #era = bin["era"]
     labelX = bin["labelX"]
     header_legend = bin["header_legend"]
     datacard_original = bin["datacard_original"]
@@ -75,14 +72,20 @@ def create_postfit_plots_binned(
     except: scale_VBF = 0
 
     typeFit = None
-    if doPostFit:
+    if "postfit_Bonly" in type_fit :
+        folder = "shapes_fit_b"
+        folder_data = "shapes_fit_b"
+        typeFit = "postfit"
+    if "postfit" in type_fit :
         folder = "shapes_fit_s"
         folder_data = "shapes_fit_s"
         typeFit = "postfit"
-    else:
+    elif "prefit" in type_fit :
         folder = "shapes_prefit"
         folder_data = "shapes_prefit"
         typeFit = "prefit"
+    else :
+        raise Exception("Type of fit not valid. type_fit should be 'prefit', 'postfit' or 'shapes_fit_b'. It is '%s'." % type_fit)
 
     name_total = "total_background"
 
@@ -126,7 +129,7 @@ def create_postfit_plots_binned(
     if divideByBinWidth:
         labelY = "Events / bin width"
 
-    if not doPostFit:
+    if not "postfit" in type_fit:
         header_legend = header_legend + ", \n" + typeFit
     else:
         header_legend = header_legend + ", #mu(t#bar{t}H)=#hat{#mu}"
@@ -761,10 +764,12 @@ def ordered_dict_prepend(dct, key, value, dict_setitem=dict.__setitem__):
         root[1] = first[0] = dct._OrderedDict__map[key] = [root, first, key]
         dict_setitem(dct, key, value)
 
-def load_and_save_plot_dict_locally(output_folder, dict_for_era, options_dat, verbose) :
-    with open(dict_for_era) as ff : info_bin = json.load(ff)
+def load_and_save_plot_dict_locally(output_folder, this_plot, options_dat, verbose, overwrite_fitdiag="no", overwrite_era="no") :
+    temp_dict_for_era = read_and_modify(output_folder, this_plot, options_dat, verbose, overwrite_fitdiag, overwrite_era)
+
+    with open(temp_dict_for_era) as ff : info_bin = json.load(ff)
     # copy the dict files for processes options for each plot to the output_folder for keepsafe, calling a local plot_options
-    name_plot_options_dict = dict_for_era.replace("temp", list(info_bin.keys())[0])
+    name_plot_options_dict = temp_dict_for_era.replace("temp", list(info_bin.keys())[0])
     local_info_bin = info_bin
     for key_bin in info_bin :
         for pp in ["procs_plot_options_bkg", "procs_plot_options_sig"] :
@@ -1159,27 +1164,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--plot_options_dict",
         dest="plot_options_dict",
-        help="Dictionary with list of bins to plot and general options",
-        #default="no",
+        help="Dictionary with list of bins to plot and general options"
     )
-    #parser.add_argument(
-    #    "--plot_options_full",
-    #    dest="plot_options_full",
-    #    help="Dictionary with list of channels with its respective bins to plot and general options",
-    #    default="no",
-    #)
     parser.add_argument(
         "--output_folder", dest="output_folder", help="Where the plots will be saved"
     )
     parser.add_argument(
         "--unblind", action="store_true", dest="unblind", help="Draw data", default=False
-    )
-    parser.add_argument(
-        "--doPostFit",
-        action="store_true",
-        dest="doPostFit",
-        help="Take shapes from postfit, if not added will take prefit shapes.",
-        default=False,
     )
     parser.add_argument(
         "--not_do_bottom",
@@ -1202,6 +1193,12 @@ if __name__ == "__main__":
         default="no",
     )
     parser.add_argument(
+        "--type_fit",
+        dest="type_fit",
+        help="Which type of results to extract from the fitdiag. It can be 'prefit', 'postfit' (that will be from the S+B fit) or 'postfit_Bonly'.",
+        default="prefit",
+    )
+    parser.add_argument(
         "--overwrite_fitdiag",
         dest="overwrite_fitdiag",
         help="If a value is given it will replace all instances of 'PATH_FITDIAGNOSIS' in the dictionary with the given value.",
@@ -1216,7 +1213,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     unblind = args.unblind
-    doPostFit = args.doPostFit
+    type_fit = args.type_fit
     do_bottom = not args.not_do_bottom
     divideByBinWidth = False
     output_folder = args.output_folder
@@ -1241,14 +1238,8 @@ if __name__ == "__main__":
         else :
             modifications = {"plots1" : {'NONE' : 'NONE'}}
 
-    for item_modify in modifications :
-        this_plot = modifications[item_modify]
-
-        if overwrite_era=="no" and overwrite_fitdiag=="no" and overwrite=="no":
-            with open(options_dat) as ff : info_bin = json.load(ff)
-        else :
-            temp_dict_for_era = read_and_modify(output_folder, this_plot, options_dat, verbose, overwrite_fitdiag, overwrite_era)
-            info_bin, name_plot_options_dict = load_and_save_plot_dict_locally(output_folder, temp_dict_for_era, options_dat, verbose)
+    for this_plot in modifications.values() :
+        info_bin, name_plot_options_dict = load_and_save_plot_dict_locally(output_folder, this_plot, options_dat, verbose, overwrite_fitdiag, overwrite_era)
 
         for key, bin in info_bin.iteritems():
             data_dir = bin["fitdiagnosis"]
@@ -1257,7 +1248,7 @@ if __name__ == "__main__":
                 saved_all_plots = create_postfit_plots_binned(
                     path="%s/plot_%s" % (output_folder, key.replace("ERA", str(era))),
                     fit_diagnostics_path=data_dir,
-                    doPostFit=doPostFit,
+                    type_fit=type_fit,
                     divideByBinWidth=divideByBinWidth,
                     bin=bin,
                     era=era,
