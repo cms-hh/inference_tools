@@ -21,6 +21,10 @@ colors = colors.root
 
 
 class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
+    """
+    Task that plots the signal enhancement as a function of kappa parameters.
+    The HH process (inclusive, ggF, VBF or VHH) can be configured.
+    """
 
     task_namespace = "study"
 
@@ -41,24 +45,27 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
         description="the kappas to scan; should be any of 'kl', 'kt', 'CV', 'C2V'; default: (kl,)",
     )
     x_min = luigi.FloatParameter(
-        default=-2.0,
-        description="the lower x-axis limit; default: -2",
+        default=-1.0,
+        description="the lower x-axis limit; default: -1.0",
     )
     x_max = luigi.FloatParameter(
-        default=2.0,
-        description="the upper x-axis limit; default: 2",
+        default=3.0,
+        description="the upper x-axis limit; default: 3.0",
     )
     y_log = luigi.BoolParameter(
         default=False,
         description="apply log scaling to the y-axis; default: False",
     )
 
+    # signal labels
     s_labels = {
         "hh": "HH",
         "ggf": "ggF",
         "vbf": "VBF",
         "vhh": "VHH",
     }
+
+    # kappa colors
     k_colors = {
         "kl": colors.red_cream,
         "kt": colors.green,
@@ -102,18 +109,20 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
             for k in self.kappas
         }
 
-        # perform the scan using 100 points for each kappa
+        # helper to return a dict containing the fixed kappas and a dynamic one that is scanned
         def get_xsec_kwargs(k, v):
             return {
                 _k: _v for _k, _v in [(k, v)] + list(fixed_kappas[k].items())
                 if _k in allowed_args
             }
 
+        # helper to compute and return the actual signal enhancement
         def get_enhancement(k, x):
-            xsec = get_xsec(**get_xsec_kwargs(k, x + poi_data[k].sm_value))
+            xsec = get_xsec(**get_xsec_kwargs(k, x))
             xsec_sm = get_xsec(**get_xsec_kwargs(k, poi_data[k].sm_value))
             return (x, xsec / xsec_sm)
 
+        # perform the scan using 200 points for each kappa
         scans = [
             [get_enhancement(k, x) for x in linspace(self.x_min, self.x_max, 200)]
             for k in self.kappas
@@ -143,7 +152,7 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
             self.get_axis_limit("y_max"), log=self.y_log, y_min_log=1e-1)
 
         # dummy histogram to control axes
-        x_title = "#kappa - #kappa_{SM}"
+        x_title = "#kappa"
         y_title = "Signal enhancement #sigma^{{{0}}} / #sigma^{{{0}}}_{{SM}}".format(
             self.s_labels[self.signal])
         h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, self.x_min, self.x_max)
