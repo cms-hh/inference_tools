@@ -182,6 +182,7 @@ marker_sequence += 10 * [20]
 # }
 get_gaus_interval = lambda sigma: 2 * sp.stats.norm.cdf(sigma) - 1.
 get_chi2_level = lambda sigma, ndof: sp.stats.chi2.ppf(get_gaus_interval(sigma), ndof)
+get_chi2_level_from_cl = lambda cl, ndof: sp.stats.chi2.ppf(cl, ndof)
 chi2_levels = {
     ndof: {sigma: get_chi2_level(sigma, ndof) for sigma in range(1, 8 + 1)}
     for ndof in range(1, 3 + 1)

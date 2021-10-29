@@ -238,11 +238,11 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         "recompute it using scipy.interpolate and scipy.minimize; default: False",
     )
     show_significances = law.CSVParameter(
-        cls=luigi.IntParameter,
+        cls=luigi.FloatParameter,
         default=(1, 2, 3, 5),
         significant=False,
-        description="values of integer significances to overlay with lines and lables; "
-        "default: 1,2,3,5",
+        description="values of integer significances (>= 1) or float confidence levels (< 1) "
+        "to overlay with lines and lables; default: 1,2,3,5",
     )
     shift_negative_values = luigi.BoolParameter(
         default=False,
