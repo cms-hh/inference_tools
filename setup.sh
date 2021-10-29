@@ -381,6 +381,7 @@ interactive_setup() {
     query DHI_SOFTWARE "Directory for installing software" "$DHI_DATA/software" "\$DHI_DATA/software"
     query DHI_COMBINE_STANDALONE "Whether combine should be installed standalone instead of within CMSSW" "True"
     query DHI_DATACARDS_RUN2 "Location of the datacards_run2 repository (optional)" "" "''"
+    query DHI_HOOK_FILE "Location of a file with custom hooks (optional)" "" "''"
     query DHI_TASK_NAMESPACE "Namespace (i.e. the prefix) of law tasks" "" "''"
     query DHI_LOCAL_SCHEDULER "Use a local scheduler for law tasks" "True"
     if [ "$DHI_LOCAL_SCHEDULER" != "True" ]; then

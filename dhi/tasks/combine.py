@@ -21,7 +21,7 @@ import six
 
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
 from dhi.config import poi_data, br_hh
-from dhi.util import linspace, try_int, real_path, expand_path
+from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path
 from dhi.datacard_tools import bundle_datacard
 
 
@@ -455,11 +455,9 @@ class DatacardTask(HHModelTask):
         bin_names = []
         inject = []
         store_dir = None
-        has_dcr2 = "DHI_DATACARDS_RUN2" in os.environ \
-            and os.path.isdir(expand_path("$DHI_DATACARDS_RUN2"))
-        if has_dcr2:
-            dc_path = real_path("$DHI_DATACARDS_RUN2")
-            in_dc_path = dc_path == real_path(os.getcwd())
+        dc_path = get_dcr2_path()
+        has_dcr2 = dc_path is not None
+        in_dc_path = has_dcr2 and dc_path == real_path(os.getcwd())
         single_dc_matched = []
 
         # try to resolve all patterns
@@ -592,6 +590,9 @@ class DatacardTask(HHModelTask):
         if not self.allow_workspace_input and self.input_is_workspace:
             raise Exception("{!r}: input {} is a workspace which is not allowed".format(
                 self, self.split_datacard_path(self.datacards[0])[0]))
+
+        # generic hook to change task parameters in a customizable way
+        self.call_hook("init_datacard_task")
 
     @property
     def input_is_workspace(self):
@@ -1371,22 +1372,8 @@ class CombineCommandTask(CommandTask):
     def __init__(self, *args, **kwargs):
         super(CombineCommandTask, self).__init__(*args, **kwargs)
 
-        # ugly hack for quick combination tests: force certain features for bbbb_boosted cards, i.e.
-        # when running blinded, avoid using snapshots and ensure that some mandatory custom args are
-        # set; this is highly messy, but there will be a clean, generic approach in the future
-        datacards = getattr(self, "datacards", ("NOTEXISTING",))
-        blinded = not getattr(self, "unblinded", True)
-        is_bbbb_boosted = all(
-            (bin_name and bin_name.startswith("bbbb_boosted"))
-            for bin_name in (self.split_datacard_path(path)[1] for path in datacards)
-        )
-        if is_bbbb_boosted and blinded:
-            if getattr(self, "use_snapshot", False):
-                self.use_snapshot = False
-            if "--toysFrequentist" not in self.custom_args:
-                self.custom_args += " --toysFrequentist"
-            if "--bypassFrequentistFit" not in self.custom_args:
-                self.custom_args += " --bypassFrequentistFit"
+        # generic hook to change task parameters in a customizable way
+        self.call_hook("init_combine_command_task")
 
     def get_minimizer_args(self, skip_default=False):
         args = ""
@@ -1492,14 +1479,22 @@ class CombineCommandTask(CommandTask):
                 if len(param) == 1 or any(param[1:])
             ]
 
-            # build the full command again
-            cmds.append(law.util.quote_cmd(["combine"] + leading_values + law.util.flatten(params)))
+            # allow lazy, custom modification via hooks
+            _params = self.call_hook("modify_combine_params", params=params)
+            if _params:
+                params = _params
 
-            # add the highlighted command
+            # build the full combine command again
+            combine_cmd = law.util.quote_cmd(["combine"] + leading_values + law.util.flatten(params))
+
+            # build the highlighted command
             highlighted_cmd = []
-            for i, p in enumerate(shlex.split(cmds[-1])):
+            for i, p in enumerate(shlex.split(combine_cmd)):
                 func = cyan_bright if (i == 0 and p == "combine") or p.startswith("--") else cyan
                 highlighted_cmd.append(func(p))
+
+            # add them
+            cmds.append(combine_cmd)
             highlighted_cmds.append(" ".join(highlighted_cmd))
 
         return " && ".join(cmds), bright(" && ").join(highlighted_cmds)

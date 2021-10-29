@@ -17,11 +17,14 @@ import logging
 from collections import OrderedDict
 
 import six
-from law.util import multi_match, make_unique, make_list  # noqa
+from law.util import no_value, multi_match, make_unique, make_list  # noqa
 
 # modules and objects from lazy imports
 _plt = None
 _ROOT = None
+
+# cached hook file contents
+_hook_data = no_value
 
 
 def import_plt():
@@ -85,6 +88,34 @@ def import_file(path, attr=None):
     return pkg
 
 
+def _load_hooks():
+    global _hook_data
+
+    if _hook_data is no_value:
+        path = expand_path("$DHI_HOOK_FILE")
+        _hook_data = (path, import_file(path)) if os.path.isfile(path) else None
+
+    return _hook_data
+
+
+def call_hook(name, *args, **kwargs):
+    # load hooks
+    hook_data = _load_hooks()
+    if not hook_data:
+        return None
+    hook_file, hooks = hook_data
+
+    # get the hook function
+    if name not in hooks:
+        return None
+    func = hooks[name]
+    if not callable(func):
+        raise TypeError("hook '{}' in hook file '{}' is not callable".format(name, hook_file))
+
+    # call it and returns its result
+    return func(*args, **kwargs)
+
+
 class DotDict(dict):
     """
     Dictionary providing item access via attributes.
@@ -102,7 +133,11 @@ def expand_path(path):
     Takes a *path* and recursively expands all contained environment variables.
     """
     while "$" in path or "~" in path:
-        path = os.path.expandvars(os.path.expanduser(path))
+        _path = os.path.expandvars(os.path.expanduser(path))
+        changed = _path != path
+        path = _path
+        if not changed:
+            break
     return path
 
 
@@ -111,6 +146,14 @@ def real_path(path):
     Takes a *path* and returns its real, absolute location with all variables expanded.
     """
     return os.path.realpath(expand_path(path))
+
+
+def get_dcr2_path():
+    """
+    Returns the real location of $DHI_DATACARDS_RUN2 when existing, and *None* otherwise.
+    """
+    has_dcr2 = os.path.isdir(expand_path("$DHI_DATACARDS_RUN2"))
+    return real_path("$DHI_DATACARDS_RUN2") if has_dcr2 else None
 
 
 def rgb(r, g, b):

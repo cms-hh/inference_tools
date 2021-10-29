@@ -14,6 +14,8 @@ import luigi
 import law
 import six
 
+from dhi.util import call_hook
+
 
 law.contrib.load(
     "cms", "git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks",
@@ -109,6 +111,12 @@ class AnalysisTask(BaseTask):
 
         return super(AnalysisTask, cls).req_params(inst, **kwargs)
 
+    def __init__(self, *args, **kwargs):
+        super(AnalysisTask, self).__init__(*args, **kwargs)
+
+        # generic hook to change task parameters in a customizable way
+        self.call_hook("init_analysis_task")
+
     def store_parts(self):
         parts = OrderedDict()
         parts["task_class"] = self.task_family if self.store_by_family else self.__class__.__name__
@@ -144,6 +152,9 @@ class AnalysisTask(BaseTask):
             for part in parts
             if (isinstance(part, int) or part)
         )
+
+    def call_hook(self, name, **kwargs):
+        return call_hook(name, self, **kwargs)
 
 
 class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
