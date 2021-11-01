@@ -159,15 +159,18 @@ def create_postfit_plots_binned(
     countOnce = 0
     label_singleH = "none"
     for ss, sh in enumerate(singleH):
+      for cc, catcat in enumerate(catcats):
+        if not cc == 0:
+            continue
         if countOnce == 0:
-            hist = fin.Get(str("%s/%s/%s" % (folder, catcats[0], sh)))
+            hist = fin.Get(str("%s/%s/%s" % (folder, catcats[cc], sh)))
             try:
                 hist.Integral()
             except:
                 continue
             countOnce = 1
             label_singleH = "single H"
-            if verbose : print("Add single H legend (proc %s)" % sh)
+            if verbose : print("Add single H legend (proc %s)" % sh, hist.Integral(), catcats[cc])
         else:
             label_singleH = "none"
         if ss == 0 :
@@ -222,7 +225,6 @@ def create_postfit_plots_binned(
         template.GetYaxis().SetTitle(labelY)
         if verbose : print(nbinscatlist)
 
-    #legend1 = ROOT.TLegend(0.2400, 0.645, 0.9450, 0.910)
     if "splitline" in header_legend :
         bottom_legend = 0.52
     else :
@@ -331,6 +333,7 @@ def create_postfit_plots_binned(
     canvas.SetFillColor(0)
     canvas.SetFrameFillStyle(0)
     canvas.SetFrameBorderMode(0)
+    canvas.Update()
 
     if do_bottom:
         topPad = ROOT.TPad("topPad", "topPad", 0.00, 0.34, 1.00, 0.995)
@@ -383,7 +386,6 @@ def create_postfit_plots_binned(
         lastbin = 0  # for putting histograms from different bins in same plot side by side
         addlegend = True
         for cc, catcat in enumerate(catcats):
-
             if not cc == 0:
                 addlegend = False
             if kk == 0:
@@ -393,6 +395,7 @@ def create_postfit_plots_binned(
                 hist_rebin,
                 fin,
                 readFrom,
+                name_total,
                 key,
                 dprocs[key],
                 divideByBinWidth,
@@ -436,6 +439,8 @@ def create_postfit_plots_binned(
         ):
             continue
         if verbose : print("Stacking proocess %s, with yield %s " % (key, str(round(hist_rebin.Integral(), 2))))
+        if "none" not in dprocs[key]["label"] :
+            legend1.AddEntry(hist_rebin, dprocs[key]["label"], "l" if dprocs[key]["color"] == 0 else "f")
         dumb = histogramStack_mc.Add(hist_rebin)
         del dumb
         del hist_rebin
@@ -446,6 +451,7 @@ def create_postfit_plots_binned(
     dumb = hist_total.Draw("e2,same")
     del dumb
     legend1.AddEntry(hist_total, "Uncertainty", "f")
+    canvas.Update()
 
     for line1 in linebin:
         line1.SetLineColor(1)
@@ -465,6 +471,7 @@ def create_postfit_plots_binned(
                 sumBottom += -4.4
             else:
                 sumBottom += -2.4
+    canvas.Update()
 
     ## draw signal
     if not skip_draw_sig :
@@ -524,6 +531,7 @@ def create_postfit_plots_binned(
                     hist_sig[kk].Scale(scale_VBF)
                     hist_sig[kk].Scale(1./hist_sig[kk].Integral())
         del hist_sig_part
+    canvas.Update()
 
     if not skip_draw_sig :
       for kk, key in enumerate(procs_plot_options_sig.keys()):
@@ -546,6 +554,7 @@ def create_postfit_plots_binned(
             legend_signal = "%s X %i" % (legend_signal, scale_VBF)
         legend1.AddEntry(hist_sig[kk], legend_signal, "f")
 
+    canvas.Update()
     ## make an entry with the sum of what is to sum
     for catcat in yiels_list.keys() :
         last_was_none = False
@@ -582,15 +591,18 @@ def create_postfit_plots_binned(
                 counter_last_was_none = 0
                 last_was_none = False
                 string_sum=""
+    canvas.Update()
 
     if unblind:
         dumb = dataTGraph1.Draw("e1P,same")
         del dumb
     dumb = hist_total.Draw("axis,same")
     del dumb
+    canvas.Update()
 
     dumb = legend1.Draw("same")
     del dumb
+    canvas.Update()
 
     labels = addLabel_CMS_preliminary(era, do_bottom, ROOT)
     for ll, label in enumerate(labels):
@@ -601,6 +613,7 @@ def create_postfit_plots_binned(
             dumb = label.Draw()
             del dumb
 
+    canvas.Update()
     #################################
     if do_bottom and not only_yield_table :
         bottomPad.cd()
@@ -659,11 +672,12 @@ def create_postfit_plots_binned(
     human_readable_yield_table(yiels_list, bin, savepdf, scale_signal_in_table, unblind, verbose)
 
     if not only_yield_table :
+        canvas.Update()
         if not do_bottom:
             savepdf = savepdf + "_noBottom"
         if verbose : print("saving...", savepdf)
-        dumb = canvas.SaveAs(savepdf + ".pdf")
-        if verbose : print("saved", savepdf + ".pdf")
+        #dumb = canvas.SaveAs(savepdf + ".pdf")
+        #if verbose : print("saved", savepdf + ".pdf")
         dumb = canvas.SaveAs(savepdf + ".png")
         if verbose : print("saved", savepdf + ".png")
         del dumb
@@ -674,6 +688,7 @@ def create_postfit_plots_binned(
     fin.IsA().Destructor(fin)
     if do_bottom and not only_yield_table :
         bottomPad.IsA().Destructor(bottomPad)
+    canvas.Flush()
     topPad.IsA().Destructor(topPad)
     canvas.IsA().Destructor(canvas)
 
@@ -807,14 +822,14 @@ def read_and_modify(output_folder, this_plot, options_dat, verbose, overwrite_fi
             line = line.replace('PATH_FITDIAGNOSIS', overwrite_fitdiag)
         for key_modify in this_plot :
             if not (key_modify=="ERA" and this_plot[key_modify]==0 and not "era" in line) :
-                line = line.replace(key_modify, str(this_plot[key_modify]))
+                line = line.replace(key_modify, str(this_plot[key_modify])).replace("'", "\"")
         fout.write(line)
     fin.close()
     fout.close()
     return dict_for_era
 
 def get_full_path(test_path, in_directory_of_file="none") :
-    procs_plot = str(test_path).replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
+    procs_plot = str(test_path).replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2')).replace("$DHI_BASE", os.getenv('DHI_BASE'))
     # if not full path assume it is in the given directory
     return procs_plot if procs_plot.startswith("/") or in_directory_of_file=="none" else in_directory_of_file.replace(os.path.basename(in_directory_of_file), procs_plot)
 
@@ -1006,6 +1021,7 @@ def stack_histo(
     hist_rebin_local,
     fin,
     folder,
+    name_total,
     name,
     itemDict,
     divideByBinWidth,
@@ -1028,13 +1044,12 @@ def stack_histo(
     except:
         if not "H" in histo_name :
             if verbose : print("Doesn't exist %s" % histo_name)
-        return {
-            "lastbin": allbins,
-            "binEdge": lastbin - 0.5,
-            "labelPos": 0 if not original == "none" else float(allbins / 2),
-            "yield_cat" : 0.0,
-            "yield_cat_err" : 0.0
-        }
+        # make empty hist to fill the row of distributions
+        total_hist = fin.Get(str("%s/%s" % (folder, name_total)))
+        hist = total_hist.Clone()
+        for ii in xrange(1, hist.GetNbinsX() + 1):
+            hist.SetBinError(ii , 0.0)
+            hist.SetBinContent(ii , 0.0)
     if not firstHisto.Integral() > 0:
         firstHisto = hist.Clone()
         for ii in xrange(1, firstHisto.GetNbinsX() + 1):
@@ -1045,12 +1060,12 @@ def stack_histo(
     if not itemDict["fillStype"] == 0:
         hist_rebin_local.SetFillStyle(itemDict["fillStype"])
 
-    if "none" not in itemDict["label"] and addlegend:
-        legend.AddEntry(hist_rebin_local, itemDict["label"], "l" if itemDict["color"] == 0 else "f")
+    #if "none" not in itemDict["label"] and addlegend:
+    #    legend.AddEntry(hist_rebin_local, itemDict["label"], "l" if itemDict["color"] == 0 else "f")
+
     if itemDict["make border"] == True:
         hist_rebin_local.SetLineColor(1 if itemDict["color"] == 0 else itemDict["color"])
         hist_rebin_local.SetLineWidth(3 if itemDict["color"] == 0 else 1)
-
     else:
         hist_rebin_local.SetLineColor(itemDict["color"])
     for ii in xrange(1, allbins + 1):
