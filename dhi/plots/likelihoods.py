@@ -164,7 +164,7 @@ def plot_likelihood_scan_1d(
             sig_label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
             sig_label_y += pad.GetBottomMargin() + 0.00375
             if is_cl:
-                sig_label = "{:.2f}".format(sig * 100).rstrip("0").rstrip(".") + "%"
+                sig_label = "{:f}".format(sig * 100).rstrip("0").rstrip(".") + "%"
             else:
                 sig_label = "{}#sigma".format(sig)
             sig_label = r.routines.create_top_right_label(sig_label, pad=pad, x_offset=5,
@@ -390,7 +390,7 @@ def plot_likelihood_scans_1d(
             sig_label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
             sig_label_y += pad.GetBottomMargin() + 0.00375
             if is_cl:
-                sig_label = "{:.2f}".format(sig * 100).rstrip("0").rstrip(".") + "%"
+                sig_label = "{:f}".format(sig * 100).rstrip("0").rstrip(".") + "%"
             else:
                 sig_label = "{}#sigma".format(sig)
             sig_label = r.routines.create_top_right_label(sig_label, pad=pad, x_offset=5,
@@ -668,7 +668,7 @@ def plot_likelihood_scan_2d(
             # get the approximate label width
             is_cl = isinstance(level, float) and level < 1
             if is_cl:
-                text = "{:.2f}".format(level * 100).rstrip("0").rstrip(".") + "%"
+                text = "{:f}".format(level * 100).rstrip("0").rstrip(".") + "%"
             else:
                 text = "{}#sigma".format(level)
             label_width, label_height = get_text_extent(text, 16, 43)

@@ -12,7 +12,7 @@ import law
 
 from dhi.tasks.base import PlotTask, view_output_plots
 from dhi.tasks.combine import HHModelTask, ParameterValuesTask
-from dhi.config import poi_data, colors
+from dhi.config import poi_data, colors, cms_postfix
 from dhi.util import import_ROOT, linspace, create_tgraph, to_root_latex
 from dhi.plots.util import get_y_range, create_model_parameters
 
@@ -180,7 +180,7 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
         draw_objs.insert(-1, legend_box)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(layout="inside_vertical", pad=pad)
+        cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="inside_vertical", pad=pad)
         draw_objs.extend(cms_labels)
 
         # model parameters
