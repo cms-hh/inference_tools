@@ -541,7 +541,7 @@ class PlotTask(AnalysisTask):
         if self.plot_postfix and self.plot_postfix != law.NO_STR:
             parts.append((self.plot_postfix,))
 
-        assert set(self.file_types) <= set(("pdf", "png")), "Only supported file formats are 'pdf' and 'png'!"
+        assert set(self.file_types) <= set(("pdf", "png", "log")), "Only supported file formats are 'pdf' and 'png'!"
         return ["{}.{}".format(self.join_postfix(parts), ext) for ext in self.file_types]
 
     def get_plot_func(self, func_id):
