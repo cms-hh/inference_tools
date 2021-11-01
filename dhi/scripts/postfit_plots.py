@@ -399,7 +399,6 @@ def create_postfit_plots_binned(
                 key,
                 dprocs[key],
                 divideByBinWidth,
-                addlegend,
                 lastbin,
                 nbinscatlist[cc],
                 normalize_X_original,
@@ -1025,7 +1024,6 @@ def stack_histo(
     name,
     itemDict,
     divideByBinWidth,
-    addlegend,
     lastbin,
     catbin,
     original,
@@ -1059,9 +1057,6 @@ def stack_histo(
     hist_rebin_local.SetFillColor(itemDict["color"])
     if not itemDict["fillStype"] == 0:
         hist_rebin_local.SetFillStyle(itemDict["fillStype"])
-
-    #if "none" not in itemDict["label"] and addlegend:
-    #    legend.AddEntry(hist_rebin_local, itemDict["label"], "l" if itemDict["color"] == 0 else "f")
 
     if itemDict["make border"] == True:
         hist_rebin_local.SetLineColor(1 if itemDict["color"] == 0 else itemDict["color"])
