@@ -8,6 +8,7 @@ import os
 import sys
 import re
 import glob
+import shlex
 import importlib
 import itertools
 import functools
@@ -18,11 +19,10 @@ import law
 import luigi
 import six
 
-from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, LocalFileTarget, ModelParameters
+from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
 from dhi.config import poi_data, br_hh
-from dhi.util import linspace, try_int, real_path, expand_path
+from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path
 from dhi.datacard_tools import bundle_datacard
-from dhi.scripts import remove_processes as remove_processes_script
 
 
 def require_hh_model(func):
@@ -41,17 +41,22 @@ class HHModelTask(AnalysisTask):
     provides a few convenience functions for working with it.
     """
 
+    DEFAULT_HH_MODULE = "hh_model"
+    DEFAULT_HH_MODEL = "model_default"
+
     valid_hh_model_options = {
         "noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc",
+        "doProfilergghh", "doProfilerqqhh", "doProfilervhh",
         "doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V", "doProfileC2",
     }
 
     hh_model = luigi.Parameter(
-        default="HHModelPinv.model_default",
+        default="{}.{}".format(DEFAULT_HH_MODULE, DEFAULT_HH_MODEL),
         description="the location of the HH model to use with optional configuration options in "
-        "the format module.model_name[@opt1[@opt2...]]; when no module name is given, the default "
-        "one 'dhi.models.HHModelPinv' is assumed; valid options are {}; default: "
-        "HHModelPinv.model_default".format(",".join(valid_hh_model_options)),
+        "the format [module.]model_name[@opt1[@opt2...]]; when no module is given, the default "
+        "'{0}' is assumed; valid options are {2}; default: {0}.{1}".format(
+            DEFAULT_HH_MODULE, DEFAULT_HH_MODEL, ",".join(valid_hh_model_options),
+        ),
     )
 
     allow_empty_hh_model = False
@@ -74,14 +79,13 @@ class HHModelTask(AnalysisTask):
         # the format used to be "module:model_name" before so adjust it to support legacy commands
         hh_model = hh_model.replace(":", ".")
 
-        # when there is no "." in the string, assume it to be the name of a model in the default
-        # model file "HHModelPinv"
+        # when there is no "." in the string, assume it to be the default module
         if "." not in hh_model:
-            hh_model = "HHModelPinv.{}".format(hh_model)
+            hh_model = "{}.{}".format(cls.DEFAULT_HH_MODULE, hh_model)
 
         # split into module, model name and options
         front, options = hh_model.split("@", 1) if "@" in hh_model else (hh_model, "")
-        module_id, model_name = front.rsplit(".", 1) if "." in front else ("HHModelPinv", front)
+        module_id, model_name = front.rsplit(".", 1) if "." in front else (cls.DEFAULT_HH_MODULE, front)
         options = options.split("@") if options else []
 
         # check if options are valid and split them into key value pairs
@@ -126,6 +130,9 @@ class HHModelTask(AnalysisTask):
         set_opt("doBRscaling", not options.get("noBRscaling", False))
         set_opt("doHscaling", not options.get("noHscaling", False))
         set_opt("doklDependentUnc", not options.get("noklDependentUnc", False))
+        set_opt("doProfilergghh", options.get("doProfilergghh"))
+        set_opt("doProfilerqqhh", options.get("doProfilerqqhh"))
+        set_opt("doProfilervhh", options.get("doProfilervhh"))
         set_opt("doProfilekl", options.get("doProfilekl"))
         set_opt("doProfilekt", options.get("doProfilekt"))
         set_opt("doProfileCV", options.get("doProfileCV"))
@@ -218,7 +225,7 @@ class HHModelTask(AnalysisTask):
 
     @classmethod
     def _get_theory_xsecs(cls, hh_model, r_poi, param_names, param_values, unit=None, br=None,
-            normalize=False, xsec_kwargs=None):
+            normalize=False, skip_unc=False, xsec_kwargs=None):
         import numpy as np
 
         # set defaults
@@ -230,10 +237,13 @@ class HHModelTask(AnalysisTask):
         # create the xsec getter
         get_xsec = cls._create_xsec_func(hh_model, r_poi, unit, br=br)
 
+        # check if uncertainties can / should be added
+        add_unc = get_xsec.has_unc and not skip_unc
+
         # store as records
         records = []
         dtype = [(p, np.float32) for p in param_names] + [("xsec", np.float32)]
-        if get_xsec.has_unc:
+        if add_unc:
             dtype.extend([("xsec_p1", np.float32), ("xsec_m1", np.float32)])
         for values in param_values:
             # prepare the xsec kwargs
@@ -243,7 +253,7 @@ class HHModelTask(AnalysisTask):
 
             # create the record, potentially with uncertainties and normalization
             record = values + (get_xsec(**_xsec_kwargs),)
-            if get_xsec.has_unc:
+            if add_unc:
                 record += (
                     get_xsec(unc="up", **_xsec_kwargs),
                     get_xsec(unc="down", **_xsec_kwargs),
@@ -376,21 +386,17 @@ class DatacardTask(HHModelTask):
         default=law.NO_STR,
         description="do not set manually",
     )
+    workspace_inject_files = law.CSVParameter(
+        default=tuple(),
+        description="do not set manually",
+    )
 
     hash_datacards_in_repr = True
-
     allow_workspace_input = True
+    skip_inject_files = False
 
-    exclude_params_index = {"datacards_store_dir"}
+    exclude_params_index = {"datacards_store_dir", "workspace_inject_files"}
     exclude_params_repr = {"datacards_store_dir"}
-
-    def __init__(self, *args, **kwargs):
-        super(DatacardTask, self).__init__(*args, **kwargs)
-
-        # complain when the input is a workspace and it's not allowed
-        if not self.allow_workspace_input and self.input_is_workspace:
-            raise Exception("{!r}: input {} is a workspace which is now allowed".format(
-                self, self.datacards[0]))
 
     @classmethod
     def modify_param_values(cls, params):
@@ -403,11 +409,19 @@ class DatacardTask(HHModelTask):
 
         datacards = params.get("datacards")
         if datacards:
-            datacards, store_dir = cls.resolve_datacards(datacards)
+            datacards, inject, store_dir = cls.resolve_datacards(datacards)
 
             # update the store dir when newly set
             if params.get("datacards_store_dir", law.NO_STR) == law.NO_STR and store_dir:
                 params["datacards_store_dir"] = store_dir
+
+            # update inject files when newly set
+            if params.get("workspace_inject_files", law.NO_STR) in (law.NO_STR, tuple()) and inject:
+                params["workspace_inject_files"] = tuple(inject)
+
+            # remove inject files again (or initially) when requested
+            if cls.skip_inject_files:
+                params["workspace_inject_files"] = tuple()
 
             # store resovled datacards
             params["datacards"] = tuple(datacards)
@@ -415,71 +429,43 @@ class DatacardTask(HHModelTask):
         return params
 
     @classmethod
-    def file_is_workspace(cls, path):
-        return real_path(path).endswith(".root")
-
-    @property
-    def input_is_workspace(self):
-        return self.datacards and len(self.datacards) == 1 \
-            and self.file_is_workspace(self.datacards[0])
-
-    def _repr_params(self, *args, **kwargs):
-        params = super(DatacardTask, self)._repr_params(*args, **kwargs)
-
-        if not params.get("datacards") and self.datacards_store_dir != law.NO_STR:
-            params["datacards"] = self.datacards_store_dir
-
-        return params
-
-    def _repr_param(self, name, value, **kwargs):
-        if name == "datacards":
-            if isinstance(value, six.string_types):
-                value = "@" + value
-            elif self.datacards_store_dir != law.NO_STR:
-                value = self.datacards_store_dir
-            elif self.hash_datacards_in_repr:
-                value = "hash:{}".format(law.util.create_hash(value))
-            kwargs["serialize"] = False
-        return super(DatacardTask, self)._repr_param(name, value, **kwargs)
-
-    @classmethod
     def split_datacard_path(cls, path):
         """
-        Splits a datacard *path* into a maximum of three components: the path itself, leading bin
-        name, and a training storage directory. Missing components are returned as *None*. When the
-        *path* refers to a workspace, do not apply any splitting.
+        Splits a datacard *path* into a maximum of four components: the path itself, leading bin
+        name, injection files, and a training storage directory. Missing components are returned as
+        *None*. When the *path* refers to a workspace, do not apply any splitting.
         """
-        _path, bin_name, store_dir = None, None, None
+        _path, bin_name, inject, store_dir = None, None, None, None
 
         if cls.file_is_workspace(path):
             _path = path
         else:
-            m = re.match(r"^(([^\/]+)=)?([^@]*)(@(.+))?$", path)
+            m = re.match(r"^(([^\/]+)=)?([^@\<]*)(\<([^@]*))?(@(.+))?$", path)
             if m:
                 _path = m.group(3) or path
                 bin_name = m.group(2) or bin_name
-                store_dir = m.group(5) or store_dir
+                inject = (m.group(5) and list(filter(bool, m.group(5).split("|")))) or inject
+                store_dir = m.group(7) or store_dir
 
-        return _path, bin_name, store_dir
+        return _path, bin_name, inject, store_dir
 
     @classmethod
     def resolve_datacards(cls, patterns):
         paths = []
         bin_names = []
+        inject = []
         store_dir = None
-        has_dcr2 = "DHI_DATACARDS_RUN2" in os.environ \
-            and os.path.isdir(expand_path("$DHI_DATACARDS_RUN2"))
-        if has_dcr2:
-            dc_path = real_path("$DHI_DATACARDS_RUN2")
-            in_dc_path = dc_path == real_path(os.getcwd())
+        dc_path = get_dcr2_path()
+        has_dcr2 = dc_path is not None
+        in_dc_path = has_dcr2 and dc_path == real_path(os.getcwd())
         single_dc_matched = []
 
         # try to resolve all patterns
         for i, pattern in enumerate(patterns):
             is_last = i == len(patterns) - 1
 
-            # extract bin name and store dir when given
-            pattern, bin_name, _store_dir = cls.split_datacard_path(pattern)
+            # extract bin name, injection files, and a store dir when given
+            pattern, bin_name, _inject, _store_dir = cls.split_datacard_path(pattern)
 
             # save the store_dir when this is the last pattern
             if is_last and _store_dir:
@@ -492,19 +478,21 @@ class DatacardTask(HHModelTask):
             # get matching paths
             pattern = expand_path(pattern)
             _paths = [] if has_dcr2 and in_dc_path else list(glob.glob(pattern))
+            _paths = map(os.path.realpath, _paths)
 
             # when the pattern did not match anything, repeat relative to the datacards_run2 dir
-            _single_dc_matched = False
             if not _paths and has_dcr2:
                 _paths = list(glob.glob(os.path.join(dc_path, pattern)))
-                if len(_paths) == 1:
-                    _single_dc_matched = True
 
-                    # special case: when there is a single matched card and no bin_name defined,
-                    # use the basename of the path; this will most likely match the analysis channel
-                    # name of cards to be combined
-                    if not bin_name:
-                        bin_name = os.path.basename(_paths[0])
+            # special handling when a single, non-workspace file from datacards_run2 was matched
+            _single_dc_matched = False
+            if len(_paths) == 1 and has_dcr2 and _paths[0].startswith(dc_path + os.sep) \
+                    and not cls.file_is_workspace(_paths[0]):
+                _single_dc_matched = True
+
+                # special case: when there is no bin_name defined, use the analysis channel name
+                if not bin_name:
+                    bin_name = os.path.relpath(_paths[0], dc_path).split(os.path.sep)[0]
             single_dc_matched.append(_single_dc_matched)
 
             # when directories are given, assume to find a file "datacard.txt"
@@ -525,8 +513,9 @@ class DatacardTask(HHModelTask):
                 __paths.append(path)
             _paths = __paths
 
-            # keep only existing cards
+            # keep only existing cards and resolve them to get deterministic hashes later on
             _paths = filter(os.path.exists, _paths)
+            _paths = map(os.path.realpath, _paths)
 
             # complain when no files matched
             if not _paths:
@@ -535,14 +524,24 @@ class DatacardTask(HHModelTask):
                 else:
                     raise Exception("datacard {} does not exist".format(pattern))
 
-            # resolve paths to make them fully deterministic as a hash might be built later on
-            _paths = map(os.path.realpath, _paths)
-
             # add datacard path and optional bin name
             for path in _paths:
                 if path not in paths:
                     paths.append(path)
                     bin_names.append(bin_name)
+
+            # resolve injection files relative to the first path when not existing
+            if _inject:
+                for inject_file in _inject:
+                    # alias
+                    if inject_file.lower() == "i":
+                        inject_file = "inject.json"
+                    real_inject_file = real_path(inject_file)
+                    if not os.path.exists(real_inject_file):
+                        _real_inject_file = os.path.join(os.path.dirname(_paths[0]), inject_file)
+                        if os.path.exists(_real_inject_file):
+                            real_inject_file = _real_inject_file
+                    inject.append(real_inject_file)
 
         # complain when no paths were provided and store dir is invalid
         if not paths and not store_dir:
@@ -575,16 +574,55 @@ class DatacardTask(HHModelTask):
                 parts.append(p)
             store_dir = "__".join(p.replace(os.sep, "_") for p in parts)
 
-        return datacards, store_dir
+        # sort inject files
+        inject = sorted(inject)
+
+        return datacards, inject, store_dir
+
+    @classmethod
+    def file_is_workspace(cls, path):
+        return real_path(path).endswith(".root")
+
+    def __init__(self, *args, **kwargs):
+        super(DatacardTask, self).__init__(*args, **kwargs)
+
+        # complain when the input is a workspace and it's not allowed
+        if not self.allow_workspace_input and self.input_is_workspace:
+            raise Exception("{!r}: input {} is a workspace which is not allowed".format(
+                self, self.split_datacard_path(self.datacards[0])[0]))
+
+        # generic hook to change task parameters in a customizable way
+        self.call_hook("init_datacard_task")
+
+    @property
+    def input_is_workspace(self):
+        return self.datacards and len(self.datacards) == 1 \
+            and self.file_is_workspace(self.split_datacard_path(self.datacards[0])[0])
+
+    def _repr_param(self, name, value, **kwargs):
+        if name == "datacards":
+            if isinstance(value, six.string_types):
+                value = "@" + value
+            elif self.datacards_store_dir != law.NO_STR:
+                value = self.datacards_store_dir
+            elif self.hash_datacards_in_repr:
+                value = "hash:{}".format(law.util.create_hash(value))
+            kwargs["serialize"] = False
+        return super(DatacardTask, self)._repr_param(name, value, **kwargs)
 
     def store_parts(self):
         parts = super(DatacardTask, self).store_parts()
 
+        # set the "inputs" part depending on what is passed
         if self.datacards_store_dir != law.NO_STR:
             parts["inputs"] = self.datacards_store_dir
         else:
             prefix = "workspace" if self.input_is_workspace else "datacards"
             parts["inputs"] = "{}_{}".format(prefix, law.util.create_hash(self.datacards))
+
+        # append inject paths
+        if self.workspace_inject_files:
+            parts["inputs"] += "__inject_" + law.util.create_hash(self.workspace_inject_files)
 
         parts["mass"] = "m{}".format(self.mass)
 
@@ -630,9 +668,13 @@ class MultiDatacardTask(DatacardTask):
         if multi_datacards:
             _multi_datacards = []
             for i, patterns in enumerate(multi_datacards):
-                datacards, store_dir = cls.resolve_datacards(patterns)
+                datacards, inject, store_dir = cls.resolve_datacards(patterns)
 
-                # add back the store dir for transparent forwarding to dependencies
+                # add back inject files back to let dependencies resolve them
+                if inject and datacards:
+                    datacards[-1] += "<" + "<".join(inject)
+
+                # add back the store dir back to let dependencies resolve it
                 if store_dir:
                     if datacards:
                         datacards[-1] += "@" + store_dir
@@ -649,14 +691,17 @@ class MultiDatacardTask(DatacardTask):
         super(MultiDatacardTask, self).__init__(*args, **kwargs)
 
         # the lengths of names and order indices must match multi_datacards when given
-        if self.datacard_names and len(self.datacard_names) != len(self.multi_datacards):
-            raise Exception("{!r}: when datacard_names is set, its length ({}) must match that of "
-                "multi_datacards ({})".format(
-                    self, len(self.datacard_names), len(self.multi_datacards)))
-        if self.datacard_order and len(self.datacard_order) != len(self.multi_datacards):
-            raise Exception("{!r}: when datacard_order is set, its length ({}) must match that of "
-                "multi_datacards ({})".format(
-                    self, len(self.datacard_order), len(self.multi_datacards)))
+        n = self.n_datacard_entries
+        if self.datacard_names and len(self.datacard_names) != n:
+            raise Exception("found {} entries in datacard_names whereas {} is expected".format(
+                len(self.datacard_names), n))
+        if self.datacard_order and len(self.datacard_order) != n:
+            raise Exception("found {} entries in datacard_order whereas {} is expected".format(
+                len(self.datacard_order), n))
+
+    @property
+    def n_datacard_entries(self):
+        return len(self.multi_datacards)
 
     def _repr_param(self, name, value, **kwargs):
         if self.hash_datacards_in_repr and name == "multi_datacards":
@@ -959,7 +1004,9 @@ class ParameterScanTask(AnalysisTask):
 
 class POITask(DatacardTask, ParameterValuesTask):
 
-    r_pois = ("r", "r_qqhh", "r_gghh", "r_vhh")
+    # class-level sequence of all available pois
+    # instances will have potentially reduced sequences, depending on the physics model
+    r_pois = ("r", "r_gghh", "r_qqhh", "r_vhh")
     k_pois = ("kl", "kt", "CV", "C2V", "C2")
     all_pois = r_pois + k_pois
 
@@ -1031,12 +1078,11 @@ class POITask(DatacardTask, ParameterValuesTask):
 
         # store available pois on task level and potentially update them according to the model
         if self.hh_model_empty:
-            self.r_pois = tuple(self.__class__.r_pois)
-            self.k_pois = tuple(self.__class__.k_pois)
+            self.r_pois, self.k_pois = self.get_empty_hh_model_pois()
         else:
             model = self.load_hh_model()[1]
-            self.r_pois = list(model.r_pois)
-            self.k_pois = list(model.k_pois)
+            self.r_pois = tuple(model.r_pois)
+            self.k_pois = tuple(model.k_pois)
         self.all_pois = self.r_pois + self.k_pois
 
         # check again of the chosen pois are available
@@ -1062,6 +1108,11 @@ class POITask(DatacardTask, ParameterValuesTask):
                 if p in self.pois:
                     raise Exception("{!r}: parameter values are not allowed to be in POIs, but "
                         "found '{}'".format(self, p))
+
+    def get_empty_hh_model_pois(self):
+        # hook that can be implemented to configure the r (and possibly k) POIs to be used
+        # when not hh model is configured
+        return tuple(self.__class__.r_pois), tuple(self.__class__.k_pois)
 
     def store_parts(self):
         parts = super(POITask, self).store_parts()
@@ -1177,11 +1228,11 @@ class POIScanTask(POITask, ParameterScanTask):
         if self.force_scan_parameters_equal_pois:
             missing = set(self.pois) - set(self.scan_parameter_names)
             if missing:
-                raise Exception("scan parameters {} must match POIs {} or vice versa".format(
+                raise Exception("scan parameters {} must match POIs {} and vice versa".format(
                     self.joined_scan_parameter_names, self.joined_pois))
             unknown = set(self.scan_parameter_names) - set(self.pois)
             if unknown:
-                raise Exception("scan parameters {} must match POIs {} or vice versa".format(
+                raise Exception("scan parameters {} must match POIs {} and vice versa".format(
                     self.joined_scan_parameter_names, self.joined_pois))
 
         # check if scan parameters and pois diverge
@@ -1202,6 +1253,14 @@ class POIScanTask(POITask, ParameterScanTask):
             if p in self.parameter_ranges_dict:
                 raise Exception("scan parameters are not allowed to be in parameter ranges, "
                     "but found {}".format(p))
+
+    def _joined_parameter_values_pois(self):
+        pois = super(POIScanTask, self)._joined_parameter_values_pois()
+
+        # skip scan parameters
+        pois = [p for p in pois if p not in self.scan_parameter_names]
+
+        return pois
 
     def get_output_postfix_pois(self):
         use_all_pois = self.allow_parameter_values_in_pois or self.force_scan_parameters_equal_pois
@@ -1224,14 +1283,6 @@ class POIScanTask(POITask, ParameterScanTask):
             parts = parts[:i] + ParameterScanTask.get_output_postfix(self, join=False) + parts[i:]
 
         return self.join_postfix(parts) if join else parts
-
-    def _joined_parameter_values_pois(self):
-        pois = super(POIScanTask, self)._joined_parameter_values_pois()
-
-        # skip scan parameters
-        pois = [p for p in pois if p not in self.scan_parameter_names]
-
-        return pois
 
 
 class POIPlotTask(PlotTask, POITask):
@@ -1267,17 +1318,6 @@ class POIPlotTask(PlotTask, POITask):
         return shown_parameters
 
 
-class InputDatacards(DatacardTask, law.ExternalTask):
-
-    version = None
-    mass = None
-    hh_model = law.NO_STR
-    allow_empty_hh_model = True
-
-    def output(self):
-        return [law.LocalFileTarget(self.split_datacard_path(card)[0]) for card in self.datacards]
-
-
 class CombineCommandTask(CommandTask):
 
     toys = luigi.IntParameter(
@@ -1291,44 +1331,186 @@ class CombineCommandTask(CommandTask):
         description="when set, use additional combine flags to optimize the minimization of "
         "likelihoods with containing discrete parameters; default: False",
     )
-
-    # default minimizer options with strategy 0
-    combine_stable_options = (
-        "--cminDefaultMinimizerType Minuit2"
-        " --cminDefaultMinimizerStrategy 0"
-        " --cminFallbackAlgo Minuit2,0:1.0"
-    )
-
-    # default minimizer options with strategy 1, i.e., for fits requiring Hesse
-    # see http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/runningthetool#generic-minimizer-options
-    combine_stable_options_hesse = (
-        "--cminDefaultMinimizerType Minuit2"
-        " --cminDefaultMinimizerStrategy 1"
-        " --cminFallbackAlgo Minuit2,1:1.0"
+    minimizer = law.MultiCSVParameter(
+        default=(("0", "0.1"), ("0", "0.2"), ("0", "0.4")),
+        min_len=2,
+        max_len=4,
+        significant=False,
+        description="multiple, colon-separated minimizer configurations in the format "
+        "'[algo,][subalgo,]strategy,tolerance'; algo defaults to Minuit2; subalgo has no default; "
+        "default: 0,0.1:0,0.2:0,0.4",
     )
 
     combine_discrete_options = (
-        "--X-rt MINIMIZER_freezeDisassociatedParams"
+        " --X-rtd MINIMIZER_freezeDisassociatedParams"
         " --X-rtd MINIMIZER_multiMin_hideConstants"
         " --X-rtd MINIMIZER_multiMin_maskConstraints"
         " --X-rtd MINIMIZER_multiMin_maskChannels=2"
     )
 
+    option_aliases = {
+        "-d": ["--datacard"],
+        "-M": ["--method"],
+        "-t": ["--toys"],
+        "-v": ["--verbose"],
+        "-m": ["--mass"],
+        "-s": ["--seed"],
+        "-w": ["--workspaceName"],
+        "-n": ["--name"],
+        "-g": ["-group"],
+        "-C": ["--cl"],
+        "-D": ["--dataset"],
+        "-H": ["--hintMethod"],
+        "-L": ["--LoadLibrary"],
+        "--blind": ["--run expected", "--noFitAsimov"],
+    }
+
+    multi_options = ["--cminFallbackAlgo", "--LoadLibrary", "--keyword-value", "--X-rtd", "--X-rt"]
+
     exclude_index = True
+
+    def __init__(self, *args, **kwargs):
+        super(CombineCommandTask, self).__init__(*args, **kwargs)
+
+        # generic hook to change task parameters in a customizable way
+        self.call_hook("init_combine_command_task")
+
+    def get_minimizer_args(self, skip_default=False):
+        args = ""
+        if not self.minimizer:
+            return args
+
+        def parse(m):
+            # returns algo, subalgo, strategy, tolerance
+            if len(m) == 2:
+                return "Minuit2", None, m[0], m[1]
+            elif len(m) == 3:
+                return m[0], None, m[1], m[2]
+            return m
+
+        if not skip_default:
+            algo, subalgo, strat, tol = parse(self.minimizer[0])
+            args += " --cminDefaultMinimizerType {}".format(algo)
+            args += " --cminDefaultMinimizerStrategy {}".format(strat)
+            args += " --cminDefaultMinimizerTolerance {}".format(tol)
+            if subalgo:
+                args += " --cminDefaultMinimizerAlgo {}".format(subalgo)
+
+        for m in self.minimizer[(0 if skip_default else 1):]:
+            algo, subalgo, strat, tol = parse(m)
+            subalgo = ("," + subalgo) if subalgo else ""
+            args += " --cminFallbackAlgo {}{},{}:{}".format(algo, subalgo, strat, tol)
+
+        return args
 
     @property
     def combine_optimization_args(self):
-        args = self.combine_stable_options
+        # start with minimizer args
+        args = self.get_minimizer_args()
+
+        # additional args
+        args += " --X-rtd REMOVE_CONSTANT_ZERO_POINT=1"
+
+        # optimization for discrete parameters (as suggested by bbgg)
         if self.optimize_discretes:
             args += " " + self.combine_discrete_options
+
         return args
 
-    @property
-    def combine_optimization_args_hesse(self):
-        args = self.combine_stable_options_hesse
-        if self.optimize_discretes:
-            args += " " + self.combine_discrete_options
-        return args
+    def get_command(self):
+        cmd = super(CombineCommandTask, self).get_command()
+
+        def is_number(s):
+            try:
+                return isinstance(float(s), float)
+            except:
+                return False
+
+        def is_opt(s):
+            return s.startswith("-") and not is_number(s[1:])
+
+        # highlighting
+        cyan = lambda s: law.util.colored(s, "cyan")
+        cyan_bright = lambda s: law.util.colored(s, "cyan", style="bright")
+        bright = lambda s: law.util.colored(s, "default", style="bright")
+
+        # extract the "combine ..." part
+        cmds = []
+        highlighted_cmds = []
+        for c in (c.strip() for c in cmd.split(" && ")):
+            if not c.startswith("combine "):
+                cmds.append(c)
+                highlighted_cmds.append(cyan(c))
+                continue
+
+            # first, replace aliases
+            parts = []
+            for part in shlex.split(c)[1:]:
+                if is_opt(part) and part in self.option_aliases:
+                    parts.extend(self.option_aliases[part])
+                else:
+                    parts.append(part)
+
+            # group into (opt, value|None) pairs
+            leading_values = []
+            params = []
+            for part in parts:
+                if is_opt(part):
+                    params.append([part])
+                elif params:
+                    params[-1].append(part)
+                else:
+                    leading_values.append(part)
+
+            # list indices of occurence per option
+            indices = defaultdict(list)
+            for j, param in enumerate(params):
+                indices[param[0]].append(j)
+
+            # remove all but the first occurrence of options that are allowed only once
+            params = [
+                param for j, param in enumerate(params)
+                if param[0] in self.multi_options or j == min(indices[param[0]])
+            ]
+
+            # remove params with existing, but all empty values
+            params = [
+                param for param in params
+                if len(param) == 1 or any(param[1:])
+            ]
+
+            # allow lazy, custom modification via hooks
+            _params = self.call_hook("modify_combine_params", params=params)
+            if _params:
+                params = _params
+
+            # build the full combine command again
+            combine_cmd = law.util.quote_cmd(["combine"] + leading_values + law.util.flatten(params))
+
+            # build the highlighted command
+            highlighted_cmd = []
+            for i, p in enumerate(shlex.split(combine_cmd)):
+                func = cyan_bright if (i == 0 and p == "combine") or p.startswith("--") else cyan
+                highlighted_cmd.append(func(p))
+
+            # add them
+            cmds.append(combine_cmd)
+            highlighted_cmds.append(" ".join(highlighted_cmd))
+
+        return " && ".join(cmds), bright(" && ").join(highlighted_cmds)
+
+
+class InputDatacards(DatacardTask, law.ExternalTask):
+
+    version = None
+    mass = None
+    hh_model = law.NO_STR
+
+    allow_empty_hh_model = True
+    skip_inject_files = True
+
+    def output(self):
+        return [law.LocalFileTarget(self.split_datacard_path(card)[0]) for card in self.datacards]
 
 
 class CombineDatacards(DatacardTask, CombineCommandTask):
@@ -1337,6 +1519,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 
     allow_empty_hh_model = True
     allow_workspace_input = False
+    skip_inject_files = True
 
     def __init__(self, *args, **kwargs):
         super(DatacardTask, self).__init__(*args, **kwargs)
@@ -1419,17 +1602,25 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             # subtract the sets to see which processes to remove
             to_remove = all_procs - model_procs
             if to_remove:
+                from dhi.scripts.remove_processes import remove_processes
                 self.logger.info("trying to remove processe(s) '{}' from the combined datacard as "
                     "they are not part of the phyics model {}".format(
                         ",".join(to_remove), self.hh_model))
-                remove_processes_script.remove_processes(
-                    output_card.path, map("{}*".format, to_remove))
+                remove_processes(output_card.path, map("{}*".format, to_remove))
+
+            # remove the THU_HH nuisance if not added (probably in listed in nuisances group)
+            if not model.opt("doklDependentUnc"):
+                from dhi.scripts.remove_parameters import remove_parameters
+                self.logger.info("trying to remove '{}' from the combined datacard as the model "
+                    "does not add need it".format(model.ggf_kl_dep_unc))
+                remove_parameters(output_card.path, [model.ggf_kl_dep_unc])
 
         # copy shape files and the datacard to the output location
         output = self.output()
         output.parent.touch()
-        for basename in tmp_dir.listdir(pattern="*.root", type="f"):
-            tmp_dir.child(basename).copy_to(output.parent)
+        with self.publish_step("moving shape files ..."):
+            for basename in tmp_dir.listdir(pattern="*.root", type="f"):
+                tmp_dir.child(basename).move_to(output.parent)
         output_card.copy_to(output)
 
 
@@ -1438,7 +1629,6 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
     priority = 90
 
     allow_empty_hh_model = True
-
     run_command_in_tmp = True
 
     def requires(self):
@@ -1449,7 +1639,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
 
     def output(self):
         if self.input_is_workspace:
-            return LocalFileTarget(self.datacards[0], external=True)
+            return law.LocalFileTarget(self.datacards[0], external=True)
         else:
             return self.local_target("workspace.root")
 
@@ -1466,21 +1656,27 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
             for name, opt in model.hh_options.items():
                 model_args.append("--physics-option {}={}".format(name, opt["value"]))
 
-        # build and return the full command
-        return (
+        # build the t2w command
+        cmd = (
             "text2workspace.py {datacard}"
+            " {self.custom_args}"
             " --out workspace.root"
             " --mass {self.mass}"
             " {model_args}"
-            " {self.custom_args}"
-            " && "
-            "mv workspace.root {workspace}"
         ).format(
             self=self,
             datacard=self.input().path,
-            workspace=self.output().path,
             model_args=" ".join(model_args),
         )
+
+        # add optional workspace injection commands
+        for path in self.workspace_inject_files:
+            cmd += " && inject_fit_result.py {} workspace.root w".format(path)
+
+        # add the move command
+        cmd += " && mv workspace.root {}".format(self.output().path)
+
+        return cmd
 
     @law.decorator.log
     @law.decorator.notify
@@ -1489,5 +1685,10 @@ class CreateWorkspace(DatacardTask, CombineCommandTask):
         if self.input_is_workspace:
             raise Exception("{!r}: the input is a workspace which should already exist before this "
                 "task is executed")
+
+        # check if inject files exist
+        for path in self.workspace_inject_files:
+            if not os.path.exists(path):
+                raise Exception("workspace inject file {} does not exist".format(path))
 
         return super(CreateWorkspace, self).run()

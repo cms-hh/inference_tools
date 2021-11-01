@@ -17,11 +17,14 @@ import logging
 from collections import OrderedDict
 
 import six
-from law.util import multi_match, make_unique, make_list  # noqa
+from law.util import no_value, multi_match, make_unique, make_list  # noqa
 
 # modules and objects from lazy imports
 _plt = None
 _ROOT = None
+
+# cached hook file contents
+_hook_data = no_value
 
 
 def import_plt():
@@ -85,6 +88,34 @@ def import_file(path, attr=None):
     return pkg
 
 
+def _load_hooks():
+    global _hook_data
+
+    if _hook_data is no_value:
+        path = expand_path("$DHI_HOOK_FILE")
+        _hook_data = (path, import_file(path)) if os.path.isfile(path) else None
+
+    return _hook_data
+
+
+def call_hook(name, *args, **kwargs):
+    # load hooks
+    hook_data = _load_hooks()
+    if not hook_data:
+        return None
+    hook_file, hooks = hook_data
+
+    # get the hook function
+    if name not in hooks:
+        return None
+    func = hooks[name]
+    if not callable(func):
+        raise TypeError("hook '{}' in hook file '{}' is not callable".format(name, hook_file))
+
+    # call it and returns its result
+    return func(*args, **kwargs)
+
+
 class DotDict(dict):
     """
     Dictionary providing item access via attributes.
@@ -102,7 +133,11 @@ def expand_path(path):
     Takes a *path* and recursively expands all contained environment variables.
     """
     while "$" in path or "~" in path:
-        path = os.path.expandvars(os.path.expanduser(path))
+        _path = os.path.expandvars(os.path.expanduser(path))
+        changed = _path != path
+        path = _path
+        if not changed:
+            break
     return path
 
 
@@ -111,6 +146,14 @@ def real_path(path):
     Takes a *path* and returns its real, absolute location with all variables expanded.
     """
     return os.path.realpath(expand_path(path))
+
+
+def get_dcr2_path():
+    """
+    Returns the real location of $DHI_DATACARDS_RUN2 when existing, and *None* otherwise.
+    """
+    has_dcr2 = os.path.isdir(expand_path("$DHI_DATACARDS_RUN2"))
+    return real_path("$DHI_DATACARDS_RUN2") if has_dcr2 else None
 
 
 def rgb(r, g, b):
@@ -130,6 +173,7 @@ def to_root_latex(s):
     """
     s = re.sub(r"(\$|\\,|\\;)", "", s)
     s = re.sub(r"\~", " ", s)
+    s = re.sub(r"\\(\{|\})", r"\1", s)
     s = re.sub(r"\\", "#", s)
     return s
 
@@ -608,20 +652,34 @@ class TFileCache(object):
         self._r_cache = {}
 
         # cache of files opened for writing
-        # abs_path -> {tmp_path: str, tfile: TFile, objects: [(tobj, towner, name), ...]}
+        # abs_path -> {
+        #     tmp_path: str or None,
+        #     tfile: TFile,
+        #     write_objects: [(tobj, towner, name), ...],
+        #     delete_objects: [abs_key, ...],
+        # }
         self._w_cache = {}
 
     def __enter__(self):
         return self
 
     def __exit__(self, err_type, err_value, traceback):
-        self.finalize(skip_write=err_type is not None)
+        self.finalize(skip_write=err_type is not None, skip_delete=err_type is not None)
 
     def _clear(self):
+        # close and clear r_cache
+        for data in self._r_cache.values():
+            if data["tfile"] and data["tfile"].IsOpen():
+                data["tfile"].Close()
         self._r_cache.clear()
+
+        # close and clear w_cache
+        for data in self._w_cache.values():
+            if data["tfile"] and data["tfile"].IsOpen():
+                data["tfile"].Close()
         self._w_cache.clear()
 
-    def open_tfile(self, path, mode):
+    def open_tfile(self, path, mode, tmp=True):
         ROOT = import_ROOT()
 
         abs_path = real_path(path)
@@ -638,25 +696,36 @@ class TFileCache(object):
 
         else:
             if abs_path not in self._w_cache:
-                # determine a temporary location
-                suffix = "_" + os.path.basename(abs_path)
-                tmp_path = tempfile.mkstemp(suffix=suffix)[1]
-                if os.path.exists(tmp_path):
-                    os.remove(tmp_path)
+                if tmp:
+                    # determine a temporary location
+                    suffix = "_" + os.path.basename(abs_path)
+                    tmp_path = tempfile.mkstemp(suffix=suffix)[1]
+                    if os.path.exists(tmp_path):
+                        os.remove(tmp_path)
 
-                # copy the file when existing
-                if os.path.exists(abs_path):
-                    shutil.copy2(abs_path, tmp_path)
+                    # copy the file when existing
+                    if os.path.exists(abs_path):
+                        shutil.copy2(abs_path, tmp_path)
 
-                # open the file and cache it
-                tfile = ROOT.TFile(tmp_path, mode)
-                self._w_cache[abs_path] = {"tmp_path": tmp_path, "tfile": tfile, "objects": []}
+                    # open the file
+                    tfile = ROOT.TFile(tmp_path, mode)
 
-                self.logger.debug(
-                    "opened tfile {} with mode {} in temporary location {}".format(
-                        abs_path, mode, tmp_path
-                    )
-                )
+                    self.logger.debug("opened tfile {} with mode {} in temporary location {}".format(
+                        abs_path, mode, tmp_path))
+                else:
+                    # open the file
+                    tfile = ROOT.TFile(abs_path, mode)
+                    tmp_path = None
+
+                    self.logger.debug("opened tfile {} with mode {}".format(abs_path, mode))
+
+                # store it
+                self._w_cache[abs_path] = {
+                    "tmp_path": tmp_path,
+                    "tfile": tfile,
+                    "write_objects": [],
+                    "delete_objects": [],
+                }
 
             return self._w_cache[abs_path]["tfile"]
 
@@ -667,27 +736,48 @@ class TFileCache(object):
             # lookup the cache entry by the tfile reference
             for data in self._w_cache.values():
                 if data["tfile"] == path:
-                    data["objects"].append((tobj, towner, name))
+                    data["write_objects"].append((tobj, towner, name))
                     break
             else:
-                raise Exception("cannot write object {} unknown TFile {}".format(tobj, path))
+                raise Exception("cannot write object {} into unknown TFile {}".format(
+                    tobj, path))
 
         else:
             abs_path = real_path(path)
             if abs_path not in self._w_cache:
                 raise Exception("cannot write object {} into unopened file {}".format(tobj, path))
 
-            self._w_cache[abs_path]["objects"].append((tobj, towner, name))
+            self._w_cache[abs_path]["write_objects"].append((tobj, towner, name))
 
-    def finalize(self, skip_write=False):
+    def delete_tobj(self, path, abs_key):
+        ROOT = import_ROOT()
+
+        if isinstance(path, ROOT.TFile):
+            # lookup the cache entry by the tfile reference
+            for data in self._w_cache.values():
+                if data["tfile"] == path:
+                    data["delete_objects"].append(abs_key)
+                    break
+            else:
+                raise Exception("cannot delete object {} from unknown TFile {}".format(
+                    abs_key, path))
+
+        else:
+            abs_path = real_path(path)
+            if abs_path not in self._w_cache:
+                raise Exception("cannot delete object {} from unopened file {}".format(
+                    abs_key, path))
+
+            self._w_cache[abs_path]["delete_objects"].append(abs_key)
+
+    def finalize(self, skip_write=False, skip_delete=False):
         if self._r_cache:
             # close files opened for reading
             for abs_path, data in self._r_cache.items():
                 if data["tfile"] and data["tfile"].IsOpen():
                     data["tfile"].Close()
-            self.logger.debug(
-                "closed {} cached file(s) opened for reading".format(len(self._r_cache))
-            )
+            self.logger.debug("closed {} cached file(s) opened for reading".format(
+                len(self._r_cache)))
 
         if self._w_cache:
             # close files opened for reading, write objects and move to actual location
@@ -696,26 +786,42 @@ class TFileCache(object):
             ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = kFatal;")
 
             for abs_path, data in self._w_cache.items():
-                if not data["tfile"] or not data["tfile"].IsOpen():
+                # stop when the tfile is empty
+                if not data["tfile"]:
+                    self.logger.warning("could not write empty tfile with data {}".format(data))
                     continue
 
-                if not skip_write:
-                    data["tfile"].cd()
-                    self.logger.debug("going to write {} objects".format(len(data["objects"])))
-                    for tobj, towner, name in data["objects"]:
-                        if towner:
-                            towner.cd()
-                        args = (name,) if name else ()
-                        tobj.Write(*args)
-                        # self.logger.debug("written object '{}'".format(tobj.GetName()))
+                # issue a warning when the file was closed externally
+                if not data["tfile"].IsOpen():
+                    self.logger.warning("could not write tfile {}, already closed".format(
+                        data["tfile"]))
+                else:
+                    # write objects
+                    if not skip_write and data["write_objects"]:
+                        data["tfile"].cd()
+                        self.logger.debug("writing {} objects".format(len(data["write_objects"])))
+                        for tobj, towner, name in data["write_objects"]:
+                            if towner:
+                                towner.cd()
+                            args = (name,) if name else ()
+                            tobj.Write(*args)
 
-                data["tfile"].Close()
+                    # delete objects
+                    if not skip_delete and data["delete_objects"]:
+                        data["tfile"].cd()
+                        self.logger.debug("deleting {} objects".format(len(data["delete_objects"])))
+                        for abs_key in data["delete_objects"]:
+                            data["tfile"].Delete(abs_key)
+                            self.logger.debug("deleted {} from tfile at {}".format(abs_key, abs_path))
 
-                if not skip_write:
+                    # close the file
+                    data["tfile"].Close()
+
+                # move back to original place when it was temporary and something changed
+                if data["tmp_path"] and (not skip_write or not skip_delete):
                     shutil.move(data["tmp_path"], abs_path)
-                    self.logger.debug(
-                        "moving back temporary file {} to {}".format(data["tmp_path"], abs_path)
-                    )
+                    self.logger.debug("moving back temporary file {} to {}".format(
+                        data["tmp_path"], abs_path))
 
             self.logger.debug("closed {} cached file(s) opened for writing".format(
                 len(self._w_cache)))
@@ -753,9 +859,14 @@ class ROOTColorGetter(object):
     def create_color(cls, obj):
         ROOT = import_ROOT()
 
-        if isinstance(obj, int):
-            return obj
-        elif isinstance(obj, str):
+        if isinstance(obj, six.integer_types):
+            return int(obj)
+        elif isinstance(obj, six.string_types):
+            obj = str(obj)
+            # hex color
+            if obj.startswith("#"):
+                return ROOT.TColor.GetColor(obj)
+            # named color
             c = getattr(ROOT, "k" + obj.capitalize(), None)
             if c is not None:
                 return c

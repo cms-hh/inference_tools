@@ -36,6 +36,8 @@ graph LR;
     B --> C([PullsAndImpacts]);
     C --> D(CreateWorkspace);
     D --> E(CombineDatacards);
+    C -. optional .-> F([Snapshot]);
+    F --> D;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.

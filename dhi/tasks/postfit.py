@@ -16,7 +16,11 @@ import luigi
 from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
 from dhi.scripts.postfit_plots import create_postfit_plots_binned, load_and_save_plot_dict_locally, loop_eras, get_full_path
-
+from dhi.tasks.snapshot import Snapshot, SnapshotUser
+from dhi.tasks.limits import UpperLimits
+from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
+from dhi.config import poi_data
+from dhi.util import real_path
 
 class SAVEFLAGS(str, enum.Enum):
 
@@ -33,7 +37,7 @@ class SAVEFLAGS(str, enum.Enum):
         return list(map(lambda x: x.value, cls))
 
 
-class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+class FitDiagnostics(POITask, CombineCommandTask, SnapshotUser, law.LocalWorkflow, HTCondorWorkflow):
 
     pois = law.CSVParameter(
         default=("r",),
@@ -60,38 +64,56 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
     run_command_in_tmp = True
 
     def create_branch_map(self):
-        return [""]  # single branch with empty data
+        # single branch with empty data
+        return [None]
 
     def workflow_requires(self):
         reqs = super(FitDiagnostics, self).workflow_requires()
-        reqs["workspace"] = self.requires_from_branch()
+        reqs["workspace"] = CreateWorkspace.req(self)
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self)
         return reqs
 
     def requires(self):
-        return CreateWorkspace.req(self)
+        reqs = {"workspace": CreateWorkspace.req(self)}
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self, branch=0)
+        return reqs
+
+    def get_output_postfix(self, join=True):
+        parts = super(FitDiagnostics, self).get_output_postfix(join=False)
+
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+
+        return self.join_postfix(parts) if join else parts
 
     def output(self):
-        parts = [self.get_output_postfix()]
+        parts = []
         if not self.skip_b_only:
             parts.append("withBOnly")
         if self.skip_save:
-            parts.append(map("no{}".format, sorted(self.skip_save)))
-        postfix = self.join_postfix(parts)
+            parts.append(map("not{}".format, sorted(self.skip_save)))
 
+        name = lambda prefix: self.join_postfix([prefix, self.get_output_postfix(), parts])
         return {
-            "result": self.local_target("result__{}.root".format(postfix)),
-            "diagnostics": self.local_target("fitdiagnostics__{}.root".format(postfix)),
+            "result": self.local_target(name("result") + ".root"),
+            "diagnostics": self.local_target(name("fitdiagnostics") + ".root"),
         }
 
-    @property
-    def blinded_args(self):
-        if self.unblinded:
-            return ""
-        else:
-            return "--toys {self.toys}".format(self=self)
-
     def build_command(self):
-        outputs = self.output()
+        # get the workspace to use and define snapshot args
+        if self.use_snapshot:
+            workspace = self.input()["snapshot"].path
+            snapshot_args = " --snapshotName MultiDimFit"
+        else:
+            workspace = self.input()["workspace"].path
+            snapshot_args = ""
+
+        # arguments for un/blinding
+        blinded_args = ""
+        if self.blinded:
+            blinded_args = "--toys {self.toys}".format(self=self)
 
         # prepare optional flags
         flags = []
@@ -101,34 +123,49 @@ class FitDiagnostics(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWor
             if save_flag not in self.skip_save:
                 flags.append("--save{}".format(save_flag))
 
+        outputs = self.output()
         return (
             "combine -M FitDiagnostics {workspace}"
+            " {self.custom_args}"
             " --verbose 1"
             " --mass {self.mass}"
-            " {self.blinded_args}"
+            " {blinded_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameterRanges {self.joined_parameter_ranges}"
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {flags}"
-            " {self.combine_optimization_args_hesse}"
-            " {self.custom_args}"
+            " {snapshot_args}"
+            " {self.combine_optimization_args}"
             " && "
             "mv higgsCombineTest.FitDiagnostics.mH{self.mass_int}{postfix}.root {output_result}"
             " && "
             "mv fitDiagnosticsTest.root {output_diagnostics}"
         ).format(
             self=self,
-            workspace=self.input().path,
+            workspace=workspace,
             postfix="" if SAVEFLAGS.Toys in self.skip_save else ".123456",
             output_result=outputs["result"].path,
             output_diagnostics=outputs["diagnostics"].path,
+            blinded_args=blinded_args,
+            snapshot_args=snapshot_args,
             flags=" ".join(flags),
         )
 
 
-class PlotPostfitSOverB(POIPlotTask):
+class PostfitPlotBase(POIPlotTask, SnapshotUser):
+
+    def get_output_postfix(self, join=True):
+        parts = super(PostfitPlotBase, self).get_output_postfix(join=False)
+
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+
+        return self.join_postfix(parts) if join else parts
+
+
+class PlotPostfitSOverB(PostfitPlotBase):
 
     pois = FitDiagnostics.pois
     bins = law.CSVParameter(
@@ -159,6 +196,23 @@ class PlotPostfitSOverB(POIPlotTask):
         description="scale the postfit signal in the ratio plot by this value; only considered "
         "when drawing the signal superimposed; default: 1.0",
     )
+    signal_from_limit = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when True, instead of using the best fit value, scale the signal shape by the "
+        "upper limit as computed by UpperLimits; default: False",
+    )
+    hide_signal = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="hide the signal contribution completely; default: False",
+    )
+    hide_uncertainty = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="do not show postfit uncertainties (and also do not require FitDiagnostics to "
+        "produce them); default: False",
+    )
     ratio_min = luigi.FloatParameter(
         default=-1000.0,
         significant=False,
@@ -174,6 +228,18 @@ class PlotPostfitSOverB(POIPlotTask):
         description="plot prefit distributions and uncertainties instead of postfit ones; only "
         "available when not --unblinded; default: False",
     )
+    categories = law.CSVParameter(
+        default=(),
+        description="comma-separated list of category names or name patterns to select; consider "
+        "adjusting --campaign accordingly; all categories are used when empty; default: empty",
+    )
+    backgrounds = luigi.Parameter(
+        default=law.NO_STR,
+        description="a json file containing a list of objects that configure background processes "
+        "and/or channels to split instead of showing the combined shape; accepted fields are "
+        "'label', 'shapes', 'fill_color', 'fill_style' and 'line_color'; 'shapes' should be a list "
+        "of strings in the format 'CHANNEL/PROCESS'; patterns are supported; no default",
+    )
     x_min = None
     x_max = None
     z_max = None
@@ -184,21 +250,48 @@ class PlotPostfitSOverB(POIPlotTask):
     def __init__(self, *args, **kwargs):
         super(PlotPostfitSOverB, self).__init__(*args, **kwargs)
 
-        # disable prefit when unblinded
-        if self.prefit and self.unblinded:
-            self.logger.warning("prefit option is not available when unblinded")
-            self.prefit = False
-
         # show a warning when unblinded, not in paper mode and not hiding the best fit value
         if self.unblinded and not self.paper and self.show_best_fit:
             self.logger.warning("running unblinded but not hiding the best fit value")
 
+        # when the signal limit is requested, define a pseudo scan parameter
+        self.pseudo_scan_parameter = None
+        if self.signal_from_limit:
+            pois_with_values = [p for p in self.parameter_values_dict if p in self.all_pois]
+            other_pois = [p for p in (self.k_pois + self.r_pois) if p != self.pois[0]]
+            self.pseudo_scan_parameter = (pois_with_values + other_pois)[0]
+
     def requires(self):
-        return FitDiagnostics.req(self)
+        # normally, we would require FitDiagnostics not matter what, but since it can take ages to
+        # complete, skip producing uncertainties when requested and the full fit does not exist yet
+        reqs = {"fitdiagnostics": FitDiagnostics.req(self)}
+        if self.hide_uncertainty and not reqs["fitdiagnostics"].complete():
+            reqs["fitdiagnostics"] = FitDiagnostics.req(self, skip_save=("WithUncertainties",))
+
+        # require upper limit when requested
+        if self.signal_from_limit:
+            default = poi_data.get(self.pseudo_scan_parameter, {}).get("sm_value", 1.0)
+            value = self.parameter_values_dict.get(self.pseudo_scan_parameter, default)
+            scan_parameter = (self.pseudo_scan_parameter, value, value, 1)
+            parameter_values = tuple(
+                (p, v) for p, v in self.parameter_values_dict.items()
+                if p != self.pseudo_scan_parameter
+            )
+            reqs["limit"] = UpperLimits.req(self, scan_parameters=(scan_parameter,),
+                parameter_values=parameter_values)
+
+        return reqs
 
     def output(self):
+        parts = []
+        if self.categories:
+            cats = sorted(self.categories)
+            parts.append(["cats"] + (cats if len(cats) < 4 else [law.util.create_hash(cats)]))
+        if self.backgrounds != law.NO_STR:
+            parts.append(["bkgs", law.util.create_hash(real_path(self.backgrounds))])
+
         name = "prefitsoverb" if self.prefit else "postfitsoverb"
-        names = self.create_plot_names([name, self.get_output_postfix()])
+        names = self.create_plot_names([name, self.get_output_postfix()] + parts)
         return [self.local_target(name) for name in names]
 
     @law.decorator.log
@@ -211,7 +304,15 @@ class PlotPostfitSOverB(POIPlotTask):
         outputs[0].parent.touch()
 
         # get the path to the fit diagnostics file
-        fit_diagnostics_path = self.input()["collection"][0]["diagnostics"].path
+        inputs = self.input()
+        fit_diagnostics_path = inputs["fitdiagnostics"]["collection"][0]["diagnostics"].path
+
+        # load the limit when requested
+        signal_limit = None
+        if self.signal_from_limit:
+            target = inputs["limit"]["collection"][0]
+            limits = UpperLimits.load_limits(target, unblinded=self.unblinded)
+            signal_limit = limits[-1 if self.unblinded else 0]
 
         # call the plot function
         self.call_plot_func(
@@ -223,7 +324,12 @@ class PlotPostfitSOverB(POIPlotTask):
             signal_superimposed=self.signal_superimposed,
             signal_scale=self.signal_scale,
             signal_scale_ratio=self.signal_scale_ratio,
+            show_signal=not self.hide_signal,
+            show_uncertainty=not self.hide_uncertainty,
             show_best_fit=self.show_best_fit,
+            signal_limit=signal_limit,
+            categories=self.categories,
+            backgrounds=None if self.backgrounds == law.NO_STR else self.backgrounds,
             y1_min=self.get_axis_limit("y_min"),
             y1_max=self.get_axis_limit("y_max"),
             y2_min=self.get_axis_limit("ratio_min"),
@@ -236,7 +342,7 @@ class PlotPostfitSOverB(POIPlotTask):
         )
 
 
-class PlotNuisanceLikelihoodScans(POIPlotTask):
+class PlotNuisanceLikelihoodScans(PostfitPlotBase):
 
     x_min = copy.copy(POIPlotTask.x_min)
     x_max = copy.copy(POIPlotTask.x_max)
@@ -270,6 +376,12 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
         description="when True, sort parameters by their hightest likelihood change in the scan "
         "range; mostly useful when the number of parameters per page is > 1; default: False",
     )
+    show_diff = luigi.BoolParameter(
+        default=False,
+        description="when True, the x-axis shows differences of nuisance parameters with respect "
+        "to the best fit value instead of absolute values; default: False",
+    )
+    labels = PlotPullsAndImpacts.labels
 
     mc_stats_patterns = ["*prop_bin*"]
 
@@ -280,10 +392,17 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
     force_n_pois = 1
 
     def requires(self):
-        return FitDiagnostics.req(self, skip_save=("WithUncertainties",))
+        # normally, we would require FitDiagnostics without saved uncertainties no matter what,
+        # but since it could be already complete, use it when it does exist
+        full_fd = FitDiagnostics.req(self)
+        if full_fd.complete():
+            return full_fd
+        return FitDiagnostics.req(self, skip_save=("WithUncertainties",), _prefer_cli=["skip_save"])
 
     def output(self):
         parts = ["nlls", "{}To{}".format(self.x_min, self.x_max), self.get_output_postfix()]
+        if self.show_diff:
+            parts.append("diffs")
         if self.y_log:
             parts.append("log")
         if self.sort_max:
@@ -332,6 +451,8 @@ class PlotNuisanceLikelihoodScans(POIPlotTask):
                 skip_parameters=skip_parameters,
                 parameters_per_page=self.parameters_per_page,
                 sort_max=self.sort_max,
+                show_diff=self.show_diff,
+                labels=None if self.labels == law.NO_STR else self.labels,
                 x_min=self.x_min,
                 x_max=self.x_max,
                 y_min=self.get_axis_limit("y_min"),

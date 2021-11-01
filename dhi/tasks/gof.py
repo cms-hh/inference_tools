@@ -15,18 +15,19 @@ from dhi.tasks.combine import (
     POIPlotTask,
     CreateWorkspace,
 )
+from dhi.tasks.snapshot import Snapshot, SnapshotUser
 
 
-class GoodnessOfFitBase(POITask):
+class GoodnessOfFitBase(POITask, SnapshotUser):
 
     toys = luigi.IntParameter(
         default=1,
         description="the positive number of toys to sample; default: 1",
     )
-    toys_per_task = luigi.IntParameter(
+    toys_per_branch = luigi.IntParameter(
         default=1,
-        description="the number of toys to generate per task; the number of tasks in this workflow "
-        "is the number of total toys divided by this number; default: 1"
+        description="the number of toys to generate per branch task; the number of tasks in this "
+        "workflow is the number of total toys divided by this number; default: 1"
     )
     algorithm = luigi.ChoiceParameter(
         default="saturated",
@@ -49,12 +50,19 @@ class GoodnessOfFitBase(POITask):
         parts["gof"] = self.algorithm
         return parts
 
+    def get_output_postfix(self, join=True):
+        parts = super(GoodnessOfFitBase, self).get_output_postfix(join=False)
+
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+        if self.frequentist_toys:
+            parts.append("freqtoys")
+
+        return self.join_postfix(parts) if join else parts
+
     @property
     def toys_postfix(self):
-        postfix = "t{}_pt{}".format(self.toys, self.toys_per_task)
-        if self.frequentist_toys:
-            postfix += "_freq"
-        return postfix
+        return "t{}_tpb{}".format(self.toys, self.toys_per_branch)
 
 
 class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
@@ -77,28 +85,41 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
     def create_branch_map(self):
         # the branch map refers to indices of toys in that branch, with 0 meaning the test on data
         all_toy_indices = list(range(1, self.toys + 1))
-        toy_indices = [[0]] + list(law.util.iter_chunks(all_toy_indices, self.toys_per_task))
+        toy_indices = [[0]] + list(law.util.iter_chunks(all_toy_indices, self.toys_per_branch))
         return dict(enumerate(toy_indices))
 
     def workflow_requires(self):
         reqs = super(GoodnessOfFit, self).workflow_requires()
-        reqs["workspace"] = self.requires_from_branch()
+        reqs["workspace"] = CreateWorkspace.req(self)
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self, _exclude={"toys"})
         return reqs
 
     def requires(self):
-        return CreateWorkspace.req(self)
+        reqs = {"workspace": CreateWorkspace.req(self)}
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self, branch=0, _exclude={"toys"})
+        return reqs
 
     def output(self):
+        parts = []
         if self.branch == 0:
-            postfix = "b0_data"
+            parts.append("b0_data")
         else:
-            postfix = "b{}_toy{}To{}".format(self.branch, self.branch_data[0], self.branch_data[-1])
-        if self.frequentist_toys:
-            postfix += "_freq"
-        name = self.join_postfix(["gof", self.get_output_postfix(), postfix])
+            parts.append("b{}_toy{}To{}".format(self.branch, self.branch_data[0], self.branch_data[-1]))
+
+        name = self.join_postfix(["gof", self.get_output_postfix(), parts])
         return self.local_target(name + ".root")
 
     def build_command(self):
+        # get the workspace to use and define snapshot args
+        if self.use_snapshot:
+            workspace = self.input()["snapshot"].path
+            snapshot_args = " --snapshotName MultiDimFit"
+        else:
+            workspace = self.input()["workspace"].path
+            snapshot_args = ""
+
         # toy options
         toy_opts = ""
         if self.branch > 0:
@@ -106,8 +127,10 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
             if self.frequentist_toys:
                 toy_opts += " --toysFrequentist"
 
-        return (
+        # build the command
+        cmd = (
             "combine -M GoodnessOfFit {workspace}"
+            " {self.custom_args}"
             " --verbose 1"
             " --mass {self.mass}"
             " {toy_opts}"
@@ -118,16 +141,19 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
+            " {snapshot_args}"
             " {self.combine_optimization_args}"
-            " {self.custom_args}"
             " && "
             "mv higgsCombineTest.GoodnessOfFit.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
-            workspace=self.input().path,
+            workspace=workspace,
             output=self.output().path,
             toy_opts=toy_opts,
+            snapshot_args=snapshot_args,
         )
+
+        return cmd
 
     def htcondor_output_postfix(self):
         postfix = super(GoodnessOfFit, self).htcondor_output_postfix()
@@ -225,12 +251,12 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask, BoxPlotTa
         "--multi-datacards; when one value is given, it is used for all datacard sequences; "
         "default: (1,)",
     )
-    toys_per_task = law.CSVParameter(
+    toys_per_branch = law.CSVParameter(
         cls=luigi.IntParameter,
         default=(1,),
         description="comma-separated list of numbers per datacard sequence in --multi-datacards to "
-        "define the amount of toys to generate per task; when one value is given, it is used for "
-        "all datacard sequences; default: (1,)",
+        "define the amount of toys to generate per branch task; when one value is given, it is "
+        "used for all datacard sequences; default: (1,)",
     )
 
     y_min = None
@@ -239,7 +265,7 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask, BoxPlotTa
     def __init__(self, *args, **kwargs):
         super(PlotMultipleGoodnessOfFits, self).__init__(*args, **kwargs)
 
-        # check toys and toys_per_task
+        # check toys and toys_per_branch
         n_seqs = len(self.multi_datacards)
         if len(self.toys) == 1:
             self.toys *= n_seqs
@@ -247,25 +273,22 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask, BoxPlotTa
             raise ValueError("{!r}: number of toy values must either be one or match the amount "
                 "of datacard sequences in --multi-datacards ({}), but got {}".format(
                     self, n_seqs, len(self.toys)))
-        if len(self.toys_per_task) == 1:
-            self.toys_per_task *= n_seqs
-        elif len(self.toys_per_task) != n_seqs:
-            raise ValueError("{!r}: number of toys_per_task values must either be one or match the "
-                "amount of datacard sequences in --multi-datacards ({}), but got {}".format(
-                    self, n_seqs, len(self.toys_per_task)))
+        if len(self.toys_per_branch) == 1:
+            self.toys_per_branch *= n_seqs
+        elif len(self.toys_per_branch) != n_seqs:
+            raise ValueError("{!r}: number of toys_per_branch values must either be one or match "
+                "the amount of datacard sequences in --multi-datacards ({}), but got {}".format(
+                    self, n_seqs, len(self.toys_per_branch)))
 
     @property
     def toys_postfix(self):
         tpl_to_str = lambda tpl: "_".join(map(str, tpl))
-        postfix = "t{}_pt{}".format(tpl_to_str(self.toys), tpl_to_str(self.toys_per_task))
-        if self.frequentist_toys:
-            postfix += "_freq"
-        return postfix
+        return "t{}_tpb{}".format(tpl_to_str(self.toys), tpl_to_str(self.toys_per_branch))
 
     def requires(self):
         return [
-            MergeGoodnessOfFit.req(self, datacards=datacards, toys=t, toys_per_task=tpt)
-            for datacards, t, tpt in zip(self.multi_datacards, self.toys, self.toys_per_task)
+            MergeGoodnessOfFit.req(self, datacards=datacards, toys=t, toys_per_branch=tpb)
+            for datacards, t, tpb in zip(self.multi_datacards, self.toys, self.toys_per_branch)
         ]
 
     def output(self):

@@ -14,54 +14,12 @@ import luigi
 import law
 import six
 
-
-law.contrib.load("git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks")
-
-
-class LocalTarget(law.LocalTarget):
-    def __init__(self, *args, **kwargs):
-        self._repr_path = kwargs.pop("repr_path", None)
-        super(LocalTarget, self).__init__(*args, **kwargs)
-
-    def _repr_pairs(self, *args, **kwargs):
-        pairs = super(LocalTarget, self)._repr_pairs(*args, **kwargs)
-        if self._repr_path:
-            pairs = [(key, self._repr_path if key == "path" else value) for key, value in pairs]
-        return pairs
-
-    def _parent_args(self):
-        args, kwargs = super(LocalTarget, self)._parent_args()
-        if self._repr_path:
-            kwargs["repr_path"] = os.path.dirname(self._repr_path)
-        return args, kwargs
+from dhi.util import call_hook
 
 
-class LocalFileTarget(LocalTarget, law.LocalFileTarget):
-    pass
-
-
-class LocalDirectoryTarget(LocalTarget, law.LocalDirectoryTarget):
-
-    def _child_args(self, path):
-        args, kwargs = law.LocalDirectoryTarget._child_args(self, path)
-        if self._repr_path:
-            basename = os.path.relpath(path, self.path)
-            if os.sep not in basename:
-                kwargs["repr_path"] = os.path.join(self._repr_path, basename)
-        return args, kwargs
-
-
-LocalTarget.file_class = LocalFileTarget
-LocalTarget.directory_class = LocalDirectoryTarget
-
-
-class SiblingFileCollection(law.SiblingFileCollection):
-
-    def _repr_pairs(self, *args, **kwargs):
-        pairs = super(SiblingFileCollection, self)._repr_pairs(*args, **kwargs)
-        if pairs[-1][0] == "dir" and getattr(self.dir, "_repr_path", None):
-            pairs[-1] = ("dir", self.dir._repr_path)
-        return pairs
+law.contrib.load(
+    "cms", "git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks",
+)
 
 
 class BaseTask(law.Task):
@@ -102,22 +60,40 @@ class BaseTask(law.Task):
                     text += " (from branch {})".format(law.util.colored("0", "red"))
                 text += ": "
 
-                cmd = dep.build_command()
+                cmd = dep.get_command()
                 if cmd:
-                    cmd = law.util.quote_cmd(cmd) if isinstance(cmd, (list, tuple)) else cmd
-                    text += law.util.colored(cmd, "cyan")
+                    # when cmd is a 2-tuple, i.e. the real command and a representation for printing
+                    # pick the second one
+                    if isinstance(cmd, tuple) and len(cmd) == 2:
+                        cmd = cmd[1]
+                    else:
+                        if isinstance(cmd, list):
+                            cmd = law.util.quote_cmd(cmd)
+                        # defaut highlighting
+                        cmd = law.util.colored(cmd, "cyan")
+                    text += cmd
                 else:
                     text += law.util.colored("empty", "red")
                 print(offset + text)
             else:
                 print(offset + law.util.colored("not a CommandTask", "yellow"))
 
+    def _repr_params(self, *args, **kwargs):
+        params = super(BaseTask, self)._repr_params(*args, **kwargs)
+
+        # remove empty params by default
+        for key, value in list(params.items()):
+            if not value and value != 0:
+                del params[key]
+
+        return params
+
 
 class AnalysisTask(BaseTask):
 
     version = luigi.Parameter(description="mandatory version that is encoded into output paths")
 
-    output_collection_cls = SiblingFileCollection
+    output_collection_cls = law.SiblingFileCollection
     default_store = "$DHI_STORE"
     store_by_family = False
 
@@ -135,6 +111,12 @@ class AnalysisTask(BaseTask):
 
         return super(AnalysisTask, cls).req_params(inst, **kwargs)
 
+    def __init__(self, *args, **kwargs):
+        super(AnalysisTask, self).__init__(*args, **kwargs)
+
+        # generic hook to change task parameters in a customizable way
+        self.call_hook("init_analysis_task")
+
     def store_parts(self):
         parts = OrderedDict()
         parts["task_class"] = self.task_family if self.store_by_family else self.__class__.__name__
@@ -149,23 +131,30 @@ class AnalysisTask(BaseTask):
     def local_path(self, *path, **kwargs):
         store = kwargs.get("store") or self.default_store
         parts = tuple(self.store_parts().values()) + tuple(self.store_parts_ext().values()) + path
-        repr_path = os.path.join(store, *(str(p) for p in parts))
-        local_path = os.path.expandvars(os.path.expanduser(repr_path))
-        return (local_path, repr_path) if kwargs.get("repr_path") else local_path
+        return os.path.join(store, *(str(p) for p in parts))
 
     def local_target(self, *path, **kwargs):
-        cls = LocalFileTarget if not kwargs.pop("dir", False) else LocalDirectoryTarget
+        cls = law.LocalFileTarget if not kwargs.pop("dir", False) else law.LocalDirectoryTarget
         store = kwargs.pop("store", None)
-        local_path, repr_path = self.local_path(*path, store=store, repr_path=True)
-        return cls(local_path, repr_path=repr_path, **kwargs)
+        path = self.local_path(*path, store=store)
+        return cls(path, **kwargs)
 
     def join_postfix(self, parts, sep1="__", sep2="_"):
-        repl = lambda s: re.sub(r"[^a-zA-Z0-9\.\_\-\+]", "", str(s))
+        def repl(s):
+            # replace certain characters
+            s = str(s).replace("*", "X").replace("?", "Y")
+            # remove remaining unknown characters
+            s = re.sub(r"[^a-zA-Z0-9\.\_\-\+]", "", s)
+            return s
+
         return sep1.join(
             (sep2.join(repl(p) for p in part) if isinstance(part, (list, tuple)) else repl(part))
             for part in parts
             if (isinstance(part, int) or part)
         )
+
+    def call_hook(self, name, **kwargs):
+        return call_hook(name, self, **kwargs)
 
 
 class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
@@ -218,12 +207,14 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         if not self.htcondor_getenv:
             reqs["repo"] = BundleRepo.req(self, replicas=3)
             reqs["software"] = BundleSoftware.req(self, replicas=3)
+            if os.environ["DHI_COMBINE_STANDALONE"] != "True":
+                reqs["cmssw"] = BundleCMSSW.req(self, replicas=3)
 
         return reqs
 
     def htcondor_output_directory(self):
         # the directory where submission meta data and logs should be stored
-        return self.local_target(store="$DHI_STORE_REPO", dir=True)
+        return self.local_target(store="$DHI_STORE_JOBS", dir=True)
 
     def htcondor_bootstrap_file(self):
         # each job can define a bootstrap file that is executed prior to the actual job
@@ -237,6 +228,9 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         # copy the entire environment when requests
         if self.htcondor_getenv:
             config.custom_content.append(("getenv", "true"))
+
+        # include the wlcg specific tools script in the input sandbox
+        config.input_files.append(law.util.law_src_path("contrib/wlcg/scripts/law_wlcg_tools.sh"))
 
         # the CERN htcondor setup requires a "log" config, but we can safely set it to /dev/null
         # if you are interested in the logs of the batch system itself, set a meaningful value here
@@ -253,22 +247,45 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         if self.htcondor_group and self.htcondor_group != law.NO_STR:
             config.custom_content.append(("+AccountingGroup", self.htcondor_group))
 
+        # helper to return uris and a file pattern for replicated bundles
+        reqs = self.htcondor_workflow_requires()
+        def get_bundle_info(task):
+            uris = task.output().dir.uri(cmd="filecopy", return_all=True)
+            pattern = os.path.basename(task.get_file_pattern())
+            return ",".join(uris), pattern
+
         # render_variables are rendered into all files sent with a job
-        if self.htcondor_getenv:
-            config.render_variables["dhi_bootstrap_name"] = "htcondor_getenv"
-        else:
-            reqs = self.htcondor_workflow_requires()
-            config.render_variables["dhi_bootstrap_name"] = "htcondor_standalone"
-            config.render_variables["dhi_software_pattern"] = reqs["software"].get_file_pattern()
-            config.render_variables["dhi_repo_pattern"] = reqs["repo"].get_file_pattern()
         config.render_variables["dhi_env_path"] = os.environ["PATH"]
         config.render_variables["dhi_env_pythonpath"] = os.environ["PYTHONPATH"]
         config.render_variables["dhi_htcondor_flavor"] = self.htcondor_flavor
         config.render_variables["dhi_base"] = os.environ["DHI_BASE"]
         config.render_variables["dhi_user"] = os.environ["DHI_USER"]
         config.render_variables["dhi_store"] = os.environ["DHI_STORE"]
+        config.render_variables["dhi_combine_standalone"] = os.environ["DHI_COMBINE_STANDALONE"]
         config.render_variables["dhi_task_namespace"] = os.environ["DHI_TASK_NAMESPACE"]
         config.render_variables["dhi_local_scheduler"] = os.environ["DHI_LOCAL_SCHEDULER"]
+        if self.htcondor_getenv:
+            config.render_variables["dhi_bootstrap_name"] = "htcondor_getenv"
+        else:
+            config.render_variables["dhi_bootstrap_name"] = "htcondor_standalone"
+
+            # add repo bundle variables
+            uris, pattern = get_bundle_info(reqs["repo"])
+            config.render_variables["dhi_repo_uris"] = uris
+            config.render_variables["dhi_repo_pattern"] = pattern
+
+            # add software bundle variables
+            uris, pattern = get_bundle_info(reqs["software"])
+            config.render_variables["dhi_software_uris"] = uris
+            config.render_variables["dhi_software_pattern"] = pattern
+
+            # add cmssw bundle variables
+            if "cmssw" in reqs:
+                uris, pattern = get_bundle_info(reqs["cmssw"])
+                config.render_variables["dhi_cmssw_uris"] = uris
+                config.render_variables["dhi_cmssw_pattern"] = pattern
+                config.render_variables["dhi_scram_arch"] = os.environ["SCRAM_ARCH"]
+                config.render_variables["dhi_cmssw_version"] = os.environ["CMSSW_VERSION"]
 
         return config
 
@@ -284,7 +301,7 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         description="number of replicas to generate; default: 10",
     )
 
-    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2/*"]
+    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2/*", "*~"]
 
     version = None
     task_namespace = None
@@ -312,11 +329,8 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         self.bundle(bundle)
 
         # log the size
-        self.publish_message(
-            "bundled repository archive, size is {:.2f} {}".format(
-                *law.util.human_bytes(bundle.stat().st_size)
-            )
-        )
+        self.publish_message("bundled repository archive, size is {:.2f} {}".format(
+            *law.util.human_bytes(bundle.stat().st_size)))
 
         # transfer the bundle
         self.transfer(bundle)
@@ -367,17 +381,55 @@ class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile):
         def _filter(tarinfo):
             if re.search(r"(\.pyc|\/\.git|\.tgz|__pycache__|black)$", tarinfo.name):
                 return None
+            if re.search(r"^(.+/)?CMSSW_\d+_\d+_\d+", tarinfo.name):
+                return None
             return tarinfo
 
         # create the archive with a custom filter
         bundle.dump(software_path, filter=_filter)
 
         # log the size
-        self.publish_message(
-            "bundled software archive, size is {:.2f} {}".format(
-                *law.util.human_bytes(bundle.stat().st_size)
-            )
-        )
+        self.publish_message("bundled software archive, size is {:.2f} {}".format(
+            *law.util.human_bytes(bundle.stat().st_size)))
+
+        # transfer the bundle
+        self.transfer(bundle)
+
+
+class BundleCMSSW(AnalysisTask, law.cms.BundleCMSSW, law.tasks.TransferLocalFile):
+
+    replicas = luigi.IntParameter(
+        default=10,
+        description="number of replicas to generate; default: 10",
+    )
+
+    version = None
+    task_namespace = None
+    exclude = "^src/tmp"
+    default_store = "$DHI_STORE_BUNDLES"
+
+    def get_cmssw_path(self):
+        return os.environ["CMSSW_BASE"]
+
+    def single_output(self):
+        path = "{}.{}.tgz".format(os.path.basename(self.get_cmssw_path()), self.checksum)
+        return self.local_target(path)
+
+    def get_file_pattern(self):
+        path = os.path.expandvars(os.path.expanduser(self.single_output().path))
+        return self.get_replicated_path(path, i=None if self.replicas <= 0 else "*")
+
+    def output(self):
+        return law.tasks.TransferLocalFile.output(self)
+
+    def run(self):
+        # create the bundle
+        bundle = law.LocalFileTarget(is_tmp="tgz")
+        self.bundle(bundle)
+
+        # log the size
+        self.publish_message("bundled CMSSW archive, size is {:.2f} {}".format(
+            *law.util.human_bytes(bundle.stat().st_size)))
 
         # transfer the bundle
         self.transfer(bundle)
@@ -404,6 +456,10 @@ class CommandTask(AnalysisTask):
         # this method should build and return the command to run
         raise NotImplementedError
 
+    def get_command(self):
+        # this method is returning the actual, possibly cleaned command
+        return self.build_command()
+
     def touch_output_dirs(self):
         # keep track of created uris so we can avoid creating them twice
         handled_parent_uris = set()
@@ -421,9 +477,13 @@ class CommandTask(AnalysisTask):
                 parent.touch()
                 handled_parent_uris.add(parent.uri())
 
-    def run_command(self, cmd, optional=False, **kwargs):
+    def run_command(self, cmd, highlighted_cmd=None, optional=False, **kwargs):
         # proper command encoding
         cmd = (law.util.quote_cmd(cmd) if isinstance(cmd, (list, tuple)) else cmd).strip()
+
+        # default highlighted command
+        if not highlighted_cmd:
+            highlighted_cmd = law.util.colored(cmd, "cyan")
 
         # when no cwd was set and run_command_in_tmp is True, create a tmp dir
         if "cwd" not in kwargs and self.run_command_in_tmp:
@@ -433,7 +493,7 @@ class CommandTask(AnalysisTask):
         self.publish_message("cwd: {}".format(kwargs.get("cwd", os.getcwd())))
 
         # call it
-        with self.publish_step("running '{}' ...".format(law.util.colored(cmd, "cyan"))):
+        with self.publish_step("running '{}' ...".format(highlighted_cmd)):
             p, lines = law.util.readable_popen(cmd, shell=True, executable="/bin/bash", **kwargs)
             for line in lines:
                 print(line)
@@ -454,8 +514,11 @@ class CommandTask(AnalysisTask):
         # first, create all output directories
         self.touch_output_dirs()
 
-        # build the command
-        cmd = self.build_command()
+        # get the command
+        cmd = self.get_command()
+        if isinstance(cmd, tuple) and len(cmd) == 2:
+            kwargs["highlighted_cmd"] = cmd[1]
+            cmd = cmd[0]
 
         # run it
         self.run_command(cmd, **kwargs)

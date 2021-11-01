@@ -90,6 +90,10 @@ Example usage:
 # rename via simple rules
 > rename_parameters.py datacard.txt btag_JES=CMS_btag_JES -d output_directory
 
+# rename multiple parameters using a replacement rule
+# (note the quotes)
+> rename_parameters.py datacard.txt '^parameter_(.+)$=param_\1' -d output_directory
+
 # rename via rules in files
 > rename_parameters.py datacard.txt my_rules.txt -d output_directory
 
@@ -101,7 +105,11 @@ positional arguments:
                         --directory)
   OLD_NAME=NEW_NAME     translation rules for one or multiple parameter names
                         in the format 'OLD_NAME=NEW_NAME', or files containing
-                        these rules in the same format line by line
+                        these rules in the same format line by line; OLD_NAME
+                        can be a regular expression starting with '^' and
+                        ending with '$'; in this case, group placeholders in
+                        NEW_NAME are replaced with the proper matches as
+                        described in re.sub()
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -223,7 +231,7 @@ optional arguments:
                         changed in-place
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
-  --unique, -u          only merge parameters when at most on of them as an
+  --unique, -u          only merge parameters when at most one of them has an
                         effect in a bin process pair
   --flip-parameters FLIP_PARAMETERS
                         comma-separated list of parameters whose effect should
@@ -545,6 +553,10 @@ Example usage:
 # rename via simple rules
 > rename_processes.py datacard.txt ggH_process=ggHH_kl_1_kt_1 -d output_directory
 
+# rename multiple processes using a replacement rule
+# (note the quotes)
+> rename_processes.py datacard.txt '^ggH_process_(.+)$=ggHH_kl_1_kt_1_\1' -d output_directory
+
 # rename via rules in files
 > rename_processes.py datacard.txt my_rules.txt -d output_directory
 
@@ -556,7 +568,11 @@ positional arguments:
                         --directory)
   OLD_NAME=NEW_NAME     translation rules for one or multiple process names in
                         the format 'OLD_NAME=NEW_NAME', or files containing
-                        these rules in the same format line by line
+                        these rules in the same format line by line; OLD_NAME
+                        can be a regular expression starting with '^' and
+                        ending with '$'; in this case, group placeholders in
+                        NEW_NAME are replaced with the proper matches as
+                        described in re.sub()
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -775,6 +791,7 @@ optional arguments:
 > plot_datacard_shapes.py --help
 
 usage: plot_datacard_shapes.py [-h] [--stack] [--directory DIRECTORY]
+                               [--file-type FILE_TYPE]
                                [--nom-format NOM_FORMAT]
                                [--syst-format SYST_FORMAT] [--mass MASS]
                                [--binning {original,numbers,numbers_width}]
@@ -787,7 +804,7 @@ usage: plot_datacard_shapes.py [-h] [--stack] [--directory DIRECTORY]
                                [BIN,PROCESS[,SYSTEMATIC] ...]
 
 Script to plot histogram shapes of a datacard using configurable rules.
-Shapes stored in workspaces are not supported. Example usage:
+Shapes stored in workspaces are not supported at the moment. Example usage:
 
 # plot all nominal shapes in a certain datacard bin
 # (note the quotes)
@@ -832,12 +849,14 @@ optional arguments:
   --directory DIRECTORY, -d DIRECTORY
                         directory in which produced plots are saved; defaults
                         to the current directory
+  --file-type FILE_TYPE, -f FILE_TYPE
+                        the file type to produce; default: pdf
   --nom-format NOM_FORMAT
-                        format for created files when plotting only nominal
-                        shapes; default: {bin}__{process}.pdf
+                        format for created files when creating only nominal
+                        shapes; default: {bin}__{process}.{file_type}
   --syst-format SYST_FORMAT
-                        format for created files when plotting only nominal
-                        shapes; default: {bin}__{process}__{syst}.pdf
+                        format for created files when creating systematic
+                        shapes; default: {bin}__{process}__{syst}.{file_type}
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --binning {original,numbers,numbers_width}, -b {original,numbers,numbers_width}
                         the binning strategy; 'original': use original bin
@@ -899,6 +918,60 @@ optional arguments:
 ```
 
 
+### Remove unused shapes
+
+```shell hl_lines="1"
+> remove_unused_shapes.py --help
+
+usage: remove_unused_shapes.py [-h] [--directory [DIRECTORY]] [--mass MASS]
+                               [--inplace-shapes] [--log-level LOG_LEVEL]
+                               [--log-name LOG_NAME]
+                               DATACARD [BIN,PROCESS [BIN,PROCESS ...]]
+
+Script to remove all shapes from files referenced in a datacard that are not
+used. This is necessary to combine cards with parameters of different types
+(e.g. lnN and shape) yet same names which will end up in the merged "shape?"
+type. During text2Workspace.py, the original type is recovered via
+*ModelBuilder.isShapeSystematic* by exploiting either the presence or absence
+of a shape with a particular name which could otherwise lead to ambiguous
+outcomes. Example usage:
+
+# remove unused shapes for a certain process in a certain bin
+> remove_unused_shapes.py datacard.txt 'OS_2018,ttbar' -d output_directory
+
+# remove all unused shapes in the datacard
+# (note the quotes)
+> remove_unused_shapes.py datacard.txt '*,*' -d output_directory
+
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
+
+positional arguments:
+  DATACARD              the datacard to read and possibly update (see
+                        --directory)
+  BIN,PROCESS           names of bins and processes for which unused shapes
+                        are removed; both names support patterns where a
+                        leading '!' negates their meaning; each argument can
+                        also be a file containing 'BIN,PROCESS' values line by
+                        line; defaults to '*,*', removing unused shapes in all
+                        bins and processes
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --mass MASS, -m MASS  mass hypothesis; default: 125
+  --inplace-shapes, -i  change shape files in-place rather than in a temporary
+                        file first
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        remove_unused_shapes
+```
+
+
 ### Split a datacard by bins
 
 ```shell hl_lines="1"
@@ -940,6 +1013,78 @@ optional arguments:
                         python log level; default: INFO
   --log-name LOG_NAME   name of the logger on the command line; default:
                         split_datacard_by_bins
+```
+
+
+### Extract fit results from FitDiagnostics and MultiDimFit
+
+```shell hl_lines="1"
+> extract_fit_result.py --help
+
+usage: extract_fit_result.py [-h] [--keep KEEP] [--skip SKIP]
+                             [--log-level LOG_LEVEL] [--log-name LOG_NAME]
+                             INPUT NAME OUTPUT
+
+Script to extract values from a RooFitResult object or a RooWorkspace (snapshot)
+in a ROOT file into a json file with configurable patterns for variable selection.
+Example usage:
+
+# extract variables from a fit result 'fit_b' starting with 'CMS_'
+# (note the quotes)
+> extract_fit_result.py fit.root fit_b output.json --keep 'CMS_*'
+
+# extract variables from a fit result 'fit_b' except thise starting with 'CMS_'
+# (note the quotes)
+> extract_fit_result.py fit.root fit_b output.json --skip 'CMS_*'
+
+# extract variables from a workspace snapshot starting with 'CMS_'
+# (note the quotes)
+> extract_fit_result.py workspace.root w:MultiDimFit output.json --keep 'CMS_*'
+
+positional arguments:
+  INPUT                 the input root file to read
+  NAME                  name of the object to read values from
+  OUTPUT                name of the output file to write
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --keep KEEP, -k KEEP  comma-separated patterns matching names of variables
+                        to keep
+  --skip SKIP, -s SKIP  comma-separated patterns matching names of variables
+                        to skip
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        extract_fit_result
+```
+
+
+### Inject fit results into a workspace
+
+```shell hl_lines="1"
+> inject_fit_result.py --help
+
+usage: inject_fit_result.py [-h] [--log-level LOG_LEVEL] [--log-name LOG_NAME]
+                            INPUT OUTPUT WORKSPACE
+
+Script to inject nuisance values from a json file into a RooFit workspace. The
+json file must follow the same structure as produced by extract_fit_result.py.
+Example usage:
+
+# inject variables into a workspace "w"
+> inject_fit_result.py input.json workspace.root w
+
+positional arguments:
+  INPUT                 the input json file to read
+  OUTPUT                the workspace file
+  WORKSPACE             name of the workspace
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        inject_fit_result
 ```
 
 

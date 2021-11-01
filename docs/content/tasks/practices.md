@@ -40,16 +40,17 @@ the following examples demonstrate the datacard resolution.
 #### `--hh-model` parameter
 
 The `combine` physics model, which is used during workspace creation, can be controlled with the `--hh-model` parameter.
-It should have the format `module_name.model_name[@OPT][...]` where the module named `module_name` must be importable within the current Python environment and should contain a member called `model_name`, referring to the physics model instance to be used.
-Certain features of the model can be disabled by passing options in the quoted format.
+It should have the format `module_name.model_name[@OPT][@...]` where the module named `module_name` must be importable within the current Python environment and should contain a member called `model_name`, referring to the physics model instance to be used.
+Certain features of the model can be controlled and/or disabled by passing options in the quoted format.
 Available options:
 
 - `"noNNLOscaling"`: Disables the NLO to NNLO scaling of the ggF signal.
 - `"noBRscaling"`: Disables the scaling of Higgs branching ratios with model parameters.
 - `"noHscaling"`: Disables the scaling of single Higgs production cross sections with model parameters.
 - `"noklDependentUnc"`: Disables the kl-dependence of the ggF signal cross section.
+- `"doProfileX=Y"`: Instead of using a contant value, profile the parameter `X` (`kl`, `kt`, `CV`, `C2V`, `rgghh`, `rqqhh`, `rvhh`) using a prior defined by `Y` which can be either `flat` or `gauss,WIDTH` (example: `doProfilekt=gauss,0.25`).
 
-The current default is `HHModelPinv:model_default`, referring to a model located in [dhi/models](https://gitlab.cern.ch/hh/tools/inference/-/tree/master/dhi/models).
+The current default is `hh_model.model_default`, referring to a model located in [dhi/models](https://gitlab.cern.ch/hh/tools/inference/-/tree/master/dhi/models).
 
 
 #### `--version` parameter

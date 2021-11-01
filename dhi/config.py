@@ -4,6 +4,11 @@
 Constants such as cross sections and branchings, and common configs such as labels and colors.
 """
 
+import os
+
+import scipy as sp
+import scipy.stats
+
 from dhi.util import DotDict, ROOTColorGetter
 
 
@@ -57,6 +62,9 @@ br_hh = DotDict(
 )
 # aliases
 br_hh["bbbb_boosted"] = br_hh.bbbb
+br_hh["bbbb_boosted_ggf"] = br_hh.bbbb
+br_hh["bbbb_boosted_vbf"] = br_hh.bbbb
+br_hh["bbbb_boosted"] = br_hh.bbbb
 br_hh["bbwwdl"] = br_hh.bbwwlvlv
 br_hh["bbwwllvv"] = br_hh.bbwwlvlv
 br_hh["bbwwsl"] = br_hh.bbwwqqlv
@@ -64,15 +72,18 @@ br_hh["bbzz4l"] = br_hh.bbzzllll
 
 # HH branching names (TODO: find prettier abbreviations)
 br_hh_names = DotDict(
-    bbbb=r"bbbb",
-    bbbb_boosted=r"bbbb (boosted)",
+    bbbb=r"4b",
+    bbbb_low=r"4b, low $m_{HH}$",
+    bbbb_boosted=r"4b, high $m_{HH}$",
+    bbbb_boosted_ggf=r"4b #scale[0.75]{high $m_{HH}$, ggF}",
+    bbbb_boosted_vbf=r"4b #scale[0.75]{high $m_{HH}$, VBF}",
     bbvv=r"bbVV",
     bbww=r"bbWW",
     bbwwqqlv=r"bbWW, qql$\nu$",
     bbwwlvlv=r"bbWW, 2l2$\nu$",
     bbzz=r"bbZZ",
     bbzzqqll=r"bbZZ, qqll",
-    bbzzllll=r"bbZZ, 4l",
+    bbzzllll=r"bbZZ",
     bbtt=r"bb$\tau\tau$",
     bbgg=r"bb$\gamma\gamma$",
     ttww=r"WW$\tau\tau",
@@ -90,12 +101,13 @@ br_hh_names["bbwwllvv"] = br_hh_names.bbwwlvlv
 br_hh_names["bbwwsl"] = br_hh_names.bbwwqqlv
 br_hh_names["bbzz4l"] = br_hh_names.bbzzllll
 
-# campaign labels, extended by combinations with HH branching names, and names itself
+# campaign labels, extended by combinations with HH branching names
+# lumi values from https://twiki.cern.ch/twiki/bin/view/CMS/TWikiLUM?rev=163
 campaign_labels = DotDict({
-    "2016": "2016 (13 TeV)",
-    "2017": "2017 (13 TeV)",
-    "2018": "2018 (13 TeV)",
-    "run2": "Run 2 (13 TeV)",
+    "2016": "36.3 fb^{-1} (2016, 13 TeV)",
+    "2017": "41.5 fb^{-1} (2017, 13 TeV)",
+    "2018": "59.8 fb^{-1} (2018, 13 TeV)",
+    "run2": "138 fb^{-1} (13 TeV)",
 })
 for c, c_label in list(campaign_labels.items()):
     for b, b_label in br_hh_names.items():
@@ -148,12 +160,13 @@ colors = DotDict(
         blue_cream=38,
         blue_signal=(67, 118, 201),
         blue_signal_trans=(67, 118, 201, 0.5),
+        purple=881,
     ),
 )
 
 # color sequence for plots with multiple elements
 color_sequence = ["blue", "red", "green", "grey", "pink", "cyan", "orange", "light_green", "yellow"]
-color_sequence += 10 * ["black"]
+color_sequence += 10 * ["grey"]
 
 # marker sequence for plots with multiple elements
 marker_sequence = [20, 21, 22, 23, 24, 25, 26, 32, 27, 33, 28, 34, 29, 30]
@@ -162,11 +175,18 @@ marker_sequence += 10 * [20]
 # cumulative, inverse chi2 values in a mapping "n_dof -> n_sigma -> level"
 # for the geometrical determination of errors of nll curves
 # (computed with "sp.stats.chi2.ppf(g, n_dof)" with g being the gaussian intervals)
+# chi2_levels = {
+#     1: {1: 1.000, 2: 4.000},
+#     2: {1: 2.296, 2: 6.180},
+#     ...
+# }
+get_gaus_interval = lambda sigma: 2 * sp.stats.norm.cdf(sigma) - 1.
+get_chi2_level = lambda sigma, ndof: sp.stats.chi2.ppf(get_gaus_interval(sigma), ndof)
+get_chi2_level_from_cl = lambda cl, ndof: sp.stats.chi2.ppf(cl, ndof)
 chi2_levels = {
-    1: {1: 1.000, 2: 4.000},
-    2: {1: 2.296, 2: 6.180},
-    3: {1: 3.527, 2: 8.025},
+    ndof: {sigma: get_chi2_level(sigma, ndof) for sigma in range(1, 8 + 1)}
+    for ndof in range(1, 3 + 1)
 }
 
 # postfix after "CMS" labels in plots, shwon when the --paper flag is not used
-cms_postfix = "Preliminary"
+cms_postfix = os.getenv("DHI_CMS_POSTFIX", "Work in progress")

@@ -1,8 +1,8 @@
 # coding: utf-8
 
 """
-Custom HH physics model implementing the gluon gluon fusion (ggf / gghh) mode depending on C2, kl
-and kt.
+Custom HH physics model implementing the gluon gluon fusion (ggf / gghh) mode (depending on C2, kl
+and kt), and the vector boson fusion (vbf / qqhh) mode.
 
 Authors:
   - Torben Lange
@@ -17,7 +17,8 @@ import sympy
 # wildcard import to have everything available locally, plus specific imports for linting
 from hh_model import *  # noqa
 from hh_model import (
-    HHSample, HHFormula, HHModelBase, HHModel as DefaultHHModel, create_ggf_xsec_str, ggf_k_factor,
+    HHSample, HHFormula, VBFFormula, HHModelBase, HHModel as DefaultHHModel, vbf_samples,
+    create_ggf_xsec_str, ggf_k_factor, create_vbf_xsec_func,
 )
 
 
@@ -113,18 +114,18 @@ class GGFFormula(HHFormula):
 
 class HHModel(DefaultHHModel):
     """
-    Models the HH production as linear sum of the input components for GGF >= 6 samples. The
-    following physics options are supported:
+    Models the HH production as linear sum of the input components for >= 6 ggf (EFT) and >= 6 vbf
+    samples. The following physics options are supported:
 
     - doNNLOscaling (bool)   : Convert ggF HH yields (that are given in NLO by convention) to NNLO.
     - doBRscaling (bool)     : Enable scaling Higgs branching ratios with model parameters.
     - doHscaling (bool)      : Enable scaling single Higgs cross sections with model parameters.
     - doklDependentUnc (bool): Add a theory uncertainty on ggF HH production that depends on model
                                parameters.
-    - doProfileX (string)    : Either "flat" to enable the profiling of kappa parameter X with a
-      X in {kl,kt,C2}          flat prior, or "gauss,FLOAT" (or "gauss,-FLOAT/+FLOAT") to use a
-                               gaussian (asymmetric) prior. In any case, X will be profiled and is
-                               hence removed from the list of POIs.
+    - doProfileX (string)    : Either "flat" to enable the profiling of parameter X with a flat
+      X in {rgghh,rqqhh,rvhh,  prior, or "gauss,FLOAT" (or "gauss,-FLOAT/+FLOAT") to use a gaussian
+      kl,kt,CV,C2V,C2}         (asymmetric) prior. In any case, X will be profiled and is hence
+                               removed from the list of POIs.
 
     A string encoded boolean flag is interpreted as *True* when it is either ``"yes"``, ``"true"``
     or ``1`` (case-insensitive).
@@ -134,20 +135,23 @@ class HHModel(DefaultHHModel):
     R_POIS = OrderedDict([
         ("r", (1, -20, 20)),
         ("r_gghh", (1, -20, 20)),
+        ("r_qqhh", (1, -20, 20)),
     ])
     K_POIS = OrderedDict([
         ("kl", (1, -30, 30)),
         ("kt", (1, -10, 10)),
-        ("C2", (0, -5, 5)),
+        ("CV", (1, -10, 10)),
+        ("C2V", (1, -10, 10)),
+        ("C2", (0, -10, 10)),
     ])
 
-    def __init__(self, name, ggf_samples=None):
+    def __init__(self, name, ggf_samples=None, vbf_samples=None):
         # skip the DefaultHHModel init
         HHModelBase.__init__(self, name)
 
         # attributes
         self.ggf_formula = GGFFormula(ggf_samples) if ggf_samples else None
-        self.vbf_formula = None
+        self.vbf_formula = VBFFormula(vbf_samples) if vbf_samples else None
         self.vhh_formula = None
         self.ggf_kl_dep_unc = "THU_HH"  # name for kl-dependent QCDscale + mtop uncertainty on ggf
         self.h_br_scaler = None  # initialized in create_scalings
@@ -157,26 +161,19 @@ class HHModel(DefaultHHModel):
         self.register_opt("doklDependentUnc", True, is_flag=True)
         self.register_opt("doBRscaling", True, is_flag=True)
         self.register_opt("doHscaling", True, is_flag=True)
-        for p in self.K_POIS:
-            self.register_opt("doProfile{}".format(p), None)
+        for p in self.R_POIS.keys() + self.K_POIS.keys():
+            if p != "r":
+                self.register_opt("doProfile" + p.replace("_", ""), None)
 
         # reset instance-level pois
         self.reset_pois()
 
-    def doParametersOfInterest(self):
-        """
-        Hook called by the super class to add parameters (of interest) to the model.
-
-        Here, we add the CV parameter which is required by the HBRScaler and then trigger the super
-        implementation.
-        """
-        self.make_var("CV[1]")
-        self.get_var("CV").setConstant(True)
-
-        super(HHModel, self).doParametersOfInterest()
+    def _create_hh_xsec_func(self, *args, **kwargs):
+        # forward to the modul-level implementation
+        return create_hh_xsec_func(*args, **kwargs)
 
 
-def create_model(name, ggf_keys=None, **kwargs):
+def create_model(name, ggf_keys=None, vbf_keys=None, **kwargs):
     """
     Returns a new :py:class:`HHModel` instance named *name*. Its ggf sample list can be configured
     by passing a list of *ggf_keys* which defaults to all availabe samples. The order of
@@ -187,29 +184,41 @@ def create_model(name, ggf_keys=None, **kwargs):
     if not ggf_keys:
         ggf_keys = ggf_samples.keys()
 
+    # expand vbf keys
+    if not vbf_keys:
+        vbf_keys = vbf_samples.keys()
+
     # create the return the model
     return HHModel(
         name=name,
         ggf_samples=[ggf_samples[key] for key in ggf_keys],
+        vbf_samples=[vbf_samples[key] for key in vbf_keys],
         **kwargs
     )
 
 
 # default model
-model_default = create_model("model_default", ggf_keys=[
-    (0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3),
-])
+model_default = create_model("model_default",
+    ggf_keys=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf_keys=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+# default model without vbf
+model_default_novbf = create_model("model_default_novbf",
+    ggf_keys=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf_keys=[],
+)
 
 
 ####################################################################################################
 ### Updated cross section helpers
 ####################################################################################################
 
-def create_ggf_xsec_func(formula=None):
+def create_ggf_xsec_func(ggf_formula):
     """
     Creates and returns a function that can be used to calculate numeric ggf cross section values in
-    pb given an appropriate *formula*, which defaults to *model_default.ggf_formula*. The returned
-    function has the signature ``(kl=1.0, kt=1.0, C2=0.0, nnlo=True, unc=None)``.
+    pb given an appropriate :py:class:`GGFFormula` instance *formula*. The returned function has the
+    signature ``(kl=1.0, kt=1.0, C2=0.0, nnlo=True, unc=None)``.
 
     When *nnlo* is *False*, the constant k-factor is still applied. Otherwise, the returned value is
     in full next-to-next-to-leading order. In this case, *unc* can be set to eiher "up" or "down" to
@@ -233,12 +242,9 @@ def create_ggf_xsec_func(formula=None):
 
     Formulae are taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?rev=70.
     """
-    if formula is None:
-        formula = model_default.ggf_formula
-
     # create the lambdify'ed evaluation function
-    symbol_names = ["kl", "kt", "C2"] + list(map("xs{}".format, range(formula.n_samples)))
-    xsec_func = sympy.lambdify(sympy.symbols(symbol_names), formula.sigma)
+    symbol_names = ["kl", "kt", "C2"] + list(map("xs{}".format, range(ggf_formula.n_samples)))
+    xsec_func = sympy.lambdify(sympy.symbols(symbol_names), ggf_formula.sigma)
 
     # nlo-to-nnlo scaling functions in case nnlo is set
     # (not really clean to use eval here, but this way create_ggf_xsec_str remains the only
@@ -259,7 +265,7 @@ def create_ggf_xsec_func(formula=None):
 
     def apply_uncertainty_nnlo(kl, xsec_nom, unc):
         # note on kt: in the twiki linked above, uncertainties on the ggf production cross section
-        # are quoted for different kl values but otherwise fully SM parameters, esp. kt=1;
+        # are quoted for different kl values but otherwise fully SM parameters, esp. kt=1 and C2=0;
         # however, the nominal cross section *xsec_nom* might be subject to a different kt value
         # and thus, the following implementation assumes that the relative uncertainties according
         # to the SM recommendation are preserved; for instance, if the the scale+mtop uncertainty
@@ -270,8 +276,8 @@ def create_ggf_xsec_func(formula=None):
         if unc.lower() not in ("up", "down"):
             raise ValueError("unc must be 'up' or 'down', got '{}'".format(unc))
         scale_func = {"up": xsec_nnlo_scale_up, "down": xsec_nnlo_scale_down}[unc.lower()]  # noqa
-        xsec_nom_kt1 = xsec_func(kl, 1., *(sample.xs for sample in formula.samples))[0, 0]
-        xsec_unc = (scale_func(kl) - xsec_nom_kt1) / xsec_nom_kt1
+        xsec_nom_sm = xsec_func(kl, 1., 0., *(sample.xs for sample in ggf_formula.samples))[0, 0]
+        xsec_unc = (scale_func(kl) - xsec_nom_sm) / xsec_nom_sm
 
         # combine with flat 3% PDF uncertainty, preserving the sign
         unc_sign = 1 if xsec_unc > 0 else -1
@@ -284,7 +290,7 @@ def create_ggf_xsec_func(formula=None):
 
     # wrap into another function to apply defaults and nlo-to-nnlo scaling
     def wrapper(kl=1.0, kt=1.0, C2=0.0, nnlo=True, unc=None):
-        xsec = xsec_func(kl, kt, C2, *(sample.xs for sample in formula.samples))[0, 0]
+        xsec = xsec_func(kl, kt, C2, *(sample.xs for sample in ggf_formula.samples))[0, 0]
 
         # nnlo scaling?
         if nnlo:
@@ -301,17 +307,21 @@ def create_ggf_xsec_func(formula=None):
     return wrapper
 
 
-def create_hh_xsec_func(ggf_formula=None):
+def create_hh_xsec_func(ggf_formula=None, vbf_formula=None):
     """
     Creates and returns a function that can be used to calculate numeric HH cross section values in
-    pb given the appropriate *ggf_formula* object, which defaults to *model_default.ggf_formula*.
-    The returned function has the signature ``(kl=1.0, kt=1.0, C2=0.0, nnlo=True, unc=None)``.
+    pb given the appropriate *ggf_formula* and *vbf_formula* objects. When a forumla evaluates to
+    *False* (the default), the corresponding process is not considered in the inclusive calculation.
+    The returned function has the signature
+    ``(kl=1.0, kt=1.0, C2=0.0, CV=1.0, C2V=1.0, nnlo=True, unc=None)``.
 
     The *nnlo* setting only affects the ggF component of the cross section. When *nnlo* is *False*,
     the constant k-factor of the ggf calculation is still applied. Otherwise, the returned value is
     in full next-to-next-to-leading order for ggF. *unc* can be set to eiher "up" or "down" to
     return the up / down varied cross section instead where the uncertainty is composed of a *kl*
-    dependent scale + mtio uncertainty and an independent PDF uncertainty of 3% for ggF.
+    dependent scale + mtop uncertainty and an independent PDF uncertainty of 3% for ggF, and a scale
+    and pdf+alpha_s uncertainty for vbf. The uncertainties of the ggf and vbf processes are treated
+    as uncorrelated.
 
     Example:
 
@@ -328,13 +338,21 @@ def create_hh_xsec_func(ggf_formula=None):
         print(get_hh_xsec(kl=2., unc="up"))
         # -> 0.015702...
     """
-    # get the particular ggf wrapper
-    get_ggf_xsec = create_ggf_xsec_func(ggf_formula)
+    if not any([ggf_formula, vbf_formula]):
+        raise ValueError("at least one of the cross section formulae is required")
+
+    # default function for a disabled process
+    no_xsec = lambda *args, **kwargs: 0.
+
+    # get the particular wrappers of the components
+    get_ggf_xsec = create_ggf_xsec_func(ggf_formula) if ggf_formula else no_xsec
+    get_vbf_xsec = create_vbf_xsec_func(vbf_formula) if vbf_formula else no_xsec
 
     # create a combined wrapper with the merged signature
-    def wrapper(kl=1.0, kt=1.0, C2=0.0, nnlo=True, unc=None):
+    def wrapper(kl=1.0, kt=1.0, C2=0.0, CV=1.0, C2V=1.0, nnlo=True, unc=None):
         ggf_xsec = get_ggf_xsec(kl=kl, kt=kt, C2=C2, nnlo=nnlo)
-        xsec = ggf_xsec
+        vbf_xsec = get_vbf_xsec(C2V=C2V, CV=CV, kl=kl)
+        xsec = ggf_xsec + vbf_xsec
 
         # apply uncertainties?
         if unc:
@@ -343,9 +361,11 @@ def create_hh_xsec_func(ggf_formula=None):
 
             # ggf uncertainty
             ggf_unc = get_ggf_xsec(kl=kl, kt=kt, C2=C2, nnlo=nnlo, unc=unc) - ggf_xsec
+            # vbf uncertainty
+            vbf_unc = get_vbf_xsec(C2V=C2V, CV=CV, kl=kl, unc=unc) - vbf_xsec
             # combine
             sign = 1 if unc.lower() == "up" else -1
-            unc = sign * (ggf_unc**2)**0.5
+            unc = sign * (ggf_unc**2 + vbf_unc**2)**0.5
             xsec += unc
 
         return xsec
@@ -356,5 +376,8 @@ def create_hh_xsec_func(ggf_formula=None):
 # default ggF cross section getter using the formula of the *model_default* model
 get_ggf_xsec = create_ggf_xsec_func(model_default.ggf_formula)
 
+# default vbf cross section getter using the formula of the *model_default* model
+get_vbf_xsec = create_vbf_xsec_func(model_default.vbf_formula)
+
 # default combined cross section getter using the formulas of the *model_default* model
-get_hh_xsec = create_hh_xsec_func(model_default.ggf_formula)
+get_hh_xsec = create_hh_xsec_func(model_default.ggf_formula, model_default.vbf_formula)

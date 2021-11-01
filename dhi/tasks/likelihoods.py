@@ -5,9 +5,11 @@ Tasks related to likelihood scans.
 """
 
 import copy
+from operator import mul
 
 import law
 import luigi
+import six
 
 from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import (
@@ -18,15 +20,26 @@ from dhi.tasks.combine import (
     POIPlotTask,
     CreateWorkspace,
 )
-from dhi.util import unique_recarray, extend_recarray, convert_dnll2
+from dhi.tasks.snapshot import Snapshot, SnapshotUser
+from dhi.config import poi_data
+from dhi.util import unique_recarray
 
 
-class LikelihoodBase(POIScanTask):
+class LikelihoodBase(POIScanTask, SnapshotUser):
 
     pois = copy.copy(POIScanTask.pois)
     pois._default = ("kl",)
 
     force_scan_parameters_equal_pois = True
+    allow_parameter_values_in_pois = True
+
+    def get_output_postfix(self, join=True):
+        parts = super(LikelihoodBase, self).get_output_postfix(join=False)
+
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+
+        return self.join_postfix(parts) if join else parts
 
 
 class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
@@ -34,66 +47,108 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
     run_command_in_tmp = True
 
     def create_branch_map(self):
-        linspace = self.get_scan_linspace()
-
-        # when blinded and the expected best fit values of r and k POIs (== 1) are not contained
-        # in the grid points, log an error as this leads to a scenario where the global minimum nll
-        # is not computed and the deltas to all other nll values become arbitrary and incomparable
-        if self.blinded:
-            for i, poi in enumerate(self.pois):
-                values = [tpl[i] for tpl in linspace]
-                if poi in self.all_pois and 1 not in values:
-                    scan = "start: {}, stop: {}, points: {}".format(*self.scan_parameters[i][1:])
-                    self.logger.error("the expected best fit value of 1 is not contained in the "
-                        "values to scan for POI {} ({}), leading to dnll values being computed "
-                        "relative to an arbitrary minimum".format(poi, scan))
-
-        return linspace
+        return self.get_scan_linspace()
 
     def workflow_requires(self):
         reqs = super(LikelihoodScan, self).workflow_requires()
-        reqs["workspace"] = self.requires_from_branch()
+        reqs["workspace"] = CreateWorkspace.req(self)
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self)
         return reqs
 
     def requires(self):
-        return CreateWorkspace.req(self)
+        reqs = {"workspace": CreateWorkspace.req(self)}
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self, branch=0)
+        return reqs
 
     def output(self):
-        return self.local_target("likelihood__" + self.get_output_postfix() + ".root")
-
-    @property
-    def blinded_args(self):
-        if self.unblinded:
-            return "--seed {self.branch}".format(self=self)
-        else:
-            return "--seed {self.branch} --toys {self.toys}".format(self=self)
+        name = self.join_postfix(["likelihood", self.get_output_postfix()]) + ".root"
+        return self.local_target(name)
 
     def build_command(self):
-        return (
+        # get the workspace to use and define snapshot args
+        if self.use_snapshot:
+            workspace = self.input()["snapshot"].path
+            snapshot_args = " --snapshotName MultiDimFit"
+        else:
+            workspace = self.input()["workspace"].path
+            snapshot_args = ""
+
+        # args for blinding / unblinding
+        if self.unblinded:
+            blinded_args = "--seed {self.branch}".format(self=self)
+        else:
+            blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
+
+        # ensure that ranges of scanned parameters contain their SM values (plus one step)
+        # in order for the likelihood scan to find the expected minimum and compute all deltaNLL
+        # values with respect that minimum; otherwise, results of different scans cannot be stitched
+        # together as they were potentially compared against different minima; this could be
+        # simplified by https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/pull/686 which
+        # would only require to set "--setParameterRangesForGrid {self.joined_scan_ranges}"
+        ext_ranges = []
+        for p, ranges in self.scan_parameters_dict.items():
+            # gather data
+            start, stop, points = ranges[0]
+            sm_value = poi_data.get(p, {}).get("sm_value", 1.)
+            step_size = (float(stop - start) / (points - 1)) if points > 1 else 1
+            assert step_size > 0
+            # decrease the starting point until the sm value is fully contained
+            while start >= sm_value:
+                start -= step_size
+                points += 1
+            # increase the stopping point until the sm value is fully contained
+            while stop <= sm_value:
+                stop += step_size
+                points += 1
+            # store the extended range
+            ext_ranges.append((start, stop, points))
+        # compute the new n-D point space
+        ext_space = self._get_scan_linspace(ext_ranges)
+        # get the point index of the current branch
+        ext_point = ext_space.index(self.branch_data)
+        # recreate joined expressions for the combine command
+        ext_joined_scan_points = ",".join(map(str, (p for _, _, p in ext_ranges)))
+        ext_joined_scan_ranges = ":".join(
+            "{}={},{}".format(name, start, stop)
+            for name, (start, stop, _) in zip(self.scan_parameter_names, ext_ranges)
+        )
+
+        # build the command
+        cmd = (
             "combine -M MultiDimFit {workspace}"
+            " {self.custom_args}"
             " --verbose 1"
             " --mass {self.mass}"
-            " {self.blinded_args}"
+            " {blinded_args}"
             " --algo grid"
             " --redefineSignalPOIs {self.joined_pois}"
-            " --gridPoints {self.joined_scan_points}"
-            " --firstPoint {self.branch}"
-            " --lastPoint {self.branch}"
+            " --gridPoints {ext_joined_scan_points}"
+            " --firstPoint {ext_point}"
+            " --lastPoint {ext_point}"
             " --alignEdges 1"
-            " --setParameterRanges {self.joined_scan_ranges}:{self.joined_parameter_ranges}"
+            " --setParameterRanges {ext_joined_scan_ranges}:{self.joined_parameter_ranges}"
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
-            " --robustFit 1"
+            " {snapshot_args}"
+            " --saveNLL"
             " {self.combine_optimization_args}"
-            " {self.custom_args}"
             " && "
             "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
-            workspace=self.input().path,
+            workspace=workspace,
             output=self.output().path,
+            blinded_args=blinded_args,
+            snapshot_args=snapshot_args,
+            ext_joined_scan_points=ext_joined_scan_points,
+            ext_joined_scan_ranges=ext_joined_scan_ranges,
+            ext_point=ext_point,
         )
+
+        return cmd
 
 
 class MergeLikelihoodScan(LikelihoodBase):
@@ -102,7 +157,8 @@ class MergeLikelihoodScan(LikelihoodBase):
         return LikelihoodScan.req(self)
 
     def output(self):
-        return self.local_target("limits__" + self.get_output_postfix() + ".npz")
+        name = self.join_postfix(["likelihoods", self.get_output_postfix()]) + ".npz"
+        return self.local_target(name)
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -111,8 +167,14 @@ class MergeLikelihoodScan(LikelihoodBase):
 
         data = []
         dtype = [(p, np.float32) for p in self.scan_parameter_names] + [
+            # raw nll0, nll and deltaNLL values from combine
+            ("nll0", np.float32),
+            ("nll", np.float32),
             ("dnll", np.float32),
+            # dnll times two
             ("dnll2", np.float32),
+            # absolute nll value of the fit
+            ("fit_nll", np.float32),
         ]
         poi_mins = self.n_pois * [np.nan]
         branch_map = self.requires().branch_map
@@ -138,8 +200,15 @@ class MergeLikelihoodScan(LikelihoodBase):
             # compute the dnll2 value
             dnll2 = dnll * 2.
 
+            # get the raw nll and nll0 values
+            nll0 = float(f["nll0"].array()[1])
+            nll = float(f["nll"].array()[1])
+
+            # absolute nll value of the particular fit
+            fit_nll = nll + dnll
+
             # store the value of that point
-            data.append(scan_values + (dnll, dnll2))
+            data.append(scan_values + (nll0, nll, dnll, dnll2, fit_nll))
 
         data = np.array(data, dtype=dtype)
         self.output().dump(data=data, poi_mins=np.array(poi_mins), formatter="numpy")
@@ -147,11 +216,6 @@ class MergeLikelihoodScan(LikelihoodBase):
 
 class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
-    convert = luigi.ChoiceParameter(
-        default=law.NO_STR,
-        choices=[law.NO_STR, "significance", "pvalue"],
-        description="convert dnll2 values to either a 'significance' or 'pvalue'; no default",
-    )
     y_log = luigi.BoolParameter(
         default=False,
         description="apply log scaling to the y-axis; 1D only; default: False",
@@ -172,6 +236,13 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         significant=False,
         description="when True, do not use the best fit value as reported from combine but "
         "recompute it using scipy.interpolate and scipy.minimize; default: False",
+    )
+    show_significances = law.CSVParameter(
+        cls=luigi.FloatParameter,
+        default=(1, 2, 3, 5),
+        significant=False,
+        description="values of integer significances (>= 1) or float confidence levels (< 1) "
+        "to overlay with lines and lables; default: 1,2,3,5",
     )
     shift_negative_values = luigi.BoolParameter(
         default=False,
@@ -215,9 +286,8 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
-        prefix = "nll" if self.convert == law.NO_STR else self.convert
         names = self.create_plot_names(
-            ["{}{}d".format(prefix, self.n_pois), self.get_output_postfix(), parts]
+            ["nll{}d".format(self.n_pois), self.get_output_postfix(), parts]
         )
         return [self.local_target(name) for name in names]
 
@@ -233,56 +303,9 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         # load scan data
         values, poi_mins = self.load_scan_data(self.input(), merge_scans=self.n_pois == 1)
 
-        # use significance plots if requested
-        if self.convert in ["significance", "pvalue"]:
-            if self.n_pois == 1:
-                sig = convert_dnll2(values["dnll2"], n=1)[1]
-                values = extend_recarray(values, ("significance", float, sig))
-                self.call_plot_func(
-                    "dhi.plots.significances.plot_significance_scan_1d",
-                    paths=[outp.path for outp in outputs],
-                    scan_parameter=self.pois[0],
-                    expected_values=None if self.unblinded else values,
-                    observed_values=values if self.unblinded else None,
-                    show_p_values=self.convert == "pvalue",
-                    x_min=self.get_axis_limit("x_min"),
-                    x_max=self.get_axis_limit("x_max"),
-                    y_min=self.get_axis_limit("y_min"),
-                    y_max=self.get_axis_limit("y_max"),
-                    y_log=self.y_log,
-                    model_parameters=self.get_shown_parameters(),
-                    campaign=self.campaign if self.campaign != law.NO_STR else None,
-                    show_points=self.show_points,
-                    paper=self.paper,
-                )
-            else:  # 2
-                values = [
-                    extend_recarray(vals, ("significance", float,
-                        convert_dnll2(vals["dnll2"], n=2)[1]))
-                    for vals in values
-                ]
-                self.call_plot_func(
-                    "dhi.plots.significances.plot_significance_scan_2d",
-                    paths=[outp.path for outp in outputs],
-                    scan_parameter1=self.pois[0],
-                    scan_parameter2=self.pois[1],
-                    values=values,
-                    show_p_values=self.convert == "pvalue",
-                    x_min=self.get_axis_limit("x_min"),
-                    x_max=self.get_axis_limit("x_max"),
-                    y_min=self.get_axis_limit("y_min"),
-                    y_max=self.get_axis_limit("y_max"),
-                    z_min=self.get_axis_limit("z_min"),
-                    z_max=self.get_axis_limit("z_max"),
-                    model_parameters=self.get_shown_parameters(),
-                    campaign=self.campaign if self.campaign != law.NO_STR else None,
-                    paper=self.paper,
-                )
-            return
-
         # call the plot function
         if self.n_pois == 1:
-            # theory value when this is an r poi
+            # get the theory value when this is a poi
             theory_value = None
             if self.pois[0] in self.r_pois:
                 get_xsec = self.create_xsec_func(self.pois[0], "fb", safe_signature=True)
@@ -295,6 +318,8 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                     theory_value = (get_xsec(**self.parameter_values_dict),)
                 # normalize
                 theory_value = tuple(v / theory_value[0] for v in theory_value)
+            elif self.pois[0] in poi_data:
+                theory_value = (poi_data[self.pois[0]].sm_value,)
 
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scan_1d",
@@ -305,6 +330,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 poi_min=None if self.recompute_best_fit else poi_mins[0],
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
+                show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
@@ -327,6 +353,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 poi2_min=None if self.recompute_best_fit else poi_mins[1],
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
+                show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 interpolate_nans=self.interpolate_nans,
                 show_box=self.show_box,
@@ -341,13 +368,14 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 paper=self.paper,
             )
 
-    def load_scan_data(self, inputs, merge_scans=True):
+    def load_scan_data(self, inputs, recompute_dnll2=True, merge_scans=True):
         return self._load_scan_data(inputs, self.scan_parameter_names,
-            self.get_scan_parameter_combinations(), merge_scans=merge_scans)
+            self.get_scan_parameter_combinations(), recompute_dnll2=recompute_dnll2,
+            merge_scans=merge_scans)
 
     @classmethod
     def _load_scan_data(cls, inputs, scan_parameter_names, scan_parameter_combinations,
-            merge_scans=True):
+            recompute_dnll2=True, merge_scans=True):
         import numpy as np
 
         # load values of each input
@@ -360,6 +388,22 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 (None if np.isnan(data["poi_mins"][i]) else float(data["poi_mins"][i]))
                 for i in range(len(scan_parameter_names))
             ])
+
+        # nll0 values must be identical per input (otherwise there might be an issue with the model)
+        for v in values:
+            nll_unique = np.unique(v["nll0"])
+            nll_unique = nll_unique[~np.isnan(nll_unique)]
+            if len(nll_unique) != 1:
+                raise Exception("found {} different nll0 values in scan data which indicates in "
+                    "issue with the model: {}".format(len(nll_unique), nll_unique))
+
+        # recompute dnll2 from the minimum nll and fit_nll
+        if recompute_dnll2:
+            # use the overall minimal nll as a common reference value when merging
+            min_nll = min(np.nanmin(v["nll"]) for v in values)
+            for v in values:
+                _min_nll = min_nll if merge_scans else np.nanmin(v["nll"])
+                v["dnll2"] = 2 * (v["fit_nll"] - _min_nll)
 
         # concatenate values and safely remove duplicates when configured
         if merge_scans:
@@ -374,28 +418,37 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
     @classmethod
     def _select_poi_mins(cls, poi_mins, scan_parameter_combinations):
-        # pick the poi mins for the scan range that has the lowest step size around the mins
-        # the combined step size of multiple dims is simply defined by their sum
-        min_step_size = 1e5
-        best_poi_mins = poi_mins[0]
-        for _poi_mins, scan_parameters in zip(poi_mins, scan_parameter_combinations):
-            if None in _poi_mins:
-                continue
-            # each min is required to be in the corresponding scan range
-            if not all((a <= v <= b) for v, (_, a, b, _) in zip(_poi_mins, scan_parameters)):
-                continue
-            # compute the merged step size
-            step_size = sum((b - a) / (n - 1.) for (_, a, b, n) in scan_parameters)
-            # store
-            if step_size < min_step_size:
-                min_step_size = step_size
-                best_poi_mins = _poi_mins
+        # pick the poi min corrsponding to the largest spanned region, i.e., range / area / volume
+        regions = [
+            (i, six.moves.reduce(mul, [stop - start for _, start, stop, _ in scan_range]))
+            for i, scan_range in enumerate(scan_parameter_combinations)
+        ]
+        best_i = sorted(regions, key=lambda pair: -pair[1])[0][0]
+        best_poi_mins = poi_mins[best_i]
+
+        # old algorithm:
+        # # pick the poi mins for the scan range that has the lowest step size around the mins
+        # # the combined step size of multiple dims is simply defined by their sum
+        # min_step_size = 1e5
+        # best_poi_mins = poi_mins[0]
+        # for _poi_mins, scan_parameters in zip(poi_mins, scan_parameter_combinations):
+        #     if None in _poi_mins:
+        #         continue
+        #     # each min is required to be in the corresponding scan range
+        #     if not all((a <= v <= b) for v, (_, a, b, _) in zip(_poi_mins, scan_parameters)):
+        #         continue
+        #     # compute the merged step size
+        #     step_size = sum((b - a) / (n - 1.) for (_, a, b, n) in scan_parameters)
+        #     # store
+        #     if step_size < min_step_size:
+        #         min_step_size = step_size
+        #         best_poi_mins = _poi_mins
+
         return best_poi_mins
 
 
 class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
-    convert = law.NO_STR
     show_best_fit_error = None
     z_min = None
     z_max = None
@@ -483,6 +536,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 data=data,
                 theory_value=theory_value,
                 show_best_fit=self.show_best_fit,
+                show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
@@ -514,7 +568,6 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
 class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
 
-    convert = law.NO_STR
     show_best_fit_error = None
     z_min = None
     z_max = None
@@ -602,6 +655,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 data=data,
                 theory_value=theory_value,
                 show_best_fit=self.show_best_fit,
+                show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),

@@ -8,12 +8,12 @@
 This repository uses submodules, so you should clone it recursively via
 
 ```shell
-# ssh
+# ssh (recommended)
 git clone --recursive ssh://git@gitlab.cern.ch:7999/hh/tools/inference.git
 
 # or
 
-# https
+# https (discouraged)
 git clone --recursive https://gitlab.cern.ch/hh/tools/inference.git
 ```
 
@@ -39,7 +39,7 @@ source setup.sh some_name
 ```
 
 where the value of `some_name` is your choice, and the script interactively guides you through the quick setup process.
-To use the same configuration the next time, ==make sure to use the same value you passed before.==
+To use the same configuration the next time, **make sure to use the same value you passed before**.
 Internally, a file `.setups/some_name.sh` is created which contains export statements line by lines that you can be update anytime.
 
 
@@ -56,6 +56,8 @@ git clone --recursive ssh://git@gitlab.cern.ch:7999/hh/results/datacards_run2.gi
 ```
 
 (note that using `ssh://...` is recommended), and then use `/your/path` for the `DHI_DATACARDS_RUN2` variable later on.
+
+After that, you can use the names of the HH channels in the `--datacards` parameters of the inference tasks, e.g. `--datacards bbww` or `--datacards bbww,bbbb` to get results of the latest bbWW or bbWW+bbbb channels, respectively.
 
 
 #### Reinstalling software
@@ -82,6 +84,9 @@ You should see:
 indexing tasks in 1 module(s)
 loading module 'dhi.tasks', done
 
+module 'law.contrib.cms.tasks', 1 task(s):
+    - law.cms.BundleCMSSW
+
 module 'law.contrib.git', 1 task(s):
     - law.git.BundleGitRepository
 
@@ -90,9 +95,13 @@ module 'dhi.tasks.combine', 3 task(s):
     - CombineDatacards
     - CreateWorkspace
 
-module 'dhi.tasks.base', 2 task(s):
+module 'dhi.tasks.base', 3 task(s):
+    - BundleCMSSW
     - BundleRepo
     - BundleSoftware
+
+module 'dhi.tasks.snapshot', 1 task(s):
+    - Snapshot
 
 module 'dhi.tasks.limits', 7 task(s):
     - UpperLimits
@@ -146,11 +155,14 @@ module 'dhi.tasks.studies.model_selection', 3 task(s):
     - study.PlotMorphedDiscriminant
     - study.PlotStatErrorScan
 
+module 'dhi.tasks.studies.model_plots', 1 task(s):
+    - study.PlotSignalEnhancement
+
 module 'dhi.tasks.exclusion', 2 task(s):
     - PlotExclusionAndBestFit
     - PlotExclusionAndBestFit2D
 
-written 42 task(s) to index file '/your/path/inference/.law/index'
+written 46 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type
@@ -170,9 +182,17 @@ to list all parameters of `SomeTask`.
 Now you are done with the setup and can start running the statistical inference!
 
 
+### Configurable postfit plots
+
+Postfit plots are not yet covered by the tasks listed above but will be provided in the future.
+In the meantime, you can use a separate set of scripts that allow to create fully configurable postfit plots for your analysis channel.
+For more info, see the dedicated [README](dhi/scripts/README_postfit_plots.md).
+
+
 ## Documentation
 
 The documentation is hosted at [cern.ch/cms-hh/tools/inference](https://cern.ch/cms-hh/tools/inference).
+
 
 ### For developers
 
@@ -201,9 +221,3 @@ To start a server to browse the pages, run
 
 and open your webbrowser at [http://localhost:8000](http://localhost:8000).
 By default, all pages are *automatically rebuilt and reloaded* when a source file is updated.
-
-
-## Developers
-
-- Peter Fackeldey: peter.fackeldey@cern.ch (email)
-- Marcel Rieger: marcel.rieger@cern.ch (email), marcel_r88 (skype)

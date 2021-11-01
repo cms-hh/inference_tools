@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-"""
+r"""
 Script to rename one or multiple (nuisance) parameters in a datacard.
 Example usage:
 
 # rename via simple rules
 > rename_parameters.py datacard.txt btag_JES=CMS_btag_JES -d output_directory
+
+# rename multiple parameters using a replacement rule
+# (note the quotes)
+> rename_parameters.py datacard.txt '^parameter_(.+)$=param_\1' -d output_directory
 
 # rename via rules in files
 > rename_parameters.py datacard.txt my_rules.txt -d output_directory
@@ -28,7 +32,9 @@ logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="125"):
     """
     Reads a *datacard* and renames parameters according to translation *rules*. A rule should be a
-    sequence of length 2 containing the old and the new parameter name.
+    sequence of length 2 containing the old and the new parameter name. When the old name starts
+    with "^" and ends with "$", it is interpreted as a regular expression and the new name can
+    contain group placeholders as understood by *re.sub()*.
 
     When *directory* is *None*, the input *datacard* and all shape files it refers to are updated
     in-place. Otherwise, both the changed datacard and its shape files are stored in the specified
@@ -44,8 +50,8 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
     # as well as the containing object in case the pattern has the format "obj_name:shape_pattern"
     def parse_shape_pattern(shape_line, tfile, process_name, bin_name, syst_name, syst_dir):
         # get the new systematic name
-        assert(not skip_shapes)
-        assert(renamer.has_rule(syst_name))
+        assert not skip_shapes
+        assert renamer.has_rule(syst_name)
         new_syst_name = renamer.translate(syst_name)
 
         # get the pattern
@@ -71,7 +77,7 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
         return old_name, new_name, towner
 
     # start renaming
-    with renamer.start() as blocks:
+    with renamer.start(expand="parameters") as blocks:
         # rename parameter names in the "parameters" block itself
         if blocks.get("parameters"):
             def sub_fn(match):
@@ -81,11 +87,32 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
                 return " ".join([new_name, rest])
 
             for i, param_line in enumerate(list(blocks["parameters"])):
-                old_name = param_line.split()[0]
+                parts = param_line.split()
+                old_name = parts[0]
                 if renamer.has_rule(old_name):
                     expr = r"^({})\s(.*)$".format(old_name)
                     param_line = re.sub(expr, sub_fn, param_line)
                     blocks["parameters"][i] = param_line
+
+                    # for extArg and rateParam, change the name of the var in the linked workspace
+                    expr1 = r".*\s+extArg\s+([^\s]+\.root)\:([^\s]+).*$"
+                    expr2 = r".*\s+rateParam\s+[^\s]+\s+[^\s]+\s+([^\s]+\.root)\:([^\s]+).*$"
+                    m = re.match(expr1, param_line) or re.match(expr2, param_line)
+                    if m:
+                        ws_file, ws_name = m.groups()
+                        ws_file = os.path.join(os.path.dirname(renamer.datacard), ws_file)
+                        ws = renamer.get_tobj(ws_file, ws_name, "UPDATE")
+                        if not ws:
+                            raise Exception("workspace {} not found in file {} referenced by "
+                                "extArg {}".format(ws_name, ws_file, old_name))
+                        new_name = renamer.translate(old_name)
+                        targ = ws.arg(old_name)
+                        if targ:
+                            targ.SetName(new_name)
+                            targ.SetTitle(targ.GetTitle().replace(old_name, new_name))
+                        else:
+                            logger.warning("extArg {} not found in workspace {} in tfile {}".format(
+                                old_name, ws_name, ws_file))
 
         # update them in group listings
         if blocks.get("groups"):
@@ -116,6 +143,30 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
                     expr = r"^({})\s(.*)$".format(group_name)
                     group_line = re.sub(expr, sub_fn, group_line)
                     blocks["groups"][i] = group_line
+
+        # update them in nuisace edit lines
+        if blocks.get("nuisance_edits"):
+            def sub_fn(match):
+                start, old_name, end = match.groups()
+                new_name = renamer.translate(old_name)
+                logger.info("rename nuisance {} in nuisance edit line '{}' to {}".format(old_name,
+                    start.split()[2], new_name))
+                return " ".join([start, new_name, end]).strip()
+
+            for i, edit_line in enumerate(list(blocks["nuisance_edits"])):
+                # check if the action is supported and build a regexp for sub
+                parts = edit_line.split()
+                if len(parts) >= 6 and parts[2] in ["add", "drop"]:
+                    expr = r"^(nuisance\s+edit\s+{}\s+[^\s]+\s+[^\s]+)\s+({})\s+(.*)$"
+                elif len(parts) >= 4 and parts[2] in ["changepdf", "freeze"]:
+                    expr = r"^(nuisance\s+edit\s+{})\s+({})\s+(.*)$"
+                else:
+                    continue
+
+                for old_name in renamer.rules:
+                    _expr = expr.format(parts[2], old_name)
+                    edit_line = re.sub(_expr, sub_fn, edit_line + " ")
+                blocks["nuisance_edits"][i] = edit_line
 
         # rename shapes
         if not skip_shapes and blocks.get("shapes"):
@@ -161,7 +212,7 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
                                 process_name, bin_name, syst_name, syst_dir)
 
                             # update the shape name
-                            logger.info("renaming syst shape {} to {} for process {} in "
+                            logger.debug("renaming syst shape {} to {} for process {} in "
                                 "bin {}".format(old_name, new_name, process_name, bin_name))
                             update_shape_name(towner, old_name, new_name)
 
@@ -177,7 +228,9 @@ if __name__ == "__main__":
         "update (see --directory)")
     parser.add_argument("rules", nargs="+", metavar="OLD_NAME=NEW_NAME", help="translation rules "
         "for one or multiple parameter names in the format 'OLD_NAME=NEW_NAME', or files "
-        "containing these rules in the same format line by line")
+        "containing these rules in the same format line by line; OLD_NAME can be a regular "
+        "expression starting with '^' and ending with '$'; in this case, group placeholders in "
+        "NEW_NAME are replaced with the proper matches as described in re.sub()")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not change parameter "

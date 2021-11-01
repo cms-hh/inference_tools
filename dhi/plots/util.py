@@ -4,9 +4,12 @@
 Different helpers and ROOT style configurations to be used with plotlib.
 """
 
+import os
+import re
 import math
 import array
 import uuid
+import json
 import functools
 import itertools
 import contextlib
@@ -17,7 +20,7 @@ import numpy as np
 import scipy.interpolate
 
 from dhi.config import poi_data, br_hh_names
-from dhi.util import import_ROOT, try_int, to_root_latex, make_list
+from dhi.util import import_ROOT, import_file, try_int, to_root_latex, make_list
 
 
 _styles = {}
@@ -106,11 +109,21 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
     return parameter_labels
 
 
-def create_hh_process_label(poi="r", br=None):
-    return "pp #rightarrow {}{}".format(
-        {"r": "HH (incl)", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH"),
-        " ({})".format(to_root_latex(br_hh_names[br])) if br in br_hh_names else "",
-    )
+def create_hh_process_label(poi="r"):
+    proc = {"r": "HH (incl.)", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH")
+    return "pp #rightarrow " + proc
+
+
+def create_hh_br_label(br):
+    if not br or br not in br_hh_names:
+        return ""
+    return "B({})".format(to_root_latex(br_hh_names[br]))
+
+
+def create_hh_xsbr_label(poi="r", br=None):
+    br_label = create_hh_br_label(br)
+    br_label = (" x " + br_label) if br_label else ""
+    return "#sigma({}){}".format(create_hh_process_label(poi), br_label)
 
 
 def determine_limit_digits(limit, is_xsec=False):
@@ -120,15 +133,55 @@ def determine_limit_digits(limit, is_xsec=False):
             return 2
         elif limit < 200:
             return 1
-        else:
-            return 0
+        return 0
     else:
         if limit < 10:
             return 2
         elif limit < 100:
             return 1
+        return 0
+
+
+def make_parameter_label_map(parameter_names, labels=None):
+    # prepare labels
+    if isinstance(labels, six.string_types):
+        labels = os.path.expandvars(os.path.expanduser(labels))
+        # try to load a renaming function called "rename_nuisance"
+        if labels.endswith(".py"):
+            labels = import_file(labels, attr="rename_nuisance")
+            if not callable(labels):
+                raise Exception("rename_nuisance loaded from {} is not callable".format(labels))
         else:
-            return 0
+            with open(labels, "r") as f:
+                labels = json.load(f)
+    elif not labels:
+        labels = {}
+
+    if not isinstance(labels, dict):
+        # labels is a renaming function, call it for all parameters and store the result when
+        # names changed
+        _labels = {}
+        for name in parameter_names:
+            new_name = labels(name)
+            if new_name:
+                _labels[name] = new_name
+        labels = _labels
+    else:
+        # expand regular expressions through eager interpolation using parameter names
+        for k, v in labels.items():
+            if not k.startswith("^") or not k.endswith("$"):
+                continue
+            for name in parameter_names:
+                # skip explicit translations, effectively giving them priority
+                if name in labels:
+                    continue
+                # apply the pattern
+                new_name = re.sub(k, v, name)
+                # store a translation label when set
+                if new_name:
+                    labels[name] = new_name
+
+    return labels
 
 
 def get_y_range(y_min_value, y_max_value, y_min=None, y_max=None, log=False, y_min_log=1e-3,
@@ -153,11 +206,11 @@ def frame_histogram(hist, x_width, y_width, mode="edge", frame_value=None, conto
     # when the mode is "contour-", edge values below the level are set to a higher value which
     # effectively closes contour areas that are below (thus the "-") the contour level
     # when the mode is "contour++", the opposite happens to close contour areas above the level
-    assert(mode in ["edge", "constant", "contour+", "contour-"])
+    assert mode in ["edge", "constant", "contour+", "contour-"]
     if mode == "constant":
-        assert(frame_value is not None)
+        assert frame_value is not None
     elif mode in ["contour+", "contour-"]:
-        assert(contour_level is not None)
+        assert contour_level is not None
 
     # first, extract histogram data into a 2D array (x-axis is inner dimension 1)
     data = np.array([
@@ -388,6 +441,21 @@ def _get_contour(hist, level):
     return contours
 
 
+def get_contour_box(graphs):
+    assert graphs
+
+    x_values, y_values = [], []
+    for g in graphs:
+        x, y = get_graph_points(g, errors=False)
+        x_values.extend(x)
+        y_values.extend(y)
+
+    if not x_values or not y_values:
+        return None, None, None, None
+
+    return min(x_values), max(x_values), min(y_values), max(y_values)
+
+
 def get_graph_points(g, errors=False):
     ROOT = import_ROOT()
 
@@ -423,21 +491,6 @@ def get_graph_points(g, errors=False):
         return x_values, y_values, x_errors, y_errors
     else:
         return x_values, y_values
-
-
-def get_contour_box(graphs):
-    assert(graphs)
-
-    x_values, y_values = [], []
-    for g in graphs:
-        x, y = get_graph_points(g, errors=False)
-        x_values.extend(x)
-        y_values.extend(y)
-
-    if not x_values or not y_values:
-        return None, None, None, None
-
-    return min(x_values), max(x_values), min(y_values), max(y_values)
 
 
 def repeat_graph(g, n):
@@ -509,10 +562,7 @@ def get_text_extent(t, text_size=None, text_font=None):
     ROOT = import_ROOT()
 
     # convert to a tlatex if t is a string, otherwise clone
-    if isinstance(t, six.string_types):
-        t = ROOT.TLatex(0., 0., t)
-    else:
-        t = t.Clone()
+    t = ROOT.TLatex(0., 0., t) if isinstance(t, six.string_types) else t.Clone()
 
     # set size and font when set
     if text_size is not None:
@@ -521,7 +571,7 @@ def get_text_extent(t, text_size=None, text_font=None):
         t.SetTextFont(text_font)
 
     # only available when the font precision is 3
-    assert(t.GetTextFont() % 10 == 3)
+    assert t.GetTextFont() % 10 == 3, "font precision must be 3 to estimate text extent"
 
     # create a temporary canvas and draw the text
     with temporary_canvas() as c:
@@ -549,8 +599,8 @@ def temporary_canvas(*args, **kwargs):
             c.Close()
 
 
-def locate_contour_labels(graphs, level, label_width, label_height, pad_width, pad_height, x_min,
-        x_max, y_min, y_max, other_positions=None, min_points=10, label_offset=None):
+def locate_contour_labels(graphs, label_width, label_height, pad_width, pad_height, x_min, x_max,
+        y_min, y_max, other_positions=None, min_points=10, label_offset=None):
     positions = []
     other_positions = other_positions or []
 

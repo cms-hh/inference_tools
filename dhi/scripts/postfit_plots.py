@@ -386,6 +386,7 @@ def create_postfit_plots_binned(
         lastbin = 0  # for putting histograms from different bins in same plot side by side
         addlegend = True
         for cc, catcat in enumerate(catcats):
+
             if not cc == 0:
                 addlegend = False
             if kk == 0:

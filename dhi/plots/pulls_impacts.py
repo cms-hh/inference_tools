@@ -6,7 +6,6 @@ Pull and impact plots using ROOT.
 
 import os
 import json
-import re
 import math
 import array
 
@@ -15,9 +14,9 @@ import numpy as np
 
 from dhi.config import poi_data, campaign_labels, colors, cms_postfix
 from dhi.util import (
-    import_ROOT, import_file, multi_match, to_root_latex, linspace, colored, make_list,
+    import_ROOT, multi_match, to_root_latex, linspace, colored, make_list,
 )
-from dhi.plots.util import use_style
+from dhi.plots.util import use_style, make_parameter_label_map
 
 
 colors = colors.root
@@ -143,42 +142,7 @@ def plot_pulls_impacts(
         params = [params[i] for i in indices]
 
     # prepare labels
-    if isinstance(labels, six.string_types):
-        labels = os.path.expandvars(os.path.expanduser(labels))
-        # try to load a renaming function called "rename_nuisance"
-        if labels.endswith(".py"):
-            labels = import_file(labels, attr="rename_nuisance")
-            if not callable(labels):
-                raise Exception("rename_nuisance loaded from {} is not callable".format(labels))
-        else:
-            with open(labels, "r") as f:
-                labels = json.load(f)
-    elif not labels:
-        labels = {}
-
-    if not isinstance(labels, dict):
-        # labels is a renaming function, call it for all parameters and store the result when
-        # names changed
-        _labels = {}
-        for param in params:
-            new_name = labels(param.name)
-            if new_name and new_name != param.name:
-                _labels[param.name] = new_name
-        labels = _labels
-    else:
-        # expand regular expressions through eager interpolation using parameter names
-        for k, v in labels.items():
-            if not k.startswith("^") or not k.endswith("$"):
-                continue
-            for param in params:
-                # skip explicit translations, effectively giving them priority
-                if param.name in labels:
-                    continue
-                # apply the pattern
-                new_name = re.sub(k, v, param.name)
-                # store a translation label when the name has changed
-                if new_name != param.name:
-                    labels[param.name] = new_name
+    labels = make_parameter_label_map([param.name for param in params], labels)
 
     # determine the number of pages
     if parameters_per_page < 1:
@@ -396,8 +360,8 @@ def plot_pulls_impacts(
         # campaign label
         if campaign:
             campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
-            campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, x_offset=10,
-                y_offset=80)
+            campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, x_offset=22,
+                y_offset=90 if paper else 105)
             draw_objs.append(campaign_label)
 
         # draw objects

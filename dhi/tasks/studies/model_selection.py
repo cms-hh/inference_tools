@@ -20,7 +20,7 @@ from dhi.tasks.combine import (
     CombineDatacards,
 )
 from dhi.datacard_tools import create_datacard_instance
-from dhi.config import poi_data, color_sequence
+from dhi.config import poi_data, color_sequence, cms_postfix
 from dhi.util import import_ROOT, create_tgraph, to_root_latex
 
 
@@ -139,7 +139,7 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         draw_objs.append(model_label)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad)
+        cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="outside_horizontal", pad=pad)
         draw_objs.extend(cms_labels)
 
         # draw all objects
@@ -328,7 +328,7 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
         draw_objs.append(legend)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad)
+        cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="outside_horizontal", pad=pad)
         draw_objs.extend(cms_labels)
 
         # bin label
@@ -449,7 +449,7 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
         draw_objs.append(legend)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad)
+        cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="outside_horizontal", pad=pad)
         draw_objs.extend(cms_labels)
 
         # bin label

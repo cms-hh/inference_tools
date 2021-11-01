@@ -90,7 +90,7 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
 
     # store supported types, which must always be a subset of all columnar types
     supported_types = ["lnN", "lnU", "shape"]
-    assert(all(multi_match(t, columnar_parameter_directives) for t in supported_types))
+    assert all(multi_match(t, columnar_parameter_directives) for t in supported_types)
 
     # prepare the datacard path
     datacard = real_path(datacard)
@@ -335,9 +335,9 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                             # TODO: maybe go with something like 2.4 in
                             # https://www.slac.stanford.edu/econf/C030908/papers/WEMT002.pdf
                             diffs_d_n = [d for d in diffs_d if d < 0]
-                            diffs_d_p = [d for d in diffs_d if d > 0]
+                            diffs_d_p = [d for d in diffs_d if d >= 0]
                             diffs_u_n = [u for u in diffs_u if u < 0]
-                            diffs_u_p = [u for u in diffs_u if u > 0]
+                            diffs_u_p = [u for u in diffs_u if u >= 0]
 
                             # abort or warn when signs of effects are mixed and the relative effect
                             # strength is larger than a threshold value
@@ -399,6 +399,8 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                         # get single uncertainty values
                         uncs = [ln2unc(f[0]) for f in eff]
                         merged_effect = rnd(unc2ln(sum(v**2. for v in uncs)**0.5))
+                        if float(merged_effect) == 1:
+                            merged_effect = "-"
                     else:
                         # get both sets of uncertainties
                         uncs_d = [(ln2unc(f[0]) if len(f) == 2 else -ln2unc(f[0])) for f in eff]
@@ -483,10 +485,15 @@ def merge_parameters(datacard, new_name, patterns, directory=None, skip_shapes=F
                         sign_u = -1 if comb_u[0] < 0 else 1
                         unc_d = sign_d * sum(d**2. for d in comb_d)**0.5
                         unc_u = sign_u * sum(u**2. for u in comb_u)**0.5
-                        merged_effect = "{}/{}".format(rnd(unc2ln(unc_d)), rnd(unc2ln(unc_u)))
+                        merged_effect_d = rnd(unc2ln(unc_d))
+                        merged_effect_u = rnd(unc2ln(unc_u))
+                        if float(merged_effect_d) == 1 and float(merged_effect_u == 1):
+                            merged_effect = "-"
+                        else:
+                            merged_effect = "{}/{}".format(merged_effect_d, merged_effect_u)
                 else:
                     # this should never happen
-                    assert(False)
+                    assert False
 
                 # store the merged effect
                 merged_effects.append(str(merged_effect))
@@ -522,7 +529,7 @@ if __name__ == "__main__":
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
         "the output directory when --directory is set")
     parser.add_argument("--unique", "-u", action="store_true", help="only merge parameters when at "
-        "most on of them as an effect in a bin process pair")
+        "most one of them has an effect in a bin process pair")
     parser.add_argument("--flip-parameters", help="comma-separated list of parameters whose effect "
         "should be flipped, i.e., flips effects of up and down variations; supports patterns")
     parser.add_argument("--auto-rate-flip", action="store_true", help="only for lnN and lnU; when "

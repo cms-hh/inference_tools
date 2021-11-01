@@ -9,7 +9,7 @@ import math
 import numpy as np
 
 from dhi.config import poi_data, campaign_labels, colors, br_hh_names, cms_postfix
-from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, make_list
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, make_list, warn
 from dhi.plots.limits import evaluate_limit_scan_1d, _print_excluded_ranges
 from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
 from dhi.plots.util import (
@@ -84,9 +84,9 @@ def plot_exclusion_and_bestfit_1d(
     ROOT = import_ROOT()
 
     # check minimal fields per data entry
-    assert(all("name" in d for d in data))
-    assert(all("expected_limits" in d for d in data))
-    assert(all("nll_values" in d for d in data))
+    assert all("name" in d for d in data)
+    assert all("expected_limits" in d for d in data)
+    assert all("nll_values" in d for d in data)
     n = len(data)
     has_obs = any("observed_limits" in d for d in data)
     scan_values = np.array(data[0]["expected_limits"][scan_parameter])
@@ -144,8 +144,10 @@ def plot_exclusion_and_bestfit_1d(
         for i, d in enumerate(data):
             if data_key not in d:
                 continue
-            ranges = evaluate_limit_scan_1d(scan_values, d[data_key]["limit"]).excluded_ranges
-            _print_excluded_ranges(scan_parameter, poi + " " + kind, scan_values, ranges)
+            scan = evaluate_limit_scan_1d(scan_values, d[data_key]["limit"], interpolation="linear")
+            ranges = scan.excluded_ranges
+            _print_excluded_ranges(scan_parameter, "{} {}, {}".format(poi, kind, d["name"]),
+                scan_values, ranges, "linear")
             for start, stop in ranges:
                 is_left = start < 1 and stop < 1
                 excl_x.append(stop if is_left else start)
@@ -213,8 +215,8 @@ def plot_exclusion_and_bestfit_1d(
 
     # y axis labels and ticks
     h_dummy.GetYaxis().SetBinLabel(1, "")
-    label_tmpl = "#bf{%s}"
-    label_tmpl_scan = "#splitline{#bf{%s}}{#scale[0.75]{%s = %s}}"
+    label_tmpl = "%s"
+    label_tmpl_scan = "#splitline{%s}{#scale[0.75]{%s = %s}}"
     for i, (d, scan) in enumerate(zip(data, scans)):
         # name labels
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
@@ -337,28 +339,27 @@ def plot_exclusion_and_bestfit_2d(
     observed_limits = rec2dict(observed_limits)
 
     # input checks
-    assert(scan_parameter1 in expected_limits)
-    assert(scan_parameter2 in expected_limits)
-    assert("limit" in expected_limits)
+    assert scan_parameter1 in expected_limits
+    assert scan_parameter2 in expected_limits
+    assert "limit" in expected_limits
     if observed_limits:
-        assert(scan_parameter1 in observed_limits)
-        assert(scan_parameter2 in observed_limits)
-        assert("limit" in observed_limits)
+        assert scan_parameter1 in observed_limits
+        assert scan_parameter2 in observed_limits
+        assert "limit" in observed_limits
     if xsec_values:
-        assert(scan_parameter1 in xsec_values)
-        assert(scan_parameter2 in xsec_values)
-        assert("xsec" in xsec_values)
+        assert scan_parameter1 in xsec_values
+        assert scan_parameter2 in xsec_values
+        assert "xsec" in xsec_values
     if nll_values:
-        assert(scan_parameter1 in nll_values)
-        assert(scan_parameter2 in nll_values)
-        assert("dnll2" in nll_values)
+        assert scan_parameter1 in nll_values
+        assert scan_parameter2 in nll_values
+        assert "dnll2" in nll_values
     if scan_minima:
-        assert(len(scan_minima) == 2)
+        assert len(scan_minima) == 2
 
     # store content flags
     has_unc1 = "limit_p1" in expected_limits and "limit_m1" in expected_limits
     has_unc2 = "limit_p2" in expected_limits and "limit_m2" in expected_limits
-    has_uncs = has_unc1 and has_unc2
     has_obs = bool(observed_limits)
     has_best_fit = bool(nll_values)
 
@@ -418,7 +419,7 @@ def plot_exclusion_and_bestfit_2d(
             r.setup_graph(g, props={"LineStyle": 2, "FillColor": color_95})
             draw_objs.append((g, "SAME,F"))
             if i == 0:
-                legend_entries[2] = (g, "95% expected", "LF")
+                legend_entries[5] = (g, "95% expected", "LF")
 
     # -1 and +1 sigma exclusion
     if has_unc1:
@@ -426,7 +427,7 @@ def plot_exclusion_and_bestfit_2d(
             r.setup_graph(g, props={"LineStyle": 2, "FillColor": color_68})
             draw_objs.append((g, "SAME,F"))
             if i == 0:
-                legend_entries[1] = (g, "68% expected", "LF")
+                legend_entries[4] = (g, "68% expected", "LF")
 
         p1_col = color_95 if has_unc2 else colors.white
         for g in contours["limit_m1"]:
@@ -471,8 +472,8 @@ def plot_exclusion_and_bestfit_2d(
             label_height *= py_to_y
 
             # calculate and store the position
-            label_positions = locate_contour_labels(graphs, level, label_width, label_height,
-                pad_width, pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions,
+            label_positions = locate_contour_labels(graphs, label_width, label_height, pad_width,
+                pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions,
                 label_offset=1.2)
             all_positions.extend(label_positions)
 
@@ -488,7 +489,7 @@ def plot_exclusion_and_bestfit_2d(
         r.setup_graph(g, props={"LineStyle": 2})
         draw_objs.append((g, "SAME,L"))
         if i == 0:
-            legend_entries[0] = (g, "Excluded (expected)", "L")
+            legend_entries[3] = (g, "Excluded (expected)", "L")
 
     # observed exclusion
     # for testing
@@ -498,7 +499,7 @@ def plot_exclusion_and_bestfit_2d(
     #     "limit": expected_limits["limit"] * 1.2,
     # }
     # has_obs = True
-    if observed_limits:
+    if has_obs:
         # get contours
         obs_contours = get_contours(
             observed_limits[scan_parameter1],
@@ -517,7 +518,7 @@ def plot_exclusion_and_bestfit_2d(
             draw_objs.append((g, "SAME,L"))
             draw_objs.append((g_inv, "SAME,F"))
             if i == 0:
-                legend_entries[1 + 2 * has_uncs] = (g_inv, "Excluded (observed)", "AF")
+                legend_entries[0] = (g_inv, "Excluded (observed)", "AF")
 
     # best fit point
     if nll_values:
@@ -528,23 +529,26 @@ def plot_exclusion_and_bestfit_2d(
             poi1_min=scan_minima[0] if scan_minima and show_best_fit_error else None,
             poi2_min=scan_minima[1] if scan_minima and show_best_fit_error else None,
         )
-        g_fit = ROOT.TGraphAsymmErrors(1)
-        g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
-        if show_best_fit_error:
-            if scan.num1_min.uncertainties:
-                g_fit.SetPointEXhigh(0, scan.num1_min.u(direction="up"))
-                g_fit.SetPointEXlow(0, scan.num1_min.u(direction="down"))
-            if scan.num2_min.uncertainties:
-                g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
-                g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
-            r.setup_graph(g_fit, props={"FillStyle": 0}, color=colors.black)
-            draw_objs.append((g_fit, "PEZ"))
-            legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "PEL")
+        if not scan:
+            warn("2D likelihood evaluation failed")
         else:
-            r.setup_graph(g_fit, props={"FillStyle": 0, "MarkerStyle": 43, "MarkerSize": 2},
-                color=colors.black)
-            draw_objs.append((g_fit, "PZ"))
-            legend_entries[1 + 2 * has_uncs + has_obs] = (g_fit, "Best fit value", "P")
+            g_fit = ROOT.TGraphAsymmErrors(1)
+            g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
+            if show_best_fit_error:
+                if scan.num1_min.uncertainties:
+                    g_fit.SetPointEXhigh(0, scan.num1_min.u(direction="up"))
+                    g_fit.SetPointEXlow(0, scan.num1_min.u(direction="down"))
+                if scan.num2_min.uncertainties:
+                    g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
+                    g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
+                r.setup_graph(g_fit, props={"FillStyle": 0}, color=colors.black)
+                draw_objs.append((g_fit, "PEZ"))
+                legend_entries[1] = (g_fit, "Best fit value", "PEL")
+            else:
+                r.setup_graph(g_fit, props={"FillStyle": 0, "MarkerStyle": 43, "MarkerSize": 2},
+                    color=colors.black)
+                draw_objs.append((g_fit, "PZ"))
+                legend_entries[1] = (g_fit, "Best fit value", "P")
 
     # SM point
     if show_sm_point:
@@ -552,7 +556,7 @@ def plot_exclusion_and_bestfit_2d(
             poi_data[scan_parameter2]["sm_value"])
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
-        legend_entries[1 + 2 * has_uncs + has_obs + has_best_fit] = (g_sm, "Standard model", "P")
+        legend_entries[2 if has_best_fit else 1] = (g_sm, "Standard model", "P")
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=480, n=3, x2=-44, props={"NColumns": 2})

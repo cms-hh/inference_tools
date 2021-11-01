@@ -19,7 +19,7 @@ from dhi.util import (
     make_list, try_int, dict_to_recarray,
 )
 from dhi.plots.util import (
-    use_style, create_model_parameters, create_hh_process_label, determine_limit_digits,
+    use_style, create_model_parameters, create_hh_xsbr_label, determine_limit_digits,
     get_graph_points, get_y_range, get_contours, fill_hist_from_points, infer_binning_from_grid,
 )
 
@@ -78,9 +78,9 @@ def plot_limit_scan(
         # convert record array to dict mapping to arrays
         if isinstance(values, np.ndarray):
             values = {key: values[key] for key in values.dtype.names}
-        assert(scan_parameter in values)
+        assert scan_parameter in values
         if keys:
-            assert(all(key in values for key in keys))
+            assert all(key in values for key in keys)
         return values
 
     expected_values = check_values(expected_values, ["limit"])
@@ -108,8 +108,8 @@ def plot_limit_scan(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "95% CLs limit on #sigma({}) / {}".format(
-        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
+    y_title = "95% CL limit on {} / {}".format(
+        create_hh_xsbr_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
@@ -159,27 +159,23 @@ def plot_limit_scan(
     y_max_value = max(y_max_value, max(expected_values["limit"]))
     y_min_value = min(y_min_value, min(expected_values["limit"]))
 
-    # print the excluded ranges when there is a sufficient amount of points
-    if len(expected_values[scan_parameter]) >= 5:
-        try:
-            print_excluded_ranges(scan_parameter, poi + " expected",
-                expected_values[scan_parameter],
-                expected_values["limit"],
-                theory_values[scan_parameter] if has_thy else None,
-                theory_values["xsec"] if has_thy else None,
-            )
-        except Exception:
-            print("1D limit scan evaluation failed")
-            traceback.print_exc()
+    # print the expected excluded ranges
+    print_excluded_ranges(scan_parameter, poi + " expected",
+        expected_values[scan_parameter],
+        expected_values["limit"],
+        theory_values[scan_parameter] if has_thy else None,
+        theory_values["xsec"] if has_thy else None,
+    )
 
     # observed values
     if observed_values is not None:
         g_inj = create_graph(values=observed_values)
         r.setup_graph(g_inj, props={"LineWidth": 2, "LineStyle": 1})
-        draw_objs.append((g_inj, "SAME,C"))
+        draw_objs.append((g_inj, "SAME,CP" if show_points else "SAME,C"))
         legend_entries[0] = (g_inj, "Observed", "L")
         y_max_value = max(y_max_value, max(observed_values["limit"]))
         y_min_value = min(y_min_value, min(observed_values["limit"]))
+        # print the observed excluded ranges
         print_excluded_ranges(scan_parameter, poi + " observed",
             observed_values[scan_parameter],
             observed_values["limit"],
@@ -222,12 +218,15 @@ def plot_limit_scan(
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors.red,
                 "FillStyle": 1001, "FillColor": colors.red_trans_50})
             draw_objs.append((g_thy, "SAME,C3"))
-            legend_entries[0 if observed_values is None else 1] = (g_thy, "Theory prediction", "LF")
+            legend_entry = (g_thy, "Theory prediction", "LF")
         else:
             g_thy = create_graph(values=theory_values, key="xsec")
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors.red})
             draw_objs.append((g_thy, "SAME,C"))
-            legend_entries[0 if observed_values is None else 1] = (g_thy, "Theory prediction", "L")
+            legend_entry = (g_thy, "Theory prediction", "L")
+        # only add to the legend if values are in terms of a cross section
+        if xsec_unit:
+            legend_entries[0 if observed_values is None else 1] = legend_entry
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
@@ -267,6 +266,7 @@ def plot_limit_scans(
     scan_parameter,
     names,
     expected_values,
+    observed_values=None,
     theory_values=None,
     y_log=False,
     x_min=None,
@@ -284,7 +284,9 @@ def plot_limit_scans(
     Creates a plot showing multiple upper limit scans of a *poi* over a *scan_parameter* and saves
     it at *paths*. *expected_values* should be a list of mappings to lists of values or a record
     array with keys "<scan_parameter>" and "limit". Each mapping in *expected_values* will result in
-    a different curve. When *theory_values* is set, it should have a similar format with keys
+    a different curve. When *observed_values* is set, it should have a similar format with keys
+    "<scan_parameter>" and "limit", where the i-th element is corresponding to the i-th element in
+    *expected_values*. When *theory_values* is set, it should have a similar format with keys
     "<scan_parameter>" and "xsec", and optionally "xsec_p1" and "xsec_m1". *names* denote the names
     of limit curves shown in the legend. When a name is found to be in dhi.config.br_hh_names, its
     value is used as a label instead.
@@ -306,19 +308,26 @@ def plot_limit_scans(
     ROOT = import_ROOT()
 
     # convert record arrays to dicts mapping to arrays
-    _expected_values = []
-    for _ev in expected_values:
-        if isinstance(_ev, np.ndarray):
-            _ev = {key: _ev[key] for key in _ev.dtype.names}
-        _expected_values.append(_ev)
-    expected_values = _expected_values
+    def check_values(values):
+        _values = []
+        for v in values:
+            if isinstance(v, np.ndarray):
+                v = {key: v[key] for key in v.dtype.names}
+            assert "limit" in v
+            assert scan_parameter in v
+            _values.append(v)
+        return _values
 
     # input checks
+    expected_values = check_values(expected_values)
     n_graphs = len(expected_values)
-    assert(n_graphs >= 1)
-    assert(len(names) == n_graphs)
-    assert(all(scan_parameter in ev for ev in expected_values))
-    assert(all("limit" in ev for ev in expected_values))
+    assert n_graphs >= 1
+    assert len(names) == n_graphs
+    has_obs = False
+    if observed_values:
+        assert len(observed_values) == n_graphs
+        observed_values = check_values(observed_values)
+        has_obs = True
     scan_values = expected_values[0][scan_parameter]
     has_thy = theory_values is not None
     has_thy_err = False
@@ -326,8 +335,8 @@ def plot_limit_scans(
         # convert record array to dicts mapping to arrays
         if isinstance(theory_values, np.ndarray):
             theory_values = {key: theory_values[key] for key in theory_values.dtype.names}
-        assert(scan_parameter in theory_values)
-        assert("xsec" in theory_values)
+        assert scan_parameter in theory_values
+        assert "xsec" in theory_values
         has_thy_err = "xsec_p1" in theory_values and "xsec_m1" in theory_values
 
     # set default ranges
@@ -347,8 +356,8 @@ def plot_limit_scans(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "Upper 95% CLs limit on #sigma({}) / {}".format(
-        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
+    y_title = "Upper 95% CL limit on {} / {}".format(
+        create_hh_xsbr_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
@@ -356,35 +365,74 @@ def plot_limit_scans(
     # central values
     for i, (ev, col, ms) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1],
             marker_sequence[:n_graphs][::-1])):
+        name = names[n_graphs - i - 1]
+
+        # expected graph
         mask = ~np.isnan(ev["limit"])
         limit_values = ev["limit"][mask]
         scan_values = ev[scan_parameter][mask]
         n_nans = (~mask).sum()
         if n_nans:
-            print("WARNING: found {} NaN(s) in limit values at index {}".format(n_nans,
-                len(expected_values) - 1 - i))
-
+            print("WARNING: found {} NaN(s) in expected limit values at index {}".format(n_nans,
+                n_graphs - 1 - i))
         g_exp = create_tgraph(mask.sum(), scan_values, limit_values)
-        r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
-            color=colors[col])
-        draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
-        name = names[n_graphs - i - 1]
+        r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2,
+            "LineStyle": 2 if has_obs else 1}, color=colors[col])
+        draw_objs.append((g_exp, "SAME,CP" if show_points and not has_obs else "SAME,C"))
         legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
-            "LP" if show_points else "L"))
+            "LP" if show_points and not has_obs else "L"))
         y_max_value = max(y_max_value, max(limit_values))
         y_min_value = min(y_min_value, min(limit_values))
-        print_excluded_ranges(scan_parameter, poi + " " + name,
+
+        # print expected excluded ranges
+        print_excluded_ranges(scan_parameter, "{}, {}, expected".format(poi, name),
             scan_values,
             limit_values,
             theory_values[scan_parameter] if has_thy else None,
             theory_values["xsec"] if has_thy else None,
         )
 
+        # observed graph
+        if has_obs:
+            ov = observed_values[n_graphs - i - 1]
+            obs_mask = ~np.isnan(ov["limit"])
+            obs_limit_values = ov["limit"][obs_mask]
+            obs_scan_values = ov[scan_parameter][obs_mask]
+            n_nans = (~obs_mask).sum()
+            if n_nans:
+                print("WARNING: found {} NaN(s) in observed limit values at index {}".format(n_nans,
+                    n_graphs - 1 - i))
+            g_obs = create_tgraph(obs_mask.sum(), obs_scan_values, obs_limit_values)
+            r.setup_graph(g_obs, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
+                          color=colors[col])
+            draw_objs.append((g_obs, "SAME,CP" if show_points else "SAME,C"))
+            legend_entries[0] = (g_obs, to_root_latex(br_hh_names.get(name, name)),
+                "LP" if show_points else "L")
+            y_max_value = max(y_max_value, max(obs_limit_values))
+            y_min_value = min(y_min_value, min(obs_limit_values))
+
+            # print observed excluded ranges
+            print_excluded_ranges(scan_parameter, "{}, {}, observed".format(poi, name),
+                obs_scan_values,
+                obs_limit_values,
+                theory_values[scan_parameter] if has_thy else None,
+                theory_values["xsec"] if has_thy else None,
+            )
+
+    # add additional legend entries to distinguish expected and observed lines
+    if has_obs:
+        g_exp_dummy = g_exp.Clone()
+        g_obs_dummy = g_obs.Clone()
+        r.apply_properties(g_exp_dummy, {"LineColor": colors.black})
+        r.apply_properties(g_obs_dummy, {"LineColor": colors.black})
+        legend_entries.append((g_exp_dummy, "expected", "L"))
+        legend_entries.append((g_obs_dummy, "observed", "L"))
+
     # get theory prediction limits
     if has_thy:
         y_min_value = min(y_min_value, min(theory_values["xsec_m1" if has_thy_err else "xsec"]))
 
-    # set limits
+    # set axis limits
     y_min, y_max, _ = get_y_range(y_min_value, y_max_value, y_min, y_max, log=y_log)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
@@ -402,12 +450,15 @@ def plot_limit_scans(
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors.red,
                 "FillStyle": 1001, "FillColor": colors.red_trans_50})
             draw_objs.insert(1, (g_thy, "SAME,C3"))
-            legend_entries.append((g_thy, "Theory prediction", "LF"))
+            legend_entry = (g_thy, "Theory prediction", "LF")
         else:
             g_thy = create_tgraph(len(scan_values_thy), scan_values_thy, theory_values["xsec"])
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1}, color=colors.red)
             draw_objs.insert(1, (g_thy, "SAME,C"))
-            legend_entries.append((g_thy, "Theory prediction", "L"))
+            legend_entry = (g_thy, "Theory prediction", "L")
+        # only add to the legend if values are in terms of a cross section
+        if xsec_unit:
+            legend_entries.append(legend_entry)
 
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
@@ -422,7 +473,8 @@ def plot_limit_scans(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
+        draw_objs.extend(create_model_parameters(model_parameters, pad,
+            y_offset=40 if len(legend_entries) < 9 else 130))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad,
@@ -476,7 +528,8 @@ def plot_limit_points(
     - "theory" (optional), a single value or a sequence of three values, i.e., nominal value, and
       +1 sigma and -1 sigma variations (absolute values, not errors!),
     - "name", shown as the y-axis label and when it is a key of dhi.config.br_hh_names,
-      its value is used as a label instead.
+      its value is used as a label instead,
+    - "label", an extra label shown on the right side of the plot.
 
     Example:
 
@@ -490,6 +543,7 @@ def plot_limit_points(
                 "observed": 45.,
                 "theory": (38., 40., 36.),
                 "name": "bbXX",
+                "label": "CMS-HIG-XX-YYY",
             }, {
                 ...
             }],
@@ -525,12 +579,12 @@ def plot_limit_points(
     x_min_value = 1e5
     x_max_value = -1e5
     for d in data:
-        assert("name" in d)
-        assert("expected" in d)
+        assert "name" in d
+        assert "expected" in d
         x_min_value = min(x_min_value, min(d["expected"]))
         x_max_value = max(x_max_value, max(d["expected"]))
         if "observed" in d:
-            assert(isinstance(d["observed"], (float, int)))
+            assert isinstance(d["observed"], (float, int))
             has_obs = True
             x_min_value = min(x_min_value, d["observed"])
             x_max_value = max(x_max_value, d["observed"])
@@ -540,7 +594,7 @@ def plot_limit_points(
                 if len(d["theory"]) == 3:
                     has_thy_err = True
                 else:
-                    assert(len(d["theory"]) == 1)
+                    assert len(d["theory"]) == 1
             else:
                 d["theory"] = 3 * (d["theory"],)
             has_thy = True
@@ -595,13 +649,23 @@ def plot_limit_points(
     draw_objs = []
 
     # dummy histogram to control axes
-    x_title = "95% CLs limit on #sigma({}) / {}".format(
-        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
+    x_title = "95% CL limit on {} / {}".format(
+        create_hh_xsbr_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"TitleOffset": 1.2,
-        "LabelOffset": r.pixel_to_coord(canvas, y=4)})
+        "LabelOffset": r.pixel_to_coord(canvas, y=4), "NoExponent": True})
     draw_objs.append((h_dummy, "HIST"))
+
+    # show custom x axis values in log mode
+    if x_log:
+        additional_x_values = []
+        # additional_x_values = [2, 3, 4, 5, 6, 50, 500]
+        for v in additional_x_values:
+            tick_label = ROOT.TLatex(float(v), -0.08, str(v))
+            r.setup_latex(tick_label, props={"NDC": False, "TextAlign": 23,
+                "TextSize": h_dummy.GetXaxis().GetLabelSize()})
+            draw_objs.append(tick_label)
 
     # setup up to 6 legend entries that are inserted by index downstream
     legend_entries = 6 * [(h_dummy, " ", "L")]
@@ -612,15 +676,22 @@ def plot_limit_points(
         _data = [d for d in data if key in d]
         n = len(_data)
         zeros = np.zeros(n, dtype=np.float32)
-        y = (np.arange(n, dtype=np.float32))[::-1]
-        x_err_u, x_err_d = zeros, zeros
-        y_err_u, y_err_d = zeros + 1, zeros
+
         limits = np.array([d[key][0] for d in _data], dtype=np.float32)
-        if sigma:
-            x_err_d = np.array([d[key][sigma * 2] for d in _data], dtype=np.float32)
-            x_err_d = limits - x_err_d
-            x_err_u = np.array([d[key][sigma * 2 - 1] for d in _data], dtype=np.float32)
-            x_err_u = x_err_u - limits
+        y = np.arange(n, dtype=np.float32)[::-1]
+        x_err_u, x_err_d = zeros, zeros
+        if key == "observed":
+            y = np.arange(n, dtype=np.float32)[::-1] + 0.5
+            y_err_u, y_err_d = zeros + 0.5, zeros + 0.5
+        else:
+            y = np.arange(n, dtype=np.float32)[::-1]
+            y_err_u, y_err_d = zeros + 1, zeros
+            if sigma:
+                x_err_d = np.array([d[key][sigma * 2] for d in _data], dtype=np.float32)
+                x_err_d = limits - x_err_d
+                x_err_u = np.array([d[key][sigma * 2 - 1] for d in _data], dtype=np.float32)
+                x_err_u = x_err_u - limits
+
         return create_tgraph(n, limits, y, x_err_d, x_err_u, y_err_d, y_err_u)
 
     # 2 sigma band
@@ -645,8 +716,8 @@ def plot_limit_points(
     if has_obs:
         g_obs = create_graph(key="observed")
         r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1})
-        draw_objs.append((g_obs, "SAME,EZ"))
-        legend_entries[0] = (g_obs, "Observed", "L")
+        draw_objs.append((g_obs, "SAME,PEZ"))
+        legend_entries[0] = (g_obs, "Observed", "PL")
 
     # vertical line for theory prediction, represented by a graph in case of uncertainties
     if has_thy and any((d["theory"][0] >= x_min) for d in data):
@@ -662,7 +733,9 @@ def plot_limit_points(
                 "LineColor": colors.red, "FillStyle": 1001, "FillColor": colors.red_trans_50})
             draw_objs.append((g_thy_area, "SAME,2"))
             legend_entry = (g_thy_area, "Theory prediction", "LF")
-        legend_entries[1 if has_obs else 0] = legend_entry
+        # only add to the legend if values are in terms of a cross section
+        if xsec_unit:
+            legend_entries[1 if has_obs else 0] = legend_entry
 
     # horizontal guidance lines
     if h_lines:
@@ -678,8 +751,8 @@ def plot_limit_points(
         get_digits = lambda v: determine_limit_digits(v, is_xsec=bool(xsec_unit))
 
     # templates and helpers for y axis labels
-    y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{Expected %s}}"
-    y_label_tmpl_obs = "#splitline{#bf{%s}}{#scale[0.75]{#splitline{Expected %s}{Observed %s}}}"
+    y_label_tmpl = "#splitline{%s}{#scale[0.75]{Expected %s}}"
+    y_label_tmpl_obs = "#splitline{%s}{#scale[0.75]{#splitline{Expected %s}{Observed %s}}}"
 
     def make_y_label(name, exp, obs=None):
         if xsec_unit:
@@ -716,18 +789,31 @@ def plot_limit_points(
         r.setup_line(tr, props={"NDC": False, "LineWidth": 1})
         draw_objs.extend([tl, tr])
 
+        # extra labels
+        if d.get("label"):
+            rlabel = to_root_latex(d["label"])
+            rlabel_x = r.get_x(10, pad, anchor="right")
+            rlabel = ROOT.TLatex(rlabel_x, label_y, rlabel)
+            r.setup_latex(rlabel, props={"NDC": True, "TextAlign": 32, "TextSize": 14})
+            draw_objs.append(rlabel)
+
     # model parameter labels
     if model_parameters:
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
+    legend = r.routines.create_legend(pad=pad, width=430, n=3, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
     # cms label
     cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
     draw_objs.extend(cms_labels)
+
+    # energy label
+    # ecm_label = ROOT.TLatex(cms_labels[0].GetX(), cms_labels[0].GetY() - 0.088, "13 TeV")
+    # r.setup_latex(ecm_label, props={"TextSize": 20, "TextAlign": 13})
+    # draw_objs.append(ecm_label)
 
     # campaign label
     if campaign:
@@ -794,8 +880,8 @@ def plot_limit_scan_2d(
             return list(map(check_values, values))
         if isinstance(values, np.ndarray):
             values = {key: np.array(values[key]) for key in values.dtype.names}
-        assert(scan_parameter1 in values)
-        assert(scan_parameter2 in values)
+        assert scan_parameter1 in values
+        assert scan_parameter2 in values
         return values
 
     def join_limits(values):
@@ -850,8 +936,6 @@ def plot_limit_scan_2d(
     r.setup_style()
     canvas, (pad,) = r.routines.create_canvas(pad_props={"RightMargin": 0.17, "Logz": z_log})
     pad.cd()
-    draw_objs = []
-    legend_entries = []
 
     # custom palette, requires that the z range is symmetrical around 1
     rvals = np.array([ROOT.gROOT.GetColor(colors.red).GetRed(), 1., 0.])
@@ -886,12 +970,13 @@ def plot_limit_scan_2d(
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter1].label)
     y_title = to_root_latex(poi_data[scan_parameter2].label)
-    z_title = "{} 95% CLs limit on #sigma({}) / #sigma_{{Theory}}".format(
-        "Observed" if has_obs else "Expected", create_hh_process_label(poi))
+    z_title = "{} 95% CL limit on {} / #sigma_{{Theory}}".format(
+        "Observed" if has_obs else "Expected", create_hh_xsbr_label(poi))
     h_dummy = ROOT.TH2F("h_dummy", ";{};{};{}".format(x_title, y_title, z_title),
         1, x_min, x_max, 1, y_min, y_max)
     r.setup_hist(h_dummy, pad=pad, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
-    draw_objs.append((h_dummy, ""))
+    draw_objs = [(h_dummy, "")]
+    legend_entries = 4 * [(h_dummy, " ", "")]
 
     # setup actual histograms
     for i, h in enumerate(hists):
@@ -936,40 +1021,38 @@ def plot_limit_scan_2d(
         r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black, "LineStyle": 2})
         draw_objs.append((g, "SAME,C"))
         if i == 0:
-            legend_entries.append((g, "Excluded (expected)", "L"))
+            legend_entries[2] = (g, "Excluded (exp.)", "L")
 
     if has_unc:
         for i, g in enumerate(exp_p1_contours + exp_m1_contours):
             r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black, "LineStyle": 3})
             draw_objs.append((g, "SAME,C"))
             if i == 0:
-                legend_entries.append((g, r"68% expected", "L"))
+                legend_entries[3] = (g, r"68% expected", "L")
 
     if has_obs:
         for i, g in enumerate(obs_contours):
             r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors.black})
             draw_objs.append((g, "SAME,C"))
             if i == 0:
-                legend_entries.append((g, "Observed", "L"))
+                legend_entries[0] = (g, "Excluded (obs.)", "L")
 
     # SM point
     if draw_sm_point:
         g_sm = create_tgraph(1, 1, 1)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.black)
         draw_objs.append((g_sm, "P"))
-        legend_entries.append((g_sm, "Standard model", "P"))
+        legend_entries[1] = (g_sm, "Standard model", "P")
 
     # legend
-    n_cols = int(math.ceil(len(legend_entries) / 3.))
-    n_rows = min(len(legend_entries), 3)
-    legend = r.routines.create_legend(pad=pad, x2=-20, width=n_cols * 220, n=n_rows,
-        props={"NColumns": n_cols})
+    legend = r.routines.create_legend(pad=pad, x2=-20, width=380, n=2,
+        props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad))
+        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
@@ -1050,12 +1133,12 @@ def plot_benchmark_limits(
     y_min_value = 1e5
     y_max_value = -1e5
     for d in data:
-        assert("name" in d)
-        assert("expected" in d)
+        assert "name" in d
+        assert "expected" in d
         y_min_value = min(y_min_value, min(d["expected"]))
         y_max_value = max(y_max_value, max(d["expected"]))
         if "observed" in d:
-            assert(isinstance(d["observed"], (float, int)))
+            assert isinstance(d["observed"], (float, int))
             has_obs = True
             y_min_value = min(y_min_value, d["observed"])
             y_max_value = max(y_max_value, d["observed"])
@@ -1073,8 +1156,8 @@ def plot_benchmark_limits(
 
     # dummy histogram to control axes
     x_title = "Shape benchmark"
-    y_title = "95% CLs limit on #sigma({}) / {}".format(
-        create_hh_process_label(poi, hh_process), to_root_latex(xsec_unit))
+    y_title = "95% CL limit on {} / {}".format(
+        create_hh_xsbr_label(poi, hh_process), to_root_latex(xsec_unit))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), n, -0.5, n - 0.5)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"Ndivisions": n})
@@ -1175,7 +1258,7 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
         print("WARNING: found {} NaN(s) in limit values for 1d evaluation".format(n_nans))
 
     # same for cross section values when given
-    if xsec_scan_values is not None and xsec_values is not None:
+    if xsec_scan_values is not None and xsec_values is not None and not (xsec_values == 1).all():
         mask = ~np.isnan(xsec_values)
         xsec_scan_values = xsec_scan_values[mask]
         xsec_values = xsec_values[mask]
@@ -1198,16 +1281,22 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
     def get_intersection(start):
         objective = lambda x: abs(diff_interp(x))
         res = minimize_1d(objective, bounds, start=start)
-        return res.x[0] if res.status == 0 and (bounds[0] <= res.x[0] <= bounds[1]) else None
+        # catch bad minimizations
+        if res.status != 0 or not (bounds[0] <= res.x[0] <= bounds[1]):
+            return None
+        # catch local minima by exploiting that objectives of actual minima must be close to 0
+        x = res.x[0]
+        if objective(x) > 1e-2:
+            return None
+        return x
 
     # get exclusion range edges from intersections
-    rnd = lambda v: round(float(v), 7)
+    rnd = lambda v: round(float(v), 6)
     edges = {rnd(scan_values.min()), rnd(scan_values.max())}
     for start in np.linspace(scan_values.min(), scan_values.max(), 20):
         x = get_intersection(start)
-        if x is None:
-            continue
-        edges.add(rnd(x))
+        if x is not None:
+            edges.add(rnd(x))
 
     # drop edges that are too close to one another (within 4 digits)
     _edges = []
@@ -1229,20 +1318,29 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
 
 
 def print_excluded_ranges(param_name, scan_name, scan_values, limit_values, xsec_scan_values=None,
-        xsec_values=None, interpolation="cubic"):
-    # get excluded ranges
-    ranges = evaluate_limit_scan_1d(
-        scan_values,
-        limit_values,
-        xsec_scan_values=xsec_scan_values,
-        xsec_values=xsec_values,
-        interpolation=interpolation,
-    ).excluded_ranges
+        xsec_values=None, interpolation="linear"):
+    # more than 5 points are required
+    if len(scan_values) <= 5:
+        print("insufficient number of scan points for extracting excluded ranges")
+        return
 
-    _print_excluded_ranges(param_name, scan_name, scan_values, ranges)
+    try:
+        ranges = evaluate_limit_scan_1d(
+            scan_values,
+            limit_values,
+            xsec_scan_values=xsec_scan_values,
+            xsec_values=xsec_values,
+            interpolation=interpolation,
+        ).excluded_ranges
+    except Exception:
+        print("1D limit scan evaluation failed")
+        traceback.print_exc()
+        return
+
+    _print_excluded_ranges(param_name, scan_name, scan_values, ranges, interpolation)
 
 
-def _print_excluded_ranges(param_name, scan_name, scan_values, ranges):
+def _print_excluded_ranges(param_name, scan_name, scan_values, ranges, interpolation):
     # helper to check if the granularity of scan values is too small at a certain point
     def granularity_check(value, digits=2):
         # get the closest values
@@ -1281,7 +1379,8 @@ def _print_excluded_ranges(param_name, scan_name, scan_values, ranges):
 
     # start printing
     print("")
-    title = "Excluded ranges of parameter '{}' in scan '{}'".format(param_name, scan_name)
+    title = "Excluded ranges of parameter '{}' in scan '{}' (from {} interpolation)".format(
+        param_name, scan_name, interpolation)
     print(title)
     print(len(title) * "=")
     print("(granularity potentially insufficient for accurate interpolation)")

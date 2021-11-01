@@ -34,6 +34,8 @@ graph LR;
     B --> C([UpperLimits]);
     C --> D(CreateWorkspace);
     D --> E(CombineDatacards);
+    C -. optional .-> F([Snapshot]);
+    F --> D;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
@@ -134,6 +136,10 @@ graph LR;
     C2 --> D2(CreateWorkspace);
     D1 --> E1(CombineDatacards);
     D2 --> E2(CombineDatacards);
+    C1 -. optional .-> F1([Snapshot]);
+    C2 -. optional .-> F2([Snapshot]);
+    F1 --> D1;
+    F2 --> D2;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
@@ -214,6 +220,10 @@ graph LR;
     B2 --> C2(CreateWorkspace);
     C1 --> D1(CombineDatacards);
     C2 --> D2(CombineDatacards);
+    B1 -. optional .-> E1([Snapshot]);
+    B2 -. optional .-> E2([Snapshot]);
+    E1 --> C1;
+    E2 --> C2;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.

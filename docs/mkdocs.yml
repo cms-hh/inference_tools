@@ -71,7 +71,7 @@ markdown_extensions:
       check_paths: true
 
 extra_javascript:
-  - https://unpkg.com/mermaid@8.6/dist/mermaid.min.js
+  - https://unpkg.com/mermaid@8.13/dist/mermaid.min.js
 
 extra_css:
   - extra/styles.css
@@ -94,6 +94,7 @@ nav:
     - Postfit plots: tasks/postfit.md
     - Goodness-of-fit tests: tasks/gof.md
     - EFT limits: tasks/eft.md
+    - Snapshots: tasks/snapshot.md
     - Best practices: tasks/practices.md
   - Datacard manipulation: datacard_manipulation.md
   - Useful scripts: scripts.md

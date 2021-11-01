@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-"""
+r"""
 Script to rename one or multiple processes in a datacard.
 Example usage:
 
 # rename via simple rules
 > rename_processes.py datacard.txt ggH_process=ggHH_kl_1_kt_1 -d output_directory
+
+# rename multiple processes using a replacement rule
+# (note the quotes)
+> rename_processes.py datacard.txt '^ggH_process_(.+)$=ggHH_kl_1_kt_1_\1' -d output_directory
 
 # rename via rules in files
 > rename_processes.py datacard.txt my_rules.txt -d output_directory
@@ -27,7 +31,9 @@ logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="125"):
     """
     Reads a *datacard* and renames processes according to translation *rules*. A rule should be a
-    sequence of length 2 containing the old and the new process name.
+    sequence of length 2 containing the old and the new process name. When the old name starts with
+    "^" and ends with "$", it is interpreted as a regular expression and the new name can contain
+    group placeholders as understood by *re.sub()*.
 
     When *directory* is *None*, the input *datacard* and all shape files it refers to are updated
     in-place. Otherwise, both the changed datacard and its shape files are stored in the specified
@@ -44,7 +50,7 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
     # object in case the pattern has the format "obj_name:shape_pattern"
     def parse_shape_pattern(shape_line, tfile, process_name, bin_name, syst_name=None):
         # get the new process name
-        assert(renamer.has_rule(process_name))
+        assert renamer.has_rule(process_name)
         new_process_name = renamer.translate(process_name)
 
         # get the pattern
@@ -82,7 +88,7 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
         return old_name, new_name, new_pattern, towner
 
     # start renaming
-    with renamer.start() as blocks:
+    with renamer.start(expand="processes") as blocks:
         # rename names in process rates
         if blocks.get("rates"):
             line = blocks["rates"][1] + " "
@@ -159,7 +165,7 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                                 old_name, new_name, new_pattern, towner = parse_shape_pattern(
                                     shape_line, tfile, process_name, bin_name, syst_name + syst_dir)
                                 if not skip_shapes:
-                                    logger.info("renaming syst shape {} to {} for process {} in "
+                                    logger.debug("renaming syst shape {} to {} for process {} in "
                                         "bin {}".format(old_name, new_name, process_name, bin_name))
                                     update_shape_name(towner, old_name, new_name)
                                 if not process_is_wildcard:
@@ -180,7 +186,9 @@ if __name__ == "__main__":
         "update (see --directory)")
     parser.add_argument("rules", nargs="+", metavar="OLD_NAME=NEW_NAME", help="translation rules "
         "for one or multiple process names in the format 'OLD_NAME=NEW_NAME', or files containing "
-        "these rules in the same format line by line")
+        "these rules in the same format line by line; OLD_NAME can be a regular expression "
+        "starting with '^' and ending with '$'; in this case, group placeholders in NEW_NAME are "
+        "replaced with the proper matches as described in re.sub()")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--no-shapes", "-n", action="store_true", help="do not change process "

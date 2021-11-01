@@ -12,10 +12,11 @@ import numpy as np
 
 from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
+from dhi.tasks.snapshot import Snapshot, SnapshotUser
 from dhi.datacard_tools import get_workspace_parameters
 
 
-class PullsAndImpactsBase(POITask):
+class PullsAndImpactsBase(POITask, SnapshotUser):
 
     only_parameters = law.CSVParameter(
         default=(),
@@ -36,6 +37,14 @@ class PullsAndImpactsBase(POITask):
 
     force_n_pois = 1
     allow_parameter_values_in_pois = True
+
+    def get_output_postfix(self, join=True):
+        parts = super(PullsAndImpactsBase, self).get_output_postfix(join=False)
+
+        if self.use_snapshot:
+            parts.append("fromsnapshot")
+
+        return self.join_postfix(parts) if join else parts
 
 
 class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
@@ -74,70 +83,95 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             # add to branches
             branches.extend(params)
 
+            self._cache_branches = True
+
         return branches
 
     @law.cached_workflow_property(setter=False, empty_value=law.no_value)
     def workspace_parameters(self):
         ws_input = CreateWorkspace.req(self).output()
         if not ws_input.exists():
-            # not existing yet, return no_value to express that this value is still to be resolved
             return law.no_value
-        else:
-            self._cache_branches = True
-            return get_workspace_parameters(ws_input.path)
+        return get_workspace_parameters(ws_input.path)
 
     def workflow_requires(self):
         reqs = super(PullsAndImpacts, self).workflow_requires()
-        reqs["workspace"] = self.requires_from_branch()
+        reqs["workspace"] = CreateWorkspace.req(self)
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self)
         return reqs
 
     def requires(self):
-        return CreateWorkspace.req(self)
+        reqs = {"workspace": CreateWorkspace.req(self)}
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self, branch=0)
+        return reqs
 
     def output(self):
-        name = "fit__{}__{}.root".format(self.get_output_postfix(), self.branch_data)
+        parts = [self.branch_data]
+        name = self.join_postfix(["fit", self.get_output_postfix(), parts]) + ".root"
         return self.local_target(name)
 
-    @property
-    def blinded_args(self):
-        if self.unblinded:
-            return "--seed {self.branch}".format(self=self)
-        else:
-            return "--seed {self.branch} --toys {self.toys}".format(self=self)
-
     def build_command(self):
+        # get the workspace to use and define snapshot args
+        if self.use_snapshot:
+            workspace = self.input()["snapshot"].path
+            snapshot_args = " --snapshotName MultiDimFit"
+        else:
+            workspace = self.input()["workspace"].path
+            snapshot_args = ""
+
+        # args for blinding / unblinding
+        if self.unblinded:
+            blinded_args = "--seed {self.branch}".format(self=self)
+        else:
+            blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
+
         # define branch dependent options
         if self.branch == 0:
             # initial fit
-            branch_opts = "--algo singles"
+            branch_opts = (
+                " --algo singles"
+                " --saveFitResult"
+            )
         else:
             # nuisance fits
-            branch_opts = "--algo impact -P {} --floatOtherPOIs 1 --saveInactivePOI 1".format(
-                self.branch_data
-            )
+            branch_opts = (
+                " --algo impact"
+                " --parameters {}"
+                " --floatOtherPOIs 1"
+                " --saveInactivePOI 1"
+            ).format(self.branch_data)
 
-        return (
+        # define the basic command
+        cmd = (
             "combine -M MultiDimFit {workspace}"
+            " {self.custom_args}"
             " --verbose 1"
             " --mass {self.mass}"
-            " {self.blinded_args}"
+            " {blinded_args}"
             " --redefineSignalPOIs {self.pois[0]}"
             " --setParameterRanges {self.joined_parameter_ranges}"
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
-            " --robustFit 1"
+            " --saveNLL"
+            " --X-rtd REMOVE_CONSTANT_ZERO_POINT=1"
+            " {snapshot_args}"
             " {self.combine_optimization_args}"
-            " {self.custom_args}"
             " {branch_opts}"
             " && "
             "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
-            workspace=self.input().path,
+            workspace=workspace,
             output=self.output().path,
+            snapshot_args=snapshot_args,
+            blinded_args=blinded_args,
             branch_opts=branch_opts,
         )
+
+        return cmd
 
     def htcondor_output_postfix(self):
         postfix = super(PullsAndImpacts, self).htcondor_output_postfix()
@@ -156,7 +190,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
     keep_failures = luigi.BoolParameter(
         default=False,
-        description="When True keep failed fits, proceed with plotting without restrictions. Failures will be marked as 'Invalid'. default: False",
+        description="keep failed fits and mark them as invalid; default: False",
     )
 
     def requires(self):
@@ -219,6 +253,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             msg = "{} failing parameter fit(s) detected:\n".format(len(fail_info))
             for b, name, _ in fail_info:
                 msg += "  {} (branch {})\n".format(name, b)
+            msg += "\nBranches: {}".format(",".join(map(str, failing_branches)))
             msg += c("\nYou have two options\n\n", style=("underlined", "bright"))
             msg += "  " + c("1.", "magenta")
             msg += " You can try to remove the corresponding output files via\n\n"
@@ -232,7 +267,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             msg += " You can proceed with the converging fits only by adding\n\n"
             msg += c("       --PullsAndImpacts-branches {}\n\n".format(working_branches),
                 style="bright")
-            msg += "     which effectively skips all failing fits.\n"
+            msg += "     which effectively skips all failing fits in your case.\n"
             raise Exception(msg)
 
         # merge values and parameter infos into data structure similar to the one produced by

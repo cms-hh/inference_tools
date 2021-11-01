@@ -170,9 +170,9 @@ def plot_gofs(
     # check inputs
     n = len(data)
     for d in data:
-        assert("name" in d)
-        assert("data" in d)
-        assert("toys" in d)
+        assert "name" in d
+        assert "data" in d
+        assert "toys" in d
         d["toys"] = remove_nans(list(d["toys"]))
         d["central_toys"] = remove_outliers(list(d["toys"]))
 
@@ -222,7 +222,7 @@ def plot_gofs(
         "LabelOffset": r.pixel_to_coord(canvas, y=4)})
     h_dummy.GetYaxis().SetBinLabel(1, "")
     draw_objs.append((h_dummy, "HIST"))
-    y_label_tmpl = "#splitline{#bf{%s}}{#scale[0.75]{p = %.1f %%}}"
+    y_label_tmpl = "#splitline{%s}{#scale[0.75]{p = %.1f %%}}"
     stats_label_tmpl = "#splitline{#splitline{N = %d}{#mu = %.1f}}{#sigma = %.1f}"
 
     # vertical line at 1
