@@ -500,7 +500,7 @@ class PlotDistributionsAndTables(POIPlotTask):
         return FitDiagnostics.req(self)
 
     def output(self):
-        parts = ["commandd_plots", self.type_fit, self.get_output_postfix()]
+        parts = ["commandd_plots", self.type_fit, "unblind", self.unblind, self.get_output_postfix()]
         names = self.create_plot_names(parts)
         return [self.local_target(name) for name in names]
 
@@ -551,6 +551,8 @@ class PlotDistributionsAndTables(POIPlotTask):
                 command_reproduce_plot += " --overwrite_fitdiag %s " % fit_diagnostics.path
                 info_bin, name_plot_options_dict = load_and_save_plot_dict_locally(output_folder, this_plot, options_dat, self.verbose, fit_diagnostics.path)
                 command_reproduce_plot += " --plot_options_dict %s " % name_plot_options_dict
+                if self.unblind :
+                    command_reproduce_plot += " --unblind "
 
                 for key, bin in info_bin.iteritems():
                     for era in loop_eras(bin) :
@@ -558,7 +560,7 @@ class PlotDistributionsAndTables(POIPlotTask):
                         saved_all_plots = create_postfit_plots_binned(
                             path="%s/plot_%s" % (output_folder, key.replace("ERA", str(era))),
                             fit_diagnostics_path=fit_diagnostics.path,
-                            type_fit=self.type_fit,
+                            type_fit=self.type_fit[0],
                             divideByBinWidth=divideByBinWidth,
                             bin=bin,
                             era=era,

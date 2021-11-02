@@ -71,19 +71,15 @@ def create_postfit_plots_binned(
     try: scale_VBF = bin["scale_vbf"]
     except: scale_VBF = 0
 
-    typeFit = None
     if "postfit_Bonly" in type_fit :
         folder = "shapes_fit_b"
         folder_data = "shapes_fit_b"
-        typeFit = "postfit"
     if "postfit" in type_fit :
         folder = "shapes_fit_s"
         folder_data = "shapes_fit_s"
-        typeFit = "postfit"
     elif "prefit" in type_fit :
         folder = "shapes_prefit"
         folder_data = "shapes_prefit"
-        typeFit = "prefit"
     else :
         raise Exception("Type of fit not valid. type_fit should be 'prefit', 'postfit' or 'shapes_fit_b'. It is '%s'." % type_fit)
 
@@ -130,15 +126,17 @@ def create_postfit_plots_binned(
         labelY = "Events / bin width"
 
     if not "postfit" in type_fit:
-        header_legend = header_legend + ", \n" + typeFit
+        header_legend = header_legend + ", " + str(type_fit)
     else:
-        header_legend = header_legend + ", #mu(t#bar{t}H)=#hat{#mu}"
+        if "Bonly" in type_fit :
+            header_legend = header_legend + ", #mu(HH)=0"
+        else :
+            header_legend = header_legend + ", #mu(HH)=#hat{#mu}"
 
     # list of folders to read from
     catcats = [cc.replace("ERA", str(era)) for cc in bin["align_cats"]]
     yiels_list = {}
     for cc, catcat in enumerate(catcats) :
-        #catcat = catcat.replace("ERA", str(era))
         yiels_list[catcat] = OrderedDict()
 
     round_yiels_list = 2
@@ -223,7 +221,6 @@ def create_postfit_plots_binned(
             nbinstotal += nbinscat
         template = ROOT.TH1F("my_hist", "", nbinstotal, 0 - 0.5, nbinstotal - 0.5)
         template.GetYaxis().SetTitle(labelY)
-        if verbose : print(nbinscatlist)
 
     if "splitline" in header_legend :
         bottom_legend = 0.52
@@ -249,7 +246,6 @@ def create_postfit_plots_binned(
         for cc, catcat in enumerate(catcats):
             readFrom = str("%s/%s" % (folder, catcat))
             readFromTot = str("%s/%s/%s" % (folder, catcat, name_total))
-            if verbose : print(" histtotal ", readFromTot)
             histtotal = fin.Get(readFromTot)
             data_cat = 0
             info_bin = process_data_histo(
@@ -272,7 +268,7 @@ def create_postfit_plots_binned(
                 "label" : "Observed"
             }
             lastbin += info_bin["allbins"]
-        if only_yield_table :
+        if not only_yield_table :
             dataTGraph1.Draw()
             legend1.AddEntry(dataTGraph1, "Data", "p")
 
@@ -467,10 +463,10 @@ def create_postfit_plots_binned(
             linebinW.SetTextAlign(12)
             linebinW.SetTextSize(0.05)
             linebinW.SetTextColor(1)
-            if era == 0:
-                sumBottom += -4.4
+            if useLogPlot :
+                sumBottom += -0.7*bin["cats_labels_height"]
             else:
-                sumBottom += -2.4
+                sumBottom += -5.4
     canvas.Update()
 
     ## draw signal
@@ -615,7 +611,7 @@ def create_postfit_plots_binned(
 
     canvas.Update()
     #################################
-    if do_bottom and not only_yield_table :
+    if do_bottom  :
         bottomPad.cd()
         if verbose : print("doing bottom pad")
         hist_total_err = template.Clone()
@@ -627,6 +623,7 @@ def create_postfit_plots_binned(
             if verbose : print(readFrom, lastbin)
         dumb = hist_total_err.Draw("e2")
         del dumb
+        canvas.Update()
         if unblind:
             dataTGraph2 = ROOT.TGraphAsymmErrors()
             lastbin = 0
@@ -653,9 +650,10 @@ def create_postfit_plots_binned(
         line.SetLineStyle(3)
         line.SetLineColor(1)
         dumb = line.Draw("same")
-        del dumb
-        del hist_total
-        del dataTGraph1
+        #del dumb
+        #del hist_total
+        #del dataTGraph1
+        canvas.Update()
 
         if verbose : print("done bottom pad")
     ##################################
@@ -664,7 +662,7 @@ def create_postfit_plots_binned(
     if divideByBinWidth:
         optbin = "divideByBinWidth"
 
-    savepdf = path + "_%s_%s_unblind%s" % (typeFit, oplin, unblind)
+    savepdf = path + "_%s_%s_unblind%s" % (type_fit, oplin, unblind)
 
     with open(savepdf + "_yield.json", 'w') as outfile : json.dump(yiels_list, outfile, sort_keys=False, indent=2)
     if verbose : print("saved", savepdf + "_yield.json")
@@ -788,7 +786,7 @@ def load_and_save_plot_dict_locally(output_folder, this_plot, options_dat, verbo
     local_info_bin = info_bin
     for key_bin in info_bin :
         for pp in ["procs_plot_options_bkg", "procs_plot_options_sig"] :
-            info_bin[key_bin][pp] = info_bin[key_bin][pp].replace("$DHI_DATACARDS_RUN2", os.getenv('DHI_DATACARDS_RUN2'))
+            info_bin[key_bin][pp] = get_full_path(info_bin[key_bin][pp])
             if str(info_bin[key_bin][pp]).startswith("/") :
                 dict_save = os.path.join(output_folder, os.path.basename(info_bin[key_bin][pp]))
                 try : copyfile(info_bin[key_bin][pp], dict_save)
@@ -1242,7 +1240,7 @@ if __name__ == "__main__":
             # interpret the command line
             modifications = {"plot1" :  eval(str(overwrite)) }
         else :
-            with open(overwrite) as ff : modifications = json.load(ff)
+            with open(overwrite) as ff : modifications = json.load(ff, object_pairs_hook=OrderedDict)
     else :
         if overwrite_era=="all" :
             modifications = {"plot1" : {'ERA' : 2016}, "plot2" : {'ERA' : 2017}, "plot3" : {'ERA' : 2018}}
