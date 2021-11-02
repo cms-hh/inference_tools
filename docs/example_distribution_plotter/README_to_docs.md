@@ -11,7 +11,7 @@ law run  PlotDistributionsAndTables \
 Note that the signals in the result are the ones rotated by the physics model,
 therefore if you will wanna draw the VBF sognal with C2V=2 you must ask that of the fit, eg, add to the fitdiagnosis making: `--parameter-values C2V=2.0`. By default it does prefit quantities, see options of `--type-fit` to change that. \\
 
-- The `list_pairs.json` is a list of a template dictionary `` and a list of substituons of keywords of it ``.
+- The `list_pairs.json` is a list of a template dictionary `plot_options` and a list of substituons of keywords of it `plots_list`.
 This second is optional, if it is not given it will use the template literally to make the result.
 - In the way it is implemented we can use more than one pair (template dictionary, keywords to substitute). Eg. using very different options on the template for doing tables and plots, making easier to make a second pair, and/or adding different channels that make part of a same fit.
 
