@@ -18,7 +18,7 @@ law run PlotGoodnessOfFit \
     --version dev \
     --datacards $DHI_EXAMPLE_CARDS \
     --toys 1000 \
-    --toys-per-task 20 \
+    --toys-per-branch 20 \
     --frequentist-toys
 ```
 
@@ -76,7 +76,7 @@ law run PlotGoodnessOfFit \
     --version dev \
     --datacards $DHI_EXAMPLE_CARDS
     --toys 1000 \
-    --toys-per-task 20 \
+    --toys-per-branch 20 \
     --algorithm KS \
     --GoodnessOfFit-workflow htcondor
 ```
@@ -104,7 +104,7 @@ law run PlotMultipleGoodnessOfFits \
     --multi-datacards $DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF:$DHI_EXAMPLE_CARDS \
     --datacard-names ggF,VBF,Combined \
     --toys 1000 \
-    --toys-per-task 20 \
+    --toys-per-branch 20 \
     --frequentist-toys
 ```
 
@@ -170,7 +170,7 @@ law run PlotMultipleGoodnessOfFits \
     --multi-datacards $DHI_EXAMPLE_CARDS_GGF:$DHI_EXAMPLE_CARDS_VBF:$DHI_EXAMPLE_CARDS \
     --datacard-names ggF,VBF,Combined \
     --toys 1000 \
-    --toys-per-task 20 \
+    --toys-per-branch 20 \
     --algorithm KS \
     --GoodnessOfFit-workflow htcondor
 ```

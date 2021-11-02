@@ -1250,7 +1250,7 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
     # when the previous step did not shift values to 0,
     # detect cases where the positive minimum is > 0 and shift values
     if not neg_mask.sum() and (dnll2_values > 0).sum():
-        pos_min = dnll2_values[dnll2_values > 0].min()
+        pos_min = dnll2_values[dnll2_values >= 0].min()
         if pos_min > 0:
             slightly_pos = pos_min < epsilon
             if slightly_pos:
