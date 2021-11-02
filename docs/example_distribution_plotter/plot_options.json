@@ -1,0 +1,28 @@
+{
+  "final_state_X_CH_ERA":
+  {
+    "fitdiagnosis" : "PATH_FITDIAGNOSIS",
+    "datacard_original" : "none",
+    "bin_name_original" : "none",
+    "procs_plot_options_bkg" : "$DHI_BASE/docs/example_distribution_plotter/final_state_X_plot_options_BKG_colors.json",
+    "procs_plot_options_sig" : "$DHI_BASE/docs/example_distribution_plotter/final_state_X_plot_options_sig_colors.json",
+    "header_legend" : "#splitline{FAKE distribution}{LABEL_BIN}",
+    "labelX" : "FAKE",
+    "minY" : 0.0,
+    "maxY" : MAXY,
+    "minYerr" : -0.610,
+    "maxYerr" : 0.610,
+    "maxYerr_postfit" : 0.79,
+    "minYerr_postfit" : -0.79,
+    "cats_labels_height" : LABEL_HEIGHT,
+    "number_columns_legend" : 3,
+    "useLogPlot" : false,
+    "era" : ERA,
+    "align_cats" : [ALIGN_BIN],
+    "align_cats_labelsX" : [ALIGN_CATS_LABELSX],
+    "align_cats_labels" : [ALIGN_LABELS],
+    "single_H_by_era" : false,
+    "scale_signal_in_table" : 100.0,
+    "scale_ggf" : SCALE_GGF
+    }
+  }
