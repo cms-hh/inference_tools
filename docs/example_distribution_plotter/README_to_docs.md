@@ -9,9 +9,12 @@ law run  PlotDistributionsAndTables \
 ```
 
 Note that the signals in the result are the ones rotated by the physics model,
-therefore if you will wanna draw the VBF sognal with C2V=2 you must ask that of the fit, eg, add to the fitdiagnosis making: `--parameter-values C2V=2.0`.
+therefore if you will wanna draw the VBF sognal with C2V=2 you must ask that of the fit, eg, add to the fitdiagnosis making: `--parameter-values C2V=2.0`. \\
+
+Here
 
 The result will be:
 - A folder with plots as booked on the dictionaries
   - Not all the options are contemplated on this example, see [here](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/dhi/scripts/README_postfit_plots.md) for descriptions of the dictionaries and all options.
-- In the same folder a log file with all the (that is what control if the task is done)
+- For each plot it saves also the dictionary to tweak and reproduce with the standalone script
+  - In the same folder a log file with all commands for reruning the plots (that is what control if the task is done)
