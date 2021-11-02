@@ -674,8 +674,8 @@ def create_postfit_plots_binned(
         if not do_bottom:
             savepdf = savepdf + "_noBottom"
         if verbose : print("saving...", savepdf)
-        #dumb = canvas.SaveAs(savepdf + ".pdf")
-        #if verbose : print("saved", savepdf + ".pdf")
+        dumb = canvas.SaveAs(savepdf + ".pdf")
+        if verbose : print("saved", savepdf + ".pdf")
         dumb = canvas.SaveAs(savepdf + ".png")
         if verbose : print("saved", savepdf + ".png")
         del dumb
