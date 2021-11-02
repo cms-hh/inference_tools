@@ -20,3 +20,5 @@ The result will be:
   - Not all the options are contemplated on this example, see [here](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/dhi/scripts/README_postfit_plots.md) for descriptions of the dictionaries and all options.
 - For each plot it saves also the dictionary to tweak and reproduce with the standalone script
   - In the same folder a log file with all commands for reruning the plots (that is what control if the task is done)
+
+NOTE: By now it is working only for binned distributions.
