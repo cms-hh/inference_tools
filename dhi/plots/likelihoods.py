@@ -12,8 +12,8 @@ import scipy.optimize
 from scinum import Number
 
 from dhi.config import (
-    poi_data, br_hh_names, campaign_labels, chi2_levels, colors, color_sequence, marker_sequence,
-    cms_postfix, get_chi2_level, get_chi2_level_from_cl,
+    poi_data, br_hh_names, br_hh_colors, campaign_labels, chi2_levels, colors, color_sequence,
+    marker_sequence, cms_postfix, get_chi2_level, get_chi2_level_from_cl,
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match, convert_rooargset,
@@ -406,8 +406,14 @@ def plot_likelihood_scans_1d(
                     "NDC": False})
                 draw_objs.append(line)
 
+    # special case regarding color handling: when all entry names are valid keys in br_hh_colors,
+    # replace the default color sequence to deterministically assign same colors to channels
+    _color_sequence = color_sequence
+    if all(d["name"] in br_hh_colors.root for d in data):
+        _color_sequence = [br_hh_colors.root[d["name"]] for d in data]
+
     # perform scans and draw nll curves
-    for d, col, ms in zip(data[::-1], color_sequence[:len(data)][::-1],
+    for d, col, ms in zip(data[::-1], _color_sequence[:len(data)][::-1],
             marker_sequence[:len(data)][::-1]):
         # evaluate the scan, run interpolation and error estimation
         scan = evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"],
@@ -461,8 +467,11 @@ def plot_likelihood_scans_1d(
 
     # model parameter labels
     if model_parameters:
+        y_offset = 40
+        if legend_cols == 3:
+            y_offset = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
         draw_objs.extend(create_model_parameters(model_parameters, pad,
-            y_offset=40 if len(legend_entries) < 9 else 130))
+            y_offset=y_offset))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
@@ -879,8 +888,14 @@ def plot_likelihood_scans_2d(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
+    # special case regarding color handling: when all entry names are valid keys in br_hh_colors,
+    # replace the default color sequence to deterministically assign same colors to channels
+    _color_sequence = color_sequence
+    if all(d["name"] in br_hh_colors.root for d in data):
+        _color_sequence = [br_hh_colors.root[d["name"]] for d in data]
+
     # loop through data entries
-    for d, (cont1, cont2), col in zip(data[::-1], contours[::-1], color_sequence[:len(data)][::-1]):
+    for d, (cont1, cont2), col in zip(data[::-1], contours[::-1], _color_sequence[:len(data)][::-1]):
         # evaluate the scan
         scan = evaluate_likelihood_scan_2d(
             d["values"][poi1], d["values"][poi2], d["values"]["dnll2"],

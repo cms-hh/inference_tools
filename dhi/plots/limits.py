@@ -12,7 +12,8 @@ import numpy as np
 import scipy.interpolate
 
 from dhi.config import (
-    poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence, cms_postfix,
+    poi_data, br_hh_names, br_hh_colors, campaign_labels, colors, color_sequence, marker_sequence,
+    cms_postfix,
 )
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, create_tgraph, colored, minimize_1d, unique_recarray,
@@ -362,8 +363,14 @@ def plot_limit_scans(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
+    # special case regarding color handling: when all entry names are valid keys in br_hh_colors,
+    # replace the default color sequence to deterministically assign same colors to channels
+    _color_sequence = color_sequence
+    if all(name in br_hh_colors.root for name in names):
+        _color_sequence = [br_hh_colors.root[name] for name in names]
+
     # central values
-    for i, (ev, col, ms) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1],
+    for i, (ev, col, ms) in enumerate(zip(expected_values[::-1], _color_sequence[:n_graphs][::-1],
             marker_sequence[:n_graphs][::-1])):
         name = names[n_graphs - i - 1]
 
@@ -473,8 +480,11 @@ def plot_limit_scans(
 
     # model parameter labels
     if model_parameters:
+        y_offset = 40
+        if legend_cols == 3:
+            y_offset = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
         draw_objs.extend(create_model_parameters(model_parameters, pad,
-            y_offset=40 if len(legend_entries) < 9 else 130))
+            y_offset=y_offset))
 
     # cms label
     cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad,

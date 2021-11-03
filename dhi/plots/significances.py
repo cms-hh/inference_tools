@@ -11,7 +11,8 @@ import scipy as sp
 import scipy.stats
 
 from dhi.config import (
-    poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence, cms_postfix,
+    poi_data, br_hh_names, br_hh_colors, campaign_labels, colors, color_sequence, marker_sequence,
+    cms_postfix,
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, make_list, unique_recarray, dict_to_recarray,
@@ -280,8 +281,14 @@ def plot_significance_scans_1d(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
+    # special case regarding color handling: when all entry names are valid keys in br_hh_colors,
+    # replace the default color sequence to deterministically assign same colors to channels
+    _color_sequence = color_sequence
+    if all(name in br_hh_colors.root for name in names):
+        _color_sequence = [br_hh_colors.root[name] for name in names]
+
     # expected values
-    for i, (vals, col, ms) in enumerate(zip(values[::-1], color_sequence[:n_graphs][::-1],
+    for i, (vals, col, ms) in enumerate(zip(values[::-1], _color_sequence[:n_graphs][::-1],
             marker_sequence[:n_graphs][::-1])):
         y_vals = vals["significance"]
         if show_p_values:
@@ -325,11 +332,10 @@ def plot_significance_scans_1d(
             draw_objs.insert(1, sig_label)
 
     # legend
-    legend_cols = int(math.ceil(len(legend_entries) / 4.))
-    legend_rows = min(len(legend_entries), 4)
-    legend = r.routines.create_legend(pad=pad, y2=-20, width=legend_cols * 160, n=legend_rows,
+    legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
+    legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
+    legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
         props={"NColumns": legend_cols, "TextSize": 18})
-    r.setup_legend(legend)
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
     legend_box = r.routines.create_legend_box(legend, pad, "tr",
@@ -338,10 +344,14 @@ def plot_significance_scans_1d(
 
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
+        y_offset = 40
+        if legend_cols == 3:
+            y_offset = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+        draw_objs.extend(create_model_parameters(model_parameters, pad,
+            y_offset=y_offset))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
+    cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad,
         postfix="" if paper else cms_postfix)
     draw_objs.extend(cms_labels)
 

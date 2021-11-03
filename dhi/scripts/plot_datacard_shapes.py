@@ -37,7 +37,7 @@ from dhi.util import (
     real_path, to_root_latex,
 )
 from dhi.plots.util import use_style
-from dhi.config import colors
+from dhi.config import colors, cms_postfix
 
 
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
@@ -487,7 +487,8 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, file_
     draw_objs1.insert(-1, legend_box)
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad1, layout="outside_horizontal")
+    cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="outside_horizontal",
+        pad=pad1)
     draw_objs1.extend(cms_labels)
 
     # campaign label

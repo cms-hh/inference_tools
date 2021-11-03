@@ -172,6 +172,27 @@ color_sequence += 10 * ["grey"]
 marker_sequence = [20, 21, 22, 23, 24, 25, 26, 32, 27, 33, 28, 34, 29, 30]
 marker_sequence += 10 * [20]
 
+# colors per entry in br_hh_names for deterministic channel colors
+br_hh_colors = DotDict(
+    root=DotDict(
+        bbbb="blue",
+        bbbb_boosted="pink",
+        bbbb_boosted_ggf="pink",
+        bbbb_boosted_vbf="cyan",
+        bbww="yellow",
+        bbzz="orange",
+        bbtt="red",
+        bbgg="green",
+        wwgg="light_green",
+        multilepton="purple",
+        Combined="grey",
+    ),
+)
+# aliases
+br_hh_colors.root["Combination"] = br_hh_colors.root.Combined
+br_hh_colors.root["bbzz4l"] = br_hh_colors.root.bbzz
+br_hh_colors.root["bbbb_low"] = br_hh_colors.root.bbbb
+
 # cumulative, inverse chi2 values in a mapping "n_dof -> n_sigma -> level"
 # for the geometrical determination of errors of nll curves
 # (computed with "sp.stats.chi2.ppf(g, n_dof)" with g being the gaussian intervals)
