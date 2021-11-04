@@ -11,7 +11,9 @@ import numpy as np
 from dhi.config import poi_data, campaign_labels, colors, br_hh_names, cms_postfix
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, make_list, warn
 from dhi.plots.limits import evaluate_limit_scan_1d, _print_excluded_ranges
-from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
+from dhi.plots.likelihoods import (
+    _preprocess_values, evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d,
+)
 from dhi.plots.util import (
     use_style, create_model_parameters, invert_graph, get_contours, get_text_extent,
     locate_contour_labels,
@@ -89,13 +91,12 @@ def plot_exclusion_and_bestfit_1d(
     assert all("nll_values" in d for d in data)
     n = len(data)
     has_obs = any("observed_limits" in d for d in data)
-    scan_values = np.array(data[0]["expected_limits"][scan_parameter])
 
     # set default ranges
     if x_min is None:
-        x_min = min(scan_values)
+        x_min = min([min(d["expected_limits"][scan_parameter]) for d in data])
     if x_max is None:
-        x_max = max(scan_values)
+        x_max = max([max(d["expected_limits"][scan_parameter]) for d in data])
 
     # some constants for plotting
     pad_width = pad_width or 800  # pixels
@@ -144,6 +145,7 @@ def plot_exclusion_and_bestfit_1d(
         for i, d in enumerate(data):
             if data_key not in d:
                 continue
+            scan_values = np.array(d[data_key][scan_parameter])
             scan = evaluate_limit_scan_1d(scan_values, d[data_key]["limit"], interpolation="linear")
             ranges = scan.excluded_ranges
             _print_excluded_ranges(scan_parameter, "{} {}, {}".format(poi, kind, d["name"]),
@@ -174,15 +176,23 @@ def plot_exclusion_and_bestfit_1d(
         # dummy legend entry
         legend_entries.append((h_dummy, " ", ""))
 
-    # best fit values
-    scans = [
-        evaluate_likelihood_scan_1d(
-            d["nll_values"][scan_parameter],
-            d["nll_values"]["dnll2"],
-            poi_min=d.get("scan_min"),
-        ) if d and d.get("nll_values") is not None else None
-        for d in data
-    ]
+    # perform scans to extract best fit values
+    scans = []
+    for d in data:
+        if not d or d.get("nll_values") is None:
+            scans.append(None)
+            continue
+
+        # preprocess values
+        poi_min = d.get("scan_min")
+        dnll2_values, poi_values = _preprocess_values(d["nll_values"]["dnll2"],
+            (poi, d["nll_values"][scan_parameter]), shift_negative_values=True,
+            min_is_external=poi_min is not None)
+
+        # evaluate the scan
+        scans.append(evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min))
+
+    # draw best fit values
     if any(scans):
         f = int(show_best_fit_error)
         g_bestfit = create_tgraph(n,

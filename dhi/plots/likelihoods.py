@@ -1200,7 +1200,7 @@ def plot_nuisance_likelihood_scans(
 
 
 def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True,
-        shift_negative_values=False, min_is_external=False, origin=None, epsilon=1e-8):
+        shift_negative_values=False, min_is_external=False, origin=None, epsilon=1e-5):
     # unpack data
     poi1, poi1_values = poi1_data
     poi2, poi2_values = poi2_data or (None, None)
@@ -1365,7 +1365,13 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
             # minimize
             objective = lambda x: abs(interp(x) - v)
             res = minimize_1d(objective, bounds)
-            return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
+
+            # retry once
+            success = lambda: res.status == 0 and (bounds[0] < res.x[0] < bounds[1])
+            if not success():
+                res = minimize_1d(objective, bounds)
+
+            return res.x[0] if success() else None
 
         return (
             minimize([poi_min, poi_values_max - 1e-4]),
@@ -1522,7 +1528,13 @@ def evaluate_likelihood_scan_2d(
             # minimize
             objective = lambda x: abs(_interp(x) - v)
             res = minimize_1d(objective, bounds)
-            return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
+
+            # retry once
+            success = lambda: res.status == 0 and (bounds[0] < res.x[0] < bounds[1])
+            if not success():
+                res = minimize_1d(objective, bounds)
+
+            return res.x[0] if success() else None
 
         return (
             minimize([poi_min, poi_values_max - 1e-4]),
