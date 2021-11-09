@@ -288,8 +288,8 @@ def plot_significance_scans_1d(
         _color_sequence = [br_hh_colors.root[name] for name in names]
 
     # expected values
-    for i, (vals, col, ms) in enumerate(zip(values[::-1], _color_sequence[:n_graphs][::-1],
-            marker_sequence[:n_graphs][::-1])):
+    for i, (vals, name, col, ms) in enumerate(zip(values, names, _color_sequence[:n_graphs],
+            marker_sequence[:n_graphs])):
         y_vals = vals["significance"]
         if show_p_values:
             y_vals = sp.stats.norm.sf(y_vals)
@@ -297,8 +297,7 @@ def plot_significance_scans_1d(
         r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": ms,
             "MarkerSize": 1.2}, color=colors[col])
         draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
-        name = names[n_graphs - i - 1]
-        legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
+        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)),
             "LP" if show_points else "L"))
         y_max_value = max(y_max_value, max(y_vals))
         y_min_value = min(y_min_value, min(y_vals))

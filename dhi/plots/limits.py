@@ -370,9 +370,9 @@ def plot_limit_scans(
         _color_sequence = [br_hh_colors.root[name] for name in names]
 
     # central values
-    for i, (ev, col, ms) in enumerate(zip(expected_values[::-1], _color_sequence[:n_graphs][::-1],
-            marker_sequence[:n_graphs][::-1])):
-        name = names[n_graphs - i - 1]
+    for i, (ev, name, col, ms) in enumerate(zip(expected_values, names, _color_sequence[:n_graphs],
+            marker_sequence[:n_graphs])):
+        # name = names[n_graphs - i - 1]
 
         # expected graph
         mask = ~np.isnan(ev["limit"])
@@ -380,13 +380,12 @@ def plot_limit_scans(
         scan_values = ev[scan_parameter][mask]
         n_nans = (~mask).sum()
         if n_nans:
-            print("WARNING: found {} NaN(s) in expected limit values at index {}".format(n_nans,
-                n_graphs - 1 - i))
+            print("WARNING: found {} NaN(s) in expected limit values at index {}".format(n_nans, i))
         g_exp = create_tgraph(mask.sum(), scan_values, limit_values)
         r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2,
             "LineStyle": 2 if has_obs else 1}, color=colors[col])
         draw_objs.append((g_exp, "SAME,CP" if show_points and not has_obs else "SAME,C"))
-        legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
+        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)),
             "LP" if show_points and not has_obs else "L"))
         y_max_value = max(y_max_value, max(limit_values))
         y_min_value = min(y_min_value, min(limit_values))
@@ -401,19 +400,19 @@ def plot_limit_scans(
 
         # observed graph
         if has_obs:
-            ov = observed_values[n_graphs - i - 1]
+            ov = observed_values[i]
             obs_mask = ~np.isnan(ov["limit"])
             obs_limit_values = ov["limit"][obs_mask]
             obs_scan_values = ov[scan_parameter][obs_mask]
             n_nans = (~obs_mask).sum()
             if n_nans:
                 print("WARNING: found {} NaN(s) in observed limit values at index {}".format(n_nans,
-                    n_graphs - 1 - i))
+                    i))
             g_obs = create_tgraph(obs_mask.sum(), obs_scan_values, obs_limit_values)
             r.setup_graph(g_obs, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
-                          color=colors[col])
+                color=colors[col])
             draw_objs.append((g_obs, "SAME,CP" if show_points else "SAME,C"))
-            legend_entries[0] = (g_obs, to_root_latex(br_hh_names.get(name, name)),
+            legend_entries[-1] = (g_obs, to_root_latex(br_hh_names.get(name, name)),
                 "LP" if show_points else "L")
             y_max_value = max(y_max_value, max(obs_limit_values))
             y_min_value = min(y_min_value, min(obs_limit_values))

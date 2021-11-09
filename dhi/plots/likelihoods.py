@@ -413,8 +413,7 @@ def plot_likelihood_scans_1d(
         _color_sequence = [br_hh_colors.root[d["name"]] for d in data]
 
     # perform scans and draw nll curves
-    for d, col, ms in zip(data[::-1], _color_sequence[:len(data)][::-1],
-            marker_sequence[:len(data)][::-1]):
+    for d, col, ms in zip(data, _color_sequence[:len(data)], marker_sequence[:len(data)]):
         # evaluate the scan, run interpolation and error estimation
         scan = evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"],
             poi_min=d["poi_min"])
@@ -427,7 +426,7 @@ def plot_likelihood_scans_1d(
         r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
         draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
-        legend_entries.insert(0, (g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])),
+        legend_entries.append((g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])),
             "LP" if show_points else "L"))
 
         # vertical line denoting the best fit value
@@ -441,8 +440,8 @@ def plot_likelihood_scans_1d(
         has_thy_err = len(theory_value) == 3
         if has_thy_err:
             # theory graph
-            g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1],
-                0, y_max_line - y_min)
+            g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1], 0,
+                y_max_line - y_min)
             r.setup_graph(g_thy, props={"LineColor": colors.red, "FillStyle": 1001,
                 "FillColor": colors.red_trans_50})
             draw_objs.insert(-len(data), (g_thy, "SAME,02"))
@@ -680,21 +679,21 @@ def plot_likelihood_scan_2d(
                 text = "{:f}".format(level * 100).rstrip("0").rstrip(".") + "%"
             else:
                 text = "{}#sigma".format(level)
-            label_width, label_height = get_text_extent(text, 16, 43)
+            label_width, label_height = get_text_extent(text, 18, 43)
             label_width *= px_to_x
             label_height *= py_to_y
 
             # calculate and store the position
             label_positions = locate_contour_labels(graphs, label_width, label_height, pad_width,
                 pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions,
-                label_offset=1.2)
+                label_offset=1.0)
             all_positions.extend(label_positions)
             pad.cd()
 
             # draw them
             for x, y, rot in label_positions:
                 sig_label = ROOT.TLatex(0., 0., text)
-                r.setup_latex(sig_label, props={"NDC": False, "TextSize": 18, "TextAlign": 21,
+                r.setup_latex(sig_label, props={"NDC": False, "TextSize": 16, "TextAlign": 21,
                     "TextColor": colors(col), "TextAngle": rot, "X": x, "Y": y})
                 draw_objs.append((sig_label, "SAME"))
 
@@ -895,7 +894,7 @@ def plot_likelihood_scans_2d(
         _color_sequence = [br_hh_colors.root[d["name"]] for d in data]
 
     # loop through data entries
-    for d, (cont1, cont2), col in zip(data[::-1], contours[::-1], _color_sequence[:len(data)][::-1]):
+    for d, (cont1, cont2), col in zip(data, contours, _color_sequence[:len(data)]):
         # evaluate the scan
         scan = evaluate_likelihood_scan_2d(
             d["values"][poi1], d["values"][poi2], d["values"]["dnll2"],
@@ -912,7 +911,7 @@ def plot_likelihood_scans_2d(
             r.setup_graph(g2, props={"LineWidth": 2, "LineStyle": 2, "LineColor": colors[col]})
             draw_objs.append((g2, "SAME,C"))
         name = to_root_latex(br_hh_names.get(d["name"], d["name"]))
-        legend_entries.insert(-1, (g1, name, "L"))
+        legend_entries.append((g1, name, "L"))
 
         # best fit point
         if scan:
