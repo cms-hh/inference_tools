@@ -395,7 +395,7 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, file_
     h_dummy1 = ROOT.TH1F("dummy1", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy1, pad=pad1, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
     r.setup_x_axis(h_dummy1.GetXaxis(), pad=pad1, props=x_props)
-    r.setup_y_axis(h_dummy1.GetYaxis(), pad=pad1, props={"TitleOffset": 1.6})
+    r.setup_y_axis(h_dummy1.GetYaxis(), pad=pad1, props={"TitleOffset": 1.6, "MoreLogLabels": True})
     draw_objs1.append((h_dummy1, "HIST"))
     if plot_syst:
         r.setup_x_axis(h_dummy1.GetXaxis(), pad1, props={"Title": "", "LabelSize": 0})

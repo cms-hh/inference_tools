@@ -165,7 +165,9 @@ colors = DotDict(
 )
 
 # color sequence for plots with multiple elements
-color_sequence = ["blue", "red", "green", "grey", "pink", "cyan", "orange", "light_green", "yellow"]
+color_sequence = [
+    "blue", "green", "orange", "cyan", "red_cream", "grey", "pink", "light_green", "yellow",
+]
 color_sequence += 10 * ["grey"]
 
 # marker sequence for plots with multiple elements
