@@ -193,6 +193,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         significant=False,
         description="show points of central limit values; default: False",
     )
+    save_exclusion_ranges = luigi.BoolParameter(default=False, description="save exclusion ranges in an additional output; default: False")
 
     z_min = None
     z_max = None
@@ -229,6 +230,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         ]
 
     def output(self):
+        outputs = {}
         # additional postfix
         parts = []
         if self.xsec in ["pb", "fb"]:
@@ -239,7 +241,10 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
             parts.append("log")
 
         names = self.create_plot_names(["limits", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+        if self.save_exclusion_ranges:
+            outputs["exclusion_ranges"] = self.local_target("exclusion_ranges_{}.json".format(self.get_output_postfix()))
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -249,7 +254,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         import numpy as np
 
         # prepare the output
-        outputs = self.output()
+        outputs = self.output()["plots"]
         outputs[0].parent.touch()
 
         # load limit values
@@ -332,6 +337,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
             paper=self.paper,
+            save_exclusion_ranges=self.output()["exclusion_ranges"].path if self.save_exclusion_ranges else None,
         )
 
     def load_scan_data(self, inputs):
@@ -370,6 +376,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         ]
 
     def output(self):
+        outputs = {}
         # additional postfix
         parts = []
         if self.xsec in ["pb", "fb"]:
@@ -380,7 +387,10 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
             parts.append("log")
 
         names = self.create_plot_names(["multilimits", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+        if self.save_exclusion_ranges:
+            outputs["exclusion_ranges"] = self.local_target("exclusion_ranges_{}.json".format(self.get_output_postfix()))
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -390,7 +400,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         import numpy as np
 
         # prepare the output
-        outputs = self.output()
+        outputs = self.output()["plots"]
         outputs[0].parent.touch()
 
         # load limit values
@@ -479,6 +489,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
             paper=self.paper,
+            save_exclusion_ranges=self.output()["exclusion_ranges"].path if self.save_exclusion_ranges else None,
         )
 
 

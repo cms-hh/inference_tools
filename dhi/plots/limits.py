@@ -4,6 +4,7 @@
 Limit plots using ROOT.
 """
 
+import json
 import math
 import traceback
 
@@ -47,6 +48,7 @@ def plot_limit_scan(
     campaign=None,
     show_points=False,
     paper=False,
+    save_exclusion_ranges=None,
 ):
     """
     Creates a plot for the upper limit scan of a *poi* over a *scan_parameter* and saves it at
@@ -67,7 +69,8 @@ def plot_limit_scan(
     parameters. *campaign* should refer to the name of a campaign label defined in
     *dhi.config.campaign_labels*. When *show_points* is *True*, the central scan points are drawn
     on top of the interpolated curve. When *paper* is *True*, certain plot configurations are
-    adjusted for use in publications.
+    adjusted for use in publications. When *save_exclusion_ranges* is set, the exclusion range is
+    saved to the given file.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#limit-on-poi-vs-scan-parameter
     """
@@ -167,6 +170,16 @@ def plot_limit_scan(
         theory_values[scan_parameter] if has_thy else None,
         theory_values["xsec"] if has_thy else None,
     )
+    if save_exclusion_ranges is not None:
+        assert isinstance(save_exclusion_ranges, str)
+        excluded_ranges = excluded_ranges_to_json(scan_parameter, poi + " expected",
+            expected_values[scan_parameter],
+            expected_values["limit"],
+            theory_values[scan_parameter] if has_thy else None,
+            theory_values["xsec"] if has_thy else None,
+        )
+        with open(save_exclusion_ranges, "a") as f:
+            f.write(json.dumps(excluded_ranges, indent=4))
 
     # observed values
     if observed_values is not None:
@@ -183,6 +196,16 @@ def plot_limit_scan(
             theory_values[scan_parameter] if has_thy else None,
             theory_values["xsec"] if has_thy else None,
         )
+        if save_exclusion_ranges is not None:
+            assert isinstance(save_exclusion_ranges, str)
+            excluded_ranges = excluded_ranges_to_json(scan_parameter, poi + " expected",
+                expected_values[scan_parameter],
+                expected_values["limit"],
+                theory_values[scan_parameter] if has_thy else None,
+                theory_values["xsec"] if has_thy else None,
+            )
+            with open(save_exclusion_ranges, "a") as f:
+                f.write(json.dumps(excluded_ranges, indent=4))
 
     # get theory prediction limits
     if has_thy:
@@ -280,6 +303,7 @@ def plot_limit_scans(
     campaign=None,
     show_points=True,
     paper=False,
+    save_exclusion_ranges=None,
 ):
     """
     Creates a plot showing multiple upper limit scans of a *poi* over a *scan_parameter* and saves
@@ -302,6 +326,7 @@ def plot_limit_scans(
     *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
     When *show_points* is *True*, the central scan points are drawn on top of the interpolated
     curve. When *paper* is *True*, certain plot configurations are adjusted for use in publications.
+    When *save_exclusion_ranges* is set, the exclusion ranges are saved to the given file.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-on-poi-vs-scan-parameter
     """
@@ -369,6 +394,8 @@ def plot_limit_scans(
     if all(name in br_hh_colors.root for name in names):
         _color_sequence = [br_hh_colors.root[name] for name in names]
 
+
+    multi_exclusion_ranges = {}
     # central values
     for i, (ev, name, col, ms) in enumerate(zip(expected_values, names, _color_sequence[:n_graphs],
             marker_sequence[:n_graphs])):
@@ -397,6 +424,17 @@ def plot_limit_scans(
             theory_values[scan_parameter] if has_thy else None,
             theory_values["xsec"] if has_thy else None,
         )
+        if save_exclusion_ranges is not None:
+            assert isinstance(save_exclusion_ranges, str)
+            multi_exclusion_ranges.update(
+                    excluded_ranges_to_json(scan_parameter, "{}, {}, expected".format(poi, name),
+                    scan_values,
+                    limit_values,
+                    theory_values[scan_parameter] if has_thy else None,
+                    theory_values["xsec"] if has_thy else None,
+                    custom_name=name,
+                )
+            )
 
         # observed graph
         if has_obs:
@@ -424,6 +462,21 @@ def plot_limit_scans(
                 theory_values[scan_parameter] if has_thy else None,
                 theory_values["xsec"] if has_thy else None,
             )
+            if save_exclusion_ranges is not None:
+                assert isinstance(save_exclusion_ranges, str)
+                multi_exclusion_ranges.update(
+                    excluded_ranges_to_json(scan_parameter, "{}, {}, observed".format(poi, name),
+                        obs_scan_values,
+                        obs_limit_values,
+                        theory_values[scan_parameter] if has_thy else None,
+                        theory_values["xsec"] if has_thy else None,
+                        custom_name=name,
+                    )
+                )
+
+    if save_exclusion_ranges is not None:
+        with open(save_exclusion_ranges, "a") as f:
+            f.write(json.dumps(multi_exclusion_ranges, indent=4))
 
     # add additional legend entries to distinguish expected and observed lines
     if has_obs:
@@ -1326,8 +1379,7 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
     )
 
 
-def print_excluded_ranges(param_name, scan_name, scan_values, limit_values, xsec_scan_values=None,
-        xsec_values=None, interpolation="linear"):
+def get_excluded_ranges(scan_values, limit_values, xsec_scan_values=None, xsec_values=None, interpolation="linear"):
     # more than 5 points are required
     if len(scan_values) <= 5:
         print("insufficient number of scan points for extracting excluded ranges")
@@ -1345,8 +1397,14 @@ def print_excluded_ranges(param_name, scan_name, scan_values, limit_values, xsec
         print("1D limit scan evaluation failed")
         traceback.print_exc()
         return
+    return ranges
 
-    _print_excluded_ranges(param_name, scan_name, scan_values, ranges, interpolation)
+
+def print_excluded_ranges(param_name, scan_name, scan_values, limit_values, xsec_scan_values=None,
+        xsec_values=None, interpolation="linear"):
+    ranges = get_excluded_ranges(scan_values, limit_values, xsec_scan_values=xsec_scan_values, xsec_values=xsec_values, interpolation=interpolation)
+    if ranges is not None:
+        _print_excluded_ranges(param_name, scan_name, scan_values, ranges, interpolation)
 
 
 def _print_excluded_ranges(param_name, scan_name, scan_values, ranges, interpolation):
@@ -1398,3 +1456,22 @@ def _print_excluded_ranges(param_name, scan_name, scan_values, ranges, interpola
     for start, stop in ranges:
         print("  - " + format_range(start, stop))
     print("")
+
+
+def excluded_ranges_to_json(param_name, scan_name, scan_values, limit_values, xsec_scan_values=None,
+        xsec_values=None, interpolation="linear", custom_name=""):
+    ranges = get_excluded_ranges(scan_values, limit_values, xsec_scan_values=xsec_scan_values, xsec_values=xsec_values, interpolation=interpolation)
+    key = custom_name or param_name
+    if ranges is not None:
+        for start, stop in ranges:
+            if len(ranges) == 2:
+                ret = (ranges[0][1], ranges[1][0])
+            else:
+                assert len(ranges) == 1
+                if start == scan_values.min() or start == scan_values.max():
+                    ret = (stop,)
+                else:
+                    ret = (start,)
+    else:
+        ret = (np.nan, np.nan)
+    return {key: ret}
