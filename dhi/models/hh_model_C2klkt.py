@@ -31,7 +31,8 @@ class GGFSample(HHSample):
     Class describing ggf samples, characterized by values of *kl*, *kt* and *C2*.
     """
 
-    label_re = r"^ggHH_kl_([pm0-9]+)_kt_([pm0-9]+)_c2_([pm0-9]+)$"
+    # label format
+    label_re = r"^ggHH_kl_(m?\d+p\d{2})_kt_(m?\d+p\d{2})_c2_(m?\d+p\d{2})$"
 
     def __init__(self, kl, kt, C2, xs, label):
         super(GGFSample, self).__init__(xs, label)

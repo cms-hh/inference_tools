@@ -67,7 +67,7 @@ class HHSample(object):
     def __init__(self, xs, label):
         super(HHSample, self).__init__()
 
-        # check the label
+        # check if the label matches the format
         if not re.match(self.label_re, label):
             raise Exception("{} label '{}' does not match configured format {}".format(
                 self.__class__.__name__, label, self.label_re))
@@ -77,9 +77,9 @@ class HHSample(object):
 
     def matches_process(self, process):
         """
-        Returns *True* when the *process* matches the sample label, and *False* otherwise.
+        Returns *True* if *process* matches the sample :py:attr:`label`, and *False* otherwise.
         """
-        return process.startswith(self.label)
+        return process == self.label or process.startswith(self.label + "_")
 
 
 class GGFSample(HHSample):
@@ -87,6 +87,7 @@ class GGFSample(HHSample):
     Class describing ggf samples, characterized by values of *kl* and *kt*.
     """
 
+    # label format
     label_re = r"^ggHH_kl_([pm0-9]+)_kt_([pm0-9]+)$"
 
     def __init__(self, kl, kt, xs, label):
@@ -101,6 +102,7 @@ class VBFSample(HHSample):
     Class describing vbf samples, characterized by values of *CV* (kV), *C2V* (k2V) and *kl*.
     """
 
+    # label format
     label_re = r"qqHH_CV_([pm0-9]+)_C2V_([pm0-9]+)_kl_([pm0-9]+)$"
 
     def __init__(self, CV, C2V, kl, xs, label):
@@ -116,6 +118,7 @@ class VHHSample(HHSample):
     Class describing vhh samples, characterized by values of *CV* (kV), *C2V* (k2V) and *kl*.
     """
 
+    # label format
     label_re = r"VHH_CV_([pm0-9]+)_C2V_([pm0-9]+)_kl_([pm0-9]+)$"
 
     def __init__(self, CV, C2V, kl, xs, label):

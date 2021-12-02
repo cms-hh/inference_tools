@@ -156,7 +156,6 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --saveNLL"
-            " --X-rtd REMOVE_CONSTANT_ZERO_POINT=1"
             " {snapshot_args}"
             " {self.combine_optimization_args}"
             " {branch_opts}"
