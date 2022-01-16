@@ -246,7 +246,7 @@ class GGFFormula(HHFormula):
         ])
 
         # the vector of couplings
-        kl, kt, box, tri, interf = sympy.symbols("kl kt box tri interf")
+        kl, kt = sympy.symbols("kl kt")
         c = sympy.Matrix([
             [kt**4],
             [kt**2 * kl**2],
@@ -291,7 +291,7 @@ class VBFFormula(HHFormula):
         ])
 
         # the vector of couplings
-        CV, C2V, kl, a, b, c, iab, iac, ibc = sympy.symbols("CV C2V kl a b c iab iac ibc")
+        CV, C2V, kl = sympy.symbols("CV C2V kl")
         c = sympy.Matrix([
             [CV**2 * kl**2],
             [CV**4],

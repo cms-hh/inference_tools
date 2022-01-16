@@ -87,7 +87,7 @@ class GGFFormula(HHFormula):
         ])
 
         # the vector of couplings
-        kl, kt, C2, box, tria, cross, itc, ibc, itb = sympy.symbols("kl kt C2 box tria cross itc ibc itb")
+        kl, kt, C2 = sympy.symbols("kl kt C2")
         c = sympy.Matrix([
             [kt**2 * kl**2],
             [kt**4],
