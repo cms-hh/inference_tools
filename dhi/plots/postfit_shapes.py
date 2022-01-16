@@ -327,9 +327,12 @@ def plot_s_over_b(
     hist_sb1.Add(hist_b1)
     hist_sb1.Add(hist_s1)
 
-    # print the 25 highest sob values
-    highest_sobs = list(map("{:.4f}".format, sorted(sob_values)[-25:]))
+    # print the 10 highest and lowest sob values
+    sorted_sobs = sorted(sob_values)
+    highest_sobs = list(map("{:+.4f}".format, sorted_sobs[-10:]))
+    lowest_sobs = list(map("{:+.4f}".format, sorted_sobs[:10]))
     print("{} highest log s-over-b values: {}".format(len(highest_sobs), ", ".join(highest_sobs)))
+    print("{} lowest  log s-over-b values: {}".format(len(lowest_sobs), ", ".join(lowest_sobs)))
 
     # fill remaining objects
     for i in range(hist_sb1.GetNbinsX()):

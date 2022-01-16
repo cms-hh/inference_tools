@@ -27,6 +27,8 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
     allow_parameter_values_in_pois = True
     run_command_in_tmp = True
 
+    exclude_params_req_get = {"start_branch", "end_branch", "branches"}
+
     @classmethod
     def req_params(cls, *args, **kwargs):
         prefer_cli = kwargs.get("_prefer_cli", None)
