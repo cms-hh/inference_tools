@@ -1173,7 +1173,7 @@ class HHModel(HHModelBase):
 
     def getYieldScale(self, bin, process):
         """
-        Hook called by the super class to determine the scaling, or an expressions modeling the
+        Hook called by the super class to determine the scaling, or an expression modeling the
         scaling of a *process* in a specific datacard *bin*.
 
         Here, we distinguish several cases, depending on which type of process is considered:
