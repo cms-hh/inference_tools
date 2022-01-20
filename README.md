@@ -1,6 +1,6 @@
 # HH Inference Tools
 
-[![Documentation badge](https://img.shields.io/badge/Documentation-passing-brightgreen)](http://cms-hh.web.cern.ch/cms-hh/tools/inference/index.html) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Documentation badge](https://img.shields.io/badge/Documentation-passing-brightgreen)](http://cms-hh.web.cern.ch/cms-hh/tools/inference/index.html)
 
 
 ## Cloning the repository
@@ -40,7 +40,7 @@ source setup.sh some_name
 
 where the value of `some_name` is your choice, and the script interactively guides you through the quick setup process.
 To use the same configuration the next time, **make sure to use the same value you passed before**.
-Internally, a file `.setups/some_name.sh` is created which contains export statements line by lines that you can be update anytime.
+Internally, a file `.setups/some_name.sh` is created which contains export statements line by line that you can be update anytime.
 
 
 #### Integrating the `datacards_run2` repository

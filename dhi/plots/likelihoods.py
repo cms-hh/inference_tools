@@ -608,8 +608,13 @@ def plot_likelihood_scan_2d(
 
         # get the z range
         dnll2 = np.array(_values["dnll2"])
-        _z_min = np.nanmin(dnll2) or (0.1 * dnll2[dnll2 > 0].min())
+        _z_min = np.nanmin(dnll2)
         _z_max = np.nanmax(dnll2)
+
+        # when there is no negative value, shift zeros to 0.1 of the smallest, non-zero value
+        if _z_min == 0:
+            _z_min = 0.1 * dnll2[dnll2 > 0].min()
+            dnll2[dnll2 == 0] = _z_min
 
         # infer axis limits from the first set of values
         if i == 0:
@@ -624,7 +629,7 @@ def plot_likelihood_scan_2d(
         # white pixels
         z_min_fill = z_min
         nan_mask = np.isnan(dnll2)
-        if not interpolate_nans and nan_mask.sum():
+        if nan_mask.sum() and not interpolate_nans:
             warn(
                 "WARNING: {} NaN(s) will be drawn as white pixels; consider enabling NaN "
                 "interpolation (--interpolate-nans when triggered by a law task)".format(
