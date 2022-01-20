@@ -233,7 +233,8 @@ def plot_likelihood_scan_1d(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
+        layout="outside_horizontal")
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -473,8 +474,8 @@ def plot_likelihood_scans_1d(
             y_offset=y_offset))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-        postfix="" if paper else cms_postfix)
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
+        layout="outside_horizontal")
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -769,7 +770,8 @@ def plot_likelihood_scan_2d(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
+        layout="outside_horizontal")
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -959,8 +961,8 @@ def plot_likelihood_scans_2d(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-        postfix="" if paper else cms_postfix)
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
+        layout="outside_horizontal")
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -1181,8 +1183,8 @@ def plot_nuisance_likelihood_scans(
             draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-            postfix="" if paper else cms_postfix)
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
+            layout="outside_horizontal")
         draw_objs.extend(cms_labels)
 
         # campaign label

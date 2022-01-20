@@ -142,7 +142,8 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         draw_objs.append(model_label)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="outside_horizontal", pad=pad)
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix=cms_postfix,
+            layout="outside_horizontal")
         draw_objs.extend(cms_labels)
 
         # draw all objects
@@ -331,8 +332,8 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
         draw_objs.append(legend)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="outside_horizontal",
-            pad=pad)
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix=cms_postfix,
+            layout="outside_horizontal")
         draw_objs.extend(cms_labels)
 
         # bin label
@@ -453,8 +454,8 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
         draw_objs.append(legend)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="outside_horizontal",
-            pad=pad)
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix=cms_postfix,
+            layout="outside_horizontal")
         draw_objs.extend(cms_labels)
 
         # bin label

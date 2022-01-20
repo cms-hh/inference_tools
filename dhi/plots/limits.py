@@ -242,7 +242,8 @@ def plot_limit_scan(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
+        layout="outside_horizontal")
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -486,8 +487,8 @@ def plot_limit_scans(
             y_offset=y_offset))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad,
-        postfix="" if paper else cms_postfix)
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
+        layout="outside_horizontal")
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -816,7 +817,8 @@ def plot_limit_points(
     draw_objs.append(legend)
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
+        layout="outside_horizontal")
     draw_objs.extend(cms_labels)
 
     # energy label
@@ -1064,7 +1066,8 @@ def plot_limit_scan_2d(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
+        layout="outside_horizontal")
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -1223,7 +1226,8 @@ def plot_benchmark_limits(
     draw_objs.append(legend)
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
+        layout="outside_horizontal")
     draw_objs.extend(cms_labels)
 
     # campaign label

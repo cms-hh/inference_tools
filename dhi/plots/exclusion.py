@@ -259,7 +259,8 @@ def plot_exclusion_and_bestfit_1d(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
+        layout="outside_horizontal")
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -581,7 +582,8 @@ def plot_exclusion_and_bestfit_2d(
         draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
+        layout="outside_horizontal")
     draw_objs.extend(cms_labels)
 
     # campaign label
