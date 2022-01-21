@@ -354,7 +354,9 @@ def plot_pulls_impacts(
             draw_objs.append(fit_label)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix)
+        _cms_postfix = "" if paper else cms_postfix
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
+            layout="inside_vertical")
         draw_objs.extend(cms_labels)
 
         # campaign label

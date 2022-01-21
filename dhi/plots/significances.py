@@ -179,14 +179,19 @@ def plot_significance_scan_1d(
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
-        layout="outside_horizontal")
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -342,18 +347,18 @@ def plot_significance_scans_1d(
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
-    # model parameter labels
-    if model_parameters:
-        y_offset = 40
-        if legend_cols == 3:
-            y_offset = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
-        draw_objs.extend(create_model_parameters(model_parameters, pad,
-            y_offset=y_offset))
-
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
         layout="outside_horizontal")
     draw_objs.extend(cms_labels)
+
+    # model parameter labels
+    if model_parameters:
+        param_kwargs = {}
+        if legend_cols == 3:
+            param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -517,14 +522,19 @@ def plot_significance_scan_2d(
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
 
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix,
-        layout="outside_horizontal")
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
