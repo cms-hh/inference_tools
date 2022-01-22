@@ -11,7 +11,7 @@ repo_name: hh/tools/inference
 repo_url: https://gitlab.cern.ch/hh/tools/inference
 
 use_directory_urls: false
-copyright: Copyright &copy; 2020-2021
+copyright: Copyright &copy; 2020-2022
 
 theme:
   name: material

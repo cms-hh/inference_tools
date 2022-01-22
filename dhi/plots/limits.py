@@ -1466,7 +1466,7 @@ def excluded_to_allowed_ranges(excluded_ranges, min_value, max_value):
     """
     Converts a list *ranges* of 2-tuples with edges referring to excluded ranges to allowed ones,
     taking into account the endpoints given by *min_value* and *max_value*. An open range is denoted
-    by a *None*. This, (*None*, *None*) would mean that the entire range is allowed.
+    by a *None*. Thus, (*None*, *None*) would mean that the entire range is allowed.
     """
     # shorthands
     e_ranges = excluded_ranges
