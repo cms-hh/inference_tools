@@ -1468,9 +1468,11 @@ def excluded_to_allowed_ranges(excluded_ranges, min_value, max_value):
     taking into account the endpoints given by *min_value* and *max_value*. An open range is denoted
     by a *None*. Thus, (*None*, *None*) would mean that the entire range is allowed.
     """
-    # shorthands
+    # shorthands and checks
     e_ranges = excluded_ranges
     a_ranges = []
+    min_value = float(min_value)
+    max_value = float(max_value)
 
     # excluded_ranges might mark open ends with None's as well, so before linearizing values,
     # replace them with the global endpoints
@@ -1481,7 +1483,7 @@ def excluded_to_allowed_ranges(excluded_ranges, min_value, max_value):
             e_ranges[-1] = (e_ranges[-1][0], max_value)
 
     # linearize excluded ranges (assuming edges are always reasonably far apart)
-    e_edges = sum(map(list, excluded_ranges), [])
+    e_edges = map(float, sum(map(list, excluded_ranges), []))
 
     # loop through adjacent pairs and create allowed ranges in an alternating fashion
     for i, (start, stop) in enumerate(zip(e_edges[:-1], e_edges[1:])):

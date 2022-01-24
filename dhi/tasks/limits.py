@@ -248,7 +248,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         outputs["plots"] = [self.local_target(name) for name in names]
 
         if self.save_ranges:
-            outputs["ranges"] = self.local_target("ranges_{}.json".format(
+            outputs["ranges"] = self.local_target("ranges__{}.json".format(
                 self.get_output_postfix()))
 
         return outputs
@@ -398,7 +398,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         outputs["plots"] = [self.local_target(name) for name in names]
 
         if self.save_ranges:
-            outputs["ranges"] = self.local_target("ranges_{}.json".format(
+            outputs["ranges"] = self.local_target("ranges__{}.json".format(
                 self.get_output_postfix()))
 
         return outputs
@@ -533,7 +533,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         outputs["plots"] = [self.local_target(name) for name in names]
 
         if self.save_ranges:
-            outputs["ranges"] = self.local_target("ranges_{}.json".format(
+            outputs["ranges"] = self.local_target("ranges__{}.json".format(
                 self.get_output_postfix()))
 
         return outputs
