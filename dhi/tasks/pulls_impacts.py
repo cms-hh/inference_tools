@@ -19,7 +19,7 @@ from dhi.datacard_tools import get_workspace_parameters
 class PullsAndImpactsBase(POITask, SnapshotUser):
 
     method = luigi.ChoiceParameter(
-        choices=("default", "hesse"),
+        choices=("default", "hesse", "robust"),
         default="default",
         description="the computation method; 'default' means no approximation; "
         "choices: default,hesse,robust; default: default",
@@ -130,7 +130,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         # the default fit result
         outputs = {"result": self.local_target(name("fit"))}
 
-        # additional multidimfit file for branch 0 (needs --saveFitResult)
+        # additional multidimfit file for branch 0 (needs --saveFitResult or --robustHesse)
         if self.branch == 0:
             outputs["multidimfit"] = self.local_target(name("multidimfit"))
 
@@ -177,6 +177,14 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
                 " --saveInactivePOI 1"
                 " --saveFitResult"
             )
+        elif self.method == "robust":
+            # setup a single fit
+            branch_opts = (
+                " --algo none"
+                " --floatOtherPOIs 1"
+                " --saveInactivePOI 1"
+                " --robustHesse 1"
+            )
         else:
             raise NotImplementedError
 
@@ -188,9 +196,11 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             output=outputs["result"].path,
         )
         if self.branch == 0:
+            mdf_file = "robustHesseTest.root" if self.method == "robust" else "multidimfitTest.root"
             mv_cmd += (
-                " && mv multidimfitTest.root {output}"
+                " && mv {mdf_file} {output}"
             ).format(
+                mdf_file=mdf_file,
                 output=outputs["multidimfit"].path,
             )
 
@@ -317,6 +327,11 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             fit_results = self.load_hesse_fits(inputs[0]["multidimfit"], poi,
                 [poi] + self.get_selected_parameters(params))
 
+        elif self.method == "robust":
+            # load all parameter fits from the robustHesse result
+            fit_results = self.load_robust_fits(inputs[0]["multidimfit"], poi,
+                [poi] + self.get_selected_parameters(params))
+
         else:
             raise NotImplementedError
 
@@ -385,23 +400,52 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
     @classmethod
     def load_hesse_fits(cls, target, poi, params):
-        # bluntly copied from CombineHarvester/CombineTools/python/combine/utils.py
+        res = OrderedDict()
+
+        # load the roofit result
         with target.load(formatter="root") as f:
             rfr = f.Get("fit_mdf")
 
-        # check the fit status
-        if rfr.covQual() != 3:
-            raise Exception("inaccurate covariance matrix")
+            # check the fit status
+            if rfr.covQual() != 3:
+                raise Exception("inaccurate covariance matrix")
 
+            # load the fit results per parameter
+            # logic bluntly copied from CombineHarvester/CombineTools/python/combine/utils.py
+            for param in params:
+                res[param] = OrderedDict()
+                for p in [poi, param]:
+                    pj = rfr.floatParsFinal().find(p)
+                    vj = pj.getVal()
+                    ej = pj.getError()
+                    c = rfr.correlation(param, p)
+                    res[param][p] = np.array([vj, vj - ej * c, vj + ej * c])
+
+        return res
+
+    @classmethod
+    def load_robust_fits(cls, target, poi, params):
         res = OrderedDict()
-        for param in params:
-            res[param] = OrderedDict()
-            for p in [poi, param]:
-                pj = rfr.floatParsFinal().find(p)
-                vj = pj.getVal()
-                ej = pj.getError()
-                c = rfr.correlation(param, p)
-                res[param][p] = np.array([vj, vj - ej * c, vj + ej * c])  # order changed w.r.t. CH
+
+        # load the roofit result
+        with target.load(formatter="root") as f:
+            float_params = f.Get("floatParsFinal")
+            corr = f.Get("h_correlation")
+
+            # load the fit results per parameter
+            # logic bluntly copied from CombineHarvester/CombineTools/python/combine/utils.py
+            for param in params:
+                if not float_params.find(param):
+                    continue
+                res[param] = OrderedDict()
+                idx_p = corr.GetXaxis().FindBin(param)
+                for p in [poi, param]:
+                    pj = float_params.find(p)
+                    vj = pj.getVal()
+                    ej = pj.getError()
+                    idx = corr.GetXaxis().FindBin(p)
+                    c = corr.GetBinContent(idx_p, idx)
+                    res[param][p] = np.array([vj, vj - ej * c, vj + ej * c])
 
         return res
 
