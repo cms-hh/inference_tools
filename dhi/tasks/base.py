@@ -451,6 +451,7 @@ class CommandTask(AnalysisTask):
     exclude_params_req = {"custom_args"}
 
     run_command_in_tmp = False
+    cleanup_tmp_on_error = False
 
     def build_command(self):
         # this method should build and return the command to run
@@ -486,6 +487,7 @@ class CommandTask(AnalysisTask):
             highlighted_cmd = law.util.colored(cmd, "cyan")
 
         # when no cwd was set and run_command_in_tmp is True, create a tmp dir
+        tmp_dir = None
         if "cwd" not in kwargs and self.run_command_in_tmp:
             tmp_dir = law.LocalDirectoryTarget(is_tmp=True)
             tmp_dir.touch()
@@ -500,7 +502,16 @@ class CommandTask(AnalysisTask):
 
         # raise an exception when the call failed and optional is not True
         if p.returncode != 0 and not optional:
-            raise Exception("command failed with exit code {}: {}".format(p.returncode, cmd))
+            # when requested, make the tmp_dir non-temporary to allow for checks later on
+            if tmp_dir and not self.cleanup_tmp_on_error:
+                tmp_dir.is_tmp = False
+
+            # raise exception
+            msg = "command execution failed"
+            msg += "\nexit code: {}".format(p.returncode)
+            msg += "\ncwd      : {}".format(kwargs.get("cwd", os.getcwd()))
+            msg += "\ncommand  : {}".format(cmd)
+            raise Exception(msg)
 
         return p
 
