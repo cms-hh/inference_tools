@@ -327,9 +327,12 @@ def plot_s_over_b(
     hist_sb1.Add(hist_b1)
     hist_sb1.Add(hist_s1)
 
-    # print the 25 highest sob values
-    highest_sobs = list(map("{:.4f}".format, sorted(sob_values)[-25:]))
+    # print the 10 highest and lowest sob values
+    sorted_sobs = sorted(sob_values)
+    highest_sobs = list(map("{:+.4f}".format, sorted_sobs[-10:]))
+    lowest_sobs = list(map("{:+.4f}".format, sorted_sobs[:10]))
     print("{} highest log s-over-b values: {}".format(len(highest_sobs), ", ".join(highest_sobs)))
+    print("{} lowest  log s-over-b values: {}".format(len(lowest_sobs), ", ".join(lowest_sobs)))
 
     # fill remaining objects
     for i in range(hist_sb1.GetNbinsX()):
@@ -402,15 +405,19 @@ def plot_s_over_b(
         r.fill_legend(legend_procs, legend_entries_procs[::-1])
         draw_objs1.append(legend_procs)
 
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad1, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs1.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs1.extend(create_model_parameters(model_parameters, pad1))
-
-    # cms label
-    layout = "outside_horizontal" if backgrounds else "inside_vertical"
-    cms_labels = r.routines.create_cms_labels(layout=layout, pad=pad1,
-        postfix="" if paper else cms_postfix,)
-    draw_objs1.extend(cms_labels)
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs1.extend(create_model_parameters(model_parameters, pad1, **param_kwargs))
 
     # campaign label
     if campaign:

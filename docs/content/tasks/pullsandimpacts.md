@@ -68,13 +68,14 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 #### Example commands
 
-**1.** Execute `PullsAndImpacts` including all MC stats nuisances on HTCondor:
+**1.** Execute `PullsAndImpacts` including all MC stats nuisances on HTCondor, and pass `--robustFit 1` to combine:
 
-```shell hl_lines="5-6"
+```shell hl_lines="5-6´7"
 law run PlotPullsAndImpacts \
     --version dev \
     --datacards $DHI_EXAMPLE_CARDS \
     --pois r \
     --mc-stats \
+    --PullsAndImpacts-custom-args="--robustFit 1" \
     --PullsAndImpacts-workflow htcondor
 ```

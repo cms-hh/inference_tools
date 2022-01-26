@@ -10,7 +10,7 @@ Example usage:
 # (note the quotes)
 > extract_fit_result.py fit.root fit_b output.json --keep 'CMS_*'
 
-# extract variables from a fit result 'fit_b' except thise starting with 'CMS_'
+# extract variables from a fit result 'fit_b' except those starting with 'CMS_'
 # (note the quotes)
 > extract_fit_result.py fit.root fit_b output.json --skip 'CMS_*'
 

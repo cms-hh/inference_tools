@@ -180,7 +180,8 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
         draw_objs.insert(-1, legend_box)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="inside_vertical", pad=pad)
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix=cms_postfix,
+            layout="outside_horizontal")
         draw_objs.extend(cms_labels)
 
         # model parameters

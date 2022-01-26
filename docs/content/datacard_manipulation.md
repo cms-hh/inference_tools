@@ -689,9 +689,9 @@ positional arguments:
                         remove (starting at 1) with values 'A-B' being
                         interpreted as ranges from A to B (inclusive), a
                         simple expression 'PROCESS(<|>)THRESHOLD' (with
-                        special processes 'S', 'B', 'SB', 'SOB' and 'STN'
-                        being interpreted as combined signal, background,
-                        signal+background, signal/background, and
+                        special processes 'D', 'S', 'B', 'SB', 'SOB' and 'STN'
+                        being interpreted as data, combined signal,
+                        background, signal+background, signal/background, and
                         signal/sqrt(background)), or the location of a
                         function in the format 'module.func_name' with
                         signature (datacard_content, datacard_bin, histograms)
@@ -1033,7 +1033,7 @@ Example usage:
 # (note the quotes)
 > extract_fit_result.py fit.root fit_b output.json --keep 'CMS_*'
 
-# extract variables from a fit result 'fit_b' except thise starting with 'CMS_'
+# extract variables from a fit result 'fit_b' except those starting with 'CMS_'
 # (note the quotes)
 > extract_fit_result.py fit.root fit_b output.json --skip 'CMS_*'
 

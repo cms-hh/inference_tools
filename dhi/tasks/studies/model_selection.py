@@ -20,8 +20,11 @@ from dhi.tasks.combine import (
     CombineDatacards,
 )
 from dhi.datacard_tools import create_datacard_instance
-from dhi.config import poi_data, color_sequence, cms_postfix
+from dhi.config import poi_data, colors, color_sequence, cms_postfix
 from dhi.util import import_ROOT, create_tgraph, to_root_latex
+
+
+colors = colors.root
 
 
 class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValuesTask):
@@ -69,7 +72,7 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         formula = getattr(model, "{}_formula".format(self.signal))
 
         # store scaling functions mapped to samples in the formula
-        scale_fns = OrderedDict(zip(formula.sample_list, formula.coeffs))
+        scale_fns = OrderedDict(zip(formula.samples, formula.coeffs))
 
         # create graphs
         graphs = []
@@ -122,7 +125,7 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         # write graphs
         for graph, label, col in zip(graphs, labels, color_sequence[: len(graphs)]):
             r.setup_graph(graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5},
-                color=col)
+                color=colors[col])
             draw_objs.append((graph, "SAME,PL"))
             legend_entries.append((graph, label))
 
@@ -139,7 +142,8 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         draw_objs.append(model_label)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="outside_horizontal", pad=pad)
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix=cms_postfix,
+            layout="outside_horizontal")
         draw_objs.extend(cms_labels)
 
         # draw all objects
@@ -208,7 +212,7 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
 
             # store signal names in order of model samples
             signal_names = []
-            for sample in formula.sample_list:
+            for sample in formula.samples:
                 for signal_name in dc.signals:
                     if signal_name.startswith(sample.label):
                         signal_names.append(signal_name)
@@ -315,7 +319,7 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
 
         # write histograms
         for hist, label, col in zip(hists, labels, color_sequence[: len(hists)]):
-            r.setup_hist(hist, props={"LineWidth": 1}, color=col, color_flags="lm")
+            r.setup_hist(hist, props={"LineWidth": 1}, color=colors[col], color_flags="lm")
             draw_objs.append((hist, "SAME,HIST,E"))
             legend_entries.append((hist, label))
 
@@ -328,7 +332,8 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
         draw_objs.append(legend)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="outside_horizontal", pad=pad)
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix=cms_postfix,
+            layout="outside_horizontal")
         draw_objs.extend(cms_labels)
 
         # bin label
@@ -436,7 +441,7 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
         # write graphs
         for graph, label, col in zip(graphs, labels, color_sequence[: len(graphs)]):
             r.setup_graph(graph, props={"LineWidth": 1, "MarkerStyle": 20, "MarkerSize": 0.5},
-                color=col)
+                color=colors[col])
             draw_objs.append((graph, "SAME,PL"))
             legend_entries.append((graph, label))
 
@@ -449,7 +454,8 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
         draw_objs.append(legend)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="outside_horizontal", pad=pad)
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix=cms_postfix,
+            layout="outside_horizontal")
         draw_objs.extend(cms_labels)
 
         # bin label

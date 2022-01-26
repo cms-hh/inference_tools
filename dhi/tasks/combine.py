@@ -574,9 +574,6 @@ class DatacardTask(HHModelTask):
                 parts.append(p)
             store_dir = "__".join(p.replace(os.sep, "_") for p in parts)
 
-        # sort inject files
-        inject = sorted(inject)
-
         return datacards, inject, store_dir
 
     @classmethod

@@ -21,6 +21,8 @@ law.contrib.load(
     "cms", "git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks",
 )
 
+dhi_remote_job = str(os.getenv("DHI_REMOTE_JOB", "0")).lower() in ("1", "true", "yes")
+
 
 class BaseTask(law.Task):
 
@@ -301,7 +303,7 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         description="number of replicas to generate; default: 10",
     )
 
-    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2/*", "*~"]
+    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2/*", "*~", "*.pyc"]
 
     version = None
     task_namespace = None
@@ -450,7 +452,11 @@ class CommandTask(AnalysisTask):
     exclude_index = True
     exclude_params_req = {"custom_args"}
 
+    # by default, do not run in a tmp dir
     run_command_in_tmp = False
+
+    # by default, do not cleanup tmp dirs on error, except when running as a remote job
+    cleanup_tmp_on_error = dhi_remote_job
 
     def build_command(self):
         # this method should build and return the command to run
@@ -486,6 +492,7 @@ class CommandTask(AnalysisTask):
             highlighted_cmd = law.util.colored(cmd, "cyan")
 
         # when no cwd was set and run_command_in_tmp is True, create a tmp dir
+        tmp_dir = None
         if "cwd" not in kwargs and self.run_command_in_tmp:
             tmp_dir = law.LocalDirectoryTarget(is_tmp=True)
             tmp_dir.touch()
@@ -500,7 +507,16 @@ class CommandTask(AnalysisTask):
 
         # raise an exception when the call failed and optional is not True
         if p.returncode != 0 and not optional:
-            raise Exception("command failed with exit code {}: {}".format(p.returncode, cmd))
+            # when requested, make the tmp_dir non-temporary to allow for checks later on
+            if tmp_dir and not self.cleanup_tmp_on_error:
+                tmp_dir.is_tmp = False
+
+            # raise exception
+            msg = "command execution failed"
+            msg += "\nexit code: {}".format(p.returncode)
+            msg += "\ncwd      : {}".format(kwargs.get("cwd", os.getcwd()))
+            msg += "\ncommand  : {}".format(cmd)
+            raise Exception(msg)
 
         return p
 
@@ -601,6 +617,11 @@ class PlotTask(AnalysisTask):
         return None if value == -1000.0 else value
 
     def create_plot_names(self, parts):
+        plot_file_types = ["pdf", "png"]
+        if any(t not in plot_file_types for t in self.file_types):
+            raise Exception("plot names only allowed for file types {}, got {}".format(
+                ",".join(plot_file_types), ",".join(self.file_types)))
+
         if self.plot_postfix and self.plot_postfix != law.NO_STR:
             parts.append((self.plot_postfix,))
 

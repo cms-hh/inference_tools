@@ -12,8 +12,8 @@ import scipy.optimize
 from scinum import Number
 
 from dhi.config import (
-    poi_data, br_hh_names, campaign_labels, chi2_levels, colors, color_sequence, marker_sequence,
-    cms_postfix, get_chi2_level, get_chi2_level_from_cl,
+    poi_data, br_hh_names, br_hh_colors, campaign_labels, chi2_levels, colors, color_sequence,
+    marker_sequence, cms_postfix, get_chi2_level, get_chi2_level_from_cl,
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match, convert_rooargset,
@@ -228,13 +228,19 @@ def plot_likelihood_scan_1d(
         legend.AddEntry(*tpl)
     draw_objs.append(legend)
 
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -406,9 +412,14 @@ def plot_likelihood_scans_1d(
                     "NDC": False})
                 draw_objs.append(line)
 
+    # special case regarding color handling: when all entry names are valid keys in br_hh_colors,
+    # replace the default color sequence to deterministically assign same colors to channels
+    _color_sequence = color_sequence
+    if all(d["name"] in br_hh_colors.root for d in data):
+        _color_sequence = [br_hh_colors.root[d["name"]] for d in data]
+
     # perform scans and draw nll curves
-    for d, col, ms in zip(data[::-1], color_sequence[:len(data)][::-1],
-            marker_sequence[:len(data)][::-1]):
+    for d, col, ms in zip(data, _color_sequence[:len(data)], marker_sequence[:len(data)]):
         # evaluate the scan, run interpolation and error estimation
         scan = evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"],
             poi_min=d["poi_min"])
@@ -421,7 +432,7 @@ def plot_likelihood_scans_1d(
         r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
         draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
-        legend_entries.insert(0, (g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])),
+        legend_entries.append((g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])),
             "LP" if show_points else "L"))
 
         # vertical line denoting the best fit value
@@ -435,8 +446,8 @@ def plot_likelihood_scans_1d(
         has_thy_err = len(theory_value) == 3
         if has_thy_err:
             # theory graph
-            g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1],
-                0, y_max_line - y_min)
+            g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1], 0,
+                y_max_line - y_min)
             r.setup_graph(g_thy, props={"LineColor": colors.red, "FillStyle": 1001,
                 "FillColor": colors.red_trans_50})
             draw_objs.insert(-len(data), (g_thy, "SAME,02"))
@@ -459,15 +470,18 @@ def plot_likelihood_scans_1d(
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
+    # cms label
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
+        layout="outside_horizontal")
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad,
-            y_offset=40 if len(legend_entries) < 9 else 130))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-        postfix="" if paper else cms_postfix)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if legend_cols == 3:
+            param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -600,8 +614,13 @@ def plot_likelihood_scan_2d(
 
         # get the z range
         dnll2 = np.array(_values["dnll2"])
-        _z_min = np.nanmin(dnll2) or (0.1 * dnll2[dnll2 > 0].min())
+        _z_min = np.nanmin(dnll2)
         _z_max = np.nanmax(dnll2)
+
+        # when there is no negative value, shift zeros to 0.1 of the smallest, non-zero value
+        if _z_min == 0:
+            _z_min = 0.1 * dnll2[dnll2 > 0].min()
+            dnll2[dnll2 == 0] = _z_min
 
         # infer axis limits from the first set of values
         if i == 0:
@@ -616,7 +635,7 @@ def plot_likelihood_scan_2d(
         # white pixels
         z_min_fill = z_min
         nan_mask = np.isnan(dnll2)
-        if not interpolate_nans and nan_mask.sum():
+        if nan_mask.sum() and not interpolate_nans:
             warn(
                 "WARNING: {} NaN(s) will be drawn as white pixels; consider enabling NaN "
                 "interpolation (--interpolate-nans when triggered by a law task)".format(
@@ -671,21 +690,21 @@ def plot_likelihood_scan_2d(
                 text = "{:f}".format(level * 100).rstrip("0").rstrip(".") + "%"
             else:
                 text = "{}#sigma".format(level)
-            label_width, label_height = get_text_extent(text, 16, 43)
+            label_width, label_height = get_text_extent(text, 18, 43)
             label_width *= px_to_x
             label_height *= py_to_y
 
             # calculate and store the position
             label_positions = locate_contour_labels(graphs, label_width, label_height, pad_width,
                 pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions,
-                label_offset=1.2)
+                label_offset=1.0)
             all_positions.extend(label_positions)
             pad.cd()
 
             # draw them
             for x, y, rot in label_positions:
                 sig_label = ROOT.TLatex(0., 0., text)
-                r.setup_latex(sig_label, props={"NDC": False, "TextSize": 18, "TextAlign": 21,
+                r.setup_latex(sig_label, props={"NDC": False, "TextSize": 16, "TextAlign": 21,
                     "TextColor": colors(col), "TextAngle": rot, "X": x, "Y": y})
                 draw_objs.append((sig_label, "SAME"))
 
@@ -751,13 +770,19 @@ def plot_likelihood_scan_2d(
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
 
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -879,8 +904,14 @@ def plot_likelihood_scans_2d(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
+    # special case regarding color handling: when all entry names are valid keys in br_hh_colors,
+    # replace the default color sequence to deterministically assign same colors to channels
+    _color_sequence = color_sequence
+    if all(d["name"] in br_hh_colors.root for d in data):
+        _color_sequence = [br_hh_colors.root[d["name"]] for d in data]
+
     # loop through data entries
-    for d, (cont1, cont2), col in zip(data[::-1], contours[::-1], color_sequence[:len(data)][::-1]):
+    for d, (cont1, cont2), col in zip(data, contours, _color_sequence[:len(data)]):
         # evaluate the scan
         scan = evaluate_likelihood_scan_2d(
             d["values"][poi1], d["values"][poi2], d["values"]["dnll2"],
@@ -897,7 +928,7 @@ def plot_likelihood_scans_2d(
             r.setup_graph(g2, props={"LineWidth": 2, "LineStyle": 2, "LineColor": colors[col]})
             draw_objs.append((g2, "SAME,C"))
         name = to_root_latex(br_hh_names.get(d["name"], d["name"]))
-        legend_entries.insert(-1, (g1, name, "L"))
+        legend_entries.append((g1, name, "L"))
 
         # best fit point
         if scan:
@@ -935,14 +966,18 @@ def plot_likelihood_scans_2d(
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
+    # cms label
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
+        layout="outside_horizontal")
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-        postfix="" if paper else cms_postfix)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if legend_cols == 3:
+            param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -1157,14 +1192,18 @@ def plot_nuisance_likelihood_scans(
             props={"LineWidth": 0, "FillColor": colors.white_trans_70})
         draw_objs.insert(-1, legend_box)
 
+        # cms label
+        _cms_postfix = "" if paper else cms_postfix
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
+            layout="outside_horizontal")
+        draw_objs.extend(cms_labels)
+
         # model parameter labels
         if model_parameters:
-            draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
-
-        # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-            postfix="" if paper else cms_postfix)
-        draw_objs.extend(cms_labels)
+            param_kwargs = {}
+            if legend_cols == 3:
+                param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+            draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
         # campaign label
         if campaign:
@@ -1185,7 +1224,7 @@ def plot_nuisance_likelihood_scans(
 
 
 def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True,
-        shift_negative_values=False, min_is_external=False, origin=None, epsilon=1e-8):
+        shift_negative_values=False, min_is_external=False, origin=None, epsilon=1e-5):
     # unpack data
     poi1, poi1_values = poi1_data
     poi2, poi2_values = poi2_data or (None, None)
@@ -1250,7 +1289,7 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
     # when the previous step did not shift values to 0,
     # detect cases where the positive minimum is > 0 and shift values
     if not neg_mask.sum() and (dnll2_values > 0).sum():
-        pos_min = dnll2_values[dnll2_values > 0].min()
+        pos_min = dnll2_values[dnll2_values >= 0].min()
         if pos_min > 0:
             slightly_pos = pos_min < epsilon
             if slightly_pos:
@@ -1350,7 +1389,13 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
             # minimize
             objective = lambda x: abs(interp(x) - v)
             res = minimize_1d(objective, bounds)
-            return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
+
+            # retry once
+            success = lambda: res.status == 0 and (bounds[0] < res.x[0] < bounds[1])
+            if not success():
+                res = minimize_1d(objective, bounds)
+
+            return res.x[0] if success() else None
 
         return (
             minimize([poi_min, poi_values_max - 1e-4]),
@@ -1507,7 +1552,13 @@ def evaluate_likelihood_scan_2d(
             # minimize
             objective = lambda x: abs(_interp(x) - v)
             res = minimize_1d(objective, bounds)
-            return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
+
+            # retry once
+            success = lambda: res.status == 0 and (bounds[0] < res.x[0] < bounds[1])
+            if not success():
+                res = minimize_1d(objective, bounds)
+
+            return res.x[0] if success() else None
 
         return (
             minimize([poi_min, poi_values_max - 1e-4]),

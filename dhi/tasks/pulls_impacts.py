@@ -18,6 +18,12 @@ from dhi.datacard_tools import get_workspace_parameters
 
 class PullsAndImpactsBase(POITask, SnapshotUser):
 
+    method = luigi.ChoiceParameter(
+        choices=("default", "hesse", "robust"),
+        default="default",
+        description="the computation method; 'default' means no approximation; "
+        "choices: default,hesse,robust; default: default",
+    )
     only_parameters = law.CSVParameter(
         default=(),
         description="comma-separated parameter names to include; supports patterns; skips all "
@@ -41,10 +47,35 @@ class PullsAndImpactsBase(POITask, SnapshotUser):
     def get_output_postfix(self, join=True):
         parts = super(PullsAndImpactsBase, self).get_output_postfix(join=False)
 
+        if self.method != "default":
+            parts.append(self.method)
         if self.use_snapshot:
             parts.append("fromsnapshot")
 
         return self.join_postfix(parts) if join else parts
+
+    def get_selected_parameters(self, workspace_parameters):
+        if not workspace_parameters:
+            return []
+
+        # start with all except pois
+        params = [p for p in workspace_parameters if p != self.pois[0]]
+
+        # remove mc stats parameters if requested, otherwise move them to the end
+        is_mc_stats = lambda p: law.util.multi_match(p, self.mc_stats_patterns, mode=any)
+        if self.mc_stats:
+            sort_fn = lambda p: params.index(p) * (100000 if is_mc_stats(p) else 1)
+            params = sorted(params, key=sort_fn)
+        else:
+            params = [p for p in params if not is_mc_stats(p)]
+
+        # filter and skip
+        if self.only_parameters:
+            params = [p for p in params if law.util.multi_match(p, self.only_parameters)]
+        if self.skip_parameters:
+            params = [p for p in params if not law.util.multi_match(p, self.skip_parameters)]
+
+        return params
 
 
 class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
@@ -56,43 +87,28 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
 
         self._cache_branches = False
 
-    def create_branch_map(self):
-        # the first branch (index 0) is the nominal fit
-        branches = ["nominal"]
-
-        # read the nuisance parameters from the workspace file when present
-        params = self.workspace_parameters
-        if params:
-            # remove poi
-            params = [p for p in params if p != self.pois[0]]
-
-            # remove mc stats parameters if requested, otherwise move them to the end
-            is_mc_stats = lambda p: law.util.multi_match(p, self.mc_stats_patterns, mode=any)
-            if self.mc_stats:
-                sort_fn = lambda p: params.index(p) * (100000 if is_mc_stats(p) else 1)
-                params = sorted(params, key=sort_fn)
-            else:
-                params = [p for p in params if not is_mc_stats(p)]
-
-            # skip
-            if self.only_parameters:
-                params = [p for p in params if law.util.multi_match(p, self.only_parameters)]
-            if self.skip_parameters:
-                params = [p for p in params if not law.util.multi_match(p, self.skip_parameters)]
-
-            # add to branches
-            branches.extend(params)
-
-            self._cache_branches = True
-
-        return branches
-
     @law.cached_workflow_property(setter=False, empty_value=law.no_value)
     def workspace_parameters(self):
         ws_input = CreateWorkspace.req(self).output()
         if not ws_input.exists():
             return law.no_value
         return get_workspace_parameters(ws_input.path)
+
+    def create_branch_map(self):
+        # the first branch (index 0) is the nominal fit of the poi
+        branches = [self.pois[0]]
+
+        # only the default method needs additional parameter fits
+        if self.method == "default":
+            params = self.get_selected_parameters(self.workspace_parameters)
+            if params:
+                # add to branches
+                branches.extend(params)
+
+                # mark that the branch map is cached from now on
+                self._cache_branches = True
+
+        return branches
 
     def workflow_requires(self):
         reqs = super(PullsAndImpacts, self).workflow_requires()
@@ -109,10 +125,21 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
 
     def output(self):
         parts = [self.branch_data]
-        name = self.join_postfix(["fit", self.get_output_postfix(), parts]) + ".root"
-        return self.local_target(name)
+        name = lambda prefix: self.join_postfix([prefix, self.get_output_postfix(), parts]) + ".root"
+
+        # the default fit result
+        outputs = {"result": self.local_target(name("fit"))}
+
+        # additional output file for branch 0 (needs --saveFitResult or --robustHesse)
+        if self.branch == 0:
+            outputs["extra"] = self.local_target(
+                name("robusthesse" if self.method == "robust" else "multidimfit"))
+
+        return outputs
 
     def build_command(self):
+        outputs = self.output()
+
         # get the workspace to use and define snapshot args
         if self.use_snapshot:
             workspace = self.input()["snapshot"].path
@@ -127,21 +154,56 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         else:
             blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
 
-        # define branch dependent options
-        if self.branch == 0:
-            # initial fit
+        # define output files as (src, dst, optional) to be moved after command execution
+        mv_files = [(
+            "higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root".format(self=self),
+            outputs["result"].path,
+            False,
+        )]
+
+        # define branch and method dependent options
+        if self.method == "default":
+            if self.branch == 0:
+                # initial fit
+                branch_opts = (
+                    " --algo singles"
+                    " --saveFitResult"
+                )
+                mv_files.append(("multidimfitTest.root", outputs["extra"].path, False))
+            else:
+                # nuisance fits
+                branch_opts = (
+                    " --algo impact"
+                    " --parameters {}"
+                    " --floatOtherPOIs 1"
+                    " --saveInactivePOI 1"
+                ).format(self.branch_data)
+        elif self.method == "hesse":
+            # setup a single fit
             branch_opts = (
-                " --algo singles"
-                " --saveFitResult"
-            )
-        else:
-            # nuisance fits
-            branch_opts = (
-                " --algo impact"
-                " --parameters {}"
+                " --algo none"
                 " --floatOtherPOIs 1"
                 " --saveInactivePOI 1"
-            ).format(self.branch_data)
+                " --saveFitResult"
+            )
+            mv_files.append(("multidimfitTest.root", outputs["extra"].path, False))
+        elif self.method == "robust":
+            # setup a single fit
+            branch_opts = (
+                " --algo none"
+                " --floatOtherPOIs 1"
+                " --saveInactivePOI 1"
+                " --robustHesse 1"
+            )
+            mv_files.append(("robustHesseTest.root", outputs["extra"].path, False))
+        else:
+            raise NotImplementedError
+
+        # move statements for saving output files
+        mv_cmd = " && ".join(
+            ("( mv {} {} || true )" if opt else "mv {} {}").format(src, dst)
+            for src, dst, opt in mv_files
+        )
 
         # define the basic command
         cmd = (
@@ -156,19 +218,18 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --saveNLL"
-            " --X-rtd REMOVE_CONSTANT_ZERO_POINT=1"
             " {snapshot_args}"
             " {self.combine_optimization_args}"
             " {branch_opts}"
             " && "
-            "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root {output}"
+            "{mv_cmd}"
         ).format(
             self=self,
             workspace=workspace,
-            output=self.output().path,
             snapshot_args=snapshot_args,
             blinded_args=blinded_args,
             branch_opts=branch_opts,
+            mv_cmd=mv_cmd,
         )
 
         return cmd
@@ -218,75 +279,82 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         params = req.workspace_parameters
         poi = self.pois[0]
 
-        # extract all fit results
+        # extract all fit results, depending on the method
         fit_results = {}
-        fail_info = []
-        for b, name in branch_map.items():
-            inp = inputs[b]
-            if not inp.exists():
-                self.logger.warning("input of branch {} at {} does not exist".format(b, inp.path))
-                continue
+        if self.method == "default":
+            # default method: loop through fit result per branch
+            fail_info = []
+            for b, name in branch_map.items():
+                inp = inputs[b]["result"]
+                if not inp.exists():
+                    self.logger.warning("input {} of branch {} does not exist".format(inp.path, b))
+                    continue
 
-            tree = inp.load(formatter="uproot")["limit"]
-            values = tree.arrays([poi] if b == 0 else [poi, name])
-            # the fit converged when there are 3 values in the parameter array
-            converged = values[poi if b == 0 else name].size == 3
-            if not converged:
-                # when not converged and failures should be kept, change the result
-                if self.keep_failures:
-                    fit_results[b] = {
-                        name: np.array([np.nan, np.nan, np.nan]),
-                        "r": np.array([np.nan, np.nan, np.nan]),
-                    }
-                # when not converged and failures should not be kept, raise fail info
+                # load the result
+                values = self.load_default_fit(inp, poi, name, keep_failures=self.keep_failures)
+                if values:
+                    fit_results[name] = values
                 else:
                     fail_info.append((b, name, inp.path))
-            else:
-                fit_results[b] = values
 
-        # throw an error with instructions when a fit failed
-        if fail_info:
-            failing_branches = [b for b, _, _ in fail_info]
-            working_branches = [b for b in branch_map if b not in failing_branches]
-            working_branches = law.util.range_join(working_branches, to_str=True)
-            c = law.util.colored
-            msg = "{} failing parameter fit(s) detected:\n".format(len(fail_info))
-            for b, name, _ in fail_info:
-                msg += "  {} (branch {})\n".format(name, b)
-            msg += "\nBranches: {}".format(",".join(map(str, failing_branches)))
-            msg += c("\nYou have two options\n\n", style=("underlined", "bright"))
-            msg += "  " + c("1.", "magenta")
-            msg += " You can try to remove the corresponding output files via\n\n"
-            for _, _, path in fail_info:
-                msg += "       rm {}\n".format(path)
-            msg += "\n     and then add different options such as\n\n"
-            msg += c("       --PullsAndImpacts-custom-args='--X-rtd MINIMIZER_no_analytic'\n",
-                style="bright")
-            msg += "\n     to your 'law run ...' command.\n\n"
-            msg += "  " + c("2.", "magenta")
-            msg += " You can proceed with the converging fits only by adding\n\n"
-            msg += c("       --PullsAndImpacts-branches {}\n\n".format(working_branches),
-                style="bright")
-            msg += "     which effectively skips all failing fits in your case.\n"
-            raise Exception(msg)
+            # throw an error with instructions when a fit failed
+            if fail_info:
+                failing_branches = [b for b, _, _ in fail_info]
+                working_branches = [b for b in branch_map if b not in failing_branches]
+                working_branches = law.util.range_join(working_branches, to_str=True)
+                c = law.util.colored
+                msg = "{} failing parameter fit(s) detected:\n".format(len(fail_info))
+                for b, name, _ in fail_info:
+                    msg += "  {} (branch {})\n".format(name, b)
+                msg += "\nBranches: {}".format(",".join(map(str, failing_branches)))
+                msg += c("\nYou have two options\n\n", style=("underlined", "bright"))
+                msg += "  " + c("1.", "magenta")
+                msg += " You can try to remove the corresponding output files via\n\n"
+                for _, _, path in fail_info:
+                    msg += "       rm {}\n".format(path)
+                msg += "\n     and then add different options such as\n\n"
+                msg += c("       --PullsAndImpacts-custom-args='--X-rtd MINIMIZER_no_analytic'\n",
+                    style="bright")
+                msg += "\n     to your 'law run ...' command.\n\n"
+                msg += "  " + c("2.", "magenta")
+                msg += " You can proceed with the converging fits only by adding\n\n"
+                msg += c("       --PullsAndImpacts-branches {}\n\n".format(working_branches),
+                    style="bright")
+                msg += "     which effectively skips all failing fits in your case.\n"
+                raise Exception(msg)
+
+        elif self.method == "hesse":
+            # load all parameter fits from the mdf result
+            fit_results = self.load_hesse_fits(inputs[0]["extra"], poi,
+                [poi] + self.get_selected_parameters(params))
+
+        elif self.method == "robust":
+            # load all parameter fits from the robustHesse result
+            fit_results = self.load_robust_fits(inputs[0]["extra"], poi,
+                [poi] + self.get_selected_parameters(params))
+
+        else:
+            raise NotImplementedError
 
         # merge values and parameter infos into data structure similar to the one produced by
         # CombineHarvester the only difference is that two sided impacts are stored as well
-        data = OrderedDict(method="default")
+        data = OrderedDict()
+
+        # save the method
+        data["method"] = self.method
 
         # load and store nominal value
-        data["POIs"] = [{"name": poi, "fit": fit_results[0][poi][[1, 0, 2]].tolist()}]
+        data["POIs"] = [{"name": poi, "fit": fit_results[poi][poi][[1, 0, 2]].tolist()}]
         self.publish_message("read nominal values")
 
         # load and store parameter results
         data["params"] = []
-        for b, vals in fit_results.items():
+        for name, vals in fit_results.items():
             # skip the nominal fit
-            if b == 0:
+            if name == poi:
                 continue
 
             d = OrderedDict()
-            name = branch_map[b]
             # parameter name
             d["name"] = name
             # parameter pdf type
@@ -312,6 +380,75 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             self.publish_message("read values for " + name)
 
         self.output().dump(data, indent=4, formatter="json")
+
+    @classmethod
+    def load_default_fit(cls, target, poi, param, keep_failures=False):
+        tree = target.load(formatter="uproot")["limit"]
+        values = tree.arrays([poi] if param == poi else [poi, param])
+
+        # the fit converged when there are 3 values in the parameter array
+        converged = values[param].size == 3
+        if converged:
+            return values
+        elif keep_failures:
+            return {
+                poi: np.array([np.nan, np.nan, np.nan]),
+                param: np.array([np.nan, np.nan, np.nan]),
+            }
+
+        # error case
+        return None
+
+    @classmethod
+    def load_hesse_fits(cls, target, poi, params):
+        res = OrderedDict()
+
+        # load the roofit result
+        with target.load(formatter="root") as f:
+            rfr = f.Get("fit_mdf")
+
+            # check the fit status
+            if rfr.covQual() != 3:
+                raise Exception("inaccurate covariance matrix")
+
+            # load the fit results per parameter
+            # logic bluntly copied from CombineHarvester/CombineTools/python/combine/utils.py
+            for param in params:
+                res[param] = OrderedDict()
+                for p in [poi, param]:
+                    pj = rfr.floatParsFinal().find(p)
+                    vj = pj.getVal()
+                    ej = pj.getError()
+                    c = rfr.correlation(param, p)
+                    res[param][p] = np.array([vj, vj - ej * c, vj + ej * c])
+
+        return res
+
+    @classmethod
+    def load_robust_fits(cls, target, poi, params):
+        res = OrderedDict()
+
+        # load the roofit result
+        with target.load(formatter="root") as f:
+            float_params = f.Get("floatParsFinal")
+            corr = f.Get("h_correlation")
+
+            # load the fit results per parameter
+            # logic bluntly copied from CombineHarvester/CombineTools/python/combine/utils.py
+            for param in params:
+                if not float_params.find(param):
+                    continue
+                res[param] = OrderedDict()
+                idx_p = corr.GetXaxis().FindBin(param)
+                for p in [poi, param]:
+                    pj = float_params.find(p)
+                    vj = pj.getVal()
+                    ej = pj.getError()
+                    idx = corr.GetXaxis().FindBin(p)
+                    c = corr.GetBinContent(idx_p, idx)
+                    res[param][p] = np.array([vj, vj - ej * c, vj + ej * c])
+
+        return res
 
 
 class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):

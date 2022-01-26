@@ -4,6 +4,8 @@
 Limit plots using ROOT.
 """
 
+import os
+import json
 import math
 import traceback
 
@@ -12,7 +14,8 @@ import numpy as np
 import scipy.interpolate
 
 from dhi.config import (
-    poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence, cms_postfix,
+    poi_data, br_hh_names, br_hh_colors, campaign_labels, colors, color_sequence, marker_sequence,
+    cms_postfix,
 )
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, create_tgraph, colored, minimize_1d, unique_recarray,
@@ -42,6 +45,7 @@ def plot_limit_scan(
     y_max=None,
     xsec_unit=None,
     hh_process=None,
+    ranges_path=None,
     model_parameters=None,
     campaign=None,
     show_points=False,
@@ -62,11 +66,13 @@ def plot_limit_scan(
     when *None*, as a ratio over the theory prediction. *hh_process* can be the name of a HH
     subprocess configured in *dhi.config.br_hh_names* and is inserted to the process name
     in the title of the y-axis and indicates that the plotted cross section data was (e.g.) scaled
-    by a branching ratio. *model_parameters* can be a dictionary of key-value pairs of model
-    parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*. When *show_points* is *True*, the central scan points are drawn
-    on top of the interpolated curve. When *paper* is *True*, certain plot configurations are
-    adjusted for use in publications.
+    by a branching ratio.
+
+    When *ranges_path* is set, allowed scan parameter ranges are saved to the given file.
+    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
+    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
+    *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
+    When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#limit-on-poi-vs-scan-parameter
     """
@@ -91,6 +97,10 @@ def plot_limit_scan(
     if theory_values is not None:
         theory_values = check_values(theory_values, ["xsec"])
         has_thy_err = "xsec_p1" in theory_values and "xsec_m1" in theory_values
+    if ranges_path:
+        ranges_path = os.path.expandvars(os.path.expanduser(ranges_path))
+        if not os.path.exists(os.path.dirname(ranges_path)):
+            os.makedirs(os.path.dirname(ranges_path))
 
     # set default ranges
     if x_min is None:
@@ -160,12 +170,17 @@ def plot_limit_scan(
     y_min_value = min(y_min_value, min(expected_values["limit"]))
 
     # print the expected excluded ranges
-    print_excluded_ranges(scan_parameter, poi + " expected",
+    excl_ranges = evaluate_excluded_ranges(scan_parameter, poi + " expected",
         expected_values[scan_parameter],
         expected_values["limit"],
         theory_values[scan_parameter] if has_thy else None,
         theory_values["xsec"] if has_thy else None,
     )
+    allowed_ranges = {}
+    if ranges_path:
+        key = "__".join([scan_parameter, poi, "expected"])
+        allowed_ranges[key] = excluded_to_allowed_ranges(excl_ranges,
+            expected_values[scan_parameter].min(), expected_values[scan_parameter].max())
 
     # observed values
     if observed_values is not None:
@@ -175,13 +190,23 @@ def plot_limit_scan(
         legend_entries[0] = (g_inj, "Observed", "L")
         y_max_value = max(y_max_value, max(observed_values["limit"]))
         y_min_value = min(y_min_value, min(observed_values["limit"]))
+
         # print the observed excluded ranges
-        print_excluded_ranges(scan_parameter, poi + " observed",
+        excl_ranges = evaluate_excluded_ranges(scan_parameter, poi + " observed",
             observed_values[scan_parameter],
             observed_values["limit"],
             theory_values[scan_parameter] if has_thy else None,
             theory_values["xsec"] if has_thy else None,
         )
+        if ranges_path:
+            key = "__".join([scan_parameter, poi, "observed"])
+            allowed_ranges[key] = excluded_to_allowed_ranges(excl_ranges,
+                observed_values[scan_parameter].min(), observed_values[scan_parameter].max())
+
+    if ranges_path:
+        with open(ranges_path, "w") as f:
+            json.dump(allowed_ranges, f, indent=4)
+        print("saved allowed ranges to file")
 
     # get theory prediction limits
     if has_thy:
@@ -236,13 +261,19 @@ def plot_limit_scan(
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -275,6 +306,7 @@ def plot_limit_scans(
     y_max=None,
     xsec_unit=None,
     hh_process=None,
+    ranges_path=None,
     model_parameters=None,
     campaign=None,
     show_points=True,
@@ -297,10 +329,13 @@ def plot_limit_scans(
     when *None*, as a ratio over the theory prediction. *hh_process* can be the name of a HH
     subprocess configured in *dhi.config.br_hh_names* and is inserted to the process name in the
     title of the y-axis and indicates that the plotted cross section data was (e.g.) scaled by a
-    branching ratio. *model_parameters* can be a dictionary of key-value pairs of model parameters.
-    *campaign* should refer to the name of a campaign label defined in dhi.config.campaign_labels.
-    When *show_points* is *True*, the central scan points are drawn on top of the interpolated
-    curve. When *paper* is *True*, certain plot configurations are adjusted for use in publications.
+    branching ratio.
+
+    When *ranges_path* is set, all allowed scan parameter ranges are saved to the given file.
+    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
+    refer to the name of a campaign label defined in dhi.config.campaign_labels. When *show_points*
+    is *True*, the central scan points are drawn on top of the interpolated curve. When *paper* is
+    *True*, certain plot configurations are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-on-poi-vs-scan-parameter
     """
@@ -338,6 +373,11 @@ def plot_limit_scans(
         assert scan_parameter in theory_values
         assert "xsec" in theory_values
         has_thy_err = "xsec_p1" in theory_values and "xsec_m1" in theory_values
+    if ranges_path:
+        ranges_path = os.path.expandvars(os.path.expanduser(ranges_path))
+        if not os.path.exists(os.path.dirname(ranges_path)):
+            os.makedirs(os.path.dirname(ranges_path))
+    allowed_ranges = {}
 
     # set default ranges
     if x_min is None:
@@ -362,62 +402,78 @@ def plot_limit_scans(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
-    # central values
-    for i, (ev, col, ms) in enumerate(zip(expected_values[::-1], color_sequence[:n_graphs][::-1],
-            marker_sequence[:n_graphs][::-1])):
-        name = names[n_graphs - i - 1]
+    # special case regarding color handling: when all entry names are valid keys in br_hh_colors,
+    # replace the default color sequence to deterministically assign same colors to channels
+    _color_sequence = color_sequence
+    if all(name in br_hh_colors.root for name in names):
+        _color_sequence = [br_hh_colors.root[name] for name in names]
 
+    # central values
+    for i, (ev, name, col, ms) in enumerate(zip(expected_values, names, _color_sequence[:n_graphs],
+            marker_sequence[:n_graphs])):
         # expected graph
         mask = ~np.isnan(ev["limit"])
         limit_values = ev["limit"][mask]
         scan_values = ev[scan_parameter][mask]
         n_nans = (~mask).sum()
         if n_nans:
-            print("WARNING: found {} NaN(s) in expected limit values at index {}".format(n_nans,
-                n_graphs - 1 - i))
+            print("WARNING: found {} NaN(s) in expected limit values at index {}".format(n_nans, i))
         g_exp = create_tgraph(mask.sum(), scan_values, limit_values)
         r.setup_graph(g_exp, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2,
             "LineStyle": 2 if has_obs else 1}, color=colors[col])
         draw_objs.append((g_exp, "SAME,CP" if show_points and not has_obs else "SAME,C"))
-        legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
+        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)),
             "LP" if show_points and not has_obs else "L"))
         y_max_value = max(y_max_value, max(limit_values))
         y_min_value = min(y_min_value, min(limit_values))
 
         # print expected excluded ranges
-        print_excluded_ranges(scan_parameter, "{}, {}, expected".format(poi, name),
+        excl_ranges = evaluate_excluded_ranges(scan_parameter, "{}, {}, expected".format(poi, name),
             scan_values,
             limit_values,
             theory_values[scan_parameter] if has_thy else None,
             theory_values["xsec"] if has_thy else None,
         )
+        if ranges_path:
+            key = "__".join([scan_parameter, poi, "expected", name])
+            allowed_ranges[key] = excluded_to_allowed_ranges(excl_ranges,
+                scan_values.min(), scan_values.max())
 
         # observed graph
         if has_obs:
-            ov = observed_values[n_graphs - i - 1]
+            ov = observed_values[i]
             obs_mask = ~np.isnan(ov["limit"])
             obs_limit_values = ov["limit"][obs_mask]
             obs_scan_values = ov[scan_parameter][obs_mask]
             n_nans = (~obs_mask).sum()
             if n_nans:
                 print("WARNING: found {} NaN(s) in observed limit values at index {}".format(n_nans,
-                    n_graphs - 1 - i))
+                    i))
             g_obs = create_tgraph(obs_mask.sum(), obs_scan_values, obs_limit_values)
             r.setup_graph(g_obs, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
-                          color=colors[col])
+                color=colors[col])
             draw_objs.append((g_obs, "SAME,CP" if show_points else "SAME,C"))
-            legend_entries[0] = (g_obs, to_root_latex(br_hh_names.get(name, name)),
+            legend_entries[-1] = (g_obs, to_root_latex(br_hh_names.get(name, name)),
                 "LP" if show_points else "L")
             y_max_value = max(y_max_value, max(obs_limit_values))
             y_min_value = min(y_min_value, min(obs_limit_values))
 
             # print observed excluded ranges
-            print_excluded_ranges(scan_parameter, "{}, {}, observed".format(poi, name),
+            excl_ranges = evaluate_excluded_ranges(scan_parameter, "{}, {}, observed".format(poi, name),
                 obs_scan_values,
                 obs_limit_values,
                 theory_values[scan_parameter] if has_thy else None,
                 theory_values["xsec"] if has_thy else None,
             )
+            if ranges_path:
+                key = "__".join([scan_parameter, poi, "observed", name])
+                allowed_ranges[key] = excluded_to_allowed_ranges(excl_ranges,
+                    obs_scan_values.min(), obs_scan_values.max())
+
+    if ranges_path:
+        with open(ranges_path, "w") as f:
+            json.dump(allowed_ranges, f, indent=4)
+        print("saved allowed ranges to file")
 
     # add additional legend entries to distinguish expected and observed lines
     if has_obs:
@@ -471,15 +527,18 @@ def plot_limit_scans(
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
+    # cms label
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
+        layout="outside_horizontal")
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad,
-            y_offset=40 if len(legend_entries) < 9 else 130))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(layout="outside_horizontal", pad=pad,
-        postfix="" if paper else cms_postfix)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if legend_cols == 3:
+            param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -797,23 +856,24 @@ def plot_limit_points(
             r.setup_latex(rlabel, props={"NDC": True, "TextAlign": 32, "TextSize": 14})
             draw_objs.append(rlabel)
 
-    # model parameter labels
-    if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
     # legend
     legend = r.routines.create_legend(pad=pad, width=430, n=3, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
     draw_objs.extend(cms_labels)
 
-    # energy label
-    # ecm_label = ROOT.TLatex(cms_labels[0].GetX(), cms_labels[0].GetY() - 0.088, "13 TeV")
-    # r.setup_latex(ecm_label, props={"TextSize": 20, "TextAlign": 13})
-    # draw_objs.append(ecm_label)
+    # model parameter labels
+    if model_parameters:
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -1050,13 +1110,19 @@ def plot_limit_scan_2d(
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -1214,7 +1280,9 @@ def plot_benchmark_limits(
     draw_objs.append(legend)
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
     draw_objs.extend(cms_labels)
 
     # campaign label
@@ -1317,12 +1385,12 @@ def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xse
     )
 
 
-def print_excluded_ranges(param_name, scan_name, scan_values, limit_values, xsec_scan_values=None,
-        xsec_values=None, interpolation="linear"):
+def evaluate_excluded_ranges(param_name, scan_name, scan_values, limit_values,
+        xsec_scan_values=None, xsec_values=None, interpolation="linear"):
     # more than 5 points are required
     if len(scan_values) <= 5:
         print("insufficient number of scan points for extracting excluded ranges")
-        return
+        return None
 
     try:
         ranges = evaluate_limit_scan_1d(
@@ -1335,9 +1403,12 @@ def print_excluded_ranges(param_name, scan_name, scan_values, limit_values, xsec
     except Exception:
         print("1D limit scan evaluation failed")
         traceback.print_exc()
-        return
+        return None
 
+    # print them
     _print_excluded_ranges(param_name, scan_name, scan_values, ranges, interpolation)
+
+    return ranges
 
 
 def _print_excluded_ranges(param_name, scan_name, scan_values, ranges, interpolation):
@@ -1389,3 +1460,41 @@ def _print_excluded_ranges(param_name, scan_name, scan_values, ranges, interpola
     for start, stop in ranges:
         print("  - " + format_range(start, stop))
     print("")
+
+
+def excluded_to_allowed_ranges(excluded_ranges, min_value, max_value):
+    """
+    Converts a list *ranges* of 2-tuples with edges referring to excluded ranges to allowed ones,
+    taking into account the endpoints given by *min_value* and *max_value*. An open range is denoted
+    by a *None*. Thus, (*None*, *None*) would mean that the entire range is allowed.
+    """
+    # shorthands and checks
+    e_ranges = excluded_ranges
+    a_ranges = []
+    min_value = float(min_value)
+    max_value = float(max_value)
+
+    # excluded_ranges might mark open ends with None's as well, so before linearizing values,
+    # replace them with the global endpoints
+    if e_ranges:
+        if e_ranges[0][0] is None:
+            e_ranges[0] = (min_value, e_ranges[0][0])
+        if e_ranges[-1][1] is None:
+            e_ranges[-1] = (e_ranges[-1][0], max_value)
+
+    # linearize excluded ranges (assuming edges are always reasonably far apart)
+    e_edges = map(float, sum(map(list, excluded_ranges), []))
+
+    # loop through adjacent pairs and create allowed ranges in an alternating fashion
+    for i, (start, stop) in enumerate(zip(e_edges[:-1], e_edges[1:])):
+        # first range
+        if i == 0 and start > min_value:
+            a_ranges.append((min_value, start))
+        # last range
+        if i == len(e_edges) - 2 and stop < max_value:
+            a_ranges.append((stop, max_value))
+        # intermediate ranges
+        if i % 2 != 0:
+            a_ranges.append((start, stop))
+
+    return a_ranges

@@ -193,6 +193,10 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         significant=False,
         description="show points of central limit values; default: False",
     )
+    save_ranges = luigi.BoolParameter(
+        default=False,
+        description="save allowed parameter ranges in an additional output; default: False",
+    )
 
     z_min = None
     z_max = None
@@ -229,6 +233,8 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         ]
 
     def output(self):
+        outputs = {}
+
         # additional postfix
         parts = []
         if self.xsec in ["pb", "fb"]:
@@ -239,7 +245,13 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
             parts.append("log")
 
         names = self.create_plot_names(["limits", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        if self.save_ranges:
+            outputs["ranges"] = self.local_target("ranges__{}.json".format(
+                self.get_output_postfix()))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -250,7 +262,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
 
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load limit values
         limit_values = self.load_scan_data(self.input())
@@ -315,7 +327,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scan",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
             expected_values=limit_values,
@@ -328,6 +340,7 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
             y_log=self.y_log,
             xsec_unit=xsec_unit,
             hh_process=self.br if xsec_unit and self.br in br_hh else None,
+            ranges_path=outputs["ranges"].path if self.save_ranges else None,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
@@ -370,6 +383,8 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         ]
 
     def output(self):
+        outputs = {}
+
         # additional postfix
         parts = []
         if self.xsec in ["pb", "fb"]:
@@ -380,7 +395,13 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
             parts.append("log")
 
         names = self.create_plot_names(["multilimits", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        if self.save_ranges:
+            outputs["ranges"] = self.local_target("ranges__{}.json".format(
+                self.get_output_postfix()))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -391,7 +412,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
 
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load limit values
         limit_values = []
@@ -461,7 +482,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scans",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
             names=names,
@@ -475,6 +496,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
             y_log=self.y_log,
             xsec_unit=xsec_unit,
             hh_process=self.br if xsec_unit and self.br in br_hh else None,
+            ranges_path=outputs["ranges"].path if self.save_ranges else None,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
@@ -496,6 +518,8 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         ]
 
     def output(self):
+        outputs = {}
+
         # additional postfix
         parts = []
         if self.xsec in ["pb", "fb"]:
@@ -506,7 +530,13 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
             parts.append("log")
 
         names = self.create_plot_names(["multilimitsbymodel", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        if self.save_ranges:
+            outputs["ranges"] = self.local_target("ranges__{}.json".format(
+                self.get_output_postfix()))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -517,7 +547,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
 
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load limit values
         limit_values = []
@@ -595,7 +625,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_scans",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
             names=names,
@@ -609,6 +639,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
             y_log=self.y_log,
             xsec_unit=xsec_unit,
             hh_process=self.br if xsec_unit and self.br in br_hh else None,
+            ranges_path=outputs["ranges"].path if self.save_ranges else None,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
