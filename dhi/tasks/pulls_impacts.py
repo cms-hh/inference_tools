@@ -130,9 +130,10 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         # the default fit result
         outputs = {"result": self.local_target(name("fit"))}
 
-        # additional multidimfit file for branch 0 (needs --saveFitResult or --robustHesse)
+        # additional output file for branch 0 (needs --saveFitResult or --robustHesse)
         if self.branch == 0:
-            outputs["multidimfit"] = self.local_target(name("multidimfit"))
+            outputs["extra"] = self.local_target(
+                name("robusthesse" if self.method == "robust" else "multidimfit"))
 
         return outputs
 
@@ -153,6 +154,13 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         else:
             blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
 
+        # define output files as (src, dst, optional) to be moved after command execution
+        mv_files = [(
+            "higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root".format(self=self),
+            outputs["result"].path,
+            False,
+        )]
+
         # define branch and method dependent options
         if self.method == "default":
             if self.branch == 0:
@@ -161,6 +169,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
                     " --algo singles"
                     " --saveFitResult"
                 )
+                mv_files.append(("multidimfitTest.root", outputs["extra"].path, False))
             else:
                 # nuisance fits
                 branch_opts = (
@@ -177,6 +186,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
                 " --saveInactivePOI 1"
                 " --saveFitResult"
             )
+            mv_files.append(("multidimfitTest.root", outputs["extra"].path, False))
         elif self.method == "robust":
             # setup a single fit
             branch_opts = (
@@ -185,24 +195,15 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
                 " --saveInactivePOI 1"
                 " --robustHesse 1"
             )
+            mv_files.append(("robustHesseTest.root", outputs["extra"].path, False))
         else:
             raise NotImplementedError
 
         # move statements for saving output files
-        mv_cmd = (
-            "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root {output}"
-        ).format(
-            self=self,
-            output=outputs["result"].path,
+        mv_cmd = " && ".join(
+            ("( mv {} {} || true )" if opt else "mv {} {}").format(src, dst)
+            for src, dst, opt in mv_files
         )
-        if self.branch == 0:
-            mdf_file = "robustHesseTest.root" if self.method == "robust" else "multidimfitTest.root"
-            mv_cmd += (
-                " && mv {mdf_file} {output}"
-            ).format(
-                mdf_file=mdf_file,
-                output=outputs["multidimfit"].path,
-            )
 
         # define the basic command
         cmd = (
@@ -324,12 +325,12 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
         elif self.method == "hesse":
             # load all parameter fits from the mdf result
-            fit_results = self.load_hesse_fits(inputs[0]["multidimfit"], poi,
+            fit_results = self.load_hesse_fits(inputs[0]["extra"], poi,
                 [poi] + self.get_selected_parameters(params))
 
         elif self.method == "robust":
             # load all parameter fits from the robustHesse result
-            fit_results = self.load_robust_fits(inputs[0]["multidimfit"], poi,
+            fit_results = self.load_robust_fits(inputs[0]["extra"], poi,
                 [poi] + self.get_selected_parameters(params))
 
         else:
