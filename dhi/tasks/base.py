@@ -21,6 +21,8 @@ law.contrib.load(
     "cms", "git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks",
 )
 
+dhi_remote_job = str(os.getenv("DHI_REMOTE_JOB", "0")).lower() in ("1", "true", "yes")
+
 
 class BaseTask(law.Task):
 
@@ -450,8 +452,11 @@ class CommandTask(AnalysisTask):
     exclude_index = True
     exclude_params_req = {"custom_args"}
 
+    # by default, do not run in a tmp dir
     run_command_in_tmp = False
-    cleanup_tmp_on_error = False
+
+    # by default, do not cleanup tmp dirs on error, except when running as a remote job
+    cleanup_tmp_on_error = dhi_remote_job
 
     def build_command(self):
         # this method should build and return the command to run
@@ -612,10 +617,14 @@ class PlotTask(AnalysisTask):
         return None if value == -1000.0 else value
 
     def create_plot_names(self, parts):
+        plot_file_types = ["pdf", "png"]
+        if any(t not in plot_file_types for t in self.file_types):
+            raise Exception("plot names only allowed for file types {}, got {}".format(
+                ",".join(plot_file_types), ",".join(self.file_types)))
+
         if self.plot_postfix and self.plot_postfix != law.NO_STR:
             parts.append((self.plot_postfix,))
 
-        assert set(self.file_types) <= set(("pdf", "png")), "Only supported file formats are 'pdf' and 'png'!"
         return ["{}.{}".format(self.join_postfix(parts), ext) for ext in self.file_types]
 
     def get_plot_func(self, func_id):
