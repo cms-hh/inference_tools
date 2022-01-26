@@ -95,10 +95,19 @@ def plot_gof_distribution(
 
     # integration graph
     g_int = create_integration_graph(h_toys, data)
-    prob = (np.array(toys) >= data).mean()
     r.setup_graph(g_int, props={"FillStyle": 3345, "FillColor": colors.blue_signal, "LineWidth": 0})
     draw_objs.insert(-1, (g_int, "SAME,02"))
-    legend_entries.append((g_int, "p = {:.1f} %".format(prob * 100), "F"))
+
+    # calculate p-value and uncertainty due to limited number of toys
+    na = (np.array(toys) >= data).sum()
+    nb = len(toys) - na
+    prob = 100. * na / (na + nb)
+    prob_unc = 100. * (na * nb * (na + nb)**-3.0)**0.5
+    if round(prob, 1):
+        prob_text = "p = {:.1f} #pm {:.1f} %".format(prob, prob_unc)
+    else:
+        prob_text = "p = {:.1f} %".format(prob)
+    legend_entries.append((g_int, prob_text, "F"))
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=250, n=len(legend_entries))
@@ -228,7 +237,7 @@ def plot_gofs(
         "LabelOffset": r.pixel_to_coord(canvas, y=4)})
     h_dummy.GetYaxis().SetBinLabel(1, "")
     draw_objs.append((h_dummy, "HIST"))
-    y_label_tmpl = "#splitline{%s}{#scale[0.75]{p = %.1f %%}}"
+    y_label_tmpl = "#splitline{%s}{#scale[0.75]{%s}}"
     stats_label_tmpl = "#splitline{#splitline{N = %d}{#mu = %.1f}}{#sigma = %.1f}"
 
     # vertical line at 1
@@ -280,10 +289,19 @@ def plot_gofs(
         if i == 0:
             legend_entries.append((g_data, "Data", "L"))
 
+        # calculate p-value and uncertainty due to limited number of toys
+        na = (np.array(d["toys"]) >= d["data"]).sum()
+        nb = len(d["toys"]) - na
+        prob = 100. * na / (na + nb)
+        prob_unc = 100. * (na * nb * (na + nb)**-3.0)**0.5
+        if round(prob, 1):
+            prob_text = "p = {:.1f} #pm {:.1f} %".format(prob, prob_unc)
+        else:
+            prob_text = "p = {:.1f} %".format(prob)
+
         # name labels on the y-axis
-        prob = (np.array(d["toys"]) > d["data"]).mean()
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
-        label = y_label_tmpl % (label, prob * 100.)
+        label = y_label_tmpl % (label, prob_text)
         label_x = r.get_x(10, canvas)
         label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
         label = ROOT.TLatex(label_x, label_y, label)
