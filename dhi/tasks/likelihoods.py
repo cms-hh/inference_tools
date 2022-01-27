@@ -305,29 +305,22 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
         # call the plot function
         if self.n_pois == 1:
-            # get the theory value when this is a poi
-            theory_value = None
-            if self.pois[0] in self.r_pois:
-                get_xsec = self.create_xsec_func(self.pois[0], "fb", safe_signature=True)
-                if get_xsec.has_unc:
-                    xsec = get_xsec(**self.parameter_values_dict)
-                    xsec_up = get_xsec(unc="up", **self.parameter_values_dict)
-                    xsec_down = get_xsec(unc="down", **self.parameter_values_dict)
-                    theory_value = (xsec, xsec_up - xsec, xsec - xsec_down)
-                else:
-                    theory_value = (get_xsec(**self.parameter_values_dict),)
-                # normalize
-                theory_value = tuple(v / theory_value[0] for v in theory_value)
-            elif self.pois[0] in poi_data:
-                theory_value = (poi_data[self.pois[0]].sm_value,)
+            # prepare data
+            data = [{
+                "values": values,
+                "poi_min": None if self.recompute_best_fit else poi_mins[0],
+                "name": "",
+            }]
+
+            # get the SM value when the parameter is known
+            theory_value = poi_data.get(self.pois[0], {}).get("sm_value")
 
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scan_1d",
+                "dhi.plots.likelihoods.plot_likelihood_scans_1d",
                 paths=[outp.path for outp in outputs],
                 poi=self.pois[0],
-                values=values,
+                data=data,
                 theory_value=theory_value,
-                poi_min=None if self.recompute_best_fit else poi_mins[0],
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
                 show_significances=self.show_significances,
@@ -515,19 +508,8 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
         # call the plot function
         if self.n_pois == 1:
-            # theory value when this is an r poi
-            theory_value = None
-            if self.pois[0] in self.r_pois:
-                get_xsec = self.create_xsec_func(self.pois[0], "fb", safe_signature=True)
-                if get_xsec.has_unc:
-                    xsec = get_xsec(**self.parameter_values_dict)
-                    xsec_up = get_xsec(unc="up", **self.parameter_values_dict)
-                    xsec_down = get_xsec(unc="down", **self.parameter_values_dict)
-                    theory_value = (xsec, xsec_up - xsec, xsec - xsec_down)
-                else:
-                    theory_value = (get_xsec(**self.parameter_values_dict),)
-                # normalize
-                theory_value = tuple(v / theory_value[0] for v in theory_value)
+            # get the SM value when the parameter is known
+            theory_value = poi_data.get(self.pois[0], {}).get("sm_value")
 
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_1d",
@@ -633,20 +615,8 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
 
         # call the plot function
         if self.n_pois == 1:
-            # theory value when this is an r poi
-            theory_value = None
-            if self.pois[0] in self.r_pois:
-                hh_model = self.hh_models[0]
-                get_xsec = self._create_xsec_func(hh_model, self.pois[0], "fb", safe_signature=True)
-                if get_xsec.has_unc:
-                    xsec = get_xsec(**self.parameter_values_dict)
-                    xsec_up = get_xsec(unc="up", **self.parameter_values_dict)
-                    xsec_down = get_xsec(unc="down", **self.parameter_values_dict)
-                    theory_value = (xsec, xsec_up - xsec, xsec - xsec_down)
-                else:
-                    theory_value = (get_xsec(**self.parameter_values_dict),)
-                # normalize
-                theory_value = tuple(v / theory_value[0] for v in theory_value)
+            # get the SM value when the parameter is known
+            theory_value = poi_data.get(self.pois[0], {}).get("sm_value")
 
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_1d",

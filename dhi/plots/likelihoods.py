@@ -30,243 +30,15 @@ colors = colors.root
 
 
 @use_style("dhi_default")
-def plot_likelihood_scan_1d(
-    paths,
-    poi,
-    values,
-    theory_value=None,
-    poi_min=None,
-    show_best_fit=True,
-    show_best_fit_error=True,
-    show_significances=(1, 2, 3, 5),
-    shift_negative_values=False,
-    x_min=None,
-    x_max=None,
-    y_min=None,
-    y_max=None,
-    y_log=False,
-    model_parameters=None,
-    campaign=None,
-    show_points=False,
-    paper=False,
-):
-    """
-    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *paths*. *values* should be
-    a mapping to lists of values or a record array with keys "<poi_name>" and "dnll2".
-    *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
-    down uncertainties which is drawn as a vertical bar.
-
-    When *poi_min* is set, it should be the value of the poi that leads to the best likelihood.
-    Otherwise, it is estimated from the interpolated curve. When *show_best_fit*
-    (*show_best_fit_error*) is *False*, the nominal (uncertainty on the) best fit value is not
-    shown. To overlay lines and labels denoting integer significances corresponding to 1D likelihood
-    scans, *show_significances* can be set to *True* to show significances up to 9 sigma, or a list
-    of sigmas (integer, >= 1) or confidence levels (float, < 1). In case there are negative dnll2
-    values, *shift_negative_values* can be set to *True* to shift them vertically so that the
-    minimum is located at 0 again.
-
-    *x_min* and *x_max* define the x-axis range of POI, and *y_min* and
-    *y_max* control the range of the y-axis. When *y_log* is *True*, the y-axis is plotted with a
-    logarithmic scale. *model_parameters* can be a dictionary of key-value pairs of model
-    parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*. When *show_points* is *True*, the central scan points are drawn on
-    top of the interpolated curve. When *paper* is *True*, certain plot configurations are adjusted
-    for use in publications.
-
-    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d
-    """
-    import plotlib.root as r
-    ROOT = import_ROOT()
-
-    # get valid poi and delta nll values
-    poi_values = np.array(values[poi], dtype=np.float32)
-    dnll2_values = np.array(values["dnll2"], dtype=np.float32)
-
-    # preprocess values (nan detection, negative shift)
-    dnll2_values, poi_values = _preprocess_values(dnll2_values, (poi, poi_values),
-        shift_negative_values=shift_negative_values, min_is_external=poi_min is not None)
-
-    # set x range
-    if x_min is None:
-        x_min = min(poi_values)
-    if x_max is None:
-        x_max = max(poi_values)
-
-    # set y range
-    y_max_value = max(dnll2_values[(poi_values >= x_min) & (poi_values <= x_max)])
-    y_min, y_max, y_max_line = get_y_range(dnll2_values.min(), y_max_value, y_min, y_max, log=y_log)
-
-    # evaluate the scan, run interpolation and error estimation
-    scan = evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min)
-    if not scan:
-        warn("1D likelihood evaluation failed")
-
-    # start plotting
-    r.setup_style()
-    canvas, (pad,) = r.routines.create_canvas(pad_props={"Logy": y_log})
-    pad.cd()
-    draw_objs = []
-    legend_entries = []
-
-    # dummy histogram to control axes
-    x_title = to_root_latex(poi_data[poi].label)
-    y_title = "-2 #Delta log(L)"
-    h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
-    r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
-    draw_objs.append((h_dummy, "HIST"))
-
-    if show_best_fit and show_best_fit_error:
-        # vertical 1 and 2 sigma indicators
-        if scan:
-            for value in [scan.poi_p1, scan.poi_m1, scan.poi_p2, scan.poi_m2]:
-                if value is not None:
-                    line = ROOT.TLine(value, y_min, value, scan.interp(value))
-                    r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
-                    draw_objs.append(line)
-
-        # horizontal lines matching the vertical indicators above
-        if not show_significances:
-            for n in [chi2_levels[1][1], chi2_levels[1][2]]:
-                if y_min <= n <= y_max_line:
-                    line = ROOT.TLine(x_min, n, x_max, n)
-                    r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2,
-                        "NDC": False})
-                    draw_objs.append(line)
-
-    if show_significances:
-        # horizontal significance lines and labels
-        if isinstance(show_significances, (list, tuple)):
-            sigs = list(show_significances)
-        else:
-            sigs = list(range(1, 9 + 1))
-        for sig in sigs:
-            # get the dnll2 value and build the label
-            is_cl = isinstance(sig, float) and sig < 1
-            if is_cl:
-                # convert confidence level to dnll2 value
-                dnll2 = get_chi2_level_from_cl(sig, 1)
-            else:
-                # convert significance to dnll2 value
-                sig = int(round(sig))
-                dnll2 = get_chi2_level(sig, 1)
-
-            # do not show when vertically out of range
-            if dnll2 >= y_max_line:
-                continue
-
-            # create the line
-            sig_line = ROOT.TLine(x_min, dnll2, x_max, dnll2)
-            r.setup_line(sig_line, props={"NDC": False, "LineWidth": 1}, color=colors.grey)
-            draw_objs.append(sig_line)
-
-            # create and position the label
-            if y_log:
-                sig_label_y = math.log(dnll2 / y_min) / math.log(y_max / y_min)
-            else:
-                sig_label_y = dnll2 / (y_max - y_min)
-            sig_label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
-            sig_label_y += pad.GetBottomMargin() + 0.00375
-            if is_cl:
-                sig_label = "{:f}".format(sig * 100).rstrip("0").rstrip(".") + "%"
-            else:
-                sig_label = "{}#sigma".format(sig)
-            sig_label = r.routines.create_top_right_label(sig_label, pad=pad, x_offset=5,
-                y=sig_label_y, props={"TextSize": 18, "TextColor": colors.grey, "TextAlign": 31})
-            draw_objs.append(sig_label)
-
-    # theory prediction with uncertainties
-    if theory_value:
-        has_thy_err = len(theory_value) == 3
-        if has_thy_err:
-            # theory graph
-            g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1],
-                0, y_max_line - y_min)
-            r.setup_graph(g_thy, props={"LineColor": colors.red, "FillStyle": 1001,
-                "FillColor": colors.red_trans_50})
-            draw_objs.append((g_thy, "SAME,02"))
-            legend_entries.append((g_thy, "Theory prediction", "LF"))
-        # theory line
-        line_thy = ROOT.TLine(theory_value[0], y_min, theory_value[0], y_max_line)
-        r.setup_line(line_thy, props={"NDC": False}, color=colors.red)
-        draw_objs.append(line_thy)
-        if not has_thy_err:
-            legend_entries.append((line_thy, "Theory prediction", "L"))
-
-    # vertical line for best fit value
-    if show_best_fit and scan and (x_min <= scan.poi_min <= x_max):
-        line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
-        r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors.black)
-        draw_objs.append(line_fit)
-
-    # print values
-    if scan:
-        def sigma_line(n, p, m):
-            rnd = lambda v: "{:+.3f}".format(v)
-            return "{} sigma: {} / {} ([{}, {}])".format(
-                n,
-                "--" if p is None else rnd(p - scan.poi_min),
-                "--" if m is None else rnd(m - scan.poi_min),
-                "--" if m is None else rnd(m),
-                "--" if p is None else rnd(p),
-            )
-        print("best fit value: {:+.3f}".format(scan.poi_min))
-        print("       " + sigma_line(1, scan.poi_p1, scan.poi_m1))
-        print("       " + sigma_line(2, scan.poi_p2, scan.poi_m2))
-
-    # nll curve
-    g_nll = create_tgraph(len(poi_values), poi_values, dnll2_values)
-    r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75})
-    draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
-    if show_best_fit and show_best_fit_error and scan:
-        fit_label = "{} = {}".format(to_root_latex(poi_data[poi].label),
-            scan.num_min.str(format="%.2f", style="root"))
-    else:
-        fit_label = to_root_latex(poi_data[poi].label)
-    legend_entries.insert(0, (g_nll, fit_label, "LP" if show_points else "L"))
-
-    # legend
-    legend = r.routines.create_legend(pad=pad, width=230, n=len(legend_entries))
-    r.setup_legend(legend)
-    for tpl in legend_entries:
-        legend.AddEntry(*tpl)
-    draw_objs.append(legend)
-
-    # cms label
-    cms_layout = "outside_horizontal"
-    _cms_postfix = "" if paper else cms_postfix
-    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
-    draw_objs.extend(cms_labels)
-
-    # model parameter labels
-    if model_parameters:
-        param_kwargs = {}
-        if cms_layout.startswith("inside"):
-            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
-            param_kwargs = {"y_offset": y_offset}
-        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
-
-    # campaign label
-    if campaign:
-        campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
-        campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad)
-        draw_objs.append(campaign_label)
-
-    # draw all objects
-    r.routines.draw_objects(draw_objs)
-
-    # save
-    r.update_canvas(canvas)
-    for path in make_list(paths):
-        canvas.SaveAs(path)
-
-
-@use_style("dhi_default")
 def plot_likelihood_scans_1d(
     paths,
     poi,
     data,
     theory_value=None,
-    show_best_fit=True,
+    show_best_fit=False,  # TODO
+    show_best_fit_error=False,  # TODO
+    show_best_fit_line=True,  # TODO
+    show_best_fit_indicators=True,  # TODO
     show_significances=(1, 2, 3, 5),
     shift_negative_values=False,
     v_lines=None,
@@ -312,6 +84,12 @@ def plot_likelihood_scans_1d(
     import plotlib.root as r
     ROOT = import_ROOT()
 
+    # input checks and transformations
+    if theory_value is not None:
+        theory_value = make_list(theory_value)
+    if not show_best_fit:
+        show_best_fit_error = False
+
     # validate data entries
     for i, d in enumerate(data):
         # convert likelihood values to arrays
@@ -336,6 +114,12 @@ def plot_likelihood_scans_1d(
             shift_negative_values=shift_negative_values, origin="entry '{}'".format(d["name"]),
             min_is_external=d["poi_min"] is not None)
         d["values"] = values
+
+    # perform scans
+    scans = [
+        evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"], poi_min=d["poi_min"])
+        for d in data
+    ]
 
     # set x range
     if x_min is None:
@@ -389,6 +173,15 @@ def plot_likelihood_scans_1d(
             if dnll2 >= y_max_line:
                 continue
 
+            # vertical indicators at 1 and 2 sigma when only one curve is shown
+            if show_best_fit_indicators and len(data) == 1 and scans[0] and sig in [1, 2]:
+                values = map(lambda s: getattr(scans[0], "poi_{}{}".format(s, sig)), "pm")
+                for value in values:
+                    if value is not None and x_min < value < x_max:
+                        line = ROOT.TLine(value, y_min, value, scans[0].interp(value))
+                    r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
+                    draw_objs.append(line)
+
             # create the line
             sig_line = ROOT.TLine(x_min, dnll2, x_max, dnll2)
             r.setup_line(sig_line, props={"NDC": False, "LineWidth": 1}, color=colors.grey)
@@ -425,10 +218,7 @@ def plot_likelihood_scans_1d(
         _color_sequence = [br_hh_colors.root[d["name"]] for d in data]
 
     # perform scans and draw nll curves
-    for d, col, ms in zip(data, _color_sequence[:len(data)], marker_sequence[:len(data)]):
-        # evaluate the scan, run interpolation and error estimation
-        scan = evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"],
-            poi_min=d["poi_min"])
+    for d, scan, col, ms in zip(data, scans, _color_sequence[:len(data)], marker_sequence[:len(data)]):
         if not scan:
             warn("1D likelihood evaluation failed for entry '{}'".format(d["name"]))
 
@@ -438,11 +228,22 @@ def plot_likelihood_scans_1d(
         r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
         draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
-        legend_entries.append((g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])),
-            "LP" if show_points else "L"))
+
+        # legend entry with optional best fit value
+        g_label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
+        if scan and show_best_fit:
+            if show_best_fit_error:
+                bf_label = scan.num_min.str(format="%.2f", style="root")
+            else:
+                bf_label = "{:.2f}".format(scan.num_min())
+            if g_label:
+                g_label += ", {}".format(bf_label)
+            else:
+                g_label = "{} = {}".format(to_root_latex(poi_data[poi].label), bf_label)
+        legend_entries.append((g_nll, g_label, "LP" if show_points else "L"))
 
         # vertical line denoting the best fit value
-        if show_best_fit and scan and (x_min <= scan.poi_min <= x_max):
+        if show_best_fit_line and scan and (x_min <= scan.poi_min <= x_max):
             line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
             r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors[col])
             draw_objs.append(line_fit)
@@ -456,14 +257,14 @@ def plot_likelihood_scans_1d(
                 y_max_line - y_min)
             r.setup_graph(g_thy, props={"LineColor": colors.red, "FillStyle": 1001,
                 "FillColor": colors.red_trans_50})
-            draw_objs.insert(-len(data), (g_thy, "SAME,02"))
+            draw_objs.append((g_thy, "SAME,02"))
             legend_entries.append((g_thy, "Theory prediction", "LF"))
         # theory line
         line_thy = ROOT.TLine(theory_value[0], y_min, theory_value[0], y_max_line)
         r.setup_line(line_thy, props={"NDC": False}, color=colors.red)
         draw_objs.append(line_thy)
         if not has_thy_err:
-            legend_entries.insert(-len(data), (line_thy, "Theory prediction", "L"))
+            legend_entries.append((line_thy, "Theory prediction", "L"))
 
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
