@@ -160,7 +160,10 @@ def plot_likelihood_scan_1d(
             draw_objs.append(sig_line)
 
             # create and position the label
-            sig_label_y = math.log(dnll2 / y_min) / math.log(y_max / y_min)
+            if y_log:
+                sig_label_y = math.log(dnll2 / y_min) / math.log(y_max / y_min)
+            else:
+                sig_label_y = dnll2 / (y_max - y_min)
             sig_label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
             sig_label_y += pad.GetBottomMargin() + 0.00375
             if is_cl:
@@ -392,7 +395,10 @@ def plot_likelihood_scans_1d(
             draw_objs.append(sig_line)
 
             # create and position the label
-            sig_label_y = math.log(dnll2 / y_min) / math.log(y_max / y_min)
+            if y_log:
+                sig_label_y = math.log(dnll2 / y_min) / math.log(y_max / y_min)
+            else:
+                sig_label_y = dnll2 / (y_max - y_min)
             sig_label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
             sig_label_y += pad.GetBottomMargin() + 0.00375
             if is_cl:
