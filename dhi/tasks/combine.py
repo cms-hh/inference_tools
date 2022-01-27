@@ -1106,6 +1106,11 @@ class POITask(DatacardTask, ParameterValuesTask):
                     raise Exception("{!r}: parameter values are not allowed to be in POIs, but "
                         "found '{}'".format(self, p))
 
+        # check the type of the unblinded parameter (for downstream extensibility)
+        if not isinstance(self.unblinded, (bool, tuple)):
+            raise TypeError("{!r}: unblinded must refer to a bool or tuple, but found '{}'".format(
+                self, self.unblinded))
+
     def get_empty_hh_model_pois(self):
         # hook that can be implemented to configure the r (and possibly k) POIs to be used
         # when not hh model is configured
@@ -1122,9 +1127,15 @@ class POITask(DatacardTask, ParameterValuesTask):
     def get_output_postfix(self, join=True, exclude_params=None, include_params=None):
         parts = []
 
-        # add the unblinded flag
-        if self.unblinded:
-            parts.append(["unblinded"])
+        # add the unblinded flag, or a hash in case of multiple values
+        if isinstance(self.unblinded, bool):
+            if self.unblinded:
+                parts.append(["unblinded"])
+        elif self.unblinded:
+            if all(self.unblinded):
+                parts.append(["unblinded"])
+            elif any(self.unblinded):
+                parts.append(["unblinded_{}".format("".join(map(str, map(int, self.unblinded))))])
 
         # add pois
         parts.append(["poi"] + list(self.pois))
@@ -1200,7 +1211,16 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     @property
     def blinded(self):
-        return not self.unblinded
+        # trivial case
+        if isinstance(self.unblinded, bool):
+            return not self.unblinded
+
+        # at this point, it must be tuple
+        if not self.unblinded:
+            raise Exception("cannot convert empty tuple 'unblinded' to property 'blinded'")
+
+        # flip flags
+        return tuple(map((lambda b: not b), self.unblinded))
 
     def htcondor_output_postfix(self):
         return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())

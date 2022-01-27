@@ -442,7 +442,14 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
 class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
-    show_best_fit_error = None
+    unblinded = law.CSVParameter(
+        cls=luigi.BoolParameter,
+        default=(False,),
+        min_len=1,
+        description="comma-separated list of booleans defining which set of results should be "
+        "unblinded for plotting; default: False",
+    )
+
     z_min = None
     z_max = None
     z_log = None
@@ -453,13 +460,26 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
         params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
         return params
 
+    def __init__(self, *args, **kwargs):
+        super(PlotMultipleLikelihoodScans, self).__init__(*args, **kwargs)
+
+        # the lengths of names and order indices must match hh_models when given
+        if len(self.unblinded) not in (1, len(self.multi_datacards)):
+            raise Exception("{!r}: when unblided is set, its length ({}) must match that of "
+                "multi_datacards ({})".format(self, len(self.unblinded), len(self.multi_datacards)))
+
     def requires(self):
+        unblinded = self.unblinded
+        if len(unblinded) == 1:
+            unblinded = len(self.multi_datacards) * unblinded
+
         return [
             [
-                MergeLikelihoodScan.req(self, datacards=datacards, scan_parameters=scan_parameters)
+                MergeLikelihoodScan.req(self, datacards=datacards, scan_parameters=scan_parameters,
+                    unblinded=_unblinded)
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
-            for datacards in self.multi_datacards
+            for datacards, _unblinded in zip(self.multi_datacards, unblinded)
         ]
 
     def output(self):
@@ -518,6 +538,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 data=data,
                 theory_value=theory_value,
                 show_best_fit=self.show_best_fit,
+                show_best_fit_error=self.show_best_fit_error,
                 show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 x_min=self.get_axis_limit("x_min"),

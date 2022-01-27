@@ -35,10 +35,10 @@ def plot_likelihood_scans_1d(
     poi,
     data,
     theory_value=None,
-    show_best_fit=False,  # TODO
-    show_best_fit_error=False,  # TODO
-    show_best_fit_line=True,  # TODO
-    show_best_fit_indicators=True,  # TODO
+    show_best_fit=False,
+    show_best_fit_error=True,
+    show_best_fit_line=None,
+    show_best_fit_indicators=None,
     show_significances=(1, 2, 3, 5),
     shift_negative_values=False,
     v_lines=None,
@@ -64,13 +64,20 @@ def plot_likelihood_scans_1d(
         - "name": A name of the data to be shown in the legend.
 
     *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
-    down uncertainties which is drawn as a vertical bar. When *show_best_fit* is *False*, the best
-    fit value indicator per data entry is not shown. To overlay lines and labels denoting integer
-    significances corresponding to 1D likelihood scans, *show_significances* can be set to *True* to
-    show significances up to 9 sigma, or a list of sigmas (integer, >= 1) or confidence levels
-    (float, < 1). In case there are negative dnll2 values, *shift_negative_values* can be set to
-    *True* to shift them vertically so that the minimum is located at 0 again. *v_lines* can be a
-    list of x-values at which vertical, dashed lines are drawn for visual guidance.
+    down uncertainties which is drawn as a vertical bar. When *show_best_fit*
+    (*show_best_fit_error*) is *True*, the best fit error value (and its uncertainty) is shown in
+    the corresponding legend entry. When *show_best_fit_line* is *True*, a vertical line is shown at
+    the position of the best fit value. When *show_best_fit_indicators* is *True* and only a single
+    scan is shown, vertical indicators of the one and two sigma intervals of the best fit value,
+    when requested in *show_significances*, are shown. The two latter arguments default to the value
+    of *show_best_fit*.
+
+    To overlay lines and labels denoting integer significances corresponding to 1D likelihood scans,
+    *show_significances* can be set to *True* to show significances up to 9 sigma, or a list of
+    sigmas (integer, >= 1) or confidence levels (float, < 1). In case there are negative dnll2
+    values, *shift_negative_values* can be set to *True* to shift them vertically so that the
+    minimum is located at 0 again. *v_lines* can be a list of x-values at which vertical, dashed
+    lines are drawn for visual guidance.
 
     *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
     the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. When
@@ -89,6 +96,10 @@ def plot_likelihood_scans_1d(
         theory_value = make_list(theory_value)
     if not show_best_fit:
         show_best_fit_error = False
+    if show_best_fit_line is None:
+        show_best_fit_line = show_best_fit
+    if show_best_fit_indicators is None:
+        show_best_fit_indicators = show_best_fit
 
     # validate data entries
     for i, d in enumerate(data):
