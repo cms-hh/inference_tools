@@ -637,17 +637,17 @@ def plot_likelihood_scan_2d(
             z_min = _z_min if z_min is None else z_min
             z_max = _z_max if z_max is None else z_max
 
-        # when there are NaN's, set them to values right below the z_min which causes ROOT to draw
+        # when there are NaN's or >=999s, set them to values right below the z_min which causes ROOT to draw
         # white pixels
         z_min_fill = z_min
-        nan_mask = np.isnan(dnll2)
+        nan_mask = np.ma.mask_or(np.isnan(dnll2), dnll2 >= 999)
         if nan_mask.sum() and not interpolate_nans:
             warn(
-                "WARNING: {} NaN(s) will be drawn as white pixels; consider enabling NaN "
+                "WARNING: {} NaN(s) and >=999(s) will be drawn as white pixels; consider enabling NaN "
                 "interpolation (--interpolate-nans when triggered by a law task)".format(
                     nan_mask.sum())
             )
-            dnll2[np.isnan(dnll2)] = 0.9 * z_min
+            dnll2[nan_mask] = 0.9 * z_min
             z_min_fill = None
 
         # fill and store the histogram
@@ -1243,11 +1243,11 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
         coords = "\n  - ".join(", ".join(map(str, vals)) for vals in poi_values[mask])
         return coords
 
-    # warn about nans and remove them
-    nan_mask = np.isnan(dnll2_values)
+    # warn about nans and >=999s and remove them
+    nan_mask = np.ma.mask_or(np.isnan(dnll2_values), dnll2_values >= 999)
     if nan_mask.sum():
         warn(
-            "WARNING: found {} NaN(s) in dnll2 values{}; POI coordinates ({}):\n  - {}".format(
+            "WARNING: found {} NaN(s) and >=999(s) in dnll2 values{}; POI coordinates ({}):\n  - {}".format(
                 nan_mask.sum(), origin, pois, find_coords(nan_mask))
         )
         if remove_nans:
@@ -1255,7 +1255,7 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
             poi1_values = poi1_values[~nan_mask]
             if poi2:
                 poi2_values = poi2_values[~nan_mask]
-            print("removed {} NaN(s)".format(nan_mask.sum()))
+            print("removed {} NaN(s) and >=999(s)".format(nan_mask.sum()))
 
     # warn about negative dnll2 values
     neg_mask = dnll2_values < 0
@@ -1343,13 +1343,14 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     poi_values_min = poi_values.min()
     poi_values_max = poi_values.max()
 
-    # remove values where dnll2 is nan
-    mask = ~np.isnan(dnll2_values)
+    # remove values where dnll2 is nan or >=999
+    nan_mask = np.ma.mask_or(np.isnan(dnll2_values), dnll2_values >= 999) # remove blow ups
+    mask = ~nan_mask
     poi_values = poi_values[mask]
     dnll2_values = dnll2_values[mask]
     n_nans = (~mask).sum()
     if n_nans:
-        warn("WARNING: found {} NaN(s) in values in 1D likelihood evaluation".format(n_nans))
+        warn("WARNING: found {} NaN(s) and >=999s in values in 1D likelihood evaluation".format(n_nans))
 
     # first, obtain an interpolation function
     # interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="linear")
@@ -1484,14 +1485,15 @@ def evaluate_likelihood_scan_2d(
     poi2_values_min = poi2_values.min()
     poi2_values_max = poi2_values.max()
 
-    # remove values where dnll2 is nan
-    mask = ~np.isnan(dnll2_values)
+    # remove values where dnll2 is nan and >=999
+    nan_mask = np.ma.mask_or(np.isnan(dnll2_values), dnll2_values >= 999)
+    mask = ~nan_mask
     poi1_values = poi1_values[mask]
     poi2_values = poi2_values[mask]
     dnll2_values = dnll2_values[mask]
     n_nans = (~mask).sum()
     if n_nans:
-        warn("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
+        warn("WARNING: found {} NaN(s) and >=999s in dnll2 values".format(n_nans))
 
     # obtain an interpolation function
     # interp = scipy.interpolate.interp2d(poi1_values, poi2_values, dnll2_values)
