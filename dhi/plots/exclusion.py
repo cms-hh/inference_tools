@@ -186,7 +186,7 @@ def plot_exclusion_and_bestfit_1d(
         # preprocess values
         poi_min = d.get("scan_min")
         dnll2_values, poi_values = _preprocess_values(d["nll_values"]["dnll2"],
-            (poi, d["nll_values"][scan_parameter]), shift_negative_values=True,
+            (poi, d["nll_values"][scan_parameter]), shift_negative_values=True, remove_nans=True,
             min_is_external=poi_min is not None)
 
         # evaluate the scan
@@ -538,16 +538,22 @@ def plot_exclusion_and_bestfit_2d(
 
     # best fit point
     if nll_values:
+        # preprocess values
+        dnll2, nll_scan_values1, nll_scan_values2 = _preprocess_values(
+            nll_values["dnll2"], (scan_parameter1, nll_values[scan_parameter1]),
+            (scan_parameter2, nll_values[scan_parameter2]), remove_nans=True,
+            shift_negative_values=True, min_is_external=bool(scan_minima))
+
+        # scan
         scan = evaluate_likelihood_scan_2d(
-            nll_values[scan_parameter1],
-            nll_values[scan_parameter2],
-            nll_values["dnll2"],
+            nll_scan_values1,
+            nll_scan_values2,
+            dnll2,
             poi1_min=scan_minima[0] if scan_minima and show_best_fit_error else None,
             poi2_min=scan_minima[1] if scan_minima and show_best_fit_error else None,
         )
-        if not scan:
-            warn("2D likelihood evaluation failed")
-        else:
+
+        if scan:
             g_fit = ROOT.TGraphAsymmErrors(1)
             g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
             if show_best_fit_error:
@@ -565,6 +571,8 @@ def plot_exclusion_and_bestfit_2d(
                     color=colors.black)
                 draw_objs.append((g_fit, "PZ"))
                 legend_entries[1] = (g_fit, "Best fit value", "P")
+        else:
+            warn("2D likelihood evaluation failed")
 
     # SM point
     if show_sm_point:
