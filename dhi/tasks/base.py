@@ -178,12 +178,18 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         description="number of CPUs to request; empty value leads to the cluster default setting; "
         "no default",
     )
+    htcondor_mem = luigi.FloatParameter(
+        default=law.NO_FLOAT,
+        significant=False,
+        description="amount of memory in MiB to request; empty value leads to the cluster default "
+        "setting; no default",
+    )
     htcondor_flavor = luigi.ChoiceParameter(
         default=os.getenv("DHI_HTCONDOR_FLAVOR", "cern"),
-        choices=("cern",),
+        choices=("cern", "naf"),
         significant=False,
-        description="the 'flavor' (i.e. configuration name) of the batch system; choices: cern; "
-        "default: {}".format(os.getenv("DHI_HTCONDOR_FLAVOR", "cern")),
+        description="the 'flavor' (i.e. configuration name) of the batch system; choices: "
+        "cern,naf; default: {}".format(os.getenv("DHI_HTCONDOR_FLAVOR", "cern")),
     )
     htcondor_getenv = luigi.BoolParameter(
         default=False,
@@ -243,7 +249,19 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 
         # request cpus
         if self.htcondor_cpus > 0:
-            config.custom_content.append(("RequestCpus", self.htcondor_cpus))
+            if self.htcondor_flavor == "naf":
+                self.logger.warning("--htcondor-cpus has no effect on NAF resources, use "
+                    "--htcondor-mem instead")
+            else:
+                config.custom_content.append(("RequestCpus", self.htcondor_cpus))
+
+        # request memory
+        if self.htcondor_mem > 0:
+            if self.htcondor_flavor == "cern":
+                self.logger.warning("--htcondor-mem has no effect on CERN resources, use "
+                    "--htcondor-cpus instead")
+            else:
+                config.custom_content.append(("RequestMemory", self.htcondor_mem))
 
         # accounting group for priority on the cluster
         if self.htcondor_group and self.htcondor_group != law.NO_STR:
@@ -303,7 +321,7 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         description="number of replicas to generate; default: 10",
     )
 
-    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2/*", "*~", "*.pyc"]
+    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2*/*", "*~", "*.pyc"]
 
     version = None
     task_namespace = None
