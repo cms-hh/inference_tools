@@ -256,6 +256,12 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         description="when True, interpolate NaN values with information from neighboring fits "
         "instead of drawing white pixels; 2D only; default: False",
     )
+    interpolate_above = luigi.FloatParameter(
+        default=law.NO_FLOAT,
+        significant=False,
+        description="dnll2 values above this threshold are removed and interpolated using adjacent "
+        "values instead; default: empty",
+    )
     show_points = luigi.BoolParameter(
         default=False,
         significant=False,
@@ -325,6 +331,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 show_best_fit_error=self.show_best_fit_error,
                 show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
+                interpolate_above=self.interpolate_above,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -349,6 +356,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 interpolate_nans=self.interpolate_nans,
+                interpolate_above=self.interpolate_above,
                 show_box=self.show_box,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
@@ -541,6 +549,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 show_best_fit_error=self.show_best_fit_error,
                 show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
+                interpolate_above=self.interpolate_above,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -559,6 +568,8 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 poi2=self.pois[1],
                 data=data,
                 shift_negative_values=self.shift_negative_values,
+                interpolate_nans=self.interpolate_nans,
+                interpolate_above=self.interpolate_above,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -648,6 +659,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 show_best_fit=self.show_best_fit,
                 show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
+                interpolate_above=self.interpolate_above,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -666,6 +678,8 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 poi2=self.pois[1],
                 data=data,
                 shift_negative_values=self.shift_negative_values,
+                interpolate_nans=self.interpolate_nans,
+                interpolate_above=self.interpolate_above,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
