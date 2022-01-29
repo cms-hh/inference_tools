@@ -41,6 +41,7 @@ def plot_likelihood_scans_1d(
     show_best_fit_indicators=None,
     show_significances=(1, 2, 3, 5),
     shift_negative_values=False,
+    interpolate_above=None,
     v_lines=None,
     x_min=None,
     x_max=None,
@@ -76,13 +77,14 @@ def plot_likelihood_scans_1d(
     *show_significances* can be set to *True* to show significances up to 9 sigma, or a list of
     sigmas (integer, >= 1) or confidence levels (float, < 1). In case there are negative dnll2
     values, *shift_negative_values* can be set to *True* to shift them vertically so that the
-    minimum is located at 0 again. *v_lines* can be a list of x-values at which vertical, dashed
-    lines are drawn for visual guidance.
+    minimum is located at 0 again. When *interpolate_above* is defined, values that exceed this
+    threshold are removed and interpolated using adjacent values instead.
 
-    *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
-    the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. When
-    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
+    *v_lines* can be a list of x-values at which vertical, dashed lines are drawn for visual
+    guidance. *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control
+    the range of the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
+    When *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign*
+    should refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
     *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
     When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
@@ -122,6 +124,7 @@ def plot_likelihood_scans_1d(
         }
         # preprocess values (nan detection, negative shift)
         values["dnll2"], values[poi] = _preprocess_values(values["dnll2"], (poi, values[poi]),
+            remove_nans=True, interpolate_above=interpolate_above,
             shift_negative_values=shift_negative_values, origin="entry '{}'".format(d["name"]),
             min_is_external=d["poi_min"] is not None)
         d["values"] = values
@@ -329,6 +332,7 @@ def plot_likelihood_scan_2d(
     show_significances=(1, 2, 3, 5),
     shift_negative_values=False,
     interpolate_nans=False,
+    interpolate_above=None,
     show_sm_point=True,
     show_box=False,
     x_min=None,
@@ -356,11 +360,14 @@ def plot_likelihood_scan_2d(
     that the minimum is located at 0 again. Points where the dnll2 value is NaN are visualized as
     white pixels by default. However, when *interpolate_nans* is set, these values are smoothed out
     with information from neighboring pixels through ROOT's TGraph2D.Interpolate feature (similar
-    to how its line interpolation draws values between two discrete points in a 1D graph). The
-    standard model point at (1, 1) as drawn as well unless *show_sm_point* is *False*. The best fit
-    value is drawn with uncertainties on one POI being estimated while setting the other POI to its
-    best value. When *show_box* is *True*, a box containing the 1 sigma contour is shown and used
-    to estimate the dimensions of the standard error following the prescription at
+    to how its line interpolation draws values between two discrete points in a 1D graph). When
+    *interpolate_above* is defined, the same interpolation is applied to values that exceed this
+    threshold.
+
+    The standard model point at (1, 1) as drawn as well unless *show_sm_point* is *False*. The best
+    fit value is drawn with uncertainties on one POI being estimated while setting the other POI to
+    its best value. When *show_box* is *True*, a box containing the 1 sigma contour is shown and
+    used to estimate the dimensions of the standard error following the prescription at
     https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf (e.g. Fig. 40.5).
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
@@ -387,7 +394,7 @@ def plot_likelihood_scan_2d(
         # preprocess values (nan detection, negative shift)
         _values["dnll2"], _values[poi1], _values[poi2] = _preprocess_values(_values["dnll2"],
             (poi1, _values[poi1]), (poi2, _values[poi2]), remove_nans=interpolate_nans,
-            shift_negative_values=shift_negative_values,
+            shift_negative_values=shift_negative_values, interpolate_above=interpolate_above,
             min_is_external=poi1_min is not None and poi2_min is not None)
         values[i] = _values
 
@@ -449,13 +456,13 @@ def plot_likelihood_scan_2d(
             z_min = _z_min if z_min is None else z_min
             z_max = _z_max if z_max is None else z_max
 
-        # when there are NaN's or >=999s, set them to values right below the z_min which causes ROOT to draw
-        # white pixels
+        # when there are still NaN's, set them to values right below the z_min,
+        # which causes ROOT to draw white pixels
         z_min_fill = z_min
-        nan_mask = np.ma.mask_or(np.isnan(dnll2), dnll2 >= 999)
+        nan_mask = np.isnan(dnll2)
         if nan_mask.sum() and not interpolate_nans:
             warn(
-                "WARNING: {} NaN(s) and >=999(s) will be drawn as white pixels; consider enabling NaN "
+                "WARNING: {} NaN(s) will be drawn as white pixels; consider enabling NaN "
                 "interpolation (--interpolate-nans when triggered by a law task)".format(
                     nan_mask.sum())
             )
@@ -624,11 +631,12 @@ def plot_likelihood_scans_2d(
     poi2,
     data,
     shift_negative_values=False,
+    interpolate_nans=True,
+    interpolate_above=None,
     x_min=None,
     x_max=None,
     y_min=None,
     y_max=None,
-    fill_nans=True,
     model_parameters=None,
     campaign=None,
     paper=False,
@@ -648,11 +656,12 @@ def plot_likelihood_scans_2d(
     them vertically so that the minimum is located at 0 again.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
-    and default to the ranges of the poi values. When *fill_nans* is *True*, points with failed
-    fits, denoted by nan values, are filled with the averages of neighboring fits. When
-    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When *paper* is
-    *True*, certain plot configurations are adjusted for use in publications.
+    and default to the ranges of the poi values. When *interpolate_nans* is *True*, points with
+    failed fits, denoted by nan values, are filled with the averages of neighboring fits. When
+    *interpolate_above* is defined, the same interpolation is applied to values that exceed this
+    threshold. When *model_parameters* can be a dictionary of key-value pairs of model parameters.
+    *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
+    When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
     Example: Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d_1
     """
@@ -683,6 +692,7 @@ def plot_likelihood_scans_2d(
         # preprocess values (nan detection, negative shift)
         values["dnll2"], values[poi1], values[poi2] = _preprocess_values(values["dnll2"],
             (poi1, values[poi1]), (poi2, values[poi2]), shift_negative_values=shift_negative_values,
+            remove_nans=interpolate_nans, interpolate_above=interpolate_above,
             origin="entry '{}'".format(d["name"]), min_is_external=None not in d["poi_mins"])
         d["values"] = values
 
@@ -1042,7 +1052,8 @@ def plot_nuisance_likelihood_scans(
 
 
 def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True,
-        shift_negative_values=False, min_is_external=False, origin=None, epsilon=1e-5):
+        interpolate_above=None, shift_negative_values=False, min_is_external=False, origin=None,
+        epsilon=1e-5):
     # unpack data
     poi1, poi1_values = poi1_data
     poi2, poi2_values = poi2_data or (None, None)
@@ -1055,11 +1066,11 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
         coords = "\n  - ".join(", ".join(map(str, vals)) for vals in poi_values[mask])
         return coords
 
-    # warn about nans and >=999s and remove them
-    nan_mask = np.ma.mask_or(np.isnan(dnll2_values), dnll2_values >= 999)
+    # warn about NaNs and remove them
+    nan_mask = np.isnan(dnll2_values)
     if nan_mask.sum():
         warn(
-            "WARNING: found {} NaN(s) and >=999(s) in dnll2 values{}; POI coordinates ({}):\n  - {}".format(
+            "WARNING: found {} NaN(s) in dnll2 values{}; POI coordinates ({}):\n  - {}".format(
                 nan_mask.sum(), origin, pois, find_coords(nan_mask))
         )
         if remove_nans:
@@ -1067,7 +1078,21 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
             poi1_values = poi1_values[~nan_mask]
             if poi2:
                 poi2_values = poi2_values[~nan_mask]
-            print("removed {} NaN(s) and >=999(s)".format(nan_mask.sum()))
+            print("removed {} NaN(s)".format(nan_mask.sum()))
+
+    # warn about values that exceed the interpolation threshold when set
+    if interpolate_above and interpolate_above > 0:
+        above_mask = dnll2_values > interpolate_above
+        if above_mask.sum():
+            warn(
+                "INFO: found {} high (> {}) dnll2 values{}; POI coordinates ({}):\n  - {}".format(
+                    above_mask.sum(), interpolate_above, origin, pois, find_coords(above_mask))
+            )
+            dnll2_values = dnll2_values[~above_mask]
+            poi1_values = poi1_values[~above_mask]
+            if poi2:
+                poi2_values = poi2_values[~above_mask]
+            print("removed {} high values".format(above_mask.sum()))
 
     # warn about negative dnll2 values
     neg_mask = dnll2_values < 0
@@ -1133,6 +1158,8 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     corresponding *delta_2nll* values, performs an interpolation and returns certain results of the
     scan in a dict. When *poi_min* is *None*, it is estimated from the interpolated curve.
 
+    Please consider preprocessing values with :py:func:`_preprocess_values` first.
+
     The returned fields are:
 
     - ``interp``: The generated interpolation function.
@@ -1155,14 +1182,14 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     poi_values_min = poi_values.min()
     poi_values_max = poi_values.max()
 
-    # remove values where dnll2 is nan or >=999
-    nan_mask = np.ma.mask_or(np.isnan(dnll2_values), dnll2_values >= 999) # remove blow ups
+    # remove values where dnll2 is NaN
+    nan_mask = np.isnan(dnll2_values)
     mask = ~nan_mask
     poi_values = poi_values[mask]
     dnll2_values = dnll2_values[mask]
     n_nans = (~mask).sum()
     if n_nans:
-        warn("WARNING: found {} NaN(s) and >=999s in values in 1D likelihood evaluation".format(n_nans))
+        warn("WARNING: found {} NaN(s) in values in 1D likelihood evaluation".format(n_nans))
 
     # first, obtain an interpolation function
     # interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="linear")
@@ -1258,7 +1285,9 @@ def evaluate_likelihood_scan_2d(
     *poi1_values*, *poi2_values* and *dnll2_values* should all be 1D with the same length. When
     *poi1_min* and *poi2_min* are *None*, they are estimated from the interpolated curve.
     When *contours* are given, it should be a nested list of graph objects, where each contained
-    list represents the graphs that constitute a contour. The
+    list represents the graphs that constitute a contour.
+
+    Please consider preprocessing values with :py:func:`_preprocess_values` first.
 
     The returned fields are:
 
@@ -1297,15 +1326,15 @@ def evaluate_likelihood_scan_2d(
     poi2_values_min = poi2_values.min()
     poi2_values_max = poi2_values.max()
 
-    # remove values where dnll2 is nan and >=999
-    nan_mask = np.ma.mask_or(np.isnan(dnll2_values), dnll2_values >= 999)
+    # remove values where dnll2 is NaN
+    nan_mask = np.isnan(dnll2_values)
     mask = ~nan_mask
     poi1_values = poi1_values[mask]
     poi2_values = poi2_values[mask]
     dnll2_values = dnll2_values[mask]
     n_nans = (~mask).sum()
     if n_nans:
-        warn("WARNING: found {} NaN(s) and >=999s in dnll2 values".format(n_nans))
+        warn("WARNING: found {} NaN(s) in dnll2 values".format(n_nans))
 
     # obtain an interpolation function
     # interp = scipy.interpolate.interp2d(poi1_values, poi2_values, dnll2_values)
