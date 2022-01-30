@@ -884,7 +884,7 @@ class ROOTColorGetter(object):
 class InterExtrapolator(object):
 
     def __init__(self, x_values, y_values, z_values, kind2d="linear", kind1d="linear",
-            epsilon_x=1e-3, epsilon_y=1e-3):
+            epsilon_x=1e-3, epsilon_y=1e-3, warn_treshold=0.15):
         super(InterExtrapolator, self).__init__()
 
         # nan check
@@ -899,6 +899,7 @@ class InterExtrapolator(object):
         self.kind1d = kind1d
         self.epsilon_x = epsilon_x
         self.epsilon_y = epsilon_y
+        self.warn_treshold = warn_treshold
 
         # default interpolation
         self.interp2d = scipy.interpolate.interp2d(x_values, y_values, z_values, kind=self.kind2d)
@@ -955,5 +956,12 @@ class InterExtrapolator(object):
         # perform the two 1D interpolations
         z_row = self.get_row_interp(y)(x)
         z_col = self.get_col_interp(x)(y)
+
+        # check if the asymmetry is below a threshold
+        asym = (z_row - z_col) / (z_row + z_col + 1e-5)
+        if asym > self.warn_treshold:
+            warn("{}: asymmetry between 1D interpolations from row ({:.3f}) and column ({:.3f}) at "
+                "point ({}, {}) is {:.3f}, larger than {}".format(self.__class__.__name__, z_row,
+                z_col, x, y, asym, self.warn_treshold))
 
         return 0.5 * (z_row + z_col)
