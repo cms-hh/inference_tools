@@ -231,7 +231,8 @@ def plot_exclusion_and_bestfit_1d(
         # name labels
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
         if scan:
-            label = label_tmpl_scan % (label, scan_label, scan.num_min.str("%.1f", style="root"))
+            label = label_tmpl_scan % (label, scan_label, scan.num_min.str("%.1f", style="root",
+                force_asymmetric=True, styles={"space": ""}))
         else:
             label = label_tmpl % (label,)
         label_x = r.get_x(10, canvas)
@@ -299,6 +300,7 @@ def plot_exclusion_and_bestfit_2d(
     recompute_best_fit=False,
     scan_minima=None,
     show_sm_point=True,
+    interpolation_method="root",
     x_min=None,
     x_max=None,
     y_min=None,
@@ -324,12 +326,14 @@ def plot_exclusion_and_bestfit_2d(
     not set explicitely. *xsec_unit* can be a string that is appended to every label.
 
     When *nll_values* is set, it is used to extract expected best fit values and their uncertainties
-    which are drawn as well when *show_best_fit_error* is *True*. When set, it should be a mapping to
-    lists of values or a record array with keys "<scan_parameter1>", "<scan_parameter2>" and
+    which are drawn as well when *show_best_fit_error* is *True*. When set, it should be a mapping
+    to lists of values or a record array with keys "<scan_parameter1>", "<scan_parameter2>" and
     "dnll2". By default, the position of the best value is directly extracted from the likelihood
     values. However, when *scan_minima* is a 2-tuple of positions per scan parameter, this best fit
     value is used instead, e.g. to use combine's internally interpolated value. The standard model
-    point at (1, 1) as drawn as well unless *show_sm_point* is *False*.
+    point at (1, 1) as drawn as well unless *show_sm_point* is *False*. *interpolation_method* can
+    either be "root", "linear" or "cubic", where the two latter methods trigger scipy's
+    interpolation which, unlike "root", also has extrapolation capabilities.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the range of the x- and y-axis, respectively, and
     default to the scan parameter ranges found in *expected_limits*. *model_parameters* can be a
@@ -422,6 +426,7 @@ def plot_exclusion_and_bestfit_2d(
             expected_limits[key],
             levels=[1.],
             frame_kwargs=[{"mode": "edge"}] + [{"mode": "contour+"}],
+            interpolation=interpolation_method,
         )[0]
 
     # style graphs and add to draw objects, from outer to inner graphs (-2, -1, +1, +2), followed by
@@ -467,6 +472,7 @@ def plot_exclusion_and_bestfit_2d(
             xsec_values[scan_parameter2],
             xsec_values["xsec"],
             levels=xsec_levels,
+            interpolation=interpolation_method,
         )
 
         # draw them
@@ -523,6 +529,7 @@ def plot_exclusion_and_bestfit_2d(
             observed_limits["limit"],
             levels=[1.],
             frame_kwargs=[{"mode": "edge"}] + [{"mode": "contour+"}],
+            interpolation=interpolation_method,
         )[0]
 
         # draw them

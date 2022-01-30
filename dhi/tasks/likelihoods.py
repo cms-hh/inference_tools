@@ -262,6 +262,14 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         description="dnll2 values above this threshold are removed and interpolated using adjacent "
         "values instead; default: empty",
     )
+    interpolation_method = luigi.ChoiceParameter(
+        choices=("root", "linear", "cubic"),
+        default="root",
+        significant=False,
+        description="the 2D interpolation method; either 'root' to use ROOT's TGraph2D "
+        "interpolation, or either 'linear' or 'cubic' for scipy's implementation including a "
+        "custom extrapolator; 2D only; default: root",
+    )
     show_points = luigi.BoolParameter(
         default=False,
         significant=False,
@@ -357,6 +365,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 shift_negative_values=self.shift_negative_values,
                 interpolate_nans=self.interpolate_nans,
                 interpolate_above=self.interpolate_above,
+                interpolation_method=self.interpolation_method,
                 show_box=self.show_box,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
@@ -570,6 +579,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 shift_negative_values=self.shift_negative_values,
                 interpolate_nans=self.interpolate_nans,
                 interpolate_above=self.interpolate_above,
+                interpolation_method=self.interpolation_method,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -680,6 +690,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 shift_negative_values=self.shift_negative_values,
                 interpolate_nans=self.interpolate_nans,
                 interpolate_above=self.interpolate_above,
+                interpolation_method=self.interpolation_method,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),

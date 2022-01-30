@@ -16,8 +16,10 @@ import operator
 import logging
 from collections import OrderedDict
 
-import six
+import numpy as np
+import scipy.interpolate
 from law.util import no_value, multi_match, make_unique, make_list  # noqa
+import six
 
 # modules and objects from lazy imports
 _plt = None
@@ -877,3 +879,81 @@ class ROOTColorGetter(object):
             return c
 
         raise AttributeError("cannot interpret '{}' as color".format(obj))
+
+
+class InterExtrapolator(object):
+
+    def __init__(self, x_values, y_values, z_values, kind2d="linear", kind1d="linear",
+            epsilon_x=1e-3, epsilon_y=1e-3):
+        super(InterExtrapolator, self).__init__()
+
+        # nan check
+        if np.isnan(z_values).sum() > 0:
+            raise Exception("z_values contain NaN values")
+
+        # store valus
+        self.x_values = np.array(x_values)
+        self.y_values = np.array(y_values)
+        self.z_values = np.array(z_values)
+        self.kind2d = kind2d
+        self.kind1d = kind1d
+        self.epsilon_x = epsilon_x
+        self.epsilon_y = epsilon_y
+
+        # default interpolation
+        self.interp2d = scipy.interpolate.interp2d(x_values, y_values, z_values, kind=self.kind2d)
+
+        # caches for 1d interpolators
+        self.interps1d_x = {}
+        self.interps1d_y = {}
+
+    def has_xy(self, x, y):
+        x_mask = (np.abs(self.x_values - x) <= self.epsilon_x)
+        y_mask = (np.abs(self.y_values - y) <= self.epsilon_y)
+        return (x_mask & y_mask).sum() > 0
+
+    def get_row(self, y):
+        # find indices of y_values that are close to the target y
+        mask = np.abs(self.y_values - y) <= self.epsilon_y
+
+        if mask.sum() == 0:
+            raise Exception("no row x values found at y = {}".format(y))
+
+        return self.x_values[mask], self.y_values[mask], self.z_values[mask]
+
+    def get_col(self, x):
+        # find indices of x_values that are close to the target x
+        mask = np.abs(self.x_values - x) <= self.epsilon_x
+
+        if mask.sum() == 0:
+            raise Exception("no column y values found at x = {}".format(x))
+
+        return self.x_values[mask], self.y_values[mask], self.z_values[mask]
+
+    def get_row_interp(self, y):
+        if y not in self.interps1d_y:
+            xs, _, zs = self.get_row(y)
+            self.interps1d_y[y] = scipy.interpolate.interp1d(xs, zs, kind=self.kind1d,
+                fill_value="extrapolate")
+
+        return self.interps1d_y[y]
+
+    def get_col_interp(self, x):
+        if x not in self.interps1d_x:
+            _, ys, zs = self.get_col(x)
+            self.interps1d_x[x] = scipy.interpolate.interp1d(ys, zs, kind=self.kind1d,
+                fill_value="extrapolate")
+
+        return self.interps1d_x[x]
+
+    def __call__(self, x, y):
+        # strategy: if (x, y) is covered by the interpolator, use it, and otherwise perform two
+        # 1D interpolations across row (column) values with the same y (x) coordinate and average
+        if self.has_xy(x, y):
+            return self.interp2d(x, y)
+
+        # perform the two 1D interpolations
+        z_row = self.get_row_interp(y)(x)
+        z_col = self.get_col_interp(x)(y)
+
+        return 0.5 * (z_row + z_col)

@@ -17,10 +17,9 @@ from collections import OrderedDict
 
 import six
 import numpy as np
-import scipy.interpolate
 
 from dhi.config import poi_data, br_hh_names
-from dhi.util import import_ROOT, import_file, try_int, to_root_latex, make_list
+from dhi.util import import_ROOT, import_file, try_int, to_root_latex, make_list, InterExtrapolator
 
 
 _styles = {}
@@ -260,7 +259,7 @@ def frame_histogram(hist, x_width, y_width, mode="edge", frame_value=None, conto
 
 # helper to fill each bin in a 2D histogram from potentially sparse points via interpolation
 def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=None, replace_nan=None,
-        interpolation="tgraph2d"):
+        interpolation="root"):
     ROOT = import_ROOT()
 
     # remove or replace nans in z_values
@@ -274,13 +273,14 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
         z_values[nan_indices] = replace_nan
 
     # create an interpolation function
-    if interpolation == "tgraph2d":
+    if interpolation in ("tgraph2d", "root"):
         g = ROOT.TGraph2D(len(z_values))
         for i, (x, y, z) in enumerate(zip(x_values, y_values, z_values)):
             g.SetPoint(i, x, y, z)
         interp = lambda x, y: g.Interpolate(x, y)
-    elif interpolation.startswith("interp2d_"):
-        interp = scipy.interpolate.interp2d(x_values, y_values, z_values, kind=interpolation[9:])
+    else:
+        interp = InterExtrapolator(x_values, y_values, z_values, kind2d=interpolation,
+            kind1d=interpolation)
 
     # helper for limiting z values
     def cap_z(z):
