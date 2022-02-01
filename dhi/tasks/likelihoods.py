@@ -51,15 +51,18 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
 
     def workflow_requires(self):
         reqs = super(LikelihoodScan, self).workflow_requires()
-        reqs["workspace"] = CreateWorkspace.req(self)
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def requires(self):
-        reqs = {"workspace": CreateWorkspace.req(self)}
+        reqs = {}
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, branch=0)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def output(self):
@@ -556,6 +559,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 theory_value=theory_value,
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
+                show_best_fit_indicators=False,
                 show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 interpolate_above=self.interpolate_above,
@@ -667,6 +671,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
                 data=data,
                 theory_value=theory_value,
                 show_best_fit=self.show_best_fit,
+                show_best_fit_indicators=False,
                 show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 interpolate_above=self.interpolate_above,

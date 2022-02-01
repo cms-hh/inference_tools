@@ -1107,7 +1107,7 @@ class POITask(DatacardTask, ParameterValuesTask):
                         "found '{}'".format(self, p))
 
         # check the type of the unblinded parameter (for downstream extensibility)
-        if not isinstance(self.unblinded, (bool, tuple)):
+        if self.unblinded is not None and not isinstance(self.unblinded, (bool, tuple)):
             raise TypeError("{!r}: unblinded must refer to a bool or tuple, but found '{}'".format(
                 self, self.unblinded))
 

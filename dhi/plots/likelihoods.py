@@ -191,8 +191,9 @@ def plot_likelihood_scans_1d(
             if show_best_fit_indicators and len(data) == 1 and scans[0] and sig in [1, 2]:
                 values = map(lambda s: getattr(scans[0], "poi_{}{}".format(s, sig)), "pm")
                 for value in values:
-                    if value is not None and x_min < value < x_max:
-                        line = ROOT.TLine(value, y_min, value, scans[0].interp(value))
+                    if value is None or not (x_min < value < x_max):
+                        continue
+                    line = ROOT.TLine(value, y_min, value, scans[0].interp(value))
                     r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
                     draw_objs.append(line)
 
@@ -428,6 +429,7 @@ def plot_likelihood_scan_2d(
 
     # reset the box flag if necessary
     if show_box and (not scan or not scan.box_nums[0][0] or not scan.box_nums[0][1]):
+        warn("disabling show_box due to missing or failed scan")
         show_box = False
 
     # start plotting

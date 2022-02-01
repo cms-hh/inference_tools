@@ -231,7 +231,7 @@ def plot_exclusion_and_bestfit_1d(
         # name labels
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
         if scan:
-            label = label_tmpl_scan % (label, scan_label, scan.num_min.str("%.1f", style="root",
+            label = label_tmpl_scan % (label, scan_label, scan.num_min.str("%.2f", style="root",
                 force_asymmetric=True, styles={"space": ""}))
         else:
             label = label_tmpl % (label,)

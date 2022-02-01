@@ -66,15 +66,18 @@ class FitDiagnostics(POITask, CombineCommandTask, SnapshotUser, law.LocalWorkflo
 
     def workflow_requires(self):
         reqs = super(FitDiagnostics, self).workflow_requires()
-        reqs["workspace"] = CreateWorkspace.req(self)
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def requires(self):
-        reqs = {"workspace": CreateWorkspace.req(self)}
+        reqs = {}
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, branch=0)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def get_output_postfix(self, join=True):

@@ -90,15 +90,18 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
 
     def workflow_requires(self):
         reqs = super(GoodnessOfFit, self).workflow_requires()
-        reqs["workspace"] = CreateWorkspace.req(self)
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, _exclude={"toys"})
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def requires(self):
-        reqs = {"workspace": CreateWorkspace.req(self)}
+        reqs = {}
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, branch=0, _exclude={"toys"})
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def output(self):
