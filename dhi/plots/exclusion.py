@@ -187,10 +187,11 @@ def plot_exclusion_and_bestfit_1d(
         poi_min = d.get("scan_min")
         dnll2_values, poi_values = _preprocess_values(d["nll_values"]["dnll2"],
             (poi, d["nll_values"][scan_parameter]), shift_negative_values=True, remove_nans=True,
-            min_is_external=poi_min is not None)
+            min_is_external=poi_min is not None, origin="entry '{}'".format(d["name"]))
 
         # evaluate the scan
-        scans.append(evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min))
+        scans.append(evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min,
+            origin="entry '{}'".format(d["name"])))
 
     # draw best fit values
     if any(scans):

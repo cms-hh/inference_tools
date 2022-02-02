@@ -116,6 +116,8 @@ def plot_likelihood_scans_1d(
         d.setdefault("poi_min", None)
         # default name
         d.setdefault("name", str(i + 1))
+        # origin (for printouts)
+        d["origin"] = None if not d["name"] else "entry '{}'".format(d["name"])
         # drop all fields except for required ones
         values = {
             k: np.array(v, dtype=np.float32)
@@ -125,13 +127,14 @@ def plot_likelihood_scans_1d(
         # preprocess values (nan detection, negative shift)
         values["dnll2"], values[poi] = _preprocess_values(values["dnll2"], (poi, values[poi]),
             remove_nans=True, remove_above=interpolate_above,
-            shift_negative_values=shift_negative_values, origin="entry '{}'".format(d["name"]),
+            shift_negative_values=shift_negative_values, origin=d["origin"],
             min_is_external=d["poi_min"] is not None)
         d["values"] = values
 
     # perform scans
     scans = [
-        evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"], poi_min=d["poi_min"])
+        evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"], poi_min=d["poi_min"],
+            origin=d["origin"])
         for d in data
     ]
 
@@ -701,6 +704,8 @@ def plot_likelihood_scans_2d(
         assert len(d["poi_mins"]) == 2
         # default name
         d.setdefault("name", str(i + 1))
+        # origin (for printouts)
+        d["origin"] = None if not d["name"] else "entry '{}'".format(d["name"])
         # drop all fields except for required ones and convert to arrays
         values = {
             k: np.array(v, dtype=np.float32)
@@ -711,7 +716,7 @@ def plot_likelihood_scans_2d(
         values["dnll2"], values[poi1], values[poi2] = _preprocess_values(values["dnll2"],
             (poi1, values[poi1]), (poi2, values[poi2]), shift_negative_values=shift_negative_values,
             remove_nans=interpolate_nans, remove_above=interpolate_above,
-            origin="entry '{}'".format(d["name"]), min_is_external=None not in d["poi_mins"])
+            origin=d["origin"], min_is_external=None not in d["poi_mins"])
         d["values"] = values
 
     # determine contours independent of plotting
@@ -1077,7 +1082,7 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
     poi1, poi1_values = poi1_data
     poi2, poi2_values = poi2_data or (None, None)
     pois = ", ".join(filter(None, [poi1, poi2]))
-    origin = (" ({})".format(origin)) if origin else ""
+    origin = " ({})".format(origin) if origin else ""
 
     # helper to find poi values for coordinates of a given mask
     def find_coords(mask):
@@ -1171,7 +1176,7 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
     return (dnll2_values, poi1_values) + ((poi2_values,) if poi2 else ())
 
 
-def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
+def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None, origin=None):
     """
     Takes the results of a 1D likelihood profiling scan given by the *poi_values* and the
     corresponding *delta_2nll* values, performs an interpolation and returns certain results of the
@@ -1193,6 +1198,8 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
       calculation failed.
     - ``num_min``: A Number instance representing the best fit value and its 1 sigma uncertainty.
     """
+    origin = " ({})".format(origin) if origin else ""
+
     # ensure we are dealing with arrays
     poi_values = np.array(poi_values)
     dnll2_values = np.array(dnll2_values)
@@ -1208,7 +1215,8 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     dnll2_values = dnll2_values[mask]
     n_nans = (~mask).sum()
     if n_nans:
-        warn("WARNING: found {} NaN(s) in values in 1D likelihood evaluation".format(n_nans))
+        warn("WARNING: found {} NaN(s) in values{} in 1D likelihood evaluation".format(
+            n_nans, origin))
 
     # first, obtain an interpolation function
     try:
@@ -1220,7 +1228,7 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
 
     # recompute the minimum and compare with the existing one when given
     xcheck = poi_min is not None
-    print("extracting POI minimum {}...".format("as cross check " if xcheck else ""))
+    print("extracting POI minimum{} {}...".format(origin, "as cross check " if xcheck else ""))
     objective = lambda x: interp(x)
     bounds = (poi_values_min + 1e-4, poi_values_max - 1e-4)
     res = minimize_1d(objective, bounds)
@@ -1229,14 +1237,14 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
             raise Exception("could not find minimum of dnll2 interpolation: {}".format(res.message))
     else:
         poi_min_new = res.x[0]
-        print("done, found {:.4f}".format(poi_min_new))
+        print("done{}, found {:.4f}".format(origin, poi_min_new))
         if xcheck:
             # compare and optionally issue a warning (threshold to be optimized)
             if abs(poi_min - poi_min_new) >= 0.03:
                 warn(
-                    "WARNING: external POI minimum {:.4f} (from combine) differs from the "
+                    "WARNING: external POI minimum {:.4f}{} (from combine) differs from the "
                     "recomputed value {:.4f} (from scipy.interpolate and scipy.minimize)".format(
-                        poi_min, poi_min_new)
+                        poi_min, origin, poi_min_new)
                 )
         else:
             poi_min = poi_min_new
@@ -1277,6 +1285,20 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     if poi_p1 is not None and poi_m1 is not None:
         unc = (poi_p1 - poi_min, poi_min - poi_m1)
     num_min = Number(poi_min, unc)
+
+    # print values
+    def sigma_line(n, p, m):
+        rnd = lambda v: "{:+.4f}".format(v)
+        return "{} sigma: {} / {} ([{}, {}])".format(
+            n,
+            "--" if p is None else rnd(p - poi_min),
+            "--" if m is None else rnd(m - poi_min),
+            "--" if m is None else rnd(m),
+            "--" if p is None else rnd(p),
+        )
+    print("best fit value{}: {:+.4f}".format(origin, poi_min))
+    print("    " + sigma_line(1, poi_p1, poi_m1))
+    print("    " + sigma_line(2, poi_p2, poi_m2))
 
     return DotDict(
         interp=interp,
