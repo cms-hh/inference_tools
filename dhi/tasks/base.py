@@ -178,11 +178,12 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         description="number of CPUs to request; empty value leads to the cluster default setting; "
         "no default",
     )
-    htcondor_mem = luigi.FloatParameter(
+    htcondor_mem = law.BytesParameter(
         default=law.NO_FLOAT,
+        unit="GB",
         significant=False,
-        description="amount of memory in GB to request; empty value leads to the cluster default "
-        "setting; no default",
+        description="amount of memory to request; the default unit is GB; empty value leads to the "
+        "cluster default setting; no default",
     )
     htcondor_flavor = luigi.ChoiceParameter(
         default=os.getenv("DHI_HTCONDOR_FLAVOR", "cern"),
@@ -205,7 +206,8 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
     )
 
     exclude_params_branch = {
-        "max_runtime", "htcondor_cpus", "htcondor_flavor", "htcondor_getenv", "htcondor_group",
+        "max_runtime", "htcondor_cpus", "htcondor_mem", "htcondor_flavor", "htcondor_getenv",
+        "htcondor_group",
     }
 
     def htcondor_workflow_requires(self):
