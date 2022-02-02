@@ -181,15 +181,15 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
     htcondor_mem = luigi.FloatParameter(
         default=law.NO_FLOAT,
         significant=False,
-        description="amount of memory in MiB to request; empty value leads to the cluster default "
+        description="amount of memory in GB to request; empty value leads to the cluster default "
         "setting; no default",
     )
     htcondor_flavor = luigi.ChoiceParameter(
         default=os.getenv("DHI_HTCONDOR_FLAVOR", "cern"),
-        choices=("cern", "naf"),
+        choices=("cern", "naf", "infn"),
         significant=False,
         description="the 'flavor' (i.e. configuration name) of the batch system; choices: "
-        "cern,naf; default: {}".format(os.getenv("DHI_HTCONDOR_FLAVOR", "cern")),
+        "cern,naf,infn; default: {}".format(os.getenv("DHI_HTCONDOR_FLAVOR", "cern")),
     )
     htcondor_getenv = luigi.BoolParameter(
         default=False,
@@ -231,8 +231,13 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 
     def htcondor_job_config(self, config, job_num, branches):
         # use cc7 at CERN (http://batchdocs.web.cern.ch/batchdocs/local/submit.html#os-choice)
-        if self.htcondor_flavor == "cern":
+        # and NAF
+        if self.htcondor_flavor in ("cern", "naf"):
             config.custom_content.append(("requirements", '(OpSysAndVer =?= "CentOS7")'))
+        # architecture at INFN
+        if self.htcondor_flavor == "infn":
+            config.custom_content.append(("requirements", 'TARGET.OpSys == "LINUX" && (TARGET.Arch != "DUMMY")'))
+
         # copy the entire environment when requests
         if self.htcondor_getenv:
             config.custom_content.append(("getenv", "true"))
@@ -261,7 +266,11 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
                 self.logger.warning("--htcondor-mem has no effect on CERN resources, use "
                     "--htcondor-cpus instead")
             else:
-                config.custom_content.append(("RequestMemory", self.htcondor_mem))
+                # default unit is GB, but NAF uses MB
+                mem = self.htcondor_mem
+                if self.htcondor_flavor == "naf":
+                    mem *= 1024
+                config.custom_content.append(("RequestMemory", mem))
 
         # accounting group for priority on the cluster
         if self.htcondor_group and self.htcondor_group != law.NO_STR:
