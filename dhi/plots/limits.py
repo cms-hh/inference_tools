@@ -8,6 +8,7 @@ import os
 import json
 import math
 import traceback
+from collections import OrderedDict
 
 import six
 import numpy as np
@@ -38,6 +39,7 @@ def plot_limit_scan(
     expected_values,
     observed_values=None,
     theory_values=None,
+    ranges_path=None,
     y_log=False,
     x_min=None,
     x_max=None,
@@ -45,7 +47,6 @@ def plot_limit_scan(
     y_max=None,
     xsec_unit=None,
     hh_process=None,
-    ranges_path=None,
     model_parameters=None,
     campaign=None,
     show_points=False,
@@ -58,7 +59,8 @@ def plot_limit_scan(
     sigma), "limit_p2" and "limit_m2". When the variations by 1 or 2 sigma are missing, the plot is
     created without them. When *observed_values* is set, it should have a similar format with keys
     "<scan_parameter>" and "limit". When *theory_values* is set, it should have a similar format
-    with keys "<scan_parameter>" and "xsec", and optionally "xsec_p1" and "xsec_m1".
+    with keys "<scan_parameter>" and "xsec", and optionally "xsec_p1" and "xsec_m1". When
+    *ranges_path* is set, allowed scan parameter ranges are saved to the given file.
 
     When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*,
     *y_min* and *y_max* define the axes ranges and default to the ranges of the given values.
@@ -68,7 +70,6 @@ def plot_limit_scan(
     in the title of the y-axis and indicates that the plotted cross section data was (e.g.) scaled
     by a branching ratio.
 
-    When *ranges_path* is set, allowed scan parameter ranges are saved to the given file.
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
     refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
     *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
@@ -176,7 +177,7 @@ def plot_limit_scan(
         theory_values[scan_parameter] if has_thy else None,
         theory_values["xsec"] if has_thy else None,
     )
-    allowed_ranges = {}
+    allowed_ranges = OrderedDict()
     if ranges_path:
         key = "__".join([scan_parameter, poi, "expected"])
         allowed_ranges[key] = excluded_to_allowed_ranges(excl_ranges,
@@ -299,6 +300,7 @@ def plot_limit_scans(
     expected_values,
     observed_values=None,
     theory_values=None,
+    ranges_path=None,
     y_log=False,
     x_min=None,
     x_max=None,
@@ -306,7 +308,6 @@ def plot_limit_scans(
     y_max=None,
     xsec_unit=None,
     hh_process=None,
-    ranges_path=None,
     model_parameters=None,
     campaign=None,
     show_points=True,
@@ -321,7 +322,8 @@ def plot_limit_scans(
     *expected_values*. When *theory_values* is set, it should have a similar format with keys
     "<scan_parameter>" and "xsec", and optionally "xsec_p1" and "xsec_m1". *names* denote the names
     of limit curves shown in the legend. When a name is found to be in dhi.config.br_hh_names, its
-    value is used as a label instead.
+    value is used as a label instead. When *ranges_path* is set, all allowed scan parameter ranges
+    are saved to the given file.
 
     When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*,
     *y_min* and *y_max* define the axis ranges and default to the range of the given values.
@@ -331,7 +333,6 @@ def plot_limit_scans(
     title of the y-axis and indicates that the plotted cross section data was (e.g.) scaled by a
     branching ratio.
 
-    When *ranges_path* is set, all allowed scan parameter ranges are saved to the given file.
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
     refer to the name of a campaign label defined in dhi.config.campaign_labels. When *show_points*
     is *True*, the central scan points are drawn on top of the interpolated curve. When *paper* is
@@ -377,7 +378,7 @@ def plot_limit_scans(
         ranges_path = os.path.expandvars(os.path.expanduser(ranges_path))
         if not os.path.exists(os.path.dirname(ranges_path)):
             os.makedirs(os.path.dirname(ranges_path))
-    allowed_ranges = {}
+    allowed_ranges = OrderedDict()
 
     # set default ranges
     if x_min is None:

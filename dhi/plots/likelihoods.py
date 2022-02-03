@@ -4,7 +4,10 @@
 Likelihood plots using ROOT.
 """
 
+import os
 import math
+import json
+from collections import OrderedDict
 
 import numpy as np
 import scipy.interpolate
@@ -35,6 +38,7 @@ def plot_likelihood_scans_1d(
     poi,
     data,
     theory_value=None,
+    ranges_path=None,
     show_best_fit=False,
     show_best_fit_error=True,
     show_best_fit_line=None,
@@ -65,13 +69,15 @@ def plot_likelihood_scans_1d(
         - "name": A name of the data to be shown in the legend.
 
     *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
-    down uncertainties which is drawn as a vertical bar. When *show_best_fit*
-    (*show_best_fit_error*) is *True*, the best fit error value (and its uncertainty) is shown in
-    the corresponding legend entry. When *show_best_fit_line* is *True*, a vertical line is shown at
-    the position of the best fit value. When *show_best_fit_indicators* is *True* and only a single
-    scan is shown, vertical indicators of the one and two sigma intervals of the best fit value,
-    when requested in *show_significances*, are shown. The two latter arguments default to the value
-    of *show_best_fit*.
+    down uncertainties which is drawn as a vertical bar. When *ranges_path* is set, one and two
+    sigma intervals of the scan parameter are saved to the given file.
+
+    When *show_best_fit* (*show_best_fit_error*) is *True*, the best fit error value (and its
+    uncertainty) is shown in the corresponding legend entry. When *show_best_fit_line* is *True*, a
+    vertical line is shown at the position of the best fit value. When *show_best_fit_indicators* is
+    *True* and only a single scan is shown, vertical indicators of the one and two sigma intervals
+    of the best fit value, when requested in *show_significances*, are shown. The two latter
+    arguments default to the value of *show_best_fit*.
 
     To overlay lines and labels denoting integer significances corresponding to 1D likelihood scans,
     *show_significances* can be set to *True* to show significances up to 9 sigma, or a list of
@@ -102,6 +108,10 @@ def plot_likelihood_scans_1d(
         show_best_fit_line = show_best_fit
     if show_best_fit_indicators is None:
         show_best_fit_indicators = show_best_fit
+    if ranges_path:
+        ranges_path = os.path.expandvars(os.path.expanduser(ranges_path))
+        if not os.path.exists(os.path.dirname(ranges_path)):
+            os.makedirs(os.path.dirname(ranges_path))
 
     # validate data entries
     for i, d in enumerate(data):
@@ -236,6 +246,7 @@ def plot_likelihood_scans_1d(
         _color_sequence = [br_hh_colors.root[d["name"]] for d in data]
 
     # perform scans and draw nll curves
+    parameter_ranges = OrderedDict()
     for d, scan, col, ms in zip(data, scans, _color_sequence[:len(data)], marker_sequence[:len(data)]):
         if not scan:
             warn("1D likelihood evaluation failed for entry '{}'".format(d["name"]))
@@ -266,6 +277,13 @@ def plot_likelihood_scans_1d(
             line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
             r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors[col])
             draw_objs.append(line_fit)
+
+        # store parameter ranges
+        if ranges_path:
+            key = poi
+            if d["name"]:
+                key += "__{}".format(d["name"])
+            parameter_ranges[key] = scan["summary"]
 
     # theory prediction with uncertainties
     if theory_value:
@@ -322,6 +340,12 @@ def plot_likelihood_scans_1d(
     r.update_canvas(canvas)
     for path in make_list(paths):
         canvas.SaveAs(path)
+
+    # save parameter ranges
+    if ranges_path:
+        with open(ranges_path, "w") as f:
+            json.dump(parameter_ranges, f, indent=4)
+        print("saved parameter ranges to file")
 
 
 @use_style("dhi_default")
@@ -1197,6 +1221,7 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None, origin=N
     - ``poi_m2``: The poi value corresponding to the -2 sigma variation, or *None* when the
       calculation failed.
     - ``num_min``: A Number instance representing the best fit value and its 1 sigma uncertainty.
+    - ``summary``: A dictionary with poi minimum, uncertainties and ranges.
     """
     origin = " ({})".format(origin) if origin else ""
 
@@ -1286,6 +1311,19 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None, origin=N
         unc = (poi_p1 - poi_min, poi_min - poi_m1)
     num_min = Number(poi_min, unc)
 
+    # build summary
+    summary = OrderedDict([
+        ("best_fit", poi_min),
+        ("range", [
+            [poi_m1, poi_p1],
+            [poi_m2, poi_p2],
+        ]),
+        ("uncertainty", [
+            [(poi_p1 and (poi_p1 - poi_min)), (poi_m1 and (poi_m1 - poi_min))],
+            [(poi_p2 and (poi_p2 - poi_min)), (poi_m2 and (poi_m2 - poi_min))],
+        ]),
+    ])
+
     # print values
     def sigma_line(n, p, m):
         rnd = lambda v: "{:+.4f}".format(v)
@@ -1308,6 +1346,7 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None, origin=N
         poi_p2=poi_p2,
         poi_m2=poi_m2,
         num_min=num_min,
+        summary=summary,
     )
 
 
