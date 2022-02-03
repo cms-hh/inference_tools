@@ -5,15 +5,17 @@ Tasks related to upper limits.
 """
 
 import os
+import re
 
 import law
 import luigi
 
-from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, view_output_plots
+from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, ModelParameters, view_output_plots
 from dhi.tasks.combine import (
     MultiDatacardTask,
     MultiHHModelTask,
     CombineCommandTask,
+    POITask,
     POIScanTask,
     POIPlotTask,
     CreateWorkspace,
@@ -23,91 +25,47 @@ from dhi.util import unique_recarray, real_path
 from dhi.config import br_hh, poi_data
 
 
-class UpperLimitsBase(POIScanTask, SnapshotUser):
+class UpperLimitsBase(POITask, SnapshotUser):
 
-    force_scan_parameters_unequal_pois = True
+    from_grid = ModelParameters(
+        default=(),
+        min_len=3,
+        max_len=3,
+        description="when set, CLs values are first computed at the given points, and then used by "
+        "this task using combine's --getLimitFromGrid option; the passed value should have the "
+        "format 'parameter,start,stop,points[:...]' and supports multiple ranges; the parameter of "
+        "each range must be identical; no default",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(UpperLimitsBase, self).__init__(*args, **kwargs)
+
+        if self.from_grid:
+            if self.n_pois != 1:
+                raise Exception("--from-grid is only supported for 1D limits")
+
+            grid_param_names = [grid[0] for grid in self.from_grid]
+            if len(set(grid_param_names)) != 1:
+                raise Exception("names of grid parameters must be identical, got {}".format(
+                    grid_param_names))
+
+            self.grid_param_name = grid_param_names[0]
+            if self.grid_param_name != self.pois[0]:
+                raise Exception("grid parameter name must match POI ({}), got {}".format(
+                    self.pois[0], self.grid_param_name))
 
     def get_output_postfix(self, join=True):
         parts = super(UpperLimitsBase, self).get_output_postfix(join=False)
 
+        if self.from_grid:
+            parts.append(["fromgrid", self.grid_param_name] + sum((
+                [start, stop, "n{}".format(points)]
+                for _, start, stop, points in self.from_grid
+            ), []))
         if self.use_snapshot:
             parts.append("fromsnapshot")
 
         return self.join_postfix(parts) if join else parts
-
-
-class UpperLimits(UpperLimitsBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
-
-    run_command_in_tmp = True
-
-    def create_branch_map(self):
-        return self.get_scan_linspace()
-
-    def workflow_requires(self):
-        reqs = super(UpperLimits, self).workflow_requires()
-        if self.use_snapshot:
-            reqs["snapshot"] = Snapshot.req(self)
-        else:
-            reqs["workspace"] = CreateWorkspace.req(self)
-        return reqs
-
-    def requires(self):
-        reqs = {}
-        if self.use_snapshot:
-            reqs["snapshot"] = Snapshot.req(self, branch=0)
-        else:
-            reqs["workspace"] = CreateWorkspace.req(self)
-        return reqs
-
-    def output(self):
-        name = self.join_postfix(["limit", self.get_output_postfix()]) + ".root"
-        return self.local_target(name)
-
-    def build_command(self):
-        # get the workspace to use and define snapshot args
-        if self.use_snapshot:
-            workspace = self.input()["snapshot"].path
-            snapshot_args = " --snapshotName MultiDimFit"
-        else:
-            workspace = self.input()["workspace"].path
-            snapshot_args = ""
-
-        # arguments for un/blinding
-        if self.unblinded:
-            blinded_args = "--seed {self.branch}".format(self=self)
-        else:
-            blinded_args = (
-                " --seed {self.branch}"
-                " --toys {self.toys}"
-                " --run expected"
-                " --noFitAsimov"
-            ).format(self=self)
-
-        # build the command
-        cmd = (
-            "combine -M AsymptoticLimits {workspace}"
-            " {self.custom_args}"
-            " --verbose 1"
-            " --mass {self.mass}"
-            " {blinded_args}"
-            " --redefineSignalPOIs {self.joined_pois}"
-            " --setParameterRanges {self.joined_parameter_ranges}"
-            " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
-            " --freezeParameters {self.joined_frozen_parameters}"
-            " --freezeNuisanceGroups {self.joined_frozen_groups}"
-            " {snapshot_args}"
-            " {self.combine_optimization_args}"
-            " && "
-            "mv higgsCombineTest.AsymptoticLimits.mH{self.mass_int}.{self.branch}.root {output}"
-        ).format(
-            self=self,
-            workspace=workspace,
-            output=self.output().path,
-            blinded_args=blinded_args,
-            snapshot_args=snapshot_args,
-        )
-
-        return cmd
 
     @classmethod
     def load_limits(cls, target, unblinded=False):
@@ -133,7 +91,117 @@ class UpperLimits(UpperLimitsBase, CombineCommandTask, law.LocalWorkflow, HTCond
         return tuple(values)
 
 
-class MergeUpperLimits(UpperLimitsBase):
+class UpperLimitsScanBase(UpperLimitsBase, POIScanTask):
+
+    force_scan_parameters_equal_pois = False
+    force_scan_parameters_unequal_pois = True
+
+
+class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+
+    run_command_in_tmp = True
+
+    def create_branch_map(self):
+        return self.get_scan_linspace()
+
+    def workflow_requires(self):
+        reqs = super(UpperLimits, self).workflow_requires()
+
+        # workspace or snapshot
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
+
+        # grid scans for each point in the scan of _this_ task
+        if self.from_grid:
+            pvals = lambda vals: tuple(zip(self.scan_parameter_names, vals))
+            reqs["grid"] = {
+                b: MergeUpperLimitsGrid.req(self, scan_parameters=self.from_grid,
+                    parameter_values=pvals(vals) + self.parameter_values)
+                for b, vals in self.branch_map.items()
+            }
+
+        return reqs
+
+    def requires(self):
+        reqs = {}
+
+        # workspace or snapshot
+        if self.use_snapshot:
+            reqs["snapshot"] = Snapshot.req(self, branch=0)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
+
+        # grid this _this_ scan point
+        if self.from_grid:
+            pvals = lambda vals: tuple(zip(self.scan_parameter_names, vals))
+            reqs["grid"] = MergeUpperLimitsGrid.req(self, scan_parameters=self.from_grid,
+                parameter_values=pvals(self.branch_data) + self.parameter_values)
+
+        return reqs
+
+    def output(self):
+        name = self.join_postfix(["limit", self.get_output_postfix()]) + ".root"
+        return self.local_target(name)
+
+    def build_command(self):
+        inputs = self.input()
+
+        # get the workspace to use and define snapshot args
+        if self.use_snapshot:
+            workspace = inputs["snapshot"].path
+            snapshot_args = "--snapshotName MultiDimFit"
+        else:
+            workspace = inputs["workspace"].path
+            snapshot_args = ""
+
+        # options for loading CLs values from a grid
+        grid_args = ""
+        if self.from_grid:
+            grid_args = "--getLimitFromGrid {}".format(inputs["grid"].path)
+
+        # arguments for un/blinding
+        if self.unblinded:
+            blinded_args = "--seed {self.branch}".format(self=self)
+        else:
+            blinded_args = (
+                " --seed {self.branch}"
+                " --toys {self.toys}"
+                " --run expected"
+                " --noFitAsimov"
+            ).format(self=self)
+
+        # build the command
+        cmd = (
+            "combine -M AsymptoticLimits {workspace}"
+            " {self.custom_args}"
+            " --verbose 1"
+            " --mass {self.mass}"
+            " {grid_args}"
+            " {blinded_args}"
+            " {snapshot_args}"
+            " --redefineSignalPOIs {self.joined_pois}"
+            " --setParameterRanges {self.joined_parameter_ranges}"
+            " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
+            " --freezeParameters {self.joined_frozen_parameters}"
+            " --freezeNuisanceGroups {self.joined_frozen_groups}"
+            " {self.combine_optimization_args}"
+            " && "
+            "mv higgsCombineTest.AsymptoticLimits.mH{self.mass_int}.{self.branch}.root {output}"
+        ).format(
+            self=self,
+            workspace=workspace,
+            output=self.output().path,
+            grid_args=grid_args,
+            blinded_args=blinded_args,
+            snapshot_args=snapshot_args,
+        )
+
+        return cmd
+
+
+class MergeUpperLimits(UpperLimitsScanBase):
 
     def requires(self):
         return UpperLimits.req(self)
@@ -166,14 +234,82 @@ class MergeUpperLimits(UpperLimitsBase):
                 continue
 
             scan_values = scan_task.branch_map[branch]
-            limits = UpperLimits.load_limits(inp, unblinded=self.unblinded)
+            limits = self.load_limits(inp, unblinded=self.unblinded)
             records.append(scan_values + limits)
 
         data = np.array(records, dtype=dtype)
         self.output().dump(data=data, formatter="numpy")
 
 
-class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
+class UpperLimitsGrid(UpperLimits):
+
+    from_grid = None
+
+    force_scan_parameters_equal_pois = True
+    force_scan_parameters_unequal_pois = False
+    force_n_pois = 1
+    force_n_scan_parameters = 1
+
+    def output(self):
+        name = self.join_postfix(["limitgridpoint", self.get_output_postfix()]) + ".root"
+        return self.local_target(name)
+
+    def build_command(self):
+        # the command fo the grid point is almost identical, just apply two transformations
+        cmd = super(UpperLimitsGrid, self).build_command()
+
+        # 1. remove the scan parameter (== the POI) from --setParameters
+        cmd = re.sub(r"^(.+--setParameters)\s+[^,]+,(.+)$", r"\1 \2", cmd)
+
+        # 2. add the grid point value as --singlePoint
+        repl = "--singlePoint {self.branch_data[0]}".format(self=self)
+        cmd = re.sub(r"^(.+--redefineSignalPOIs\s+[^\s+]\s+)(.+)$", r"\1{} \2".format(repl), cmd)
+
+        return cmd
+
+
+class MergeUpperLimitsGrid(UpperLimitsScanBase):
+
+    from_grid = None
+
+    force_scan_parameters_equal_pois = True
+    force_scan_parameters_unequal_pois = False
+    force_n_pois = 1
+    force_n_scan_parameters = 1
+    allow_multiple_scan_ranges = True
+
+    def requires(self):
+        return [
+            UpperLimitsGrid.req(self, scan_parameters=scan_parameters)
+            for scan_parameters in self.get_scan_parameter_combinations()
+        ]
+
+    def output(self):
+        name = self.join_postfix(["limitgrid", self.get_output_postfix()]) + ".root"
+        return self.local_target(name)
+
+    @law.decorator.log
+    @law.decorator.safe_output
+    def run(self):
+        # prepare the output
+        output = self.output()
+        output.parent.touch()
+
+        # get inputs, removing potential duplicates
+        inputs = []
+        input_paths = []
+        for inp in self.input():
+            for target in inp["collection"].targets.values():
+                if target.path in input_paths:
+                    continue
+                input_paths.append(target.path)
+                inputs.append(target)
+
+        # hadd using a helper
+        law.root.hadd_task(self, inputs, output, local=True)
+
+
+class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
 
     xsec = luigi.ChoiceParameter(
         default=law.NO_STR,
@@ -204,8 +340,8 @@ class PlotUpperLimits(UpperLimitsBase, POIPlotTask):
     z_min = None
     z_max = None
 
-    restrict_n_pois = 1
-    restrict_n_scan_parameters = 1
+    force_n_pois = 1
+    force_n_scan_parameters = 1
     allow_multiple_scan_ranges = True
 
     def __init__(self, *args, **kwargs):
@@ -650,7 +786,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         )
 
 
-class PlotUpperLimitsAtPoint(POIPlotTask, SnapshotUser, MultiDatacardTask, BoxPlotTask):
+class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, MultiDatacardTask, BoxPlotTask):
 
     xsec = PlotUpperLimits.xsec
     br = PlotUpperLimits.br
@@ -774,14 +910,6 @@ class PlotUpperLimitsAtPoint(POIPlotTask, SnapshotUser, MultiDatacardTask, BoxPl
             for datacards in self.multi_datacards
         ]
 
-    def get_output_postfix(self, join=True):
-        parts = super(PlotUpperLimitsAtPoint, self).get_output_postfix(join=False)
-
-        if self.use_snapshot:
-            parts.append("fromsnapshot")
-
-        return self.join_postfix(parts) if join else parts
-
     def output(self):
         # additional postfix
         parts = []
@@ -814,7 +942,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, SnapshotUser, MultiDatacardTask, BoxPl
             names.append("observed")
         limit_values = np.array(
             [
-                UpperLimits.load_limits(coll["collection"][0], unblinded=self.unblinded)
+                self.load_limits(coll["collection"][0], unblinded=self.unblinded)
                 for coll in self.input()
             ],
             dtype=[(name, np.float32) for name in names],
@@ -911,7 +1039,7 @@ class PlotUpperLimitsAtPoint(POIPlotTask, SnapshotUser, MultiDatacardTask, BoxPl
         )
 
 
-class PlotUpperLimits2D(UpperLimitsBase, POIPlotTask):
+class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
 
     z_log = luigi.BoolParameter(
         default=False,
