@@ -17,6 +17,7 @@ from collections import OrderedDict
 
 import six
 import numpy as np
+import scipy.interpolate
 
 from dhi.config import poi_data, br_hh_names
 from dhi.util import import_ROOT, import_file, try_int, to_root_latex, make_list, InterExtrapolator
@@ -273,14 +274,28 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
         z_values[nan_indices] = replace_nan
 
     # create an interpolation function
+    interp_args = ()
+    if isinstance(interpolation, (list, tuple)):
+        interpolation, interp_args = interpolation[0], interpolation[1:]
     if interpolation in ("tgraph2d", "root"):
         g = ROOT.TGraph2D(len(z_values))
         for i, (x, y, z) in enumerate(zip(x_values, y_values, z_values)):
             g.SetPoint(i, x, y, z)
         interp = lambda x, y: g.Interpolate(x, y)
-    else:
+    elif interpolation in ("linear", "cubic", "quintic"):
         interp = InterExtrapolator(x_values, y_values, z_values, kind2d=interpolation,
             kind1d=interpolation)
+    elif interpolation == "rbf":
+        # parse arguments in order
+        spec = [("function", str), ("smooth", float), ("epsilon", float)]
+        rbf_args = {}
+        for val, (name, _type) in zip(interp_args, spec):
+            try:
+                rbf_args[name] = _type(val)
+            except:
+                raise Exception("cannot parse value {} for rbf argument {} to {}".format(
+                    val, name, _type))
+        interp = scipy.interpolate.Rbf(x_values, y_values, z_values, **rbf_args)
 
     # helper for limiting z values
     def cap_z(z):

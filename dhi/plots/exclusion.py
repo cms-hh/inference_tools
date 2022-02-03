@@ -333,8 +333,9 @@ def plot_exclusion_and_bestfit_2d(
     values. However, when *scan_minima* is a 2-tuple of positions per scan parameter, this best fit
     value is used instead, e.g. to use combine's internally interpolated value. The standard model
     point at (1, 1) as drawn as well unless *show_sm_point* is *False*. *interpolation_method* can
-    either be "root", "linear" or "cubic", where the two latter methods trigger scipy's
-    interpolation which, unlike "root", also has extrapolation capabilities.
+    either be "root" (TGraph2D), "linear" or "cubic" (scipy.interpolate.interp2d), or "rbf"
+    (scipy.interpolate.Rbf). In case a tuple is passed, the method should be the first element,
+    followed by optional configuration options.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the range of the x- and y-axis, respectively, and
     default to the scan parameter ranges found in *expected_limits*. *model_parameters* can be a

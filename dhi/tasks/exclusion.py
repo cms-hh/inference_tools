@@ -287,6 +287,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
             xsec_levels=xsec_levels,
             xsec_unit=self.xsec,
             nll_values=nll_values,
+            interpolation_method="rbf",
             show_best_fit_error=self.show_best_fit_error,
             scan_minima=None if self.recompute_best_fit else scan_mins,
             x_min=self.get_axis_limit("x_min"),

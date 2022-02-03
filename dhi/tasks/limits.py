@@ -255,7 +255,7 @@ class UpperLimitsGrid(UpperLimits):
         return self.local_target(name)
 
     def build_command(self):
-        # the command fo the grid point is almost identical, just apply two transformations
+        # the command for grid points is almost identical, just apply two transformations
         cmd = super(UpperLimitsGrid, self).build_command()
 
         # 1. remove the scan parameter (== the POI) from --setParameters
@@ -298,9 +298,13 @@ class MergeUpperLimitsGrid(UpperLimitsScanBase):
         # get inputs, removing potential duplicates
         inputs = []
         input_paths = []
-        for inp in self.input():
-            for target in inp["collection"].targets.values():
+        for i, inp in enumerate(self.input()):
+            for branch, target in inp["collection"].targets.items():
                 if target.path in input_paths:
+                    continue
+                if not target.exists():
+                    self.logger.warning("input of range {}, branch {} at {} does not exist".format(
+                        i, branch, target.path))
                     continue
                 input_paths.append(target.path)
                 inputs.append(target)

@@ -265,13 +265,14 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         description="dnll2 values above this threshold are removed and interpolated using adjacent "
         "values instead; default: empty",
     )
-    interpolation_method = luigi.ChoiceParameter(
-        choices=("root", "linear", "cubic"),
-        default="root",
+    interpolation_method = law.CSVParameter(
+        default=("root",),
         significant=False,
         description="the 2D interpolation method; either 'root' to use ROOT's TGraph2D "
-        "interpolation, or either 'linear' or 'cubic' for scipy's implementation including a "
-        "custom extrapolator; 2D only; default: root",
+        "interpolation, 'linear' or 'cubic' for scipy's implementation including a "
+        "custom extrapolator, or 'rbf' for scipy's radial basis functions; in case of 'rbf', "
+        "comma-separated options for 'function', 'smooth' and 'epsilon' arguments can be added in "
+        "that order; 2D only; default: root",
     )
     show_points = luigi.BoolParameter(
         default=False,
