@@ -60,7 +60,7 @@ In this case, one can use
 
 where the pattern `datacard_bm(.*)_A.txt` is used both to select files from all matches of `--multi-datacards` and to extract the corresponding benchmark name via the regex group `(.*)`.
 
-If you like to perform the scan for `A` **and* `B`, with datacards of the same benchmark being combined first, you can add another pattern separated by comma,
+If you like to perform the scan for `A` **and** `B`, with datacards of the same benchmark being combined first, you can add another pattern separated by comma,
 
 ```shell
 --multi-datacards 'datacard_bm*.txt' --datacard-pattern 'datacard_bm(.*)_A.txt,datacard_bm(.*)_B.txt'
