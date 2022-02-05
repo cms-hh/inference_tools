@@ -16,6 +16,7 @@ from dhi.tasks.combine import (
     CombineCommandTask,
     MultiDatacardTask,
     MultiHHModelTask,
+    POIMultiTask,
     POIScanTask,
     POIPlotTask,
     CreateWorkspace,
@@ -473,19 +474,13 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         return best_poi_mins
 
 
-class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
-
-    unblinded = law.CSVParameter(
-        cls=luigi.BoolParameter,
-        default=(False,),
-        min_len=1,
-        description="comma-separated list of booleans defining which set of results should be "
-        "unblinded for plotting; default: False",
-    )
+class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacardTask):
 
     z_min = None
     z_max = None
     z_log = None
+
+    compare_multi_sequence = "multi_datacards"
 
     @classmethod
     def modify_param_values(cls, params):
@@ -493,26 +488,14 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
         params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
         return params
 
-    def __init__(self, *args, **kwargs):
-        super(PlotMultipleLikelihoodScans, self).__init__(*args, **kwargs)
-
-        # the lengths of names and order indices must match hh_models when given
-        if len(self.unblinded) not in (1, len(self.multi_datacards)):
-            raise Exception("{!r}: when unblided is set, its length ({}) must match that of "
-                "multi_datacards ({})".format(self, len(self.unblinded), len(self.multi_datacards)))
-
     def requires(self):
-        unblinded = self.unblinded
-        if len(unblinded) == 1:
-            unblinded = len(self.multi_datacards) * unblinded
-
         return [
             [
                 MergeLikelihoodScan.req(self, datacards=datacards, scan_parameters=scan_parameters,
-                    unblinded=_unblinded)
+                    **kwargs)
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
-            for datacards, _unblinded in zip(self.multi_datacards, unblinded)
+            for datacards, kwargs in zip(self.multi_datacards, self.get_multi_task_kwargs())
         ]
 
     def output(self):
@@ -614,20 +597,23 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
             )
 
 
-class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
+class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, MultiHHModelTask):
 
     show_best_fit_error = None
     z_min = None
     z_max = None
     z_log = None
 
+    compare_multi_sequence = "hh_models"
+
     def requires(self):
         return [
             [
-                MergeLikelihoodScan.req(self, hh_model=hh_model, scan_parameters=scan_parameters)
+                MergeLikelihoodScan.req(self, hh_model=hh_model, scan_parameters=scan_parameters,
+                    **kwargs)
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
-            for hh_model in self.hh_models
+            for hh_model, kwargs in zip(self.hh_models, self.get_multi_task_kwargs())
         ]
 
     def output(self):

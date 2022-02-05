@@ -384,7 +384,6 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             d["impact_" + poi] = max(map(abs, d["impacts"][poi]))
 
             data["params"].append(d)
-            self.publish_message("read values for " + name)
 
         self.output().dump(data, indent=4, formatter="json")
 

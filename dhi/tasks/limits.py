@@ -17,6 +17,7 @@ from dhi.tasks.combine import (
     CombineCommandTask,
     POITask,
     POIScanTask,
+    POIMultiTask,
     POIPlotTask,
     CreateWorkspace,
 )
@@ -508,7 +509,9 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
         return values
 
 
-class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
+class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
+
+    compare_multi_sequence = "multi_datacards"
 
     @classmethod
     def modify_param_values(cls, params):
@@ -519,10 +522,11 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
     def requires(self):
         return [
             [
-                MergeUpperLimits.req(self, datacards=datacards, scan_parameters=scan_parameters)
+                MergeUpperLimits.req(self, datacards=datacards, scan_parameters=scan_parameters,
+                    **kwargs)
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
-            for datacards in self.multi_datacards
+            for datacards, kwargs in zip(self.multi_datacards, self.get_multi_task_kwargs())
         ]
 
     def output(self):
@@ -647,17 +651,19 @@ class PlotMultipleUpperLimits(PlotUpperLimits, MultiDatacardTask):
         )
 
 
-class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
+class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModelTask):
 
     allow_empty_hh_model = True
+    compare_multi_sequence = "hh_models"
 
     def requires(self):
         return [
             [
-                MergeUpperLimits.req(self, hh_model=hh_model, scan_parameters=scan_parameters)
+                MergeUpperLimits.req(self, hh_model=hh_model, scan_parameters=scan_parameters,
+                    **kwargs)
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
-            for hh_model in self.hh_models
+            for hh_model, kwargs in zip(self.hh_models, self.get_multi_task_kwargs())
         ]
 
     def output(self):
@@ -790,7 +796,8 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, MultiHHModelTask):
         )
 
 
-class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, MultiDatacardTask, BoxPlotTask):
+class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDatacardTask,
+        BoxPlotTask):
 
     xsec = PlotUpperLimits.xsec
     br = PlotUpperLimits.br
@@ -827,6 +834,7 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, MultiDatacardTask, Bo
     z_max = None
 
     force_n_pois = 1
+    compare_multi_sequence = "multi_datacards"
 
     def __init__(self, *args, **kwargs):
         # cached external limit values
@@ -905,13 +913,9 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, MultiDatacardTask, Bo
         )
 
         return [
-            UpperLimits.req(
-                self,
-                scan_parameters=(scan_parameter,),
-                parameter_values=parameter_values,
-                datacards=datacards,
-            )
-            for datacards in self.multi_datacards
+            UpperLimits.req(self, datacards=datacards, scan_parameters=(scan_parameter,),
+                parameter_values=parameter_values, **kwargs)
+            for datacards, kwargs in zip(self.multi_datacards, self.get_multi_task_kwargs())
         ]
 
     def output(self):

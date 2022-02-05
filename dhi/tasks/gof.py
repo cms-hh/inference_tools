@@ -12,6 +12,7 @@ from dhi.tasks.combine import (
     MultiDatacardTask,
     CombineCommandTask,
     POITask,
+    POIMultiTask,
     POIPlotTask,
     CreateWorkspace,
 )
@@ -245,7 +246,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
         )
 
 
-class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask, BoxPlotTask):
+class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardTask, BoxPlotTask):
 
     toys = law.CSVParameter(
         cls=luigi.IntParameter,
@@ -264,6 +265,8 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask, BoxPlotTa
 
     y_min = None
     y_max = None
+
+    compare_multi_sequence = "multi_datacards"
 
     def __init__(self, *args, **kwargs):
         super(PlotMultipleGoodnessOfFits, self).__init__(*args, **kwargs)
@@ -290,8 +293,8 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask, BoxPlotTa
 
     def requires(self):
         return [
-            MergeGoodnessOfFit.req(self, datacards=datacards, toys=t, toys_per_branch=tpb)
-            for datacards, t, tpb in zip(self.multi_datacards, self.toys, self.toys_per_branch)
+            MergeGoodnessOfFit.req(self, datacards=datacards, toys=t, toys_per_branch=tpb, **kwargs)
+            for datacards, t, tpb, kwargs in zip(self.multi_datacards, self.toys, self.toys_per_branch, self.get_multi_task_kwargs())
         ]
 
     def output(self):

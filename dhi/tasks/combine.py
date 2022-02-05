@@ -13,6 +13,7 @@ import importlib
 import itertools
 import functools
 import inspect
+from abc import abstractproperty
 from collections import defaultdict, OrderedDict
 
 import law
@@ -633,7 +634,7 @@ class DatacardTask(HHModelTask):
 class MultiDatacardTask(DatacardTask):
 
     multi_datacards = law.MultiCSVParameter(
-        description="multiple path sequnces to input datacards separated by a colon; supported "
+        description="multiple path sequences to input datacards separated by a colon; supported "
         "formats are '[bin=]path', '[bin=]paths@store_directory for the last datacard in the "
         "sequence, and '@store_directory' for easier configuration; supports globbing and brace "
         "expansion",
@@ -1013,6 +1014,10 @@ class POITask(DatacardTask, ParameterValuesTask):
         choices=all_pois,
         description="names of POIs; choices: {}; default: (r,)".format(",".join(all_pois)),
     )
+    unblinded = luigi.BoolParameter(
+        default=False,
+        description="unblinded computation and plotting of results; default: False",
+    )
     frozen_parameters = law.CSVParameter(
         default=(),
         unique=True,
@@ -1025,10 +1030,6 @@ class POITask(DatacardTask, ParameterValuesTask):
         unique=True,
         sort=True,
         description="comma-separated names of groups of parameters to be frozen",
-    )
-    unblinded = luigi.BoolParameter(
-        default=False,
-        description="unblinded computation and plotting of results; default: False",
     )
 
     force_n_pois = None
@@ -1060,13 +1061,24 @@ class POITask(DatacardTask, ParameterValuesTask):
 
         # remove r and k pois from frozen parameters as they are frozen by default, sort the rest
         if "frozen_parameters" in params:
+            multi = isinstance(getattr(cls, "frozen_parameters"), law.MultiCSVParameter)
+            if not multi:
+                params["frozen_parameters"] = (params["frozen_parameters"],)
             params["frozen_parameters"] = tuple(
-                sorted(p for p in params["frozen_parameters"] if p not in cls.all_pois)
+                tuple(sorted(p for p in fp if p not in cls.all_pois))
+                for fp in params["frozen_parameters"]
             )
+            if not multi:
+                params["frozen_parameters"] = params["frozen_parameters"][0]
 
         # sort frozen groups
         if "frozen_groups" in params:
-            params["frozen_groups"] = tuple(sorted(params["frozen_groups"]))
+            multi = isinstance(getattr(cls, "frozen_groups"), law.MultiCSVParameter)
+            if not multi:
+                params["frozen_groups"] = (params["frozen_groups"],)
+            params["frozen_groups"] = tuple(tuple(sorted(fg)) for fg in params["frozen_groups"])
+            if not multi:
+                params["frozen_groups"] = params["frozen_groups"][0]
 
         return params
 
@@ -1151,11 +1163,19 @@ class POITask(DatacardTask, ParameterValuesTask):
 
         # add frozen paramaters
         if self.frozen_parameters:
-            parts.append(["fzp"] + list(self.frozen_parameters))
+            # multi-safe
+            multi = isinstance(getattr(self.__class__, "frozen_parameters"), law.MultiCSVParameter)
+            fp = self.frozen_parameters if multi else (self.frozen_parameters,)
+            for _fp in fp:
+                parts.append(["fzp"] + list(_fp))
 
         # add frozen groups
         if self.frozen_groups:
-            parts.append(["fzg"] + list(self.frozen_groups))
+            # multi-safe
+            multi = isinstance(getattr(self.__class__, "frozen_groups"), law.MultiCSVParameter)
+            fg = self.frozen_groups if multi else (self.frozen_groups,)
+            for _fg in fg:
+                parts.append(["fzg"] + list(_fg))
 
         return self.join_postfix(parts) if join else parts
 
@@ -1211,6 +1231,9 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     @property
     def blinded(self):
+        if self.unblinded is None:
+            raise Exception("cannot infer attribute 'blinded' when 'unblinded' is None")
+
         # trivial case
         if isinstance(self.unblinded, bool):
             return not self.unblinded
@@ -1224,6 +1247,81 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     def htcondor_output_postfix(self):
         return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
+
+
+class POIMultiTask(POITask):
+
+    unblinded = law.CSVParameter(
+        cls=luigi.BoolParameter,
+        default=(False,),
+        min_len=1,
+        description="comma-separated list of booleans defining which set of results should be "
+        "unblinded; the length should be one or match the number of datacard sequences or models; "
+        "default: (False,)",
+    )
+    frozen_parameters = law.MultiCSVParameter(
+        description="multiple comma-separated sequences of names of parameters to be frozen in "
+        "addition to non-POI parameters; sequences should be colon-separated and the number of "
+        "sequences should be zero, one or match the number of datacard sequences or models; "
+        "no default",
+        default=(),
+    )
+    frozen_groups = law.MultiCSVParameter(
+        description="multiple comma-separated sequences of names of parameter groups to be frozen "
+        "in addition to non-POI parameters; sequences should be colon-separated and the number of "
+        "sequences should be zero, one or match the number of datacard sequences or models; "
+        "no default",
+        default=(),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(POIMultiTask, self).__init__(*args, **kwargs)
+
+        # check unblinded
+        n = len(getattr(self, self.compare_multi_sequence))
+        if self.unblinded is not None and len(self.unblinded) not in (1, n):
+            raise Exception("{!r}: the number of --unblinded values ({}) must be one or match "
+                "that of {} ({})".format(self, len(self.unblinded),
+                self.compare_multi_sequence, n))
+
+        # check frozen_parameters
+        if self.frozen_parameters is not None and len(self.frozen_parameters) not in (0, 1, n):
+            raise Exception("{!r}: the number of --frozen-parameters sequences ({}) must be zero, "
+                "one or match that of {} ({})".format(self, len(self.frozen_parameters),
+                self.compare_multi_sequence, n))
+
+        # check frozen_groups
+        if self.frozen_groups is not None and len(self.frozen_groups) not in (0, 1, n):
+            raise Exception("{!r}: the number of --frozen-groups sequences ({}) must be zero, "
+                "one or match that of {} ({})".format(self, len(self.frozen_groups),
+                self.compare_multi_sequence, n))
+
+    @abstractproperty
+    def compare_multi_sequence(self):
+        return
+
+    def get_multi_task_kwargs(self):
+        n = len(getattr(self, self.compare_multi_sequence))
+
+        attrs = ["unblinded", "frozen_parameters", "frozen_groups"]
+        keys = []
+        values = []
+
+        for i, attr in enumerate(attrs):
+            value = getattr(self, attr)
+            if value is None:
+                continue
+            if len(value) == 0:
+                value = ((),) * n
+            elif len(value) == 1:
+                value *= n
+            keys.append(attr)
+            values.append(value)
+
+        return [
+            {key: _values[i] for key, _values in zip(keys, values)}
+            for i in range(n)
+        ]
 
 
 class POIScanTask(POITask, ParameterScanTask):
