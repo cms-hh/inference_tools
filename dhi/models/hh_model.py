@@ -833,7 +833,7 @@ class HHModel(HHModelBase):
     R_POIS = OrderedDict([
         ("r", (1, -20, 20)),
         ("r_gghh", (1, -20, 20)),
-        ("r_qqhh", (1, -20, 20)),
+        ("r_qqhh", (1, -200, 200)),
         ("r_vhh", (1, -20, 20)),
     ])
     K_POIS = OrderedDict([
