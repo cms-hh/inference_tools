@@ -38,6 +38,30 @@ class UpperLimitsBase(POITask, SnapshotUser):
         "each range must be identical; no default",
     )
 
+    @classmethod
+    def modify_param_values(cls, params):
+        params = POITask.modify_param_values.__func__.__get__(cls)(params)
+
+        # set default range and points
+        if "from_grid" in params:
+            from_grid = []
+            for p in params["from_grid"]:
+                name = p[0]
+                start = float(p[1])
+                stop = float(p[2])
+                points = int(p[3])
+                if start >= stop and (start, stop) != (0, 0):
+                    raise Exception("the limit grid stopping point ({}) should be larger than its "
+                        "starting point ({})".format(stop, start))
+                if points <= 0:
+                    raise Exception("the number of limit grid points ({}) must be positive".format(
+                        points))
+                from_grid.append((name, start, stop, points))
+
+            params["from_grid"] = tuple(from_grid)
+
+        return params
+
     def __init__(self, *args, **kwargs):
         super(UpperLimitsBase, self).__init__(*args, **kwargs)
 
@@ -105,6 +129,18 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
     def create_branch_map(self):
         return self.get_scan_linspace()
 
+    def eval_from_grid_hook(self, scan_parameter_values):
+        # use the hook only when exactly one grid is defined and both start and stop are 0
+        if len(self.from_grid) != 1 or self.from_grid[0][1:3] != (0, 0):
+            return self.from_grid
+
+        # the number of points will be used as guidance to compute the actual number of points
+        approx_points = self.from_grid[0][3]
+        from_grid = self.call_hook("define_limit_grid", scan_parameter_values=scan_parameter_values,
+            approx_points=approx_points)
+
+        return from_grid or self.from_grid
+
     def workflow_requires(self):
         reqs = super(UpperLimits, self).workflow_requires()
 
@@ -118,8 +154,11 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
         if self.from_grid:
             pvals = lambda vals: tuple(zip(self.scan_parameter_names, vals))
             reqs["grid"] = {
-                b: MergeUpperLimitsGrid.req(self, scan_parameters=self.from_grid,
-                    parameter_values=pvals(vals) + self.parameter_values)
+                b: MergeUpperLimitsGrid.req(
+                    self,
+                    scan_parameters=self.eval_from_grid_hook(vals),
+                    parameter_values=pvals(vals) + self.parameter_values,
+                )
                 for b, vals in self.branch_map.items()
             }
 
@@ -137,8 +176,11 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
         # grid this _this_ scan point
         if self.from_grid:
             pvals = lambda vals: tuple(zip(self.scan_parameter_names, vals))
-            reqs["grid"] = MergeUpperLimitsGrid.req(self, scan_parameters=self.from_grid,
-                parameter_values=pvals(self.branch_data) + self.parameter_values)
+            reqs["grid"] = MergeUpperLimitsGrid.req(
+                self,
+                scan_parameters=self.eval_from_grid_hook(self.branch_data),
+                parameter_values=pvals(self.branch_data) + self.parameter_values,
+            )
 
         return reqs
 

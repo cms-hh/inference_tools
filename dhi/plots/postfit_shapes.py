@@ -191,9 +191,9 @@ def plot_s_over_b(
         "B" if order_without_sqrt else "#sqrt{B}"), 1, x_min, x_max)
     r.setup_hist(h_dummy1, pad=pad1, props={"LineWidth": 0})
     r.setup_hist(h_dummy2, pad=pad2, props={"LineWidth": 0})
-    r.setup_y_axis(h_dummy2.GetYaxis(), pad2, props={"Ndivisions": 6, "CenterTitle": True})
-    r.setup_x_axis(h_dummy2.GetXaxis(), pad2, props={"TitleOffset": 1.23})
     r.setup_x_axis(h_dummy1.GetXaxis(), pad1, props={"LabelSize": 0})
+    r.setup_x_axis(h_dummy2.GetXaxis(), pad2, props={"TitleOffset": 1.2})
+    r.setup_y_axis(h_dummy2.GetYaxis(), pad2, props={"Ndivisions": 6, "CenterTitle": True})
     draw_objs1.append((h_dummy1, "HIST"))
     draw_objs2.append((h_dummy2, "HIST"))
 

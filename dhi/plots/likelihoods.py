@@ -560,7 +560,7 @@ def plot_likelihood_scan_2d(
             # calculate and store the position
             label_positions = locate_contour_labels(graphs, label_width, label_height, pad_width,
                 pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions,
-                label_offset=1.0)
+                label_offset=0.9)
             all_positions.extend(label_positions)
             pad.cd()
 
