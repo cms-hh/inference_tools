@@ -175,6 +175,12 @@ class PlotPostfitSOverB(PostfitPlotBase):
         description="comma-separated list of bin edges to use; when a single number is passed, a "
         "automatic binning is applied with that number of bins; default: (8,)",
     )
+    order_without_sqrt = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when True, order by 'prefit log S/B' instead of 'prefit log S/sqrt(B)'; "
+        "default: False",
+    )
     show_best_fit = luigi.BoolParameter(
         default=False,
         significant=False,
@@ -321,6 +327,7 @@ class PlotPostfitSOverB(PostfitPlotBase):
             poi=self.pois[0],
             fit_diagnostics_path=fit_diagnostics_path,
             bins=self.bins if len(self.bins) > 1 else int(self.bins[0]),
+            order_without_sqrt=self.order_without_sqrt,
             signal_superimposed=self.signal_superimposed,
             signal_scale=self.signal_scale,
             signal_scale_ratio=self.signal_scale_ratio,
