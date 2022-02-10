@@ -99,7 +99,7 @@ _limit_grid_interps = {}
 def _get_limit_grid_interps(poi, scan_name):
     key = (poi, scan_name)
     if key not in _limit_grid_interps:
-        grid_file = os.path.join(_limit_grid_path, "limitscan_{}_{}.npz".format(poi, scan_name))
+        grid_file = os.path.join(_limit_grid_path, "limitscan_{}_{}.npz".format(*key))
         if not os.path.exists(grid_file):
             raise Exception("limit grid file {1} not existing in directory {0}".format(
                 *os.path.split(grid_file)))
@@ -140,7 +140,6 @@ def define_limit_grid(task, scan_parameter_values, approx_points, debug=False):
     grid dimension and granularity is stabilized so that its points are not precise to the last
     digit but tend to use common steps (i.e. 1/2, 1/4, 1/10, etc.).
     """
-
     # some checks
     if task.n_pois != 1:
         raise Exception("define_limit_grid hook only supports 1 POI, got {}".format(task.n_pois))
@@ -152,11 +151,11 @@ def define_limit_grid(task, scan_parameter_values, approx_points, debug=False):
             len(scan_parameter_values)))
     scan_value = scan_parameter_values[0]
     scan_name = task.scan_parameter_names[0]
-    if task.parameter_values:
+    if any(v != 1 for v in task.parameter_values_dict.values()):
         raise Exception("define_limit_grid hook does not support tasks with extra parameter "
-            "values, got {}".format(task.parameter_values))
+            "values that are not 1, got {}".format(task.parameter_values))
     if not os.path.exists(_limit_grid_path):
-        raise Exception("define_limit_grid hook cannot acces misc path {}".format(_limit_grid_path))
+        raise Exception("define_limit_grid hook cannot access {}".format(_limit_grid_path))
 
     # detect if any combined datacard setup is used by comparing to environment variables that are
     # usually defined in the combination

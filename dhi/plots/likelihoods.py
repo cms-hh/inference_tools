@@ -508,7 +508,7 @@ def plot_likelihood_scan_2d(
             interpolation=interpolation_method)
         hists.append(h)
 
-        # inter z_max separately after possible extrapolation
+        # infer z_max separately after possible extrapolation
         if i == 0:
             z_max = _z_max if z_max is None else z_max
 
@@ -1150,9 +1150,9 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
         # issue a warning about potentially wrong external best fit values
         if min_is_external and not slightly_neg:
             warn(
-                "WARNING: {} dnll2 values{} have negative values, implying that that combine might "
-                "have found a local rather than the global minimum; consider re-running combine "
-                "with different fit options or allow this function to recompute the minimum via "
+                "WARNING: {} dnll2 values{} have negative values, implying that combine might have "
+                "found a local rather than the global minimum; consider re-running combine with "
+                "different fit options or allow this function to recompute the minimum via "
                 "scipy.interpolate and scipy.minimize on the likelihood curve by not passing "
                 "combine's result (--recompute-best-fit when triggered by a law task); POI "
                 "coordinates ({}):\n  - {}".format(

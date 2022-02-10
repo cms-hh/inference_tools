@@ -238,7 +238,8 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
             config.custom_content.append(("requirements", '(OpSysAndVer =?= "CentOS7")'))
         # architecture at INFN
         if self.htcondor_flavor == "infn":
-            config.custom_content.append(("requirements", 'TARGET.OpSys == "LINUX" && (TARGET.Arch != "DUMMY")'))
+            config.custom_content.append(
+                ("requirements", 'TARGET.OpSys == "LINUX" && (TARGET.Arch != "DUMMY")'))
 
         # copy the entire environment when requests
         if self.htcondor_getenv:
@@ -267,12 +268,11 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
             if self.htcondor_flavor == "cern":
                 self.logger.warning("--htcondor-mem has no effect on CERN resources, use "
                     "--htcondor-cpus instead")
+            elif self.htcondor_flavor == "naf":
+                # NAF uses MB
+                config.custom_content.append(("RequestMemory", self.htcondor_mem * 1024))
             else:
-                # default unit is GB, but NAF uses MB
-                mem = self.htcondor_mem
-                if self.htcondor_flavor == "naf":
-                    mem *= 1024
-                config.custom_content.append(("RequestMemory", mem))
+                config.custom_content.append(("RequestMemory", self.htcondor_mem))
 
         # accounting group for priority on the cluster
         if self.htcondor_group and self.htcondor_group != law.NO_STR:
