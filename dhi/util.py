@@ -93,9 +93,12 @@ def import_file(path, attr=None):
 def _load_hooks():
     global _hook_data
 
-    if _hook_data is no_value:
+    if _hook_data is no_value and "DHI_HOOK_FILE" in os.environ:
         path = expand_path("$DHI_HOOK_FILE")
-        _hook_data = (path, import_file(path)) if os.path.isfile(path) else None
+        if not path or not os.path.isfile(path):
+            raise Exception("DHI_HOOK_FILE refers to '{}' but it does not exist; either unset the "
+                "variable or set it to the path of an existing file".format(path))
+        _hook_data = (path, import_file(path))
 
     return _hook_data
 
