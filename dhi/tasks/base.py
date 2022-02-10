@@ -14,7 +14,7 @@ import luigi
 import law
 import six
 
-from dhi.util import call_hook
+from dhi.util import call_hook, expand_path
 
 
 law.contrib.load(
@@ -285,6 +285,14 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
             pattern = os.path.basename(task.get_file_pattern())
             return ",".join(uris), pattern
 
+        # prepare the hook file location
+        hook_file = os.getenv("DHI_HOOK_FILE", "")
+        if hook_file:
+            hook_file = expand_path(hook_file)
+            dhi_base = expand_path("$DHI_BASE")
+            if hook_file.startswith(dhi_base):
+                hook_file = os.path.relpath(hook_file, dhi_base)
+
         # render_variables are rendered into all files sent with a job
         config.render_variables["dhi_env_path"] = os.environ["PATH"]
         config.render_variables["dhi_env_pythonpath"] = os.environ["PYTHONPATH"]
@@ -295,6 +303,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         config.render_variables["dhi_combine_standalone"] = os.environ["DHI_COMBINE_STANDALONE"]
         config.render_variables["dhi_task_namespace"] = os.environ["DHI_TASK_NAMESPACE"]
         config.render_variables["dhi_local_scheduler"] = os.environ["DHI_LOCAL_SCHEDULER"]
+        config.render_variables["dhi_hook_file"] = hook_file
         if self.htcondor_getenv:
             config.render_variables["dhi_bootstrap_name"] = "htcondor_getenv"
         else:
