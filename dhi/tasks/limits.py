@@ -293,6 +293,10 @@ class UpperLimitsGrid(UpperLimits):
     force_n_pois = 1
     force_n_scan_parameters = 1
 
+    # do not pass parameter_values to upstream dependencies
+    # when defined via req() (i.e. the optional snapshot)
+    exclude_params_req_set = {"parameter_values"}
+
     def output(self):
         name = self.join_postfix(["limitgridpoint", self.get_output_postfix()]) + ".root"
         return self.local_target(name)
