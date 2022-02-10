@@ -180,8 +180,8 @@ def define_limit_grid(task, scan_parameter_values, approx_points, debug=False):
     if (poi, scan_name) in (("r", "kl"), ("r", "C2V")):
         # load the previous scan, interpolate limit values, extract a viable range and granularity
         exp_interp, up_interp, down_interp = _get_limit_grid_interps(poi, scan_name)
-        grid_max = up_interp(scan_value) + 0.5 * (up_interp(scan_value) - exp_interp(scan_value))
-        grid_min = down_interp(scan_value) - 0.5 * (exp_interp(scan_value) - down_interp(scan_value))
+        grid_max = 2 * up_interp(scan_value) - exp_interp(scan_value)
+        grid_min = 2 * down_interp(scan_value) - exp_interp(scan_value)
         if grid_min >= grid_max:
             raise Exception("define_limit_grid encountered unstable limit interpolation with "
                 "grid_min ({}) >= grid_max ({})".format(grid_min, grid_max))
