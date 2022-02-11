@@ -8,6 +8,7 @@ import os
 import re
 import math
 import importlib
+import getpass
 from collections import OrderedDict
 
 import luigi
@@ -334,7 +335,17 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         return True
 
 
-class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLocalFile):
+class UserTask(AnalysisTask):
+
+    user = luigi.Parameter(
+        default=getpass.getuser(),
+    )
+
+    exclude_params_index = {"user"}
+    exclude_params_req = {"user"}
+
+
+class BundleRepo(UserTask, law.git.BundleGitRepository, law.tasks.TransferLocalFile):
 
     replicas = luigi.IntParameter(
         default=10,
@@ -376,7 +387,7 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         self.transfer(bundle)
 
 
-class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile):
+class BundleSoftware(UserTask, law.tasks.TransferLocalFile):
 
     replicas = luigi.IntParameter(
         default=10,
@@ -436,7 +447,7 @@ class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile):
         self.transfer(bundle)
 
 
-class BundleCMSSW(AnalysisTask, law.cms.BundleCMSSW, law.tasks.TransferLocalFile):
+class BundleCMSSW(UserTask, law.cms.BundleCMSSW, law.tasks.TransferLocalFile):
 
     replicas = luigi.IntParameter(
         default=10,
