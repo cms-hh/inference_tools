@@ -662,15 +662,13 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
             names = [names[i] for i in self.datacard_order]
 
         # prepare observed values
-        obs_values = None
-        if self.unblinded:
-            obs_values = [
-                {
-                    self.scan_parameter: _limit_values[self.scan_parameter],
-                    "limit": _limit_values["observed"],
-                }
-                for _limit_values in limit_values
-            ]
+        obs_values = [
+            {
+                self.scan_parameter: _limit_values[self.scan_parameter],
+                "limit": _limit_values["observed"],
+            } if mkwargs["unblinded"] else None
+            for _limit_values, mkwargs in zip(limit_values, self.get_multi_task_kwargs())
+        ]
 
         # call the plot function
         self.call_plot_func(
@@ -807,15 +805,13 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
             names = [names[i] for i in self.hh_model_order]
 
         # prepare observed values
-        obs_values = None
-        if self.unblinded:
-            obs_values = [
-                {
-                    self.scan_parameter: _limit_values[self.scan_parameter],
-                    "limit": _limit_values["observed"],
-                }
-                for _limit_values in limit_values
-            ]
+        obs_values = [
+            {
+                self.scan_parameter: _limit_values[self.scan_parameter],
+                "limit": _limit_values["observed"],
+            } if mkwargs["unblinded"] else None
+            for _limit_values, mkwargs in zip(limit_values, self.get_multi_task_kwargs())
+        ]
 
         # call the plot function
         self.call_plot_func(
@@ -992,11 +988,11 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
 
         # load limit values
         names = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
-        if self.unblinded:
+        if any(self.unblinded):
             names.append("observed")
         limit_values = np.array(
             [
-                self.load_limits(coll["collection"][0], unblinded=self.unblinded)
+                self.load_limits(coll["collection"][0], unblinded=any(self.unblinded))
                 for coll in self.input()
             ],
             dtype=[(name, np.float32) for name in names],
@@ -1051,7 +1047,7 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
                 "expected": record.tolist()[:5],
                 "theory": thy_value and thy_value[0].tolist()[1:],
             }
-            if self.unblinded:
+            if any(self.unblinded):
                 entry["observed"] = float(record[5])
             data.append(entry)
 

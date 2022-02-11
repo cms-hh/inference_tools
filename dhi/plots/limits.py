@@ -347,10 +347,11 @@ def plot_limit_scans(
     def check_values(values):
         _values = []
         for v in values:
-            if isinstance(v, np.ndarray):
-                v = {key: v[key] for key in v.dtype.names}
-            assert "limit" in v
-            assert scan_parameter in v
+            if v is not None:
+                if isinstance(v, np.ndarray):
+                    v = {key: v[key] for key in v.dtype.names}
+                assert "limit" in v
+                assert scan_parameter in v
             _values.append(v)
         return _values
 
@@ -363,7 +364,7 @@ def plot_limit_scans(
     if observed_values:
         assert len(observed_values) == n_graphs
         observed_values = check_values(observed_values)
-        has_obs = True
+        has_obs = any(v is not None for v in observed_values)
     scan_values = expected_values[0][scan_parameter]
     has_thy = theory_values is not None
     has_thy_err = False
@@ -441,8 +442,8 @@ def plot_limit_scans(
                 scan_values.min(), scan_values.max())
 
         # observed graph
-        if has_obs:
-            ov = observed_values[i]
+        ov = observed_values[i]
+        if ov is not None:
             obs_mask = ~np.isnan(ov["limit"])
             obs_limit_values = ov["limit"][obs_mask]
             obs_scan_values = ov[scan_parameter][obs_mask]
@@ -645,9 +646,10 @@ def plot_limit_points(
         x_max_value = max(x_max_value, max(d["expected"]))
         if "observed" in d:
             assert isinstance(d["observed"], (float, int))
-            has_obs = True
-            x_min_value = min(x_min_value, d["observed"])
-            x_max_value = max(x_max_value, d["observed"])
+            if not np.isnan(d["observed"]) and d["observed"] is not None:
+                has_obs = True
+                x_min_value = min(x_min_value, d["observed"])
+                x_max_value = max(x_max_value, d["observed"])
             d["observed"] = [d["observed"]]
         if "theory" in d:
             if isinstance(d["theory"], (tuple, list)):
@@ -819,7 +821,7 @@ def plot_limit_points(
             fmt = lambda v: "{{:.{}f}} {{}}".format(get_digits(v)).format(v, xsec_unit)
         else:
             fmt = lambda v: "{{:.{}f}}".format(get_digits(v)).format(v)
-        if obs is None:
+        if obs is None or np.isnan(obs[0]):
             return y_label_tmpl % (label, fmt(exp))
         else:
             return y_label_tmpl_obs % (label, fmt(exp), fmt(obs[0]))

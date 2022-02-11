@@ -294,7 +294,9 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
     def requires(self):
         return [
             MergeGoodnessOfFit.req(self, datacards=datacards, toys=t, toys_per_branch=tpb, **kwargs)
-            for datacards, t, tpb, kwargs in zip(self.multi_datacards, self.toys, self.toys_per_branch, self.get_multi_task_kwargs())
+            for datacards, t, tpb, kwargs in zip(
+                self.multi_datacards, self.toys, self.toys_per_branch, self.get_multi_task_kwargs(),
+            )
         ]
 
     def output(self):
