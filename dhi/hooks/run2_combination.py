@@ -179,9 +179,9 @@ def define_limit_grid(task, scan_parameter_values, approx_points, debug=False):
     from_grid = None
     if (poi, scan_name) in (("r", "kl"), ("r", "C2V")):
         # load the previous scan, interpolate limit values, extract a viable range and granularity
-        exp_interp, up_interp, down_interp = _get_limit_grid_interps(poi, scan_name)
-        grid_max = 2 * up_interp(scan_value) - exp_interp(scan_value)
-        grid_min = 2 * down_interp(scan_value) - exp_interp(scan_value)
+        exp, up, down = [interp(scan_value) for interp in _get_limit_grid_interps(poi, scan_name)]
+        grid_max = (2 * up - exp) if up > exp else (up * 1.25)
+        grid_min = (2 * down - exp) if down < exp else (down * 0.75)
         if grid_min >= grid_max:
             raise Exception("define_limit_grid encountered unstable limit interpolation with "
                 "grid_min ({}) >= grid_max ({})".format(grid_min, grid_max))
