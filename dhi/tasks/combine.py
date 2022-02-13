@@ -1167,7 +1167,11 @@ class POITask(DatacardTask, ParameterValuesTask):
             multi = isinstance(getattr(self.__class__, "frozen_parameters"), law.MultiCSVParameter)
             fp = self.frozen_parameters if multi else (self.frozen_parameters,)
             for _fp in fp:
-                parts.append(["fzp"] + list(_fp))
+                # just join the first five and continue with an optional hash
+                fp_str = "_".join(_fp[:5])
+                if len(_fp) > 5:
+                    fp_str += "_" + law.util.create_hash(_fp)
+                parts.append(["fzp", fp_str])
 
         # add frozen groups
         if self.frozen_groups:
@@ -1175,7 +1179,11 @@ class POITask(DatacardTask, ParameterValuesTask):
             multi = isinstance(getattr(self.__class__, "frozen_groups"), law.MultiCSVParameter)
             fg = self.frozen_groups if multi else (self.frozen_groups,)
             for _fg in fg:
-                parts.append(["fzg"] + list(_fg))
+                # just join the first five and continue with an optional hash
+                fg_str = "_".join(_fg[:5])
+                if len(_fg) > 5:
+                    fg_str += "_" + law.util.create_hash(_fg)
+                parts.append(["fzg", fg_str])
 
         return self.join_postfix(parts) if join else parts
 
