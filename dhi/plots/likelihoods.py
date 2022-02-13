@@ -1300,10 +1300,11 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None, origin=N
             minimize([poi_min, poi_values_min + 1e-4]),
         )
 
-    # get the intersections with values corresponding to 1 and 2 sigma
-    # (taken from solving chi2_1_cdf(x) = 1 or 2 sigma gauss intervals)
+    # get the intersections with values corresponding to 1, 2 and 3 sigma
+    # (taken from solving chi2_1_cdf(x) = 1,2,3 sigma gauss intervals)
     poi_p1, poi_m1 = get_intersections(chi2_levels[1][1])
     poi_p2, poi_m2 = get_intersections(chi2_levels[1][2])
+    poi_p3, poi_m3 = get_intersections(chi2_levels[1][3])
 
     # create a Number object wrapping the best fit value and its 1 sigma error when given
     unc = None
@@ -1317,10 +1318,12 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None, origin=N
         ("range", [
             [poi_m1, poi_p1],
             [poi_m2, poi_p2],
+            [poi_m3, poi_p3],
         ]),
         ("uncertainty", [
             [(poi_p1 and (poi_p1 - poi_min)), (poi_m1 and (poi_m1 - poi_min))],
             [(poi_p2 and (poi_p2 - poi_min)), (poi_m2 and (poi_m2 - poi_min))],
+            [(poi_p3 and (poi_p3 - poi_min)), (poi_m3 and (poi_m3 - poi_min))],
         ]),
     ])
 
@@ -1336,7 +1339,10 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None, origin=N
         )
     print("best fit value{}: {:+.4f}".format(origin, poi_min))
     print("    " + sigma_line(1, poi_p1, poi_m1))
-    print("    " + sigma_line(2, poi_p2, poi_m2))
+    if poi_p2 is not None or poi_m2 is not None:
+        print("    " + sigma_line(2, poi_p2, poi_m2))
+    if poi_p3 is not None or poi_m3 is not None:
+        print("    " + sigma_line(3, poi_p3, poi_m3))
 
     return DotDict(
         interp=interp,
@@ -1345,6 +1351,8 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None, origin=N
         poi_m1=poi_m1,
         poi_p2=poi_p2,
         poi_m2=poi_m2,
+        poi_p3=poi_p3,
+        poi_m3=poi_m3,
         num_min=num_min,
         summary=summary,
     )
