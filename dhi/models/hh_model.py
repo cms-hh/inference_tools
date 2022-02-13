@@ -965,10 +965,11 @@ class HHModel(HHModelBase):
         # create cross section scaling functions
         self.create_scalings()
 
-    def create_ggf_kl_dep_unc(self):
+    def create_ggf_kl_dep_unc(self, scale=1.0):
         """
         Creates the expressions used to scale ggf process rates depending on kl, including the
-        QCDscale + mtop uncertainty.
+        QCDscale + mtop uncertainty. *scale* should be a float that can increase or reduce the
+        the effect to the desired fraction, i.e. for projection studies.
         """
         # add the parameter
         self.make_var("{}[-7,7]".format(self.ggf_kl_dep_unc))
@@ -979,10 +980,10 @@ class HHModel(HHModelBase):
         expr_hi2 = self._create_ggf_xsec_str("unc_u2", "@0")
         expr_lo1 = self._create_ggf_xsec_str("unc_d1", "@0")
         expr_lo2 = self._create_ggf_xsec_str("unc_d2", "@0")
-        self.make_expr("expr::{}_kappaHi('max({}, {}) / ({})', kl)".format(
-            self.ggf_kl_dep_unc, expr_hi1, expr_hi2, expr_nom))
-        self.make_expr("expr::{}_kappaLo('min({}, {}) / ({})', kl)".format(
-            self.ggf_kl_dep_unc, expr_lo1, expr_lo2, expr_nom))
+        self.make_expr("expr::{}_kappaHi('1.0 + ({}) * ((max({}, {}) / ({})) - 1.0)', kl)".format(
+            self.ggf_kl_dep_unc, scale, expr_hi1, expr_hi2, expr_nom))
+        self.make_expr("expr::{}_kappaLo('1.0 + ({}) * ((min({}, {}) / ({})) - 1.0)', kl)".format(
+            self.ggf_kl_dep_unc, scale, expr_lo1, expr_lo2, expr_nom))
 
         # create the interpolation
         # as in https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/blob/102x/interface/ProcessNormalization.h

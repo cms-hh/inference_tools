@@ -235,3 +235,132 @@ def define_limit_grid(task, scan_parameter_values, approx_points, debug=False):
         print("defined {}".format(from_grid))
 
     return from_grid
+
+
+def scale_multi_likelihoods(task, data):
+    """
+    Hook called by :py:class:`tasks.likelihoods.PlotMultipleLikelihoods.run` to adjust dnll2 values
+    in place for optional projection studies. *data* is a list of dictionaries with a field "values"
+    that refers to a numpy rec array containing columns "<poi>" and "dnll2". Changes to "dnll2"
+    should happend in-place, or *data* can be ammended to create additional scans.
+    """
+    import numpy as np
+    from dhi.plots.likelihoods import _preprocess_values, evaluate_likelihood_scan_1d
+
+    # projection setup
+    setup = os.getenv("DHI_NLL_PROJECTION", None)
+    add_stat = False
+    replace = False
+    set_scalings = False
+    if setup == "hllhc":
+        projection, r = "3000 fb^{-1}", 3000.0 / 138.0
+    elif setup == "hllhc_stat":
+        projection, r, add_stat = "3000 fb^{-1}", 3000.0 / 138.0, True
+    elif setup == "run2_cms_atlas":
+        projection, r = "Run 2 CMS+Atlas", 2.0
+    elif setup == "run2_3_cms":
+        projection, r = "Run 2 + 3", (138.0 + 160.0) / 138.0
+    elif setup == "run2_3b_cms":
+        projection, r = "Run 2 + 3 (4y)", (138.0 + 260.0) / 138.0
+    elif setup:
+        raise Exception("scale_multi_likelihoods hook encountered unkown setup '{}'".format(setup))
+    else:
+        return
+    if not set_scalings:
+        scale_stat = r**-0.5
+        scale_thy = 1.0
+        scale_exp = 1.0
+
+    print("")
+    print(" Run projection ".center(100, "-"))
+    print("name: {}".format(projection))
+    print("r   : {}".format(r))
+    print("stat: {}".format(scale_stat))
+    print("thy : {}".format(scale_thy))
+    print("exp : {}".format(scale_exp))
+    print("")
+
+    # input checks
+    if not task.n_pois == 1:
+        raise Exception("scale_multi_likelihoods hook only supports 1 POI, got {}".format(
+            task.n_pos))
+    poi = task.pois[0]
+    if poi not in ["r", "kl", "C2V"]:
+        raise Exception("scale_multi_likelihoods hook only supports POIs r,kl,C2V, got {}".format(
+            poi))
+
+    # the stat+exp scan is only needed when scale_thy != scale_exp
+    need_statexp = scale_thy != scale_exp
+
+    # get values for all systematics and stat. only
+    # as this point we must anticipate them on positions 0 and 1
+    values_all = data[0]["values"]
+    values_stat = data[1]["values"]
+    if need_statexp:
+        values_statexp = data[2]["values"]
+
+    # helper to obtain scan information
+    def get_scan(values, name):
+        origin = "{}, poi {}, {}".format(projection, poi, name)
+        y, x = _preprocess_values(values["dnll2"], (poi, values[poi]), remove_nans=True,
+            shift_negative_values=True, min_is_external=True, origin=origin)
+        return evaluate_likelihood_scan_1d(x, y, origin=origin, poi_min=1.0)
+
+    # get the full and stat. only scans
+    scan_all = get_scan(values_all, "all")
+    scan_stat = get_scan(values_stat, "stat")
+    if need_statexp:
+        scan_statexp = get_scan(values_statexp, "statext")
+
+    # get errors that parametrize the scaling factor
+    # when available, use 2 sigma estimators
+    sigma_idx = 1 if None not in scan_all["summary"]["uncertainty"][1] else 0
+    print("\nbuilding scaling factor from +-{} sigma uncertainties".format(sigma_idx + 1))
+    err_a_up, err_a_down = scan_all["summary"]["uncertainty"][sigma_idx]
+    err_b_up, err_b_down = scan_stat["summary"]["uncertainty"][sigma_idx]
+    err_f_up, err_f_down = 0, 0
+    if need_statexp:
+        err_f_up, err_f_down = scan_statexp["summary"]["uncertainty"][sigma_idx]
+    if None in [err_a_up, err_a_down, err_b_up, err_b_down, err_f_down, err_f_up]:
+        raise Exception("scale_multi_likelihoods hook encountered missing {} sigma interval".format(
+            sigma_idx + 1))
+
+    # build the scaling factors separately for both sides of the curve
+    x_a = scale_thy**2
+    x_b = scale_stat**2 - scale_exp**2
+    x_f = scale_exp**2 - scale_thy**2
+    s_up = err_a_up**2 / (err_a_up**2 * x_a + err_b_up**2 * x_b + err_f_up**2 * x_f)
+    s_down = err_a_down**2 / (err_a_down**2 * x_a + err_b_down**2 * x_b + err_f_down**2 * x_f)
+
+    # copy and scale values
+    values_projected = np.copy(values_stat if poi == "r" else values_all)
+    poi_min = (scan_stat if poi == "r" else scan_all)["poi_min"]
+    up_mask = values_projected[poi] >= poi_min
+    values_projected["dnll2"][up_mask] *= s_up
+    values_projected["dnll2"][~up_mask] *= s_down
+
+    # replace existing curves if requested
+    if replace:
+        del data[:]
+        task.datacard_names = tuple()
+
+    # add a new entry
+    data.append({
+        "values": values_projected,
+        "poi_min": poi_min,
+    })
+    task.datacard_names += (projection,)
+
+    # also add a stat. only curve if requested
+    if add_stat:
+        values_projected_stat = np.copy(values_stat)
+        values_projected_stat["dnll2"] *= r
+        data.append({
+            "values": values_projected_stat,
+            "poi_min": scan_stat["poi_min"],
+        })
+    task.datacard_names += (projection + " stat",)
+
+    print("")
+    print(" Finish projection ".center(100, "-"))
+    print("")

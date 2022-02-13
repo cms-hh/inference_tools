@@ -539,6 +539,9 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 ("name", "Cards {}".format(i + 1)),
             ]))
 
+        # allow scaling via hook for projections
+        self.call_hook("scale_multi_likelihoods", data=data)
+
         # set names if requested
         if self.datacard_names:
             for d, name in zip(data, self.datacard_names):
