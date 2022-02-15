@@ -161,6 +161,8 @@ colors = DotDict(
         blue_signal=(67, 118, 201),
         blue_signal_trans=(67, 118, 201, 0.5),
         purple=881,
+        brazil_yellow=800,  # kOrange
+        brazil_green=417,  # kGreen + 1
     ),
 )
 

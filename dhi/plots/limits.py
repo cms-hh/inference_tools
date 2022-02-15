@@ -91,7 +91,8 @@ def plot_limit_scan(
         return values
 
     expected_values = check_values(expected_values, ["limit"])
-    if observed_values is not None:
+    has_obs = observed_values is not None
+    if has_obs:
         observed_values = check_values(observed_values, ["limit"])
     has_thy = theory_values is not None
     has_thy_err = False
@@ -146,7 +147,8 @@ def plot_limit_scan(
     g_2sigma = None
     if "limit_p2" in expected_values and "limit_m2" in expected_values:
         g_2sigma = create_graph(sigma=2)
-        r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.yellow})
+        r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2,
+            "FillColor": colors.brazil_yellow})
         draw_objs.append((g_2sigma, "SAME,4"))  # option 4 might fallback to 3, see below
         legend_entries[5] = (g_2sigma, "95% expected", "LF")
         y_max_value = max(y_max_value, max(expected_values["limit_p2"]))
@@ -156,7 +158,8 @@ def plot_limit_scan(
     g_1sigma = None
     if "limit_p1" in expected_values and "limit_m1" in expected_values:
         g_1sigma = create_graph(sigma=1)
-        r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.green})
+        r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2,
+            "FillColor": colors.brazil_green})
         draw_objs.append((g_1sigma, "SAME,4"))  # option 4 might fallback to 3, see below
         legend_entries[4] = (g_1sigma, "68% expected", "LF")
         y_max_value = max(y_max_value, max(expected_values["limit_p1"]))
@@ -252,15 +255,16 @@ def plot_limit_scan(
             legend_entry = (g_thy, "Theory prediction", "L")
         # only add to the legend if values are in terms of a cross section
         if xsec_unit:
-            legend_entries[0 if observed_values is None else 1] = legend_entry
+            legend_entries[1 if has_obs else 0] = legend_entry
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
-    legend_box = r.routines.create_legend_box(legend, pad, "trl",
-        props={"LineWidth": 0, "FillColor": colors.white_trans_70})
-    draw_objs.insert(-1, legend_box)
+    if not paper:
+        legend_box = r.routines.create_legend_box(legend, pad, "trl",
+            props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+        draw_objs.insert(-1, legend_box)
 
     # cms label
     cms_layout = "outside_horizontal"
@@ -758,13 +762,13 @@ def plot_limit_points(
 
     # 2 sigma band
     g_2sigma = create_graph(sigma=2)
-    r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.yellow})
+    r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.brazil_yellow})
     draw_objs.append((g_2sigma, "SAME,2"))
     legend_entries[5] = (g_2sigma, r"95% expected", "LF")
 
     # 1 sigma band
     g_1sigma = create_graph(sigma=1)
-    r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.green})
+    r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.brazil_green})
     draw_objs.append((g_1sigma, "SAME,2"))
     legend_entries[4] = (g_1sigma, r"68% expected", "LF")
 
@@ -1253,13 +1257,13 @@ def plot_benchmark_limits(
 
     # 2 sigma band
     g_2sigma = create_graph(sigma=2)
-    r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.yellow})
+    r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.brazil_yellow})
     draw_objs.append((g_2sigma, "SAME,2"))
     legend_entries.append((g_2sigma, r"95% expected", "LF"))
 
     # 1 sigma band
     g_1sigma = create_graph(sigma=1)
-    r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.green})
+    r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.brazil_green})
     draw_objs.append((g_1sigma, "SAME,2"))
     legend_entries.insert(0, (g_1sigma, r"68% expected", "LF"))
 

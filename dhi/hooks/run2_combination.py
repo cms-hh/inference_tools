@@ -273,11 +273,13 @@ def scale_multi_likelihoods(task, data):
 
     print("")
     print(" Run projection ".center(100, "-"))
-    print("name: {}".format(projection))
-    print("r   : {}".format(r))
-    print("stat: {}".format(scale_stat))
-    print("thy : {}".format(scale_thy))
-    print("exp : {}".format(scale_exp))
+    print("name    : {}".format(projection))
+    print("r       : {}".format(r))
+    print("stat    : {}".format(scale_stat))
+    print("thy     : {}".format(scale_thy))
+    print("exp     : {}".format(scale_exp))
+    print("replace : {}".format(replace))
+    print("add stat: {}".format(add_stat))
     print("")
 
     # input checks
