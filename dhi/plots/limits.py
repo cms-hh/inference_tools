@@ -49,6 +49,7 @@ def plot_limit_scan(
     hh_process=None,
     model_parameters=None,
     campaign=None,
+    show_excluded_ranges=True,
     show_points=False,
     paper=False,
 ):
@@ -72,8 +73,11 @@ def plot_limit_scan(
 
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
     refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
-    *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
-    When *paper* is *True*, certain plot configurations are adjusted for use in publications.
+    *show_excluded_ranges* is *True* the excluded ranges are marked with a hatched area. The
+    intersection of the theory prediction with observed values is used when present, otherwise the
+    expected ones are taken. When *show_points* is *True*, the central scan points are drawn on top
+    of the interpolated curve. When *paper* is *True*, certain plot configurations are adjusted for
+    use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#limit-on-poi-vs-scan-parameter
     """
@@ -174,38 +178,36 @@ def plot_limit_scan(
     y_min_value = min(y_min_value, min(expected_values["limit"]))
 
     # print the expected excluded ranges
-    excl_ranges = evaluate_excluded_ranges(scan_parameter, poi + " expected",
+    excl_ranges_exp = evaluate_excluded_ranges(scan_parameter, poi + " expected",
         expected_values[scan_parameter],
         expected_values["limit"],
         theory_values[scan_parameter] if has_thy else None,
         theory_values["xsec"] if has_thy else None,
     )
     allowed_ranges = OrderedDict()
-    if ranges_path:
-        key = "__".join([scan_parameter, poi, "expected"])
-        allowed_ranges[key] = excluded_to_allowed_ranges(excl_ranges,
-            expected_values[scan_parameter].min(), expected_values[scan_parameter].max())
+    key_exp = "__".join([scan_parameter, poi, "expected"])
+    allowed_ranges[key_exp] = excluded_to_allowed_ranges(excl_ranges_exp,
+        expected_values[scan_parameter].min(), expected_values[scan_parameter].max())
 
     # observed values
-    if observed_values is not None:
-        g_inj = create_graph(values=observed_values)
-        r.setup_graph(g_inj, props={"LineWidth": 2, "LineStyle": 1})
-        draw_objs.append((g_inj, "SAME,CP" if show_points else "SAME,C"))
-        legend_entries[0] = (g_inj, "Observed", "L")
+    if has_obs:
+        g_obs = create_graph(values=observed_values)
+        r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1})
+        draw_objs.append((g_obs, "SAME,CP" if show_points else "SAME,C"))
+        legend_entries[0] = (g_obs, "Observed", "L")
         y_max_value = max(y_max_value, max(observed_values["limit"]))
         y_min_value = min(y_min_value, min(observed_values["limit"]))
 
         # print the observed excluded ranges
-        excl_ranges = evaluate_excluded_ranges(scan_parameter, poi + " observed",
+        excl_ranges_obs = evaluate_excluded_ranges(scan_parameter, poi + " observed",
             observed_values[scan_parameter],
             observed_values["limit"],
             theory_values[scan_parameter] if has_thy else None,
             theory_values["xsec"] if has_thy else None,
         )
-        if ranges_path:
-            key = "__".join([scan_parameter, poi, "observed"])
-            allowed_ranges[key] = excluded_to_allowed_ranges(excl_ranges,
-                observed_values[scan_parameter].min(), observed_values[scan_parameter].max())
+        key_obs = "__".join([scan_parameter, poi, "observed"])
+        allowed_ranges[key_obs] = excluded_to_allowed_ranges(excl_ranges_obs,
+            observed_values[scan_parameter].min(), observed_values[scan_parameter].max())
 
     if ranges_path:
         with open(ranges_path, "w") as f:
@@ -221,8 +223,8 @@ def plot_limit_scan(
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
-    # draw option 4 of error graphs is buggy when the error point or bar is above the visible,
-    # vertical range of the pad, so check these cases and fallback to option 3
+    # draw option 4 if error graphs are buggy, i.e. when the error point or bar is above the
+    # visible, vertical range of the pad, so check these cases and fallback to option 3
     fallback_graph_option = False
     for g in filter(bool, [g_2sigma, g_1sigma]):
         _, y_values, _, _, _, y_errors_up = get_graph_points(g, errors=True)
@@ -236,6 +238,39 @@ def plot_limit_scan(
                 print("{}: changed draw option of graph {} to '3' as it exceeds the vertical pad "
                     "range which is not supported for option '4'".format(
                         colored("WARNING", "yellow"), objs[0]))
+
+    # show hatched areas for excluded ranges if requested
+    if show_excluded_ranges:
+        g, excl_ranges = (g_obs, excl_ranges_obs) if has_obs else (g_exp, excl_ranges_exp)
+        # create a spline for neat interpolation (using g.Eval(x, 0, "S") fails miserably)
+        # delete repeated endpoints which leads to interpolation failures
+        gx, gy = get_graph_points(g)
+        if gx[0] == gx[1]:
+            gx, gy = gx[1:], gy[1:]
+        if gx[-1] == gx[-2]:
+            gx, gy = gx[:-1], gy[:-1]
+        spline = ROOT.TSpline3("spline", create_tgraph(len(gx), gx, gy), "", gx[0], gx[-1])
+        # per excluded range section, create a TGraphAsymmErrors positioned along the graph curve
+        # with errors reaching down to 0
+        for start, stop in excl_ranges:
+            x, y = [], []
+            for _x, _y in zip(gx, gy):
+                if _x < start or _x > stop:
+                    continue
+                # handle the start value specially
+                if _x > start and not x:
+                    x.append(start)
+                    y.append(spline.Eval(start))
+                x.append(_x)
+                y.append(_y)
+            # handle the stop value specially
+            if x[-1] != stop:
+                x.append(stop)
+                y.append(spline.Eval(stop))
+            g_excl = create_tgraph(len(x), x, y, 0, 0, y, 0, pad=True)
+            r.setup_graph(g_excl, color=colors.dark_grey_trans_70, color_flags="f",
+                props={"FillStyle": 3345, "MarkerStyle": 20, "MarkerSize": 0, "LineWidth": 0})
+            draw_objs.insert(-1, (g_excl, "SAME,4"))
 
     # theory prediction
     if has_thy:
