@@ -30,6 +30,7 @@ def plot_s_over_b(
     poi,
     fit_diagnostics_path,
     bins=8,
+    order_without_sqrt=False,
     signal_superimposed=False,
     signal_scale=1.,
     signal_scale_ratio=1.,
@@ -53,7 +54,8 @@ def plot_s_over_b(
     Creates a postfit signal-over-background plot combined over all bins in the fit of a *poi* and
     saves it at *paths*. The plot is based on the fit diagnostics file *fit_diagnostics_path*
     produced by combine. *bins* can either be a single number of bins to use, or a list of n+1 bin
-    edges.
+    edges. When *order_without_sqrt* is *True*, the ordering of bins is done by "prefit log s/b"
+    instead of "prefit log s/sqrt(b)".
 
     When *signal_superimposed* is *True*, the signal at the top pad is not drawn stacked on top of
     the background but as a separate histogram. For visualization purposes, the fitted signal can be
@@ -157,7 +159,8 @@ def plot_s_over_b(
     x_max = -1.e5
     for _bin in bin_data:
         if _bin.pre_signal > 0:
-            _bin["pre_s_over_b"] = math.log(_bin.pre_signal / _bin.pre_background, 10.)
+            f = 1. if order_without_sqrt else 0.5
+            _bin["pre_s_over_b"] = math.log(_bin.pre_signal / _bin.pre_background**f, 10.)
             x_min = min(x_min, _bin.pre_s_over_b)
             x_max = max(x_max, _bin.pre_s_over_b)
 
@@ -184,12 +187,13 @@ def plot_s_over_b(
 
     # dummy histograms for both pads to control axes
     h_dummy1 = ROOT.TH1F("dummy1", ";;Events", 1, x_min, x_max)
-    h_dummy2 = ROOT.TH1F("dummy2", ";Pre-fit expected log_{10}(S/B);Data / Bkg.", 1, x_min, x_max)
+    h_dummy2 = ROOT.TH1F("dummy2", ";Pre-fit expected log_{{10}}(S/{});Data / Bkg.".format(
+        "B" if order_without_sqrt else "#sqrt{B}"), 1, x_min, x_max)
     r.setup_hist(h_dummy1, pad=pad1, props={"LineWidth": 0})
     r.setup_hist(h_dummy2, pad=pad2, props={"LineWidth": 0})
-    r.setup_y_axis(h_dummy2.GetYaxis(), pad2, props={"Ndivisions": 6, "CenterTitle": True})
-    r.setup_x_axis(h_dummy2.GetXaxis(), pad2, props={"TitleOffset": 1.23})
     r.setup_x_axis(h_dummy1.GetXaxis(), pad1, props={"LabelSize": 0})
+    r.setup_x_axis(h_dummy2.GetXaxis(), pad2, props={"TitleOffset": 1.2})
+    r.setup_y_axis(h_dummy2.GetYaxis(), pad2, props={"Ndivisions": 6, "CenterTitle": True})
     draw_objs1.append((h_dummy1, "HIST"))
     draw_objs2.append((h_dummy2, "HIST"))
 

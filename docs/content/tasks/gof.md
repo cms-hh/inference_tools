@@ -35,9 +35,9 @@ Output:
 graph LR;
     A(PlotGoodnessOfFit) --> B(MergeGoodnessOfFit);
     B --> C([GoodnessOfFit]);
-    C --> D(CreateWorkspace);
+    C -. either .-> D(CreateWorkspace);
     D --> E(CombineDatacards);
-    C -. optional .-> F([Snapshot]);
+    C -. or .-> F([Snapshot]);
     F --> D;
 ```
 
@@ -124,12 +124,12 @@ graph LR;
     A --> ...;
     B1 --> C1([GoodnessOfFit]);
     B2 --> C2([GoodnessOfFit]);
-    C1 --> D1(CreateWorkspace);
-    C2 --> D2(CreateWorkspace);
+    C1 -. either .-> D1(CreateWorkspace);
+    C2 -. either .-> D2(CreateWorkspace);
     D1 --> E1(CombineDatacards);
     D2 --> E2(CombineDatacards);
-    C1 -. optional .-> F1([Snapshot]);
-    C2 -. optional .-> F2([Snapshot]);
+    C1 -. or .-> F1([Snapshot]);
+    C2 -. or .-> F2([Snapshot]);
     F1 --> D1;
     F2 --> D2;
 ```

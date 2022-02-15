@@ -16,6 +16,7 @@ from dhi.tasks.combine import (
     CombineCommandTask,
     MultiDatacardTask,
     MultiHHModelTask,
+    POIMultiTask,
     POIScanTask,
     POIPlotTask,
     CreateWorkspace,
@@ -51,15 +52,18 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
 
     def workflow_requires(self):
         reqs = super(LikelihoodScan, self).workflow_requires()
-        reqs["workspace"] = CreateWorkspace.req(self)
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def requires(self):
-        reqs = {"workspace": CreateWorkspace.req(self)}
+        reqs = {}
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, branch=0)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def output(self):
@@ -122,6 +126,7 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             " --verbose 1"
             " --mass {self.mass}"
             " {blinded_args}"
+            " {snapshot_args}"
             " --algo grid"
             " --redefineSignalPOIs {self.joined_pois}"
             " --gridPoints {ext_joined_scan_points}"
@@ -132,7 +137,6 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
-            " {snapshot_args}"
             " --saveNLL"
             " {self.combine_optimization_args}"
             " && "
@@ -256,6 +260,21 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         description="when True, interpolate NaN values with information from neighboring fits "
         "instead of drawing white pixels; 2D only; default: False",
     )
+    interpolate_above = luigi.FloatParameter(
+        default=law.NO_FLOAT,
+        significant=False,
+        description="dnll2 values above this threshold are removed and interpolated using adjacent "
+        "values instead; default: empty",
+    )
+    interpolation_method = law.CSVParameter(
+        default=("root",),
+        significant=False,
+        description="the 2D interpolation method; either 'root' to use ROOT's TGraph2D "
+        "interpolation, 'linear' or 'cubic' for scipy's implementation including a "
+        "custom extrapolator, or 'rbf' for scipy's radial basis functions; in case of 'rbf', "
+        "comma-separated options for 'function', 'smooth' and 'epsilon' arguments can be added in "
+        "that order; 2D only; default: root",
+    )
     show_points = luigi.BoolParameter(
         default=False,
         significant=False,
@@ -266,6 +285,11 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         significant=False,
         description="draw a box around the 1 sigma error contour and estimate a standard error "
         "from its dimensions; 2D only; default: False",
+    )
+    save_ranges = luigi.BoolParameter(
+        default=False,
+        description="save allowed parameter ranges in an additional output; 1D only; "
+        "default: False",
     )
 
     force_n_pois = (1, 2)
@@ -281,15 +305,21 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         ]
 
     def output(self):
+        outputs = {}
+
         # additional postfix
         parts = []
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
-        names = self.create_plot_names(
-            ["nll{}d".format(self.n_pois), self.get_output_postfix(), parts]
-        )
-        return [self.local_target(name) for name in names]
+        names = self.create_plot_names(["nll{}d".format(self.n_pois), self.get_output_postfix(), parts])
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        if self.n_pois == 1 and self.save_ranges:
+            outputs["ranges"] = self.local_target("ranges__{}.json".format(
+                self.get_output_postfix()))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -298,40 +328,35 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load scan data
         values, poi_mins = self.load_scan_data(self.input(), merge_scans=self.n_pois == 1)
 
         # call the plot function
         if self.n_pois == 1:
-            # get the theory value when this is a poi
-            theory_value = None
-            if self.pois[0] in self.r_pois:
-                get_xsec = self.create_xsec_func(self.pois[0], "fb", safe_signature=True)
-                if get_xsec.has_unc:
-                    xsec = get_xsec(**self.parameter_values_dict)
-                    xsec_up = get_xsec(unc="up", **self.parameter_values_dict)
-                    xsec_down = get_xsec(unc="down", **self.parameter_values_dict)
-                    theory_value = (xsec, xsec_up - xsec, xsec - xsec_down)
-                else:
-                    theory_value = (get_xsec(**self.parameter_values_dict),)
-                # normalize
-                theory_value = tuple(v / theory_value[0] for v in theory_value)
-            elif self.pois[0] in poi_data:
-                theory_value = (poi_data[self.pois[0]].sm_value,)
+            # prepare data
+            data = [{
+                "values": values,
+                "poi_min": None if self.recompute_best_fit else poi_mins[0],
+                "name": "",
+            }]
+
+            # get the SM value when the parameter is known
+            theory_value = poi_data.get(self.pois[0], {}).get("sm_value")
 
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scan_1d",
-                paths=[outp.path for outp in outputs],
+                "dhi.plots.likelihoods.plot_likelihood_scans_1d",
+                paths=[outp.path for outp in outputs["plots"]],
                 poi=self.pois[0],
-                values=values,
+                data=data,
                 theory_value=theory_value,
-                poi_min=None if self.recompute_best_fit else poi_mins[0],
+                ranges_path=outputs["ranges"].path if "ranges" in outputs else None,
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
                 show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
+                interpolate_above=self.interpolate_above,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -345,7 +370,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         else:  # 2
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scan_2d",
-                paths=[outp.path for outp in outputs],
+                paths=[outp.path for outp in outputs["plots"]],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 values=values,
@@ -356,6 +381,8 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 interpolate_nans=self.interpolate_nans,
+                interpolate_above=self.interpolate_above,
+                interpolation_method=self.interpolation_method,
                 show_box=self.show_box,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
@@ -447,12 +474,13 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         return best_poi_mins
 
 
-class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
+class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacardTask):
 
-    show_best_fit_error = None
     z_min = None
     z_max = None
     z_log = None
+
+    compare_multi_sequence = "multi_datacards"
 
     @classmethod
     def modify_param_values(cls, params):
@@ -463,22 +491,29 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
     def requires(self):
         return [
             [
-                MergeLikelihoodScan.req(self, datacards=datacards, scan_parameters=scan_parameters)
+                MergeLikelihoodScan.req(self, datacards=datacards, scan_parameters=scan_parameters,
+                    **kwargs)
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
-            for datacards in self.multi_datacards
+            for datacards, kwargs in zip(self.multi_datacards, self.get_multi_task_kwargs())
         ]
 
     def output(self):
+        outputs = {}
+
         # additional postfix
         parts = []
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
-        names = self.create_plot_names(
-            ["multinll{}d".format(self.n_pois), self.get_output_postfix(), parts]
-        )
-        return [self.local_target(name) for name in names]
+        names = self.create_plot_names(["multinll{}d".format(self.n_pois), self.get_output_postfix(), parts])
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        if self.n_pois == 1 and self.save_ranges:
+            outputs["ranges"] = self.local_target("ranges__{}.json".format(
+                self.get_output_postfix()))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -487,7 +522,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load scan data
         data = []
@@ -504,6 +539,9 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
                 ("name", "Cards {}".format(i + 1)),
             ]))
 
+        # allow scaling via hook for projections
+        self.call_hook("scale_multi_likelihoods", data=data)
+
         # set names if requested
         if self.datacard_names:
             for d, name in zip(data, self.datacard_names):
@@ -515,29 +553,22 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
 
         # call the plot function
         if self.n_pois == 1:
-            # theory value when this is an r poi
-            theory_value = None
-            if self.pois[0] in self.r_pois:
-                get_xsec = self.create_xsec_func(self.pois[0], "fb", safe_signature=True)
-                if get_xsec.has_unc:
-                    xsec = get_xsec(**self.parameter_values_dict)
-                    xsec_up = get_xsec(unc="up", **self.parameter_values_dict)
-                    xsec_down = get_xsec(unc="down", **self.parameter_values_dict)
-                    theory_value = (xsec, xsec_up - xsec, xsec - xsec_down)
-                else:
-                    theory_value = (get_xsec(**self.parameter_values_dict),)
-                # normalize
-                theory_value = tuple(v / theory_value[0] for v in theory_value)
+            # get the SM value when the parameter is known
+            theory_value = poi_data.get(self.pois[0], {}).get("sm_value")
 
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_1d",
-                paths=[outp.path for outp in outputs],
+                paths=[outp.path for outp in outputs["plots"]],
                 poi=self.pois[0],
                 data=data,
                 theory_value=theory_value,
+                ranges_path=outputs["ranges"].path if "ranges" in outputs else None,
                 show_best_fit=self.show_best_fit,
+                show_best_fit_error=self.show_best_fit_error,
+                show_best_fit_indicators=False,
                 show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
+                interpolate_above=self.interpolate_above,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -551,11 +582,14 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
         else:  # 2
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_2d",
-                paths=[outp.path for outp in outputs],
+                paths=[outp.path for outp in outputs["plots"]],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 data=data,
                 shift_negative_values=self.shift_negative_values,
+                interpolate_nans=self.interpolate_nans,
+                interpolate_above=self.interpolate_above,
+                interpolation_method=self.interpolation_method,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -566,32 +600,41 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, MultiDatacardTask):
             )
 
 
-class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
+class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, MultiHHModelTask):
 
     show_best_fit_error = None
     z_min = None
     z_max = None
     z_log = None
 
+    compare_multi_sequence = "hh_models"
+
     def requires(self):
         return [
             [
-                MergeLikelihoodScan.req(self, hh_model=hh_model, scan_parameters=scan_parameters)
+                MergeLikelihoodScan.req(self, hh_model=hh_model, scan_parameters=scan_parameters,
+                    **kwargs)
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
-            for hh_model in self.hh_models
+            for hh_model, kwargs in zip(self.hh_models, self.get_multi_task_kwargs())
         ]
 
     def output(self):
+        outputs = {}
+
         # additional postfix
         parts = []
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
-        names = self.create_plot_names(
-            ["multinllbymodel{}d".format(self.n_pois), self.get_output_postfix(), parts]
-        )
-        return [self.local_target(name) for name in names]
+        names = self.create_plot_names(["multinllbymodel{}d".format(self.n_pois), self.get_output_postfix(), parts])
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        if self.n_pois == 1 and self.save_ranges:
+            outputs["ranges"] = self.local_target("ranges__{}.json".format(
+                self.get_output_postfix()))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -600,7 +643,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load scan data
         data = []
@@ -633,30 +676,21 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
 
         # call the plot function
         if self.n_pois == 1:
-            # theory value when this is an r poi
-            theory_value = None
-            if self.pois[0] in self.r_pois:
-                hh_model = self.hh_models[0]
-                get_xsec = self._create_xsec_func(hh_model, self.pois[0], "fb", safe_signature=True)
-                if get_xsec.has_unc:
-                    xsec = get_xsec(**self.parameter_values_dict)
-                    xsec_up = get_xsec(unc="up", **self.parameter_values_dict)
-                    xsec_down = get_xsec(unc="down", **self.parameter_values_dict)
-                    theory_value = (xsec, xsec_up - xsec, xsec - xsec_down)
-                else:
-                    theory_value = (get_xsec(**self.parameter_values_dict),)
-                # normalize
-                theory_value = tuple(v / theory_value[0] for v in theory_value)
+            # get the SM value when the parameter is known
+            theory_value = poi_data.get(self.pois[0], {}).get("sm_value")
 
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_1d",
-                paths=[outp.path for outp in outputs],
+                paths=[outp.path for outp in outputs["plots"]],
                 poi=self.pois[0],
                 data=data,
                 theory_value=theory_value,
+                ranges_path=outputs["ranges"].path if "ranges" in outputs else None,
                 show_best_fit=self.show_best_fit,
+                show_best_fit_indicators=False,
                 show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
+                interpolate_above=self.interpolate_above,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),
@@ -670,11 +704,14 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, MultiHHModelTask):
         else:  # 2
             self.call_plot_func(
                 "dhi.plots.likelihoods.plot_likelihood_scans_2d",
-                paths=[outp.path for outp in outputs],
+                paths=[outp.path for outp in outputs["plots"]],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 data=data,
                 shift_negative_values=self.shift_negative_values,
+                interpolate_nans=self.interpolate_nans,
+                interpolate_above=self.interpolate_above,
+                interpolation_method=self.interpolation_method,
                 x_min=self.get_axis_limit("x_min"),
                 x_max=self.get_axis_limit("x_max"),
                 y_min=self.get_axis_limit("y_min"),

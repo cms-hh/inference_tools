@@ -130,10 +130,15 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         # the default fit result
         outputs = {"result": self.local_target(name("fit"))}
 
-        # additional output file for branch 0 (needs --saveFitResult or --robustHesse)
-        if self.branch == 0:
-            outputs["extra"] = self.local_target(
-                name("robusthesse" if self.method == "robust" else "multidimfit"))
+        # additional output files, depending on method and branch
+        if self.method == "default":
+            if self.branch == 0:
+                outputs["multidimfit"] = self.local_target(name("multidimfit"))
+        elif self.method == "hesse":
+            outputs["multidimfit"] = self.local_target(name("multidimfit"))
+        elif self.method == "robust":
+            outputs["robusthesse"] = self.local_target(name("robusthesse"))
+            outputs["hessian"] = self.local_target(name("hessian"))
 
         return outputs
 
@@ -169,7 +174,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
                     " --algo singles"
                     " --saveFitResult"
                 )
-                mv_files.append(("multidimfitTest.root", outputs["extra"].path, False))
+                mv_files.append(("multidimfitTest.root", outputs["multidimfit"].path, False))
             else:
                 # nuisance fits
                 branch_opts = (
@@ -186,7 +191,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
                 " --saveInactivePOI 1"
                 " --saveFitResult"
             )
-            mv_files.append(("multidimfitTest.root", outputs["extra"].path, False))
+            mv_files.append(("multidimfitTest.root", outputs["multidimfit"].path, False))
         elif self.method == "robust":
             # setup a single fit
             branch_opts = (
@@ -194,8 +199,10 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
                 " --floatOtherPOIs 1"
                 " --saveInactivePOI 1"
                 " --robustHesse 1"
+                " --robustHesseSave hessian.root"
             )
-            mv_files.append(("robustHesseTest.root", outputs["extra"].path, False))
+            mv_files.append(("robustHesseTest.root", outputs["robusthesse"].path, False))
+            mv_files.append(("hessian.root", outputs["hessian"].path, False))
         else:
             raise NotImplementedError
 
@@ -212,13 +219,13 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             " --verbose 1"
             " --mass {self.mass}"
             " {blinded_args}"
+            " {snapshot_args}"
             " --redefineSignalPOIs {self.pois[0]}"
             " --setParameterRanges {self.joined_parameter_ranges}"
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --saveNLL"
-            " {snapshot_args}"
             " {self.combine_optimization_args}"
             " {branch_opts}"
             " && "
@@ -280,9 +287,9 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         poi = self.pois[0]
 
         # extract all fit results, depending on the method
-        fit_results = {}
         if self.method == "default":
             # default method: loop through fit result per branch
+            fit_results = {}
             fail_info = []
             for b, name in branch_map.items():
                 inp = inputs[b]["result"]
@@ -325,13 +332,13 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
         elif self.method == "hesse":
             # load all parameter fits from the mdf result
-            fit_results = self.load_hesse_fits(inputs[0]["extra"], poi,
-                [poi] + self.get_selected_parameters(params))
+            fit_results = self.load_hesse_fits(inputs[0]["multidimfit"], poi,
+                self.get_selected_parameters(params))
 
         elif self.method == "robust":
             # load all parameter fits from the robustHesse result
-            fit_results = self.load_robust_fits(inputs[0]["extra"], poi,
-                [poi] + self.get_selected_parameters(params))
+            fit_results = self.load_robust_fits(inputs[0]["robusthesse"], poi,
+                self.get_selected_parameters(params))
 
         else:
             raise NotImplementedError
@@ -377,7 +384,6 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             d["impact_" + poi] = max(map(abs, d["impacts"][poi]))
 
             data["params"].append(d)
-            self.publish_message("read values for " + name)
 
         self.output().dump(data, indent=4, formatter="json")
 
@@ -406,6 +412,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         # load the roofit result
         with target.load(formatter="root") as f:
             rfr = f.Get("fit_mdf")
+            float_params = rfr.floatParsFinal()
 
             # check the fit status
             if rfr.covQual() != 3:
@@ -413,10 +420,13 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
             # load the fit results per parameter
             # logic bluntly copied from CombineHarvester/CombineTools/python/combine/utils.py
-            for param in params:
+            for param in [poi] + params:
                 res[param] = OrderedDict()
                 for p in [poi, param]:
-                    pj = rfr.floatParsFinal().find(p)
+                    pj = float_params.find(p)
+                    if not pj:
+                        raise Exception("parameter {} not in floatParsFinal result".format(p))
+
                     vj = pj.getVal()
                     ej = pj.getError()
                     c = rfr.correlation(param, p)
@@ -435,9 +445,10 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
             # load the fit results per parameter
             # logic bluntly copied from CombineHarvester/CombineTools/python/combine/utils.py
-            for param in params:
+            for param in [poi] + params:
                 if not float_params.find(param):
                     continue
+
                 res[param] = OrderedDict()
                 idx_p = corr.GetXaxis().FindBin(param)
                 for p in [poi, param]:

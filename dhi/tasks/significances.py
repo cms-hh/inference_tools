@@ -12,6 +12,7 @@ from dhi.tasks.combine import (
     MultiDatacardTask,
     CombineCommandTask,
     POIScanTask,
+    POIMultiTask,
     POIPlotTask,
     CreateWorkspace,
 )
@@ -59,15 +60,18 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
 
     def workflow_requires(self):
         reqs = super(SignificanceScan, self).workflow_requires()
-        reqs["workspace"] = CreateWorkspace.req(self)
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def requires(self):
-        reqs = {"workspace": CreateWorkspace.req(self)}
+        reqs = {}
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, branch=0)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def output(self):
@@ -98,12 +102,12 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
             " --verbose 1"
             " --mass {self.mass}"
             " {blinded_args}"
+            " {snapshot_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameterRanges {self.joined_parameter_ranges}"
             " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
-            " {snapshot_args}"
             " {self.combine_optimization_args}"
             " && "
             "mv higgsCombineTest.Significance.mH{self.mass_int}.{self.branch}.root {output}"
@@ -269,9 +273,11 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
         return values
 
 
-class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
+class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDatacardTask):
 
     unblinded = None
+
+    compare_multi_sequence = "multi_datacards"
 
     @classmethod
     def modify_param_values(cls, params):
@@ -282,10 +288,11 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, MultiDatacardTask):
     def requires(self):
         return [
             [
-                MergeSignificanceScan.req(self, datacards=datacards, scan_parameters=scan_parameters)
+                MergeSignificanceScan.req(self, datacards=datacards, scan_parameters=scan_parameters,
+                    **kwargs)
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
-            for datacards in self.multi_datacards
+            for datacards, kwargs in zip(self.multi_datacards, self.get_multi_task_kwargs())
         ]
 
     def output(self):
