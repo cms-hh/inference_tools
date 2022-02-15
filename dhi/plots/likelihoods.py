@@ -356,6 +356,7 @@ def plot_likelihood_scan_2d(
     values,
     poi1_min=None,
     poi2_min=None,
+    show_contours_only=False,
     show_best_fit=False,
     show_best_fit_error=False,
     show_significances=(1, 2, 3, 5),
@@ -382,6 +383,10 @@ def plot_likelihood_scan_2d(
     the POIs that lead to the best likelihood. Otherwise, they are estimated from the interpolated
     curve.
 
+    By default, this plot fills a 2D histogram with likelihood values and optionally draws contour
+    lines and additional information on top. However, when *show_contours_only* is *True*, only
+    1 and 2 sigma contour lines are drawn over a white background and the z-axis is hidden.
+
     When *show_best_fit* (*show_best_fit_error*) is *True*, the nominal (uncertainty on the) best
     fit value is drawn. To overlay lines and labels denoting integer significances corresponding to
     1D likelihood scans, *show_significances* can be set to *True* to show significances up to 3
@@ -403,15 +408,21 @@ def plot_likelihood_scan_2d(
     https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf (e.g. Fig. 40.5).
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
-    and default to the ranges of the poi values. *z_min* and *z_max* limit the range of the z-axis.
-    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When *paper* is
-    *True*, certain plot configurations are adjusted for use in publications.
+    and default to the ranges of the poi values. *z_min* and *z_max* limit the range of the z-axis
+    in case *show_contours_only* is not activated. *model_parameters* can be a dictionary of
+    key-value pairs of model parameters. *campaign* should refer to the name of a campaign label
+    defined in *dhi.config.campaign_labels*. When *paper* is *True*, certain plot configurations are
+    adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d
     """
     import plotlib.root as r
     ROOT = import_ROOT()
+
+    # overwrite some settings when only showing contours
+    if show_contours_only:
+        show_significances = (1, 2)
+        significance_labels = ["68%", "95%"]
 
     # check values
     values = make_list(values)
@@ -437,13 +448,18 @@ def plot_likelihood_scan_2d(
     contour_levels = [1, 2, 3, 5]
     if show_significances and isinstance(show_significances, (list, tuple)):
         contour_levels = list(show_significances)
+    n_contours = len(contour_levels)
     # convert to dnll2 values for 2 degrees of freedom
     contour_levels_dnll2 = []
     for l in contour_levels:
         is_cl = isinstance(l, float) and l < 1
         dnll2 = get_chi2_level_from_cl(l, 2) if is_cl else get_chi2_level(l, 2)
         contour_levels_dnll2.append(dnll2)
-    contour_colors = [colors.green, colors.yellow, colors.blue_cream] + color_sequence
+    contour_colors = ([colors.green, colors.yellow, colors.blue_cream] + color_sequence)[:n_contours]
+    contour_styles = n_contours * [1]
+    if show_contours_only:
+        contour_colors = n_contours * [colors.black]
+        contour_styles = ([1, 2, 7, 9] + max(n_contours - 4, 0) * [8])[:n_contours]
     contours = get_contours(joined_values[poi1], joined_values[poi2], joined_values["dnll2"],
         levels=contour_levels_dnll2, frame_kwargs=[{"mode": "edge", "width": 1.}],
         interpolation=interpolation_method)
@@ -461,7 +477,8 @@ def plot_likelihood_scan_2d(
 
     # start plotting
     r.setup_style()
-    canvas, (pad,) = r.routines.create_canvas(pad_props={"RightMargin": 0.17, "Logz": True})
+    pad_props = {} if show_contours_only else {"RightMargin": 0.17, "Logz": True}
+    canvas, (pad,) = r.routines.create_canvas(pad_props=pad_props)
     pad.cd()
     draw_objs = []
 
@@ -523,14 +540,15 @@ def plot_likelihood_scan_2d(
     legend_entries = []
 
     # setup actual histograms
-    for i, h in enumerate(hists):
-        r.setup_hist(h, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
-        if i == 0:
-            r.setup_z_axis(h.GetZaxis(), pad=pad, props={"Title": z_title, "TitleSize": 24,
-                "TitleOffset": 1.5})
-        draw_objs.append((h, "SAME,COLZ"))
-        # for debugging purposes
-        # draw_objs.append((h, "SAME,TEXT"))
+    if not show_contours_only:
+        for i, h in enumerate(hists):
+            r.setup_hist(h, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
+            if i == 0:
+                r.setup_z_axis(h.GetZaxis(), pad=pad, props={"Title": z_title, "TitleSize": 24,
+                    "TitleOffset": 1.5})
+            draw_objs.append((h, "SAME,COLZ"))
+            # for debugging purposes
+            # draw_objs.append((h, "SAME,TEXT"))
 
     # significance contours
     if show_significances:
@@ -542,10 +560,14 @@ def plot_likelihood_scan_2d(
 
         # cache for label positions
         all_positions = []
-        for graphs, level, col in zip(contours, contour_levels, contour_colors[:len(contours)]):
+        for graphs, level, col, ls in zip(contours, contour_levels, contour_colors, contour_styles):
             for g in graphs:
-                r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors(col)})
+                r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors(col), "LineStyle": ls})
                 draw_objs.append((g, "SAME,C"))
+
+            # stop here when only drawing contours
+            if show_contours_only:
+                continue
 
             # get the approximate label width
             is_cl = isinstance(level, float) and level < 1
@@ -572,7 +594,7 @@ def plot_likelihood_scan_2d(
                 draw_objs.append((sig_label, "SAME"))
 
     # draw the first contour box
-    if show_box:
+    if show_box and scan:
         box_num1, box_num2 = scan.box_nums[0]
         box_t = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("up"), box_num2("up"))
         box_b = ROOT.TLine(box_num1("down"), box_num2("down"), box_num1("up"), box_num2("down"))
@@ -589,10 +611,10 @@ def plot_likelihood_scan_2d(
         g_sm = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
-        legend_entries.append((g_sm, "Standard model", "P"))
+        legend_entries.append((g_sm, "SM Higgs" if paper else "Standard model", "P"))
 
     # central best fit point
-    if scan:
+    if show_best_fit and scan:
         g_fit = ROOT.TGraphAsymmErrors(1)
         g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
         if scan.num1_min.uncertainties and show_best_fit_error:
@@ -601,10 +623,13 @@ def plot_likelihood_scan_2d(
         if scan.num2_min.uncertainties and show_best_fit_error:
             g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
             g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
-        props = {} if show_best_fit_error else {"MarkerStyle": 43, "MarkerSize": 2}
+        props = {"MarkerStyle": 43, "MarkerSize": 2}
+        if show_best_fit_error:
+            props = {}
+        elif show_contours_only:
+            props = {"MarkerStyle": 34, "MarkerSize": 2}
         r.setup_graph(g_fit, props=props, color=colors.black)
-        if show_best_fit:
-            draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
+        draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
 
     # legend
     def make_bf_label(num1, num2):
@@ -628,10 +653,18 @@ def plot_likelihood_scan_2d(
     if show_box:
         legend_entries.insert(0, (box_legend_entry, make_bf_label(box_num1, box_num2), "F"))
     if show_best_fit and scan:
-        legend_entries.insert(0, (g_fit, make_bf_label(scan.num1_min, scan.num2_min),
-            "PLE" if show_best_fit_error else "P"))
+        label = "Observed" if paper else make_bf_label(scan.num1_min, scan.num2_min)
+        legend_entries.insert(0, (g_fit, label, "PLE" if show_best_fit_error else "P"))
+    if show_contours_only:
+        for graphs, level in zip(contours, significance_labels):
+            for g in graphs:
+                legend_entries.append((g, level, "L"))
     if legend_entries:
-        legend = r.routines.create_legend(pad=pad, width=340, n=len(legend_entries))
+        if show_contours_only:
+            legend = r.routines.create_legend(pad=pad, width=260, n=2,
+                props={"NColumns": 2, "TextSize": 20})
+        else:
+            legend = r.routines.create_legend(pad=pad, width=340, n=len(legend_entries))
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
 

@@ -275,6 +275,12 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         "comma-separated options for 'function', 'smooth' and 'epsilon' arguments can be added in "
         "that order; 2D only; default: root",
     )
+    show_contours_only = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="show only 1 and 2 sigma b/w contours instead of color-coded dnll2 values; "
+        "2D only; default: False",
+    )
     show_points = luigi.BoolParameter(
         default=False,
         significant=False,
@@ -376,6 +382,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 values=values,
                 poi1_min=None if self.recompute_best_fit else poi_mins[0],
                 poi2_min=None if self.recompute_best_fit else poi_mins[1],
+                show_contours_only=self.show_contours_only,
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
                 show_significances=self.show_significances,
