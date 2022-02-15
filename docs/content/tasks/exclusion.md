@@ -149,12 +149,12 @@ graph LR;
     A(PlotExclusionAndBestFit2D) --> B(MergeUpperLimits);
     A -. optional .-> C(MergeLikelihoodScan);
     B --> D([UpperLimits]);
-    D --> F(CreateWorkspace);
+    D -. either .-> F(CreateWorkspace);
     F --> G(CombineDatacards);
     C --> E([LikelihoodScan]);
-    E --> F;
-    D -. optional .-> H([Snapshot]);
-    E -. optional .-> I([Snapshot]);
+    E -. either .-> F;
+    D -. or .-> H([Snapshot]);
+    E -. or .-> I([Snapshot]);
     H --> F;
     I --> F;
 ```

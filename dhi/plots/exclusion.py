@@ -186,11 +186,12 @@ def plot_exclusion_and_bestfit_1d(
         # preprocess values
         poi_min = d.get("scan_min")
         dnll2_values, poi_values = _preprocess_values(d["nll_values"]["dnll2"],
-            (poi, d["nll_values"][scan_parameter]), shift_negative_values=True,
-            min_is_external=poi_min is not None)
+            (poi, d["nll_values"][scan_parameter]), shift_negative_values=True, remove_nans=True,
+            min_is_external=poi_min is not None, origin="entry '{}'".format(d["name"]))
 
         # evaluate the scan
-        scans.append(evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min))
+        scans.append(evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min,
+            origin="entry '{}'".format(d["name"])))
 
     # draw best fit values
     if any(scans):
@@ -231,7 +232,8 @@ def plot_exclusion_and_bestfit_1d(
         # name labels
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
         if scan:
-            label = label_tmpl_scan % (label, scan_label, scan.num_min.str("%.1f", style="root"))
+            label = label_tmpl_scan % (label, scan_label, scan.num_min.str("%.2f", style="root",
+                force_asymmetric=True, styles={"space": ""}))
         else:
             label = label_tmpl % (label,)
         label_x = r.get_x(10, canvas)
@@ -299,6 +301,7 @@ def plot_exclusion_and_bestfit_2d(
     recompute_best_fit=False,
     scan_minima=None,
     show_sm_point=True,
+    interpolation_method="root",
     x_min=None,
     x_max=None,
     y_min=None,
@@ -324,12 +327,15 @@ def plot_exclusion_and_bestfit_2d(
     not set explicitely. *xsec_unit* can be a string that is appended to every label.
 
     When *nll_values* is set, it is used to extract expected best fit values and their uncertainties
-    which are drawn as well when *show_best_fit_error* is *True*. When set, it should be a mapping to
-    lists of values or a record array with keys "<scan_parameter1>", "<scan_parameter2>" and
+    which are drawn as well when *show_best_fit_error* is *True*. When set, it should be a mapping
+    to lists of values or a record array with keys "<scan_parameter1>", "<scan_parameter2>" and
     "dnll2". By default, the position of the best value is directly extracted from the likelihood
     values. However, when *scan_minima* is a 2-tuple of positions per scan parameter, this best fit
     value is used instead, e.g. to use combine's internally interpolated value. The standard model
-    point at (1, 1) as drawn as well unless *show_sm_point* is *False*.
+    point at (1, 1) as drawn as well unless *show_sm_point* is *False*. *interpolation_method* can
+    either be "root" (TGraph2D), "linear" or "cubic" (scipy.interpolate.interp2d), or "rbf"
+    (scipy.interpolate.Rbf). In case a tuple is passed, the method should be the first element,
+    followed by optional configuration options.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the range of the x- and y-axis, respectively, and
     default to the scan parameter ranges found in *expected_limits*. *model_parameters* can be a
@@ -422,6 +428,7 @@ def plot_exclusion_and_bestfit_2d(
             expected_limits[key],
             levels=[1.],
             frame_kwargs=[{"mode": "edge"}] + [{"mode": "contour+"}],
+            interpolation=interpolation_method,
         )[0]
 
     # style graphs and add to draw objects, from outer to inner graphs (-2, -1, +1, +2), followed by
@@ -467,6 +474,7 @@ def plot_exclusion_and_bestfit_2d(
             xsec_values[scan_parameter2],
             xsec_values["xsec"],
             levels=xsec_levels,
+            interpolation=interpolation_method,
         )
 
         # draw them
@@ -523,6 +531,7 @@ def plot_exclusion_and_bestfit_2d(
             observed_limits["limit"],
             levels=[1.],
             frame_kwargs=[{"mode": "edge"}] + [{"mode": "contour+"}],
+            interpolation=interpolation_method,
         )[0]
 
         # draw them
@@ -538,16 +547,22 @@ def plot_exclusion_and_bestfit_2d(
 
     # best fit point
     if nll_values:
+        # preprocess values
+        dnll2, nll_scan_values1, nll_scan_values2 = _preprocess_values(
+            nll_values["dnll2"], (scan_parameter1, nll_values[scan_parameter1]),
+            (scan_parameter2, nll_values[scan_parameter2]), remove_nans=True,
+            shift_negative_values=True, min_is_external=bool(scan_minima))
+
+        # scan
         scan = evaluate_likelihood_scan_2d(
-            nll_values[scan_parameter1],
-            nll_values[scan_parameter2],
-            nll_values["dnll2"],
+            nll_scan_values1,
+            nll_scan_values2,
+            dnll2,
             poi1_min=scan_minima[0] if scan_minima and show_best_fit_error else None,
             poi2_min=scan_minima[1] if scan_minima and show_best_fit_error else None,
         )
-        if not scan:
-            warn("2D likelihood evaluation failed")
-        else:
+
+        if scan:
             g_fit = ROOT.TGraphAsymmErrors(1)
             g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
             if show_best_fit_error:
@@ -565,6 +580,8 @@ def plot_exclusion_and_bestfit_2d(
                     color=colors.black)
                 draw_objs.append((g_fit, "PZ"))
                 legend_entries[1] = (g_fit, "Best fit value", "P")
+        else:
+            warn("2D likelihood evaluation failed")
 
     # SM point
     if show_sm_point:

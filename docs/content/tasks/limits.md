@@ -32,9 +32,9 @@ Output:
 graph LR;
     A(PlotUpperLimits) --> B(MergeUpperLimits);
     B --> C([UpperLimits]);
-    C --> D(CreateWorkspace);
+    C -. either .-> D(CreateWorkspace);
     D --> E(CombineDatacards);
-    C -. optional .-> F([Snapshot]);
+    C -. or .-> F([Snapshot]);
     F --> D;
 ```
 
@@ -132,12 +132,12 @@ graph LR;
     A --> ...;
     B1 --> C1([UpperLimits]);
     B2 --> C2([UpperLimits]);
-    C1 --> D1(CreateWorkspace);
-    C2 --> D2(CreateWorkspace);
+    C1 -. either .-> D1(CreateWorkspace);
+    C2 -. either .-> D2(CreateWorkspace);
     D1 --> E1(CombineDatacards);
     D2 --> E2(CombineDatacards);
-    C1 -. optional .-> F1([Snapshot]);
-    C2 -. optional .-> F2([Snapshot]);
+    C1 -. or .-> F1([Snapshot]);
+    C2 -. or .-> F2([Snapshot]);
     F1 --> D1;
     F2 --> D2;
 ```
@@ -216,12 +216,12 @@ graph LR;
     A(PlotUpperLimitsAtPoint) --> B1([UpperLimits]);
     A --> B2([UpperLimits]);
     A --> ...;
-    B1 --> C1(CreateWorkspace);
-    B2 --> C2(CreateWorkspace);
+    B1 -. either .-> C1(CreateWorkspace);
+    B2 -. either .-> C2(CreateWorkspace);
     C1 --> D1(CombineDatacards);
     C2 --> D2(CombineDatacards);
-    B1 -. optional .-> E1([Snapshot]);
-    B2 -. optional .-> E2([Snapshot]);
+    B1 -. or .-> E1([Snapshot]);
+    B2 -. or .-> E2([Snapshot]);
     E1 --> C1;
     E2 --> C2;
 ```

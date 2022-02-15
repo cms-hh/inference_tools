@@ -27,9 +27,9 @@ Output:
 graph LR;
     A(PlotSignificanceScan) --> B(MergeSignificanceScan);
     B --> C([SignificanceScan]);
-    C --> D(CreateWorkspace);
+    C -. either .-> D(CreateWorkspace);
     D --> E(CombineDatacards);
-    C -. optional .-> F([Snapshot]);
+    C -. or .-> F([Snapshot]);
     F --> D;
 ```
 
@@ -117,12 +117,12 @@ graph LR;
     A(PlotMultipleSignificanceScans) --> ...;
     B1 --> C1([SignificanceScan]);
     B2 --> C2([SignificanceScan]);
-    C1 --> D1(CreateWorkspace);
-    C2 --> D2(CreateWorkspace);
+    C1 -. either .-> D1(CreateWorkspace);
+    C2 -. either .-> D2(CreateWorkspace);
     D1 --> E1(CombineDatacards);
     D2 --> E2(CombineDatacards);
-    C1 -. optional .-> F1([Snapshot]);
-    C2 -. optional .-> F2([Snapshot]);
+    C1 -. or .-> F1([Snapshot]);
+    C2 -. or .-> F2([Snapshot]);
     F1 --> D1;
     F2 --> D2;
 ```

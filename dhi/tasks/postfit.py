@@ -69,15 +69,18 @@ class FitDiagnostics(POITask, CombineCommandTask, SnapshotUser, law.LocalWorkflo
 
     def workflow_requires(self):
         reqs = super(FitDiagnostics, self).workflow_requires()
-        reqs["workspace"] = CreateWorkspace.req(self)
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def requires(self):
-        reqs = {"workspace": CreateWorkspace.req(self)}
+        reqs = {}
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, branch=0)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def get_output_postfix(self, join=True):
@@ -130,13 +133,13 @@ class FitDiagnostics(POITask, CombineCommandTask, SnapshotUser, law.LocalWorkflo
             " --verbose 1"
             " --mass {self.mass}"
             " {blinded_args}"
+            " {snapshot_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameterRanges {self.joined_parameter_ranges}"
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {flags}"
-            " {snapshot_args}"
             " {self.combine_optimization_args}"
             " && "
             "mv higgsCombineTest.FitDiagnostics.mH{self.mass_int}{postfix}.root {output_result}"
@@ -174,6 +177,12 @@ class PlotPostfitSOverB(PostfitPlotBase):
         significant=False,
         description="comma-separated list of bin edges to use; when a single number is passed, a "
         "automatic binning is applied with that number of bins; default: (8,)",
+    )
+    order_without_sqrt = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when True, order by 'prefit log S/B' instead of 'prefit log S/sqrt(B)'; "
+        "default: False",
     )
     show_best_fit = luigi.BoolParameter(
         default=False,
@@ -321,6 +330,7 @@ class PlotPostfitSOverB(PostfitPlotBase):
             poi=self.pois[0],
             fit_diagnostics_path=fit_diagnostics_path,
             bins=self.bins if len(self.bins) > 1 else int(self.bins[0]),
+            order_without_sqrt=self.order_without_sqrt,
             signal_superimposed=self.signal_superimposed,
             signal_scale=self.signal_scale,
             signal_scale_ratio=self.signal_scale_ratio,

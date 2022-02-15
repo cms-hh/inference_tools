@@ -8,13 +8,14 @@ import os
 import re
 import math
 import importlib
+import getpass
 from collections import OrderedDict
 
 import luigi
 import law
 import six
 
-from dhi.util import call_hook
+from dhi.util import call_hook, expand_path
 
 
 law.contrib.load(
@@ -178,12 +179,19 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         description="number of CPUs to request; empty value leads to the cluster default setting; "
         "no default",
     )
+    htcondor_mem = law.BytesParameter(
+        default=law.NO_FLOAT,
+        unit="GB",
+        significant=False,
+        description="amount of memory to request; the default unit is GB; empty value leads to the "
+        "cluster default setting; no default",
+    )
     htcondor_flavor = luigi.ChoiceParameter(
         default=os.getenv("DHI_HTCONDOR_FLAVOR", "cern"),
-        choices=("cern",),
+        choices=("cern", "naf", "infn"),
         significant=False,
-        description="the 'flavor' (i.e. configuration name) of the batch system; choices: cern; "
-        "default: {}".format(os.getenv("DHI_HTCONDOR_FLAVOR", "cern")),
+        description="the 'flavor' (i.e. configuration name) of the batch system; choices: "
+        "cern,naf,infn; default: {}".format(os.getenv("DHI_HTCONDOR_FLAVOR", "cern")),
     )
     htcondor_getenv = luigi.BoolParameter(
         default=False,
@@ -199,7 +207,8 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
     )
 
     exclude_params_branch = {
-        "max_runtime", "htcondor_cpus", "htcondor_flavor", "htcondor_getenv", "htcondor_group",
+        "max_runtime", "htcondor_cpus", "htcondor_mem", "htcondor_flavor", "htcondor_getenv",
+        "htcondor_group",
     }
 
     def htcondor_workflow_requires(self):
@@ -225,8 +234,14 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 
     def htcondor_job_config(self, config, job_num, branches):
         # use cc7 at CERN (http://batchdocs.web.cern.ch/batchdocs/local/submit.html#os-choice)
-        if self.htcondor_flavor == "cern":
+        # and NAF
+        if self.htcondor_flavor in ("cern", "naf"):
             config.custom_content.append(("requirements", '(OpSysAndVer =?= "CentOS7")'))
+        # architecture at INFN
+        if self.htcondor_flavor == "infn":
+            config.custom_content.append(
+                ("requirements", 'TARGET.OpSys == "LINUX" && (TARGET.Arch != "DUMMY")'))
+
         # copy the entire environment when requests
         if self.htcondor_getenv:
             config.custom_content.append(("getenv", "true"))
@@ -243,7 +258,22 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 
         # request cpus
         if self.htcondor_cpus > 0:
-            config.custom_content.append(("RequestCpus", self.htcondor_cpus))
+            if self.htcondor_flavor == "naf":
+                self.logger.warning("--htcondor-cpus has no effect on NAF resources, use "
+                    "--htcondor-mem instead")
+            else:
+                config.custom_content.append(("RequestCpus", self.htcondor_cpus))
+
+        # request memory
+        if self.htcondor_mem > 0:
+            if self.htcondor_flavor == "cern":
+                self.logger.warning("--htcondor-mem has no effect on CERN resources, use "
+                    "--htcondor-cpus instead")
+            elif self.htcondor_flavor == "naf":
+                # NAF uses MB
+                config.custom_content.append(("RequestMemory", self.htcondor_mem * 1024))
+            else:
+                config.custom_content.append(("RequestMemory", self.htcondor_mem))
 
         # accounting group for priority on the cluster
         if self.htcondor_group and self.htcondor_group != law.NO_STR:
@@ -256,6 +286,14 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
             pattern = os.path.basename(task.get_file_pattern())
             return ",".join(uris), pattern
 
+        # prepare the hook file location
+        hook_file = os.getenv("DHI_HOOK_FILE", "")
+        if hook_file:
+            hook_file = expand_path(hook_file)
+            dhi_base = expand_path("$DHI_BASE")
+            if hook_file.startswith(dhi_base):
+                hook_file = os.path.relpath(hook_file, dhi_base)
+
         # render_variables are rendered into all files sent with a job
         config.render_variables["dhi_env_path"] = os.environ["PATH"]
         config.render_variables["dhi_env_pythonpath"] = os.environ["PYTHONPATH"]
@@ -266,6 +304,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         config.render_variables["dhi_combine_standalone"] = os.environ["DHI_COMBINE_STANDALONE"]
         config.render_variables["dhi_task_namespace"] = os.environ["DHI_TASK_NAMESPACE"]
         config.render_variables["dhi_local_scheduler"] = os.environ["DHI_LOCAL_SCHEDULER"]
+        config.render_variables["dhi_hook_file"] = hook_file
         if self.htcondor_getenv:
             config.render_variables["dhi_bootstrap_name"] = "htcondor_getenv"
         else:
@@ -296,14 +335,24 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         return True
 
 
-class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLocalFile):
+class UserTask(AnalysisTask):
+
+    user = luigi.Parameter(
+        default=getpass.getuser(),
+    )
+
+    exclude_params_index = {"user"}
+    exclude_params_req = {"user"}
+
+
+class BundleRepo(UserTask, law.git.BundleGitRepository, law.tasks.TransferLocalFile):
 
     replicas = luigi.IntParameter(
         default=10,
         description="number of replicas to generate; default: 10",
     )
 
-    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2/*", "*~", "*.pyc"]
+    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2*/*", "*~", "*.pyc"]
 
     version = None
     task_namespace = None
@@ -338,7 +387,7 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         self.transfer(bundle)
 
 
-class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile):
+class BundleSoftware(UserTask, law.tasks.TransferLocalFile):
 
     replicas = luigi.IntParameter(
         default=10,
@@ -398,7 +447,7 @@ class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile):
         self.transfer(bundle)
 
 
-class BundleCMSSW(AnalysisTask, law.cms.BundleCMSSW, law.tasks.TransferLocalFile):
+class BundleCMSSW(UserTask, law.cms.BundleCMSSW, law.tasks.TransferLocalFile):
 
     replicas = luigi.IntParameter(
         default=10,

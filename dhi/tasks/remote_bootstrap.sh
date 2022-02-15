@@ -37,6 +37,7 @@ bootstrap_htcondor_standalone() {
     export DHI_COMBINE_STANDALONE="{{dhi_combine_standalone}}"
     export DHI_TASK_NAMESPACE="{{dhi_task_namespace}}"
     export DHI_LOCAL_SCHEDULER="{{dhi_local_scheduler}}"
+    export DHI_HOOK_FILE="{{dhi_hook_file}}"
     export DHI_ON_HTCONDOR="1"
     export DHI_REMOTE_JOB="1"
 

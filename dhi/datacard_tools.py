@@ -1145,30 +1145,29 @@ def get_workspace_parameters(workspace, workspace_name="w", config_name="ModelCo
             params[param.GetName()] = None
             continue
 
-        # get the type of the pdf
+        # get the pdf type and (type-dependent) prefit values
         pdf = w.pdf("{}_Pdf".format(param.GetName()))
-        if pdf is None or isinstance(pdf, ROOT.RooUniform):
+        gobs = w.var("{}_In".format(param.GetName()))
+        if pdf and gobs:
+            prepare_prefit_var(param, pdf)
+            nom = param.getVal()
+            prefit = [nom + param.getErrorLo(), nom, nom + param.getErrorHi()]
+            if isinstance(pdf, ROOT.RooGaussian):
+                pdf_type = "Gaussian"
+            elif isinstance(pdf, ROOT.RooPoisson):
+                pdf_type = "Poisson"
+            elif isinstance(pdf, ROOT.RooBifurGauss):
+                pdf_type = "AsymmetricGaussian"
+            else:
+                pdf_type = "Unrecognised"
+        elif not pdf or isinstance(pdf, ROOT.RooUniform):
             pdf_type = "Unconstrained"
-        elif isinstance(pdf, ROOT.RooGaussian):
-            pdf_type = "Gaussian"
-        elif isinstance(pdf, ROOT.RooPoisson):
-            pdf_type = "Poisson"
-        elif isinstance(pdf, ROOT.RooBifurGauss):
-            pdf_type = "AsymmetricGaussian"
-        else:
-            pdf_type = "Unrecognised"
+            nom = param.getVal()
+            prefit = [nom, nom, nom]
 
         # get groups
         start = "group_"
         groups = [attr.replace(start, "") for attr in param.attributes() if attr.startswith(start)]
-
-        # prefit values
-        var = prepare_prefit_var(param, pdf)
-        nom = var.getVal()
-        if pdf_type == "Unconstrained":
-            prefit = [nom, nom, nom]
-        else:
-            prefit = [nom + var.getErrorLo(), nom, nom + var.getErrorHi()]
 
         # store it
         params[param.GetName()] = {

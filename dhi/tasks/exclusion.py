@@ -10,14 +10,15 @@ import law
 import luigi
 
 from dhi.tasks.base import BoxPlotTask, view_output_plots
-from dhi.tasks.combine import MultiDatacardTask, POIScanTask, POIPlotTask
+from dhi.tasks.combine import MultiDatacardTask, POIScanTask, POIMultiTask, POIPlotTask
 from dhi.tasks.snapshot import SnapshotUser
 from dhi.tasks.limits import MergeUpperLimits, PlotUpperLimits
 from dhi.tasks.likelihoods import MergeLikelihoodScan, PlotLikelihoodScan
 from dhi.config import br_hh
 
 
-class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, SnapshotUser, BoxPlotTask):
+class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIPlotTask,
+        SnapshotUser, BoxPlotTask):
 
     show_best_fit = PlotLikelihoodScan.show_best_fit
     show_best_fit_error = PlotLikelihoodScan.show_best_fit_error
@@ -38,6 +39,7 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, Snaps
     force_n_scan_parameters = 1
     force_scan_parameters_unequal_pois = True
     allow_multiple_scan_ranges = True
+    compare_multi_sequence = "multi_datacards"
 
     def requires(self):
         def merge_tasks(cls, **kwargs):
@@ -47,11 +49,11 @@ class PlotExclusionAndBestFit(POIScanTask, MultiDatacardTask, POIPlotTask, Snaps
             ]
 
         reqs = []
-        for datacards in self.multi_datacards:
-            req = {"limits": merge_tasks(MergeUpperLimits, datacards=datacards)}
+        for datacards, kwargs in zip(self.multi_datacards, self.get_multi_task_kwargs()):
+            req = {"limits": merge_tasks(MergeUpperLimits, datacards=datacards, **kwargs)}
             if self.show_best_fit:
                 req["likelihoods"] = merge_tasks(MergeLikelihoodScan, datacards=datacards,
-                    pois=tuple(self.scan_parameter_names))
+                    pois=tuple(self.scan_parameter_names), **kwargs)
             reqs.append(req)
 
         return reqs
@@ -287,6 +289,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
             xsec_levels=xsec_levels,
             xsec_unit=self.xsec,
             nll_values=nll_values,
+            interpolation_method="rbf",
             show_best_fit_error=self.show_best_fit_error,
             scan_minima=None if self.recompute_best_fit else scan_mins,
             x_min=self.get_axis_limit("x_min"),

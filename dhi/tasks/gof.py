@@ -12,6 +12,7 @@ from dhi.tasks.combine import (
     MultiDatacardTask,
     CombineCommandTask,
     POITask,
+    POIMultiTask,
     POIPlotTask,
     CreateWorkspace,
 )
@@ -90,15 +91,18 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
 
     def workflow_requires(self):
         reqs = super(GoodnessOfFit, self).workflow_requires()
-        reqs["workspace"] = CreateWorkspace.req(self)
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, _exclude={"toys"})
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def requires(self):
-        reqs = {"workspace": CreateWorkspace.req(self)}
+        reqs = {}
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, branch=0, _exclude={"toys"})
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def output(self):
@@ -134,6 +138,7 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
             " --verbose 1"
             " --mass {self.mass}"
             " {toy_opts}"
+            " {snapshot_args}"
             " --seed {self.branch}"
             " --algo {self.algorithm}"
             " --redefineSignalPOIs {self.joined_pois}"
@@ -141,7 +146,6 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
-            " {snapshot_args}"
             " {self.combine_optimization_args}"
             " && "
             "mv higgsCombineTest.GoodnessOfFit.mH{self.mass_int}.{self.branch}.root {output}"
@@ -242,7 +246,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
         )
 
 
-class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask, BoxPlotTask):
+class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardTask, BoxPlotTask):
 
     toys = law.CSVParameter(
         cls=luigi.IntParameter,
@@ -261,6 +265,8 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask, BoxPlotTa
 
     y_min = None
     y_max = None
+
+    compare_multi_sequence = "multi_datacards"
 
     def __init__(self, *args, **kwargs):
         super(PlotMultipleGoodnessOfFits, self).__init__(*args, **kwargs)
@@ -287,8 +293,10 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, MultiDatacardTask, BoxPlotTa
 
     def requires(self):
         return [
-            MergeGoodnessOfFit.req(self, datacards=datacards, toys=t, toys_per_branch=tpb)
-            for datacards, t, tpb in zip(self.multi_datacards, self.toys, self.toys_per_branch)
+            MergeGoodnessOfFit.req(self, datacards=datacards, toys=t, toys_per_branch=tpb, **kwargs)
+            for datacards, t, tpb, kwargs in zip(
+                self.multi_datacards, self.toys, self.toys_per_branch, self.get_multi_task_kwargs(),
+            )
         ]
 
     def output(self):
