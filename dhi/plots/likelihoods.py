@@ -166,7 +166,6 @@ def plot_likelihood_scans_1d(
     y_min, y_max, y_max_line = get_y_range(y_min_value, y_max_value, y_min, y_max, log=y_log)
 
     # start plotting
-    print("==================poi_min", poi_min)
     r.setup_style()
     canvas, (pad,) = r.routines.create_canvas(pad_props={"Logy": y_log})
     pad.cd()
@@ -416,7 +415,7 @@ def plot_likelihood_scan_2d(
     if paper :
         show_best_fit = True
         show_best_fit_error = False
-        show_significances=(1, 2, 3, 5)
+        show_significances=(1, 2)
 
     import plotlib.root as r
     ROOT = import_ROOT()
@@ -604,7 +603,11 @@ def plot_likelihood_scan_2d(
         g_sm = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
-        legend_entries.append((g_sm, "Standard model", "P"))
+        if paper :
+            SM_legend = "SM Higgs"
+        else :
+            SM_legend = "Standard model"
+        legend_entries.append((g_sm, SM_legend, "P"))
 
     # central best fit point
     if scan:
@@ -646,23 +649,25 @@ def plot_likelihood_scan_2d(
         if paper :
             legend_entries.insert(0, (g_fit, "Observed",
                 "PLE" if show_best_fit_error else "P"))
-            # countour legends
-            contour_levels_legend = ["68%", "95%"]
-            for graphs, level in zip(contours, contour_levels_legend):
-                for g in graphs:
-                    legend_entries.insert(0, (g, level, "L"))
-                    #r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors(col), "LineStyle": ss})
-                    #draw_objs.append((g, "SAME,C"))
         else :
             legend_entries.insert(0, (g_fit, make_bf_label(scan.num1_min, scan.num2_min),
                 "PLE" if show_best_fit_error else "P"))
     if legend_entries:
         if paper :
             legend_cols = 2
+            width=260
         else :
             legend_cols = int(math.ceil(len(legend_entries) / 3.))
-        legend = r.routines.create_legend(pad=pad, width=340, n=len(legend_entries),
-            props={"NColumns": legend_cols, "TextSize": 18})
+            width=340
+        legend = r.routines.create_legend(pad=pad, width=width, n=len(legend_entries),
+            props={"NColumns": legend_cols, "TextSize": 20})
+        if paper :
+            # countour legends
+            contour_levels_legend = ["68%", "95%"]
+            for graphs, level in zip(contours, contour_levels_legend):
+                for g in graphs:
+                    legend_entries.insert(0, (g, level, "L"))
+
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
 
