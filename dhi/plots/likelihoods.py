@@ -410,6 +410,13 @@ def plot_likelihood_scan_2d(
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d
     """
+
+    # transformations
+    if paper :
+        show_best_fit = True
+        show_best_fit_error = False
+        show_significances=(1, 2)
+
     import plotlib.root as r
     ROOT = import_ROOT()
 
@@ -443,7 +450,12 @@ def plot_likelihood_scan_2d(
         is_cl = isinstance(l, float) and l < 1
         dnll2 = get_chi2_level_from_cl(l, 2) if is_cl else get_chi2_level(l, 2)
         contour_levels_dnll2.append(dnll2)
-    contour_colors = [colors.green, colors.yellow, colors.blue_cream] + color_sequence
+    if paper :
+        contour_colors = [colors.black, colors.black]
+        contour_style = [1, 2]
+    else :
+        contour_colors = [colors.green, colors.yellow, colors.blue_cream] + color_sequence
+        contour_style = [1] * len(contour_colors)
     contours = get_contours(joined_values[poi1], joined_values[poi2], joined_values["dnll2"],
         levels=contour_levels_dnll2, frame_kwargs=[{"mode": "edge", "width": 1.}],
         interpolation=interpolation_method)
@@ -528,7 +540,8 @@ def plot_likelihood_scan_2d(
         if i == 0:
             r.setup_z_axis(h.GetZaxis(), pad=pad, props={"Title": z_title, "TitleSize": 24,
                 "TitleOffset": 1.5})
-        draw_objs.append((h, "SAME,COLZ"))
+        if not paper:
+            draw_objs.append((h, "SAME,COLZ"))
         # for debugging purposes
         # draw_objs.append((h, "SAME,TEXT"))
 
@@ -542,34 +555,35 @@ def plot_likelihood_scan_2d(
 
         # cache for label positions
         all_positions = []
-        for graphs, level, col in zip(contours, contour_levels, contour_colors[:len(contours)]):
+        for graphs, level, col, ss in zip(contours, contour_levels, contour_colors[:len(contours)], contour_style):
             for g in graphs:
-                r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors(col)})
+                r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors(col), "LineStyle": ss})
                 draw_objs.append((g, "SAME,C"))
 
             # get the approximate label width
-            is_cl = isinstance(level, float) and level < 1
-            if is_cl:
-                text = "{:f}".format(level * 100).rstrip("0").rstrip(".") + "%"
-            else:
-                text = "{}#sigma".format(level)
-            label_width, label_height = get_text_extent(text, 18, 43)
-            label_width *= px_to_x
-            label_height *= py_to_y
+            if not paper :
+                is_cl = isinstance(level, float) and level < 1
+                if is_cl:
+                    text = "{:f}".format(level * 100).rstrip("0").rstrip(".") + "%"
+                else:
+                    text = "{}#sigma".format(level)
+                label_width, label_height = get_text_extent(text, 18, 43)
+                label_width *= px_to_x
+                label_height *= py_to_y
 
-            # calculate and store the position
-            label_positions = locate_contour_labels(graphs, label_width, label_height, pad_width,
-                pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions,
-                label_offset=0.9)
-            all_positions.extend(label_positions)
-            pad.cd()
+                # calculate and store the position
+                label_positions = locate_contour_labels(graphs, label_width, label_height, pad_width,
+                    pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions,
+                    label_offset=0.9)
+                all_positions.extend(label_positions)
+                pad.cd()
 
-            # draw them
-            for x, y, rot in label_positions:
-                sig_label = ROOT.TLatex(0., 0., text)
-                r.setup_latex(sig_label, props={"NDC": False, "TextSize": 16, "TextAlign": 21,
-                    "TextColor": colors(col), "TextAngle": rot, "X": x, "Y": y})
-                draw_objs.append((sig_label, "SAME"))
+                # draw them
+                for x, y, rot in label_positions:
+                    sig_label = ROOT.TLatex(0., 0., text)
+                    r.setup_latex(sig_label, props={"NDC": False, "TextSize": 16, "TextAlign": 21,
+                        "TextColor": colors(col), "TextAngle": rot, "X": x, "Y": y})
+                    draw_objs.append((sig_label, "SAME"))
 
     # draw the first contour box
     if show_box:
@@ -579,7 +593,7 @@ def plot_likelihood_scan_2d(
         box_r = ROOT.TLine(box_num1("up"), box_num2("up"), box_num1("up"), box_num2("down"))
         box_l = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("down"), box_num2("down"))
         for box_line in [box_t, box_r, box_b, box_l]:
-            r.setup_line(box_line, props={"LineColor": colors.black, "NDC": False})
+            r.setup_line(box_line, props={"LineColor": colors.gray, "NDC": False})
             draw_objs.append(box_line)
         box_legend_entry = ROOT.TH1F("box_hist", "", 1, 0, 1)
         r.setup_hist(box_legend_entry, props={"FillStyle": 0})
@@ -589,7 +603,11 @@ def plot_likelihood_scan_2d(
         g_sm = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
-        legend_entries.append((g_sm, "Standard model", "P"))
+        if paper :
+            SM_legend = "SM Higgs"
+        else :
+            SM_legend = "Standard model"
+        legend_entries.append((g_sm, SM_legend, "P"))
 
     # central best fit point
     if scan:
@@ -601,7 +619,7 @@ def plot_likelihood_scan_2d(
         if scan.num2_min.uncertainties and show_best_fit_error:
             g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
             g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
-        props = {} if show_best_fit_error else {"MarkerStyle": 43, "MarkerSize": 2}
+        props = {} if show_best_fit_error else {"MarkerStyle": 34, "MarkerSize": 2}
         r.setup_graph(g_fit, props=props, color=colors.black)
         if show_best_fit:
             draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
@@ -628,10 +646,28 @@ def plot_likelihood_scan_2d(
     if show_box:
         legend_entries.insert(0, (box_legend_entry, make_bf_label(box_num1, box_num2), "F"))
     if show_best_fit and scan:
-        legend_entries.insert(0, (g_fit, make_bf_label(scan.num1_min, scan.num2_min),
-            "PLE" if show_best_fit_error else "P"))
+        if paper :
+            legend_entries.insert(0, (g_fit, "Observed",
+                "PLE" if show_best_fit_error else "P"))
+        else :
+            legend_entries.insert(0, (g_fit, make_bf_label(scan.num1_min, scan.num2_min),
+                "PLE" if show_best_fit_error else "P"))
     if legend_entries:
-        legend = r.routines.create_legend(pad=pad, width=340, n=len(legend_entries))
+        if paper :
+            legend_cols = 2
+            width=260
+        else :
+            legend_cols = int(math.ceil(len(legend_entries) / 3.))
+            width=340
+        legend = r.routines.create_legend(pad=pad, width=width, n=len(legend_entries),
+            props={"NColumns": legend_cols, "TextSize": 20})
+        if paper :
+            # countour legends
+            contour_levels_legend = ["68%", "95%"]
+            for graphs, level in zip(contours, contour_levels_legend):
+                for g in graphs:
+                    legend_entries.insert(0, (g, level, "L"))
+
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
 
@@ -683,6 +719,8 @@ def plot_likelihood_scans_2d(
     paper=False,
 ):
     """
+
+      --show-best-fit True  --show-best-fit-error False
     Creates the likelihood contour plots of multiple 2D scans of two POIs *poi1* and *poi2*, and
     saves it at *paths*. All information should be passed as a list *data*. Entries must be
     dictionaries with the following content:
@@ -832,7 +870,10 @@ def plot_likelihood_scans_2d(
             legend_entries.insert(3 - n_empty, (h_dummy, " ", "L"))
 
     # legend with actual entries in different colors
-    legend_cols = int(math.ceil(len(legend_entries) / 3.))
+    if paper :
+        legend_cols = 2
+    else :
+        legend_cols = int(math.ceil(len(legend_entries) / 3.))
     legend_rows = min(len(legend_entries), 3)
     legend = r.routines.create_legend(pad=pad, width=legend_cols * 150, height=legend_rows * 30,
         props={"NColumns": legend_cols})
