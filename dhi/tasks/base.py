@@ -571,7 +571,6 @@ class CommandTask(AnalysisTask):
 
     @law.decorator.log
     @law.decorator.notify
-    @law.decorator.safe_output
     def run(self, **kwargs):
         self.pre_run_command()
 
@@ -666,7 +665,7 @@ class PlotTask(AnalysisTask):
         return None if value == -1000.0 else value
 
     def create_plot_names(self, parts):
-        plot_file_types = ["pdf", "png"]
+        plot_file_types = ["pdf", "png", "root"]
         if any(t not in plot_file_types for t in self.file_types):
             raise Exception("plot names only allowed for file types {}, got {}".format(
                 ",".join(plot_file_types), ",".join(self.file_types)))

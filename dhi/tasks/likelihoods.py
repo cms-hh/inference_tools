@@ -277,7 +277,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
     )
     show_contours_only = luigi.BoolParameter(
         default=False,
-        significant=False,
         description="show only 1 and 2 sigma b/w contours instead of color-coded dnll2 values; "
         "2D only; default: False",
     )
@@ -317,6 +316,8 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         parts = []
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
+        if self.n_pois == 2 and self.show_contours_only:
+            parts.append("contours")
 
         names = self.create_plot_names(["nll{}d".format(self.n_pois), self.get_output_postfix(), parts])
         outputs["plots"] = [self.local_target(name) for name in names]

@@ -109,10 +109,13 @@ def plot_limit_scan(
             os.makedirs(os.path.dirname(ranges_path))
 
     # set default ranges
-    if x_min is None:
-        x_min = min(expected_values[scan_parameter])
-    if x_max is None:
-        x_max = max(expected_values[scan_parameter])
+    x_min_scan = min(expected_values[scan_parameter])
+    x_max_scan = max(expected_values[scan_parameter])
+    if has_obs:
+        x_min_scan = min(x_min_scan, min(observed_values[scan_parameter]))
+        x_max_scan = max(x_max_scan, max(observed_values[scan_parameter]))
+    x_min = x_min_scan if x_min is None else x_min
+    x_max = x_max_scan if x_max is None else x_max
 
     # start plotting
     r.setup_style()
@@ -131,7 +134,9 @@ def plot_limit_scan(
     draw_objs.append((h_dummy, "HIST"))
 
     # setup up to 6 legend entries that are inserted by index downstream
-    legend_entries = 6 * [(h_dummy, " ", "L")]
+    # setup two lists of legend entries
+    legend_entries_l = []
+    legend_entries_r = []
 
     # helper to read values into graphs
     def create_graph(values=expected_values, key="limit", sigma=None, pad=True, insert=None):
@@ -154,7 +159,7 @@ def plot_limit_scan(
         r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2,
             "FillColor": colors.brazil_yellow})
         draw_objs.append((g_2sigma, "SAME,4"))  # option 4 might fallback to 3, see below
-        legend_entries[5] = (g_2sigma, "95% expected", "LF")
+        legend_entries_r.insert(0, (g_2sigma, "95% expected", "LF"))
         y_max_value = max(y_max_value, max(expected_values["limit_p2"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m2"]))
 
@@ -165,7 +170,7 @@ def plot_limit_scan(
         r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2,
             "FillColor": colors.brazil_green})
         draw_objs.append((g_1sigma, "SAME,4"))  # option 4 might fallback to 3, see below
-        legend_entries[4] = (g_1sigma, "68% expected", "LF")
+        legend_entries_r.insert(0, (g_1sigma, "68% expected", "LF"))
         y_max_value = max(y_max_value, max(expected_values["limit_p1"]))
         y_min_value = min(y_min_value, min(expected_values["limit_m1"]))
 
@@ -173,7 +178,7 @@ def plot_limit_scan(
     g_exp = create_graph()
     r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 2})
     draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
-    legend_entries[3] = (g_exp, "Median expected", "L")
+    legend_entries_r.insert(0, (g_exp, "Median expected", "L"))
     y_max_value = max(y_max_value, max(expected_values["limit"]))
     y_min_value = min(y_min_value, min(expected_values["limit"]))
 
@@ -186,15 +191,14 @@ def plot_limit_scan(
     )
     allowed_ranges = OrderedDict()
     key_exp = "__".join([scan_parameter, poi, "expected"])
-    allowed_ranges[key_exp] = excluded_to_allowed_ranges(excl_ranges_exp,
-        expected_values[scan_parameter].min(), expected_values[scan_parameter].max())
+    allowed_ranges[key_exp] = excluded_to_allowed_ranges(excl_ranges_exp, x_min_scan, x_max_scan)
 
     # observed values
     if has_obs:
         g_obs = create_graph(values=observed_values)
         r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1})
         draw_objs.append((g_obs, "SAME,CP" if show_points else "SAME,C"))
-        legend_entries[0] = (g_obs, "Observed", "L")
+        legend_entries_l.append((g_obs, "Observed", "L"))
         y_max_value = max(y_max_value, max(observed_values["limit"]))
         y_min_value = min(y_min_value, min(observed_values["limit"]))
 
@@ -206,8 +210,7 @@ def plot_limit_scan(
             theory_values["xsec"] if has_thy else None,
         )
         key_obs = "__".join([scan_parameter, poi, "observed"])
-        allowed_ranges[key_obs] = excluded_to_allowed_ranges(excl_ranges_obs,
-            observed_values[scan_parameter].min(), observed_values[scan_parameter].max())
+        allowed_ranges[key_obs] = excluded_to_allowed_ranges(excl_ranges_obs, x_min_scan, x_max_scan)
 
     if ranges_path:
         with open(ranges_path, "w") as f:
@@ -219,7 +222,8 @@ def plot_limit_scan(
         y_min_value = min(y_min_value, min(theory_values["xsec_m1" if has_thy_err else "xsec"]))
 
     # set limits
-    y_min, y_max, _ = get_y_range(y_min_value, y_max_value, y_min, y_max, log=y_log)
+    y_min, y_max, y_max_vis = get_y_range(y_min_value, y_max_value, y_min, y_max, log=y_log,
+        visible_margin=0.30)  # visible_margin depends on the legend height
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
@@ -241,36 +245,58 @@ def plot_limit_scan(
 
     # show hatched areas for excluded ranges if requested
     if show_excluded_ranges:
-        g, excl_ranges = (g_obs, excl_ranges_obs) if has_obs else (g_exp, excl_ranges_exp)
         # create a spline for neat interpolation (using g.Eval(x, 0, "S") fails miserably)
         # delete repeated endpoints which leads to interpolation failures
+        g, excl_ranges = (g_obs, excl_ranges_obs) if has_obs else (g_exp, excl_ranges_exp)
         gx, gy = get_graph_points(g)
-        if gx[0] == gx[1]:
+        if len(gx) > 1 and gx[0] == gx[1]:
             gx, gy = gx[1:], gy[1:]
-        if gx[-1] == gx[-2]:
+        if len(gx) > 1 and gx[-1] == gx[-2]:
             gx, gy = gx[:-1], gy[:-1]
         spline = ROOT.TSpline3("spline", create_tgraph(len(gx), gx, gy), "", gx[0], gx[-1])
-        # per excluded range section, create a TGraphAsymmErrors positioned along the graph curve
-        # with errors reaching down to 0
-        for start, stop in excl_ranges:
-            x, y = [], []
-            for _x, _y in zip(gx, gy):
-                if _x < start or _x > stop:
-                    continue
-                # handle the start value specially
-                if _x > start and not x:
-                    x.append(start)
-                    y.append(spline.Eval(start))
-                x.append(_x)
-                y.append(_y)
-            # handle the stop value specially
-            if x[-1] != stop:
-                x.append(stop)
-                y.append(spline.Eval(stop))
-            g_excl = create_tgraph(len(x), x, y, 0, 0, y, 0, pad=True)
-            r.setup_graph(g_excl, color=colors.dark_grey_trans_70, color_flags="f",
+
+        # show lines at positions of crossing and mark each excluded range section with a small
+        # hatched area of fixed width
+        def add_line(x):
+            l = ROOT.TLine(x, 0, x, y_max_vis)
+            r.setup_line(l, props={"NDC": False, "LineWidth": 1},
+                color=colors.dark_grey_trans_70)
+            draw_objs.insert(-1, l)
+
+        def add_area(x1, x2):
+            g = create_tgraph(2, [x1, x2], [y_max_vis, y_max_vis], 0, 0, y_max_vis, 0, pad=True)
+            r.setup_graph(g, color=colors.dark_grey_trans_70, color_flags="f",
                 props={"FillStyle": 3345, "MarkerStyle": 20, "MarkerSize": 0, "LineWidth": 0})
-            draw_objs.insert(-1, (g_excl, "SAME,4"))
+            draw_objs.insert(-1, (g, "SAME,4"))
+            return g
+
+        def add_label(x, text):
+            l = ROOT.TLatex(x, y_max_vis, text)
+            r.setup_latex(l, props={"NDC": False, "TextAlign": 23, "TextSize": 18})
+            draw_objs.append(l)
+
+        g_excl = None
+        for start, stop in excl_ranges:
+            # wx = width of the x axis
+            # wr = width of excluded range
+            wx = x_max - x_min
+            wr = stop - start
+            width = 0.04 * wx
+            on_edge = start == x_min or stop == x_max
+            width = min(width, wr if on_edge else (0.4 * wr))
+            f = 0.0
+            if start > x_min:
+                g_excl = add_area(start, start + width)
+                add_line(start)
+                f += 1
+            if stop < x_max:
+                g_excl = add_area(stop, stop - width)
+                add_line(stop)
+                f -= 1
+            # add a label
+            add_label(0.5 * (start + stop + f * width), "Excluded")
+        # if g_excl:
+        #     legend_entries_l.append((g_excl, "Excluded", "F"))
 
     # theory prediction
     if has_thy:
@@ -290,11 +316,13 @@ def plot_limit_scan(
             legend_entry = (g_thy, "Theory prediction", "L")
         # only add to the legend if values are in terms of a cross section
         if xsec_unit:
-            legend_entries[1 if has_obs else 0] = legend_entry
+            legend_entries_l.append(legend_entry)
 
     # legend
+    legend_entries_l += (3 - len(legend_entries_l)) * [(h_dummy, " ", "L")]
+    legend_entries_r += (3 - len(legend_entries_r)) * [(h_dummy, " ", "L")]
     legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
-    r.fill_legend(legend, legend_entries)
+    r.fill_legend(legend, legend_entries_l + legend_entries_r)
     draw_objs.append(legend)
     if not paper:
         legend_box = r.routines.create_legend_box(legend, pad, "trl",

@@ -62,8 +62,8 @@ def plot_likelihood_scans_1d(
     All information should be passed as a list *data*. Entries must be dictionaries with the
     following content:
 
-        - "values": A mapping to lists of values or a record array with keys "<poi1_name>",
-          "<poi2_name>" and "dnll2".
+        - "values": A mapping to lists of values or a record array with keys "<poi1_name>" and
+                    "dnll2".
         - "poi_min": A float describing the best fit value of the POI. When not set, the minimum is
           estimated from the interpolated curve.
         - "name": A name of the data to be shown in the legend.
@@ -279,11 +279,10 @@ def plot_likelihood_scans_1d(
             draw_objs.append(line_fit)
 
         # store parameter ranges
-        if ranges_path:
-            key = poi
-            if d["name"]:
-                key += "__{}".format(d["name"])
-            parameter_ranges[key] = scan["summary"]
+        key = poi
+        if d["name"]:
+            key += "__{}".format(d["name"])
+        parameter_ranges[key] = scan["summary"]
 
     # theory prediction with uncertainties
     if theory_value:
@@ -445,21 +444,38 @@ def plot_likelihood_scan_2d(
     joined_values = unique_recarray(dict_to_recarray(values), cols=[poi1, poi2])
 
     # determine contours independent of plotting
-    contour_levels = [1, 2, 3, 5]
+    contour_levels = [1, 2, 3, 4, 5]
+    contour_colors = {
+        1: colors.brazil_green,
+        2: colors.brazil_yellow,
+        3: colors.blue_cream,
+        4: colors.orange,
+        5: colors.red_cream,
+    }
     if show_significances and isinstance(show_significances, (list, tuple)):
         contour_levels = list(show_significances)
     n_contours = len(contour_levels)
+
     # convert to dnll2 values for 2 degrees of freedom
     contour_levels_dnll2 = []
     for l in contour_levels:
         is_cl = isinstance(l, float) and l < 1
         dnll2 = get_chi2_level_from_cl(l, 2) if is_cl else get_chi2_level(l, 2)
         contour_levels_dnll2.append(dnll2)
-    contour_colors = ([colors.green, colors.yellow, colors.blue_cream] + color_sequence)[:n_contours]
-    contour_styles = n_contours * [1]
+
+    # refine colors and styles
     if show_contours_only:
         contour_colors = n_contours * [colors.black]
         contour_styles = ([1, 2, 7, 9] + max(n_contours - 4, 0) * [8])[:n_contours]
+    else:
+        rest_colors = list(color_sequence)
+        contour_colors = [
+            (contour_colors[l] if l in contour_colors else rest_colors.pop(0))
+            for l in contour_levels
+        ]
+        contour_styles = n_contours * [1]
+
+    # get the contours
     contours = get_contours(joined_values[poi1], joined_values[poi2], joined_values["dnll2"],
         levels=contour_levels_dnll2, frame_kwargs=[{"mode": "edge", "width": 1.}],
         interpolation=interpolation_method)
