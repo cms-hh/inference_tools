@@ -19,9 +19,6 @@ __all__ = [
     "SM_HIGG_DECAYS", "SM_HIGG_PROD", "coeffs_br", "cxs_13", "ewk_13", "dZH", "HBRScaler",
     # model
     "HHModelBase", "HHModel", "create_model", "model_all", "model_default", "model_default_vhh",
-    "model_no_ggf_kl0", "model_no_ggf_kl1", "model_no_ggf_kl2p45", "model_no_ggf_kl5",
-    "model_no_vbf_sm", "model_no_vbf_kl0", "model_no_vbf_kl2", "model_no_vbf_C2V0",
-    "model_no_vbf_C2V2", "model_no_vbf_CV0p5", "model_no_vbf_CV1p5",
     # xsec helpers
     "ggf_k_factor", "ggf_kl_coeffs", "create_ggf_xsec_str", "create_ggf_xsec_func",
     "create_vbf_xsec_func", "create_vhh_xsec_func", "create_hh_xsec_func", "get_ggf_xsec",
@@ -81,6 +78,14 @@ class HHSample(object):
         """
         return process == self.label or process.startswith(self.label + "_")
 
+    @property
+    def key(self):
+        """
+        Returns a tuple containing the values of couplings in a fixed order.
+        To be overwritten in subclasses
+        """
+        raise NotImplementedError
+
 
 class GGFSample(HHSample):
     """
@@ -95,6 +100,10 @@ class GGFSample(HHSample):
 
         self.kl = kl
         self.kt = kt
+
+    @property
+    def key(self):
+        return (self.kl, self.kt)
 
 
 class VBFSample(HHSample):
@@ -112,6 +121,10 @@ class VBFSample(HHSample):
         self.C2V = C2V
         self.kl = kl
 
+    @property
+    def key(self):
+        return (self.CV, self.C2V, self.kl)
+
 
 class VHHSample(HHSample):
     """
@@ -128,45 +141,57 @@ class VHHSample(HHSample):
         self.C2V = C2V
         self.kl = kl
 
+    @property
+    def key(self):
+        return (self.CV, self.C2V, self.kl)
+
+
+# helper to create functions that add samples to specific dicts
+def _create_add_sample_func(sample_cls, samples_dict):
+    def add_sample(*args, **kwargs):
+        sample = sample_cls(*args, **kwargs)
+        samples_dict[sample.key] = sample
+    return add_sample
+
 
 # ggf samples with keys (kl, kt)
 # cross section values are NLO with k-factor applied and only used in create_ggf_xsec_func below
-ggf_samples = OrderedDict([
-    ((0.0,  1.0), GGFSample(kl=0.0,  kt=1.0, xs=0.069725, label="ggHH_kl_0_kt_1")),
-    ((1.0,  1.0), GGFSample(kl=1.0,  kt=1.0, xs=0.031047, label="ggHH_kl_1_kt_1")),
-    ((2.45, 1.0), GGFSample(kl=2.45, kt=1.0, xs=0.013124, label="ggHH_kl_2p45_kt_1")),
-    ((5.0,  1.0), GGFSample(kl=5.0,  kt=1.0, xs=0.091172, label="ggHH_kl_5_kt_1")),
-])
+ggf_samples = OrderedDict()
+add_ggf_sample = _create_add_sample_func(GGFSample, ggf_samples)
+add_ggf_sample(kl=0.0, kt=1.0, xs=0.069725, label="ggHH_kl_0_kt_1")
+add_ggf_sample(kl=1.0, kt=1.0, xs=0.031047, label="ggHH_kl_1_kt_1")
+add_ggf_sample(kl=2.45, kt=1.0, xs=0.013124, label="ggHH_kl_2p45_kt_1")
+add_ggf_sample(kl=5.0, kt=1.0, xs=0.091172, label="ggHH_kl_5_kt_1")
 
 # vbf samples with keys (CV, C2V, kl)
 # cross section values are LO (from 2017/2018 gridpacks) x SM k-factor for N3LO (1.03477) and are
 # only used in create_vbf_xsec_func below
-vbf_samples = OrderedDict([
-    ((1.0, 1.0, 1.0), VBFSample(CV=1.0, C2V=1.0, kl=1.0, xs=0.0017260, label="qqHH_CV_1_C2V_1_kl_1")),
-    ((1.0, 1.0, 0.0), VBFSample(CV=1.0, C2V=1.0, kl=0.0, xs=0.0046089, label="qqHH_CV_1_C2V_1_kl_0")),
-    ((1.0, 1.0, 2.0), VBFSample(CV=1.0, C2V=1.0, kl=2.0, xs=0.0014228, label="qqHH_CV_1_C2V_1_kl_2")),
-    ((1.0, 0.0, 1.0), VBFSample(CV=1.0, C2V=0.0, kl=1.0, xs=0.0270800, label="qqHH_CV_1_C2V_0_kl_1")),
-    ((1.0, 2.0, 1.0), VBFSample(CV=1.0, C2V=2.0, kl=1.0, xs=0.0142178, label="qqHH_CV_1_C2V_2_kl_1")),
-    ((0.5, 1.0, 1.0), VBFSample(CV=0.5, C2V=1.0, kl=1.0, xs=0.0108237, label="qqHH_CV_0p5_C2V_1_kl_1")),
-    ((1.5, 1.0, 1.0), VBFSample(CV=1.5, C2V=1.0, kl=1.0, xs=0.0660185, label="qqHH_CV_1p5_C2V_1_kl_1")),
-])
+vbf_samples = OrderedDict()
+add_vbf_sample = _create_add_sample_func(VBFSample, vbf_samples)
+add_vbf_sample(CV=1.0, C2V=1.0, kl=1.0, xs=0.0017260, label="qqHH_CV_1_C2V_1_kl_1")
+add_vbf_sample(CV=1.0, C2V=1.0, kl=0.0, xs=0.0046089, label="qqHH_CV_1_C2V_1_kl_0")
+add_vbf_sample(CV=1.0, C2V=1.0, kl=2.0, xs=0.0014228, label="qqHH_CV_1_C2V_1_kl_2")
+add_vbf_sample(CV=1.0, C2V=0.0, kl=1.0, xs=0.0270800, label="qqHH_CV_1_C2V_0_kl_1")
+add_vbf_sample(CV=1.0, C2V=2.0, kl=1.0, xs=0.0142178, label="qqHH_CV_1_C2V_2_kl_1")
+add_vbf_sample(CV=0.5, C2V=1.0, kl=1.0, xs=0.0108237, label="qqHH_CV_0p5_C2V_1_kl_1")
+add_vbf_sample(CV=1.5, C2V=1.0, kl=1.0, xs=0.0660185, label="qqHH_CV_1p5_C2V_1_kl_1")
 
 # vhh samples with keys (CV, C2V, kl)
 # cross section values are NLO WHH + NNLO ZHH (no k-factor applied) and are only used in create_vhh_xsec_func below
-vhh_samples = OrderedDict([
-    ((1.0, 1.0,  1.0), VHHSample(CV=1.0, C2V=1.0, kl=1.0,  xs=0.0008850, label="VHH_CV_1_C2V_1_kl_1")),
-    ((1.0, 1.0,  2.0), VHHSample(CV=1.0, C2V=1.0, kl=2.0,  xs=0.0014405, label="VHH_CV_1_C2V_1_kl_2")),
-    ((1.0, 0.0,  1.0), VHHSample(CV=1.0, C2V=0.0, kl=1.0,  xs=0.0003182, label="VHH_CV_1_C2V_0_kl_1")),
-    ((1.0, 2.0,  1.0), VHHSample(CV=1.0, C2V=2.0, kl=1.0,  xs=0.0023437, label="VHH_CV_1_C2V_2_kl_1")),
-    ((0.5, 1.0,  1.0), VHHSample(CV=0.5, C2V=1.0, kl=1.0,  xs=0.0005946, label="VHH_CV_0p5_C2V_1_kl_1")),
-    ((1.5, 1.0,  1.0), VHHSample(CV=1.5, C2V=1.0, kl=1.0,  xs=0.0019173, label="VHH_CV_1p5_C2V_1_kl_1")),
-    ((1.0, 1.0,  0.0), VHHSample(CV=1.0, C2V=1.0, kl=0.0,  xs=0.0005127, label="VHH_CV_1_C2V_1_kl_0")),
-    ((1.0, 1.0, 20.0), VHHSample(CV=1.0, C2V=1.0, kl=20.0, xs=0.0428974, label="VHH_CV_1_C2V_1_kl_20")),
-])
+vhh_samples = OrderedDict()
+add_vhh_sample = _create_add_sample_func(VHHSample, vhh_samples)
+add_vhh_sample(CV=1.0, C2V=1.0, kl=1.0, xs=0.0008850, label="VHH_CV_1_C2V_1_kl_1")
+add_vhh_sample(CV=1.0, C2V=1.0, kl=2.0, xs=0.0014405, label="VHH_CV_1_C2V_1_kl_2")
+add_vhh_sample(CV=1.0, C2V=0.0, kl=1.0, xs=0.0003182, label="VHH_CV_1_C2V_0_kl_1")
+add_vhh_sample(CV=1.0, C2V=2.0, kl=1.0, xs=0.0023437, label="VHH_CV_1_C2V_2_kl_1")
+add_vhh_sample(CV=0.5, C2V=1.0, kl=1.0, xs=0.0005946, label="VHH_CV_0p5_C2V_1_kl_1")
+add_vhh_sample(CV=1.5, C2V=1.0, kl=1.0, xs=0.0019173, label="VHH_CV_1p5_C2V_1_kl_1")
+add_vhh_sample(CV=1.0, C2V=1.0, kl=0.0, xs=0.0005127, label="VHH_CV_1_C2V_1_kl_0")
+add_vhh_sample(CV=1.0, C2V=1.0, kl=20.0, xs=0.0428974, label="VHH_CV_1_C2V_1_kl_20")
 
 
 ####################################################################################################
-### Symbolic cross section formulae
+# symbolic cross section formulae
 ####################################################################################################
 
 class HHFormula(object):
@@ -324,7 +349,7 @@ class VHHFormula(VBFFormula):
 
 
 ####################################################################################################
-### BR and single H scaling
+# BR and single H scaling
 ####################################################################################################
 
 # H decay names that are supported in the br scaling
@@ -617,7 +642,7 @@ class HBRScaler(object):
 
 
 ####################################################################################################
-### Model classes
+# model classes
 ####################################################################################################
 
 class HHModelBase(PhysicsModelBase):
@@ -1269,22 +1294,26 @@ def create_model(name, ggf=None, vbf=None, vhh=None, **kwargs):
 
 
 # some named, default models
-model_all = create_model("model_all",
+model_all = create_model(
+    "model_all",
     ggf=[(0, 1), (1, 1), (2.45, 1), (5, 1)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (0.5, 1, 1), (1.5, 1, 1)],
 )
-model_all_vhh = create_model("model_all_vhh",
+model_all_vhh = create_model(
+    "model_all_vhh",
     ggf=model_all.ggf_formula.samples,
     vbf=model_all.vbf_formula.samples,
     vhh=[(1, 1, 1), (1, 1, 2), (1, 0, 1), (1, 2, 1), (0.5, 1, 1), (1.5, 1, 1), (1, 1, 0), (1, 1, 20)],
 )
 
 # model used for the combination
-model_default = create_model("model_default",
+model_default = create_model(
+    "model_default",
     ggf=[(1, 1), (2.45, 1), (5, 1)],  # no (1, 0)
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],  # no (0.5, 1, 1)
 )
-model_default_vhh = create_model("model_default_vhh",
+model_default_vhh = create_model(
+    "model_default_vhh",
     ggf=model_default.ggf_formula.samples,
     vbf=model_default.vbf_formula.samples,
     vhh=model_all_vhh.vhh_formula.samples,
@@ -1292,7 +1321,7 @@ model_default_vhh = create_model("model_default_vhh",
 
 
 ####################################################################################################
-### Cross section helpers
+# cross section helpers
 ####################################################################################################
 
 # ggf NLO -> NNLO k-factor

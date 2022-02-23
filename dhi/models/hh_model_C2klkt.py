@@ -14,14 +14,18 @@ from collections import OrderedDict
 
 import sympy
 
+# we need a wildcard import to have everything accessible through this module
+from hh_model import *  # noqa
+# specific imports for linting
 from hh_model import (
     GGFSample as DefaultGGFSample, GGFFormula as DefaultGGFFormula, VBFSample,
-    HHModel as DefaultHHModel, vbf_samples, create_ggf_xsec_str, ggf_k_factor, create_vbf_xsec_func,
+    HHModel as DefaultHHModel, vbf_samples, create_ggf_xsec_str, ggf_k_factor,
+    _create_add_sample_func, create_vbf_xsec_func,
 )
 
 
 ####################################################################################################
-### c2 based ggf sample
+# c2 based ggf sample
 ####################################################################################################
 
 class GGFSample(DefaultGGFSample):
@@ -37,23 +41,27 @@ class GGFSample(DefaultGGFSample):
 
         self.C2 = C2
 
+    @property
+    def key(self):
+        return (self.kl, self.kt, self.C2)
+
 
 # ggf samples with keys (kl, kt, C2)
-ggf_samples = OrderedDict([
-    ((0.0,  1.0, 0.0),  GGFSample(kl=0.0,  kt=1.0, C2=0.0,  xs=0.069725, label="ggHH_kl_0p00_kt_1p00_c2_0p00")),
-    ((1.0,  1.0, 0.0),  GGFSample(kl=1.0,  kt=1.0, C2=0.0,  xs=0.031047, label="ggHH_kl_1p00_kt_1p00_c2_0p00")),
-    ((2.45, 1.0, 0.0),  GGFSample(kl=2.45, kt=1.0, C2=0.0,  xs=0.013124, label="ggHH_kl_2p45_kt_1p00_c2_0p00")),
-    ((5.0,  1.0, 0.0),  GGFSample(kl=5.0,  kt=1.0, C2=0.0,  xs=0.091172, label="ggHH_kl_5p00_kt_1p00_c2_0p00")),
-    ((0.0,  1.0, 1.0),  GGFSample(kl=0.0,  kt=1.0, C2=1.0,  xs=0.155508, label="ggHH_kl_0p00_kt_1p00_c2_1p00")),
-    ((1.0,  1.0, 0.1),  GGFSample(kl=1.0,  kt=1.0, C2=0.1,  xs=0.015720, label="ggHH_kl_1p00_kt_1p00_c2_0p10")),
-    ((1.0,  1.0, 0.35), GGFSample(kl=1.0,  kt=1.0, C2=0.35, xs=0.011103, label="ggHH_kl_1p00_kt_1p00_c2_0p35")),
-    ((1.0,  1.0, 3.0),  GGFSample(kl=1.0,  kt=1.0, C2=3.0,  xs=2.923567, label="ggHH_kl_1p00_kt_1p00_c2_3p00")),
-    ((1.0,  1.0, -2.0), GGFSample(kl=1.0,  kt=1.0, C2=-2.0, xs=1.956196, label="ggHH_kl_1p00_kt_1p00_c2_m2p00")),
-])
+ggf_samples = OrderedDict()
+add_ggf_sample = _create_add_sample_func(GGFSample, ggf_samples)
+add_ggf_sample(kl=0.0, kt=1.0, C2=0.0, xs=0.069725, label="ggHH_kl_0p00_kt_1p00_c2_0p00")
+add_ggf_sample(kl=1.0, kt=1.0, C2=0.0, xs=0.031047, label="ggHH_kl_1p00_kt_1p00_c2_0p00")
+add_ggf_sample(kl=2.45, kt=1.0, C2=0.0, xs=0.013124, label="ggHH_kl_2p45_kt_1p00_c2_0p00")
+add_ggf_sample(kl=5.0, kt=1.0, C2=0.0, xs=0.091172, label="ggHH_kl_5p00_kt_1p00_c2_0p00")
+add_ggf_sample(kl=0.0, kt=1.0, C2=1.0, xs=0.155508, label="ggHH_kl_0p00_kt_1p00_c2_1p00")
+add_ggf_sample(kl=1.0, kt=1.0, C2=0.1, xs=0.015720, label="ggHH_kl_1p00_kt_1p00_c2_0p10")
+add_ggf_sample(kl=1.0, kt=1.0, C2=0.35, xs=0.011103, label="ggHH_kl_1p00_kt_1p00_c2_0p35")
+add_ggf_sample(kl=1.0, kt=1.0, C2=3.0, xs=2.923567, label="ggHH_kl_1p00_kt_1p00_c2_3p00")
+add_ggf_sample(kl=1.0, kt=1.0, C2=-2.0, xs=1.956196, label="ggHH_kl_1p00_kt_1p00_c2_m2p00")
 
 
 ####################################################################################################
-### c2 based ggf formula
+# c2 based ggf formula
 ####################################################################################################
 
 class GGFFormula(DefaultGGFFormula):
@@ -105,7 +113,7 @@ class GGFFormula(DefaultGGFFormula):
 
 
 ####################################################################################################
-### c2 based model
+# c2 based model
 ####################################################################################################
 
 class HHModel(DefaultHHModel):
@@ -145,6 +153,7 @@ class HHModel(DefaultHHModel):
     ggf_formula_cls = GGFFormula
 
     def __init__(self, name, ggf_samples=None, vbf_samples=None):
+        # invoke super init with just ggf and vbf samples
         super(HHModel, self).__init__(name, ggf_samples=ggf_samples, vbf_samples=vbf_samples)
 
     def _create_hh_xsec_func(self, *args, **kwargs):
@@ -153,12 +162,6 @@ class HHModel(DefaultHHModel):
 
 
 def create_model(name, ggf=None, vbf=None, **kwargs):
-    """
-    Returns a new :py:class:`HHModel` instance named *name*. Its *ggf* and *vbf* samples can
-    configured through lists that should either contain valid sample instances or keys of samples
-    listed in the global *ggf_samples* and *vbf_samples* dictionaries. All additional *kwargs* are
-    forwarded to the model constructor.
-    """
     # helper to get samples
     def get_samples(selected_samples, all_samples, sample_cls):
         if not selected_samples:
@@ -184,19 +187,21 @@ def create_model(name, ggf=None, vbf=None, **kwargs):
 
 
 # default model
-model_default = create_model("model_default",
+model_default = create_model(
+    "model_default",
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
 # default model without vbf
-model_default_novbf = create_model("model_default_novbf",
+model_default_novbf = create_model(
+    "model_default_novbf",
     ggf=model_default.ggf_formula.samples,
 )
 
 
 ####################################################################################################
-### Updated cross section helpers
+# updated cross section helpers
 ####################################################################################################
 
 def create_ggf_xsec_func(ggf_formula):
