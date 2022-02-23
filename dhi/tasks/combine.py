@@ -23,7 +23,7 @@ import six
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
 from dhi.config import poi_data, br_hh
 from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path
-from dhi.datacard_tools import bundle_datacard
+from dhi.datacard_tools import bundle_datacard, read_datacard_blocks
 
 
 def require_hh_model(func):
@@ -1707,23 +1707,27 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         output_card = tmp_dir.child("merged_XXXXXX.txt", type="f", mktemp_pattern=True)
         self.run_command(self.build_command(datacards, output_card.path), cwd=tmp_dir.path)
 
-        # remove ggf and vbf processes that are not covered by the physics model
+        # remove signal processes that are not covered by the physics model
         if not self.hh_model_empty:
             mod, model = self.load_hh_model()
 
-            # build two sets of all available hh processes and those actually used in the model
-            all_procs = set()
-            model_procs = set()
-            for r_poi, proc in [("r_gghh", "ggf"), ("r_qqhh", "vbf"), ("r_vhh", "vhh")]:
-                all_samples = getattr(mod, proc + "_samples", None)
-                formula = getattr(model, proc + "_formula", None)
-                if not all_samples or not formula:
-                    continue
-                all_procs |= {s.label for s in all_samples.values()}
-                model_procs |= {s.label for s in formula.samples}
+            # get all datacard processes
+            blocks = read_datacard_blocks(output_card.path)
+            procs = blocks["rates"][1].strip().split()[1:]
+            proc_ids = map(int, blocks["rates"][2].strip().split()[1:])
+            signal_procs = set(proc for proc, proc_id in zip(procs, proc_ids) if proc_id <= 0)
 
-            # subtract the sets to see which processes to remove
-            to_remove = all_procs - model_procs
+            # loop through model formulae and determine signal processes that are not covered
+            to_remove = set()
+            formulae = model.get_formulae().values()
+            for proc in signal_procs:
+                for formula in formulae:
+                    if any(sample.matches_process(proc) for sample in formula.samples):
+                        break
+                else:
+                    to_remove.add(proc)
+
+            # actual removal
             if to_remove:
                 from dhi.scripts.remove_processes import remove_processes
                 self.logger.info("trying to remove processe(s) '{}' from the combined datacard as "
@@ -1735,7 +1739,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             if not model.opt("doklDependentUnc"):
                 from dhi.scripts.remove_parameters import remove_parameters
                 self.logger.info("trying to remove '{}' from the combined datacard as the model "
-                    "does not add need it".format(model.ggf_kl_dep_unc))
+                    "does not add it".format(model.ggf_kl_dep_unc))
                 remove_parameters(output_card.path, [model.ggf_kl_dep_unc])
 
         # copy shape files and the datacard to the output location

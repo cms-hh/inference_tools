@@ -49,7 +49,7 @@ def plot_limit_scan(
     hh_process=None,
     model_parameters=None,
     campaign=None,
-    show_excluded_ranges=True,
+    show_excluded_ranges=False,
     show_points=False,
     paper=False,
 ):
