@@ -658,6 +658,11 @@ class PlotTask(AnalysisTask):
         significant=False,
         description="a string denoting and optional plot style name; default: default",
     )
+    save_hep_data = luigi.BoolParameter(
+        default=False,
+        description="save plot and meta data in a yaml file, compatible with the HEPData 'data' "
+        "file syntax; default: False",
+    )
 
     def get_axis_limit(self, value):
         if isinstance(value, six.string_types):

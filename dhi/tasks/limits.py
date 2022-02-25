@@ -423,8 +423,6 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
         ]
 
     def output(self):
-        outputs = {}
-
         # additional postfix
         parts = []
         if self.xsec in ["pb", "fb"]:
@@ -434,12 +432,21 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
         if self.y_log:
             parts.append("log")
 
+        outputs = {}
+
+        # plots
         names = self.create_plot_names(["limits", self.get_output_postfix(), parts])
         outputs["plots"] = [self.local_target(name) for name in names]
 
+        # ranges
         if self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
                 self.get_output_postfix()))
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
 
         return outputs
 
@@ -524,6 +531,7 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
             observed_values=obs_values,
             theory_values=thy_values,
             ranges_path=outputs["ranges"].path if "ranges" in outputs else None,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
@@ -556,6 +564,8 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
 
 
 class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
+
+    save_hep_data = None
 
     compare_multi_sequence = "multi_datacards"
 
@@ -696,6 +706,8 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
 
 
 class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModelTask):
+
+    save_hep_data = None
 
     allow_empty_hh_model = True
     compare_multi_sequence = "hh_models"
@@ -972,8 +984,18 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
         if self.external_limits:
             parts.append("ext" + law.util.create_hash(self.external_limits))
 
+        outputs = {}
+
+        # plots
         names = self.create_plot_names(["limitsatpoint", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -984,7 +1006,7 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
 
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load limit values
         names = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
@@ -1068,9 +1090,10 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_points",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             poi=self.poi,
             data=data,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             sort_by=None if self.sort_by == law.NO_STR else self.sort_by,
@@ -1105,6 +1128,8 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
         significant=False,
         description="comma-separated values for drawing vertical lines; no default",
     )
+
+    save_hep_data = None
 
     force_n_pois = 1
     force_n_scan_parameters = 2

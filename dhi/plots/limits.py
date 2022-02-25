@@ -25,6 +25,7 @@ from dhi.plots.util import (
     use_style, create_model_parameters, create_hh_xsbr_label, determine_limit_digits,
     get_graph_points, get_y_range, get_contours, fill_hist_from_points, infer_binning_from_grid,
 )
+import dhi.hepdata_tools as hdt
 
 
 colors = colors.root
@@ -39,6 +40,7 @@ def plot_limit_scan(
     observed_values=None,
     theory_values=None,
     ranges_path=None,
+    hep_data_path=None,
     y_log=False,
     x_min=None,
     x_max=None,
@@ -60,7 +62,9 @@ def plot_limit_scan(
     created without them. When *observed_values* is set, it should have a similar format with keys
     "<scan_parameter>" and "limit". When *theory_values* is set, it should have a similar format
     with keys "<scan_parameter>" and "xsec", and optionally "xsec_p1" and "xsec_m1". When
-    *ranges_path* is set, allowed scan parameter ranges are saved to the given file.
+    *ranges_path* is set, allowed scan parameter ranges are saved to the given file. When
+    *hep_data_path* is set, a yml data file compatible with the HEPData format
+    (https://hepdata-submission.readthedocs.io/en/latest/data_yaml.html) is stored at that path.
 
     When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*,
     *y_min* and *y_max* define the axes ranges and default to the ranges of the given values.
@@ -102,10 +106,11 @@ def plot_limit_scan(
     if theory_values is not None:
         theory_values = check_values(theory_values, ["xsec"])
         has_thy_err = "xsec_p1" in theory_values and "xsec_m1" in theory_values
-    if ranges_path:
-        ranges_path = os.path.expandvars(os.path.expanduser(ranges_path))
-        if not os.path.exists(os.path.dirname(ranges_path)):
-            os.makedirs(os.path.dirname(ranges_path))
+
+    # prepare hep data
+    hep_data = None
+    if hep_data_path:
+        hep_data = hdt.create_hist_data()
 
     # set default ranges
     x_min_scan = min(expected_values[scan_parameter])
@@ -255,7 +260,6 @@ def plot_limit_scan(
         # if len(gx) > 1 and gx[-1] == gx[-2]:
         #     gx, gy = gx[:-1], gy[:-1]
         # spline = ROOT.TSpline3("spline", create_tgraph(len(gx), gx, gy), "", gx[0], gx[-1])
-        spline = ROOT.TSpline3("spline", create_tgraph(len(gx), gx, gy), "", gx[0], gx[-1])
 
         # show lines at positions of crossing and mark each excluded range section with a small
         # hatched area of fixed width
@@ -320,6 +324,51 @@ def plot_limit_scan(
         if xsec_unit:
             legend_entries_l.append(legend_entry)
 
+    # fill hep data
+    if hep_data:
+        # simple rounding rule (please adapt if necesssary)
+        rnd = lambda v: round_digits(v, 3)
+
+        # transformers for custom rounding
+        def transform_thy(i, x, y, e):
+            if e is not None:
+                e = (rnd(e[0]), rnd(e[1])) if isinstance(e, (list, tuple)) else rnd(e)
+            return (x, rnd(y), e)
+
+        # data entries
+        scan_values = list(map(float, expected_values[scan_parameter]))
+        hdt.create_independent_variable(poi_data[scan_parameter].label, parent=hep_data,
+            values=[hdt.create_value(rnd(v)) for v in scan_values])
+
+        def exp_limit_value(i, sigma, label):
+            keys = ["limit", "limit_p{}".format(sigma), "limit_m{}".format(sigma)]
+            n, p, m = map(float, (expected_values[key][i] for key in keys))
+            u, d = rnd(p - n), rnd(m - n)
+            return hdt.create_value(rnd(n), errors=[hdt.create_error((u, d), label=label)])
+
+        # expected limits with 68% error
+        hdt.create_dependent_variable("Expected limit, 68%", parent=hep_data,
+            values=[exp_limit_value(i, 1, "68%") for i in range(len(scan_values))],
+            qualifiers=[hdt.create_qualifier("POI", poi)])
+
+        # expected limits with 95% error
+        hdt.create_dependent_variable("Expected limit, 95%", parent=hep_data,
+            values=[exp_limit_value(i, 2, "95%") for i in range(len(scan_values))],
+            qualifiers=[hdt.create_qualifier("POI", poi)])
+
+        # observed limits
+        if has_obs:
+            hdt.create_dependent_variable("Observed limit", parent=hep_data,
+                values=[hdt.create_value(rnd(v)) for v in observed_values["limit"]],
+                qualifiers=[hdt.create_qualifier("POI", poi)])
+
+        # theory prediction
+        if has_thy and xsec_unit:
+            l = "th" if has_thy_err else None
+            hdt.create_dependent_variable_from_graph(g_thy, values_x=scan_values, error_label=l,
+                label="Theory prediction", qualifiers=[hdt.create_qualifier("POI", poi)],
+                parent=hep_data, transform=transform_thy)
+
     # legend
     legend_entries_l += (3 - len(legend_entries_l)) * [(h_dummy, " ", "L")]
     legend_entries_r += (3 - len(legend_entries_r)) * [(h_dummy, " ", "L")]
@@ -354,10 +403,14 @@ def plot_limit_scan(
     # draw all objects
     r.routines.draw_objects(draw_objs)
 
-    # save
+    # save plots
     r.update_canvas(canvas)
     for path in make_list(paths):
         canvas.SaveAs(path)
+
+    # save hep data
+    if hep_data_path:
+        hdt.save_hep_data(hep_data, hep_data_path)
 
 
 @use_style("dhi_default")
@@ -628,6 +681,7 @@ def plot_limit_points(
     paths,
     poi,
     data,
+    hep_data_path=None,
     sort_by=None,
     x_min=None,
     x_max=None,
@@ -676,6 +730,8 @@ def plot_limit_points(
             }],
         )
 
+    When *hep_data_path* is set, a yml data file compatible with the HEPData format
+    (https://hepdata-submission.readthedocs.io/en/latest/data_yaml.html) is stored at that path.
     The entries can be automatically sorted by setting *sort_by* to either ``"expected"`` or, when
     existing in *data*, ``"observed"``. When *x_log* is *True*, the x-axis is scaled
     logarithmically. *x_min* and *x_max* define the range of the x-axis and default to the maximum
@@ -685,13 +741,14 @@ def plot_limit_points(
     *dhi.config.br_hh_names* and is inserted to the process name in the title of the x-axis and
     indicates that the plotted cross section data was (e.g.) scaled by a branching ratio.
     *pad_width*, *left_margin*, *right_margin*, *entry_height* and *label_size* can be set to a size
-    in pixels to overwrite internal defaults. *model_parameters* can be a dictionary of key-value
-    pairs of model parameters. *h_lines* can be a list of integers denoting positions where
-    additional horizontal lines are drawn for visual guidance. *campaign* should refer to the name
-    of a campaign label defined in dhi.config.campaign_labels. *digits* controls the number of
-    digits of the limit values shown for each entry. When *None*, a number based on the lowest limit
-    values is determined automatically. When *paper* is *True*, certain plot configurations are
-    adjusted for use in publications.
+    in pixels to overwrite internal defaults.
+
+    *model_parameters* can be a dictionary of key-value pairs of model parameters. *h_lines* can be
+    a list of integers denoting positions where additional horizontal lines are drawn for visual
+    guidance. *campaign* should refer to the name of a campaign label defined in
+    dhi.config.campaign_labels. *digits* controls the number of digits of the limit values shown for
+    each entry. When *None*, a number based on the lowest limit values is determined automatically.
+    When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-at-a-certain-point-of-parameters
     """
@@ -734,6 +791,11 @@ def plot_limit_points(
         data.sort(key=lambda d: -d["expected"][0] if "expected" in d else -1e6)
     elif sort_by == "observed" and has_obs:
         data.sort(key=lambda d: -d["observed"][0] if "observed" in d else -1e6)
+
+    # prepare hep data
+    hep_data = None
+    if hep_data_path:
+        hep_data = hdt.create_hist_data()
 
     # set default ranges
     if x_min is None:
@@ -925,6 +987,53 @@ def plot_limit_points(
             r.setup_latex(rlabel, props={"NDC": True, "TextAlign": 32, "TextSize": 14})
             draw_objs.append(rlabel)
 
+    # fill hep data
+    if hep_data:
+        # simple rounding rule (please adapt if necesssary)
+        rnd = lambda v: round_digits(v, 3)
+
+        # transformers for custom rounding
+        def transform_data(i, x, y, e):
+            return (rnd(x), y, e)
+
+        def transform_thy(i, x, y, e):
+            if e is not None:
+                e = (rnd(e[0]), rnd(e[1])) if isinstance(e, (list, tuple)) else rnd(e)
+            return (rnd(x), y, e)
+
+        # data entries
+        hdt.create_independent_variable("Measurement", parent=hep_data,
+            values=[hdt.create_value(br_hh_names.get(d["name"], d["name"])) for d in data])
+
+        def exp_limit_value(d, sigma, label):
+            vals = list(map(float, d["expected"]))
+            n, p, m = vals[0], vals[1 + 2 * (sigma - 1)], vals[2 + 2 * (sigma - 1)]
+            u, d = rnd(p - n), rnd(m - n)
+            return hdt.create_value(rnd(n), errors=[hdt.create_error((u, d), label=label)])
+
+        # expected limits with 68% error
+        hdt.create_dependent_variable("Expected limit, 68%", parent=hep_data,
+            values=[exp_limit_value(d, 1, "68%") for d in data],
+            qualifiers=[hdt.create_qualifier("POI", poi)])
+
+        # expected limits with 95% error
+        hdt.create_dependent_variable("Expected limit, 95%", parent=hep_data,
+            values=[exp_limit_value(d, 2, "95%") for d in data],
+            qualifiers=[hdt.create_qualifier("POI", poi)])
+
+        # observed limits
+        if has_obs:
+            hdt.create_dependent_variable_from_graph(g_obs, coord="x", label="Observed limit",
+                parent=hep_data, qualifiers=[hdt.create_qualifier("POI", poi)],
+                transform=transform_data)
+
+        # theory prediction
+        if has_thy and xsec_unit:
+            g, lx = (g_thy_area, "th") if has_thy_err else (g_thy_line, None)
+            hdt.create_dependent_variable_from_graph(g, coord="x", error_label=lx, parent=hep_data,
+                label="Theory prediction", qualifiers=[hdt.create_qualifier("POI", poi)],
+                transform=transform_thy)
+
     # legend
     legend = r.routines.create_legend(pad=pad, width=430, n=3, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries)
@@ -957,6 +1066,10 @@ def plot_limit_points(
     r.update_canvas(canvas)
     for path in make_list(paths):
         canvas.SaveAs(path)
+
+    # save hep data
+    if hep_data_path:
+        hdt.save_hep_data(hep_data, hep_data_path)
 
 
 @use_style("dhi_default")

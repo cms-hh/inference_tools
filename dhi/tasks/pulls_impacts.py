@@ -523,6 +523,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
     y_max = None
     z_min = None
     z_max = None
+    save_hep_data = None
 
     def __init__(self, *args, **kwargs):
         super(PlotPullsAndImpacts, self).__init__(*args, **kwargs)

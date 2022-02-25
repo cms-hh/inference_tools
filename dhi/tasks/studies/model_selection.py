@@ -35,10 +35,12 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
         choices=["ggf", "vbf"],
         description="the signal process to morph; choices: ggf,vbf",
     )
+
     x_min = None
     x_max = None
     y_min = None
     y_max = None
+    save_hep_data = None
 
     force_n_scan_parameters = 1
 
@@ -174,10 +176,12 @@ class PlotMorphedDiscriminant(PlotTask, DatacardTask, MultiHHModelTask, Paramete
         significant=False,
         description="apply log scaling to the y-axis; default: False",
     )
+
     x_min = None
     x_max = None
     y_min = None
     y_max = None
+    save_hep_data = None
 
     def requires(self):
         return [CombineDatacards.req(self, hh_model=hh_model) for hh_model in self.hh_models]

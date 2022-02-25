@@ -246,6 +246,7 @@ class PlotPostfitSOverB(PostfitPlotBase):
         "'label', 'shapes', 'fill_color', 'fill_style' and 'line_color'; 'shapes' should be a list "
         "of strings in the format 'CHANNEL/PROCESS'; patterns are supported; no default",
     )
+
     x_min = None
     x_max = None
     z_max = None
@@ -296,9 +297,19 @@ class PlotPostfitSOverB(PostfitPlotBase):
         if self.backgrounds != law.NO_STR:
             parts.append(["bkgs", law.util.create_hash(real_path(self.backgrounds))])
 
+        outputs = {}
+
+        # plots
         name = "prefitsoverb" if self.prefit else "postfitsoverb"
         names = self.create_plot_names([name, self.get_output_postfix()] + parts)
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -307,7 +318,7 @@ class PlotPostfitSOverB(PostfitPlotBase):
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # get the path to the fit diagnostics file
         inputs = self.input()
@@ -323,9 +334,10 @@ class PlotPostfitSOverB(PostfitPlotBase):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.postfit_shapes.plot_s_over_b",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             poi=self.pois[0],
             fit_diagnostics_path=fit_diagnostics_path,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
             bins=self.bins if len(self.bins) > 1 else int(self.bins[0]),
             order_without_sqrt=self.order_without_sqrt,
             signal_superimposed=self.signal_superimposed,

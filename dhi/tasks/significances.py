@@ -182,6 +182,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
 
     z_min = None
     z_max = None
+    save_hep_data = None
 
     force_n_scan_parameters = 1
     sort_pois = False

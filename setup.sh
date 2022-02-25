@@ -178,7 +178,7 @@ setup() {
     [ "$?" != "0" ] && ulimit -S -s unlimited
 
     # local stack
-    local sw_version="1"
+    local sw_version="2"
     local flag_file_sw="$DHI_SOFTWARE/.sw_good"
     [ "$DHI_REINSTALL_SOFTWARE" = "1" ] && rm -f "$flag_file_sw"
     if [ ! -f "$flag_file_sw" ]; then
@@ -191,6 +191,7 @@ setup() {
         dhi_pip_install luigi==2.8.13 || return "$?"
         dhi_pip_install --no-deps git+https://github.com/riga/scinum.git || return "$?"
         dhi_pip_install tabulate==0.8.7 || return "$?"
+        dhi_pip_install PyYAML==5.4.1 || return "$?"
 
         # optional packages, disabled at the moment
         # dhi_pip_install python-telegram-bot==12.3.0

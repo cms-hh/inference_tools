@@ -19,7 +19,7 @@ law run PlotUpperLimits \
 ```
 
 Note that the above command uses `r` as the default POI and `kl,-25,25` as the default scan parameter and range.
-See the task parameters below for fore info.
+See the task parameters below for more info.
 
 Output:
 
@@ -30,7 +30,7 @@ Output:
 
 ```mermaid
 graph LR;
-    A(PlotUpperLimits) --> B(MergeUpperLimits);
+    A{{PlotUpperLimits}} --> B(MergeUpperLimits);
     B --> C([UpperLimits]);
     C -. either .-> D(CreateWorkspace);
     D --> E(CombineDatacards);
@@ -39,6 +39,7 @@ graph LR;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
+Hexagonal boxes mark tasks that can produce [HEPData](https://hepdata-submission.readthedocs.io/en/latest/) compatible yaml files.
 
 
 #### Parameters
@@ -116,7 +117,7 @@ law run PlotMultipleUpperLimits \
 ```
 
 Note that the above command uses `r` as the default POI and `kl,-25,25` as the default scan parameter and range.
-See the task parameters below for fore info.
+See the task parameters below for more info.
 
 Output:
 
@@ -202,7 +203,7 @@ law run PlotUpperLimitsAtPoint \
 ```
 
 Note that the above command uses `r` as the default POI.
-See the task parameters below for fore info.
+See the task parameters below for more info.
 
 Output:
 
@@ -213,7 +214,7 @@ Output:
 
 ```mermaid
 graph LR;
-    A(PlotUpperLimitsAtPoint) --> B1([UpperLimits]);
+    A{{PlotUpperLimitsAtPoint}} --> B1([UpperLimits]);
     A --> B2([UpperLimits]);
     A --> ...;
     B1 -. either .-> C1(CreateWorkspace);
@@ -227,6 +228,7 @@ graph LR;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
+Hexagonal boxes mark tasks that can produce [HEPData](https://hepdata-submission.readthedocs.io/en/latest/) compatible yaml files.
 
 
 #### Parameters

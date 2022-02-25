@@ -297,6 +297,8 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         "default: False",
     )
 
+    save_hep_data = None
+
     force_n_pois = (1, 2)
     force_n_scan_parameters = (1, 2)
     sort_pois = False

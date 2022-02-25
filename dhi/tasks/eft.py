@@ -327,6 +327,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
     x_max = None
     z_min = None
     z_max = None
+    save_hep_data = None
 
     def requires(self):
         return MergeEFTBenchmarkLimits.req(self)

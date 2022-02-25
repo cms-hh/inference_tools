@@ -16,9 +16,10 @@ import uproot
 from dhi.config import poi_data, campaign_labels, colors, cms_postfix
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors, make_list, warn,
-    multi_match,
+    multi_match, round_digits,
 )
 from dhi.plots.util import use_style, create_model_parameters
+import dhi.hepdata_tools as hdt
 
 
 colors = colors.root
@@ -29,6 +30,7 @@ def plot_s_over_b(
     paths,
     poi,
     fit_diagnostics_path,
+    hep_data_path=None,
     bins=8,
     order_without_sqrt=False,
     signal_superimposed=False,
@@ -55,7 +57,9 @@ def plot_s_over_b(
     saves it at *paths*. The plot is based on the fit diagnostics file *fit_diagnostics_path*
     produced by combine. *bins* can either be a single number of bins to use, or a list of n+1 bin
     edges. When *order_without_sqrt* is *True*, the ordering of bins is done by "prefit log s/b"
-    instead of "prefit log s/sqrt(b)".
+    instead of "prefit log s/sqrt(b)". When *hep_data_path* is set, a yml data file compatible with
+    the HEPData format (https://hepdata-submission.readthedocs.io/en/latest/data_yaml.html) is
+    stored at that path.
 
     When *signal_superimposed* is *True*, the signal at the top pad is not drawn stacked on top of
     the background but as a separate histogram. For visualization purposes, the fitted signal can be
@@ -114,6 +118,11 @@ def plot_s_over_b(
                 raise Exception("no label found in background {}: {}".format(i, bg))
             if "shapes" not in bg or not isinstance(bg["shapes"], list):
                 raise Exception("no shapes found in background {} or not a list: {}".format(i, bg))
+
+    # prepare hep data
+    hep_data = None
+    if hep_data_path:
+        hep_data = hdt.create_hist_data()
 
     # load the shape data from the fit diagnostics file
     bin_data = load_bin_data(fit_diagnostics_path, per_process=bool(backgrounds))
@@ -186,9 +195,9 @@ def plot_s_over_b(
     legend_entries_procs = []
 
     # dummy histograms for both pads to control axes
+    x_title = r"Pre-fit expected $log_{{10}}(S/{})$".format("B" if order_without_sqrt else r"\sqrt{B}")
     h_dummy1 = ROOT.TH1F("dummy1", ";;Events", 1, x_min, x_max)
-    h_dummy2 = ROOT.TH1F("dummy2", ";Pre-fit expected log_{{10}}(S/{});Data / Bkg.".format(
-        "B" if order_without_sqrt else "#sqrt{B}"), 1, x_min, x_max)
+    h_dummy2 = ROOT.TH1F("dummy2", ";{};Data / Bkg.".format(to_root_latex(x_title)), 1, x_min, x_max)
     r.setup_hist(h_dummy1, pad=pad1, props={"LineWidth": 0})
     r.setup_hist(h_dummy2, pad=pad2, props={"LineWidth": 0})
     r.setup_x_axis(h_dummy1.GetXaxis(), pad1, props={"LabelSize": 0})
@@ -216,6 +225,9 @@ def plot_s_over_b(
     if signal_superimposed and show_signal:
         draw_objs1.append((hist_s1, "SAME,HIST"))
         legend_entries.append((hist_s1, signal_label(signal_scale), "L"))
+    if hep_data:
+        hdt.create_independent_variable_from_x_axis(hist_s1.GetXaxis(), label=x_title,
+            parent=hep_data, transform=lambda b, l, h: (round_digits(l, 3), round_digits(h, 3)))
 
     # signal histogram at the top
     hist_sb1 = ROOT.TH1F("sb1", "", len(bins) - 1, array.array("f", bins))
@@ -409,6 +421,37 @@ def plot_s_over_b(
         r.fill_legend(legend_procs, legend_entries_procs[::-1])
         draw_objs1.append(legend_procs)
 
+    # fill hep data from histograms
+    if hep_data:
+        # simple rounding rule (please adapt if necesssary)
+        rnd = lambda v: round_digits(v, 3)
+
+        # transformers for custom rounding
+        def transform_data(i, x, y, e):
+            return (x, max(round(y), 0.0), (rnd(e[0]), rnd(e[1])))
+
+        def transform_mc(b, y, e):
+            return (rnd(max(y, 0.0)), e)
+
+        # add variables
+        hdt.create_dependent_variable_from_graph(graph_d1, error_label="stat", label="Events",
+            qualifiers=[hdt.create_qualifier("Process", "Data" + data_postfix)], parent=hep_data,
+            transform=transform_data)
+        hdt.create_dependent_variable_from_hist(hist_s1, label="Events",
+            qualifiers=[hdt.create_qualifier("Process", "Signal")], parent=hep_data,
+            transform=transform_mc)
+        dv = hdt.create_dependent_variable_from_hist(hist_b1, label="Events",
+            qualifiers=[hdt.create_qualifier("Process", "Total background")], parent=hep_data,
+            transform=transform_mc)
+        for i, v in enumerate(dv["values"]):
+            hdt.create_error(rnd(hist_b_err_up1.GetBinContent(i + 1)), label="syst", parent=v)
+
+        # add split background hists
+        if backgrounds:
+            for bg, h in zip(backgrounds, hists_bg1):
+                hdt.create_dependent_variable_from_hist(h, label="Events", transform=transform_mc,
+                    qualifiers=[hdt.create_qualifier("Process", str(bg["label"]))], parent=hep_data)
+
     # cms label
     cms_layout = "outside_horizontal"
     _cms_postfix = "" if paper else cms_postfix
@@ -439,6 +482,10 @@ def plot_s_over_b(
     r.update_canvas(canvas)
     for path in make_list(paths):
         canvas.SaveAs(path)
+
+    # save hep data
+    if hep_data_path:
+        hdt.save_hep_data(hep_data, hep_data_path)
 
 
 def load_bin_data(fit_diagnostics_path, per_process=False):

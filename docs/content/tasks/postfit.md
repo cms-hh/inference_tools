@@ -27,7 +27,7 @@ Output:
 
 ```mermaid
     graph LR;
-    A(PlotPostfitSOverB) --> B([FitDiagnostics]);
+    A{{PlotPostfitSOverB}} --> B([FitDiagnostics]);
     A -. optional .-> C([UpperLimits]);
     B --> D(CreateWorkspace);
     C --> D;
@@ -38,6 +38,7 @@ Output:
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
+Hexagonal boxes mark tasks that can produce [HEPData](https://hepdata-submission.readthedocs.io/en/latest/) compatible yaml files.
 
 
 #### Parameters
