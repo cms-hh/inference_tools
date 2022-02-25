@@ -20,7 +20,7 @@ from dhi.config import (
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match, convert_rooargset,
-    make_list, unique_recarray, dict_to_recarray, warn,
+    make_list, unique_recarray, dict_to_recarray, warn, prepare_output,
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, fill_hist_from_points, get_contours, get_y_range,
@@ -108,10 +108,6 @@ def plot_likelihood_scans_1d(
         show_best_fit_line = show_best_fit
     if show_best_fit_indicators is None:
         show_best_fit_indicators = show_best_fit
-    if ranges_path:
-        ranges_path = os.path.expandvars(os.path.expanduser(ranges_path))
-        if not os.path.exists(os.path.dirname(ranges_path)):
-            os.makedirs(os.path.dirname(ranges_path))
 
     # validate data entries
     for i, d in enumerate(data):
@@ -342,9 +338,10 @@ def plot_likelihood_scans_1d(
 
     # save parameter ranges
     if ranges_path:
+        ranges_path = prepare_output(ranges_path)
         with open(ranges_path, "w") as f:
             json.dump(parameter_ranges, f, indent=4)
-        print("saved parameter ranges to file")
+        print("saved parameter ranges to {}".format(ranges_path))
 
 
 @use_style("dhi_default")

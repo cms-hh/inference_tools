@@ -118,21 +118,18 @@ campaign_labels.update(br_hh_names)
 # poi defaults (value, range, points, taken from physics model) and labels
 # note: C2V and CV are not following kappa notation and are upper case to be consistent to the model
 poi_data = DotDict(
-    r=DotDict(range=(-20.0, 20.0), label="r", sm_value=1.0),
-    r_gghh=DotDict(range=(-20.0, 20.0), label="r_{gghh}", sm_value=1.0),
-    r_qqhh=DotDict(range=(-20.0, 20.0), label="r_{qqhh}", sm_value=1.0),
-    r_vhh=DotDict(range=(-20.0, 20.0), label="r_{vhh}", sm_value=1.0),
-    kl=DotDict(range=(-30.0, 30.0), label=r"\kappa_{\lambda}", sm_value=1.0),
-    kt=DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}", sm_value=1.0),
-    C2V=DotDict(range=(-10.0, 10.0), label=r"\kappa_{2V}", sm_value=1.0),
-    CV=DotDict(range=(-10.0, 10.0), label=r"\kappa_{V}", sm_value=1.0),
-    C2=DotDict(range=(-2.0, 3.0), label=r"c_{2}", sm_value=0.0),
-    CG=DotDict(range=(-2.0, 2.0), label=r"c_{g}", sm_value=0.0),
-    C2G=DotDict(range=(-2.0, 2.0), label=r"c_{2g}", sm_value=0.0),
+    r=DotDict(range=(-20.0, 20.0), label=r"$r$", sm_value=1.0),
+    r_gghh=DotDict(range=(-20.0, 20.0), label=r"$r_{gghh}$", sm_value=1.0),
+    r_qqhh=DotDict(range=(-20.0, 20.0), label=r"$r_{qqhh}$", sm_value=1.0),
+    r_vhh=DotDict(range=(-20.0, 20.0), label=r"$r_{vhh}$", sm_value=1.0),
+    kl=DotDict(range=(-30.0, 30.0), label=r"$\kappa_{\lambda}$", sm_value=1.0),
+    kt=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
+    C2V=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{2V}$", sm_value=1.0),
+    CV=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{V}$", sm_value=1.0),
+    C2=DotDict(range=(-2.0, 3.0), label=r"$C_{2}$", sm_value=0.0),
+    CG=DotDict(range=(-2.0, 2.0), label=r"$C_{g}$", sm_value=0.0),
+    C2G=DotDict(range=(-2.0, 2.0), label=r"$C_{2g}$", sm_value=0.0),
 )
-# add "$" embedded labels
-for poi, data in poi_data.items():
-    data["label_math"] = "${}$".format(data.label)
 
 # colors
 colors = DotDict(

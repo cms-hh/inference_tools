@@ -109,9 +109,9 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
     return parameter_labels
 
 
-def create_hh_process_label(poi="r"):
+def create_hh_process_label(poi="r", prefix="pp #rightarrow "):
     proc = {"r": "HH (incl.)", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH")
-    return "pp #rightarrow " + proc
+    return prefix + proc
 
 
 def create_hh_br_label(br):

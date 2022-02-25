@@ -19,7 +19,7 @@ import scipy.interpolate
 
 from dhi.tasks.combine import DatacardTask
 from dhi.tasks.limits import UpperLimits
-from dhi.util import real_path, get_dcr2_path
+from dhi.util import real_path, get_dcr2_path, round_digits
 
 
 def _is_r2c_bbbb_boosted_ggf(task):
@@ -119,13 +119,6 @@ def _get_limit_grid_interps(poi, scan_name):
         _limit_grid_interps[key] = (exp_interp, up_interp, down_interp)
 
     return _limit_grid_interps[key]
-
-
-def round_digits(v, n, round_fn=round):
-    if not v:
-        return v
-    exp = int(math.floor(math.log(abs(v), 10)))
-    return round_fn(v / 10.0**(exp - n + 1)) * 10**(exp - n + 1)
 
 
 def define_limit_grid(task, scan_parameter_values, approx_points, debug=False):

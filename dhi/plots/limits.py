@@ -4,7 +4,6 @@
 Limit plots using ROOT.
 """
 
-import os
 import json
 import math
 import traceback
@@ -20,7 +19,7 @@ from dhi.config import (
 )
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, create_tgraph, colored, minimize_1d, unique_recarray,
-    make_list, try_int, dict_to_recarray,
+    make_list, try_int, dict_to_recarray, prepare_output, round_digits,
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, create_hh_xsbr_label, determine_limit_digits,
@@ -213,9 +212,10 @@ def plot_limit_scan(
         allowed_ranges[key_obs] = excluded_to_allowed_ranges(excl_ranges_obs, x_min_scan, x_max_scan)
 
     if ranges_path:
+        ranges_path = prepare_output(ranges_path)
         with open(ranges_path, "w") as f:
             json.dump(allowed_ranges, f, indent=4)
-        print("saved allowed ranges to file")
+        print("saved allowed ranges to {}".format(ranges_path))
 
     # get theory prediction limits
     if has_thy:
@@ -245,14 +245,16 @@ def plot_limit_scan(
 
     # show hatched areas for excluded ranges if requested
     if show_excluded_ranges:
+        g, excl_ranges = (g_obs, excl_ranges_obs) if has_obs else (g_exp, excl_ranges_exp)
+
         # create a spline for neat interpolation (using g.Eval(x, 0, "S") fails miserably)
         # delete repeated endpoints which leads to interpolation failures
-        g, excl_ranges = (g_obs, excl_ranges_obs) if has_obs else (g_exp, excl_ranges_exp)
-        gx, gy = get_graph_points(g)
-        if len(gx) > 1 and gx[0] == gx[1]:
-            gx, gy = gx[1:], gy[1:]
-        if len(gx) > 1 and gx[-1] == gx[-2]:
-            gx, gy = gx[:-1], gy[:-1]
+        # gx, gy = get_graph_points(g)
+        # if len(gx) > 1 and gx[0] == gx[1]:
+        #     gx, gy = gx[1:], gy[1:]
+        # if len(gx) > 1 and gx[-1] == gx[-2]:
+        #     gx, gy = gx[:-1], gy[:-1]
+        # spline = ROOT.TSpline3("spline", create_tgraph(len(gx), gx, gy), "", gx[0], gx[-1])
         spline = ROOT.TSpline3("spline", create_tgraph(len(gx), gx, gy), "", gx[0], gx[-1])
 
         # show lines at positions of crossing and mark each excluded range section with a small
@@ -442,10 +444,6 @@ def plot_limit_scans(
         assert scan_parameter in theory_values
         assert "xsec" in theory_values
         has_thy_err = "xsec_p1" in theory_values and "xsec_m1" in theory_values
-    if ranges_path:
-        ranges_path = os.path.expandvars(os.path.expanduser(ranges_path))
-        if not os.path.exists(os.path.dirname(ranges_path)):
-            os.makedirs(os.path.dirname(ranges_path))
     allowed_ranges = OrderedDict()
 
     # set default ranges
@@ -540,9 +538,10 @@ def plot_limit_scans(
                     obs_scan_values.min(), obs_scan_values.max())
 
     if ranges_path:
+        ranges_path = prepare_output(ranges_path)
         with open(ranges_path, "w") as f:
             json.dump(allowed_ranges, f, indent=4)
-        print("saved allowed ranges to file")
+        print("saved allowed ranges to {}".format(ranges_path))
 
     # add additional legend entries to distinguish expected and observed lines
     if has_obs:
@@ -954,7 +953,7 @@ def plot_limit_points(
     # draw all objects
     r.routines.draw_objects(draw_objs)
 
-    # save
+    # save plots
     r.update_canvas(canvas)
     for path in make_list(paths):
         canvas.SaveAs(path)

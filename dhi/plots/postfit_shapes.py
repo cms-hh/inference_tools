@@ -435,7 +435,7 @@ def plot_s_over_b(
     pad2.cd()
     r.routines.draw_objects(draw_objs2)
 
-    # save
+    # save plots
     r.update_canvas(canvas)
     for path in make_list(paths):
         canvas.SaveAs(path)
