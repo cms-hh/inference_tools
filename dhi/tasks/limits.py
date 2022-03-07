@@ -383,6 +383,12 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
         significant=False,
         description="show points of central limit values; default: False",
     )
+    show_theory = luigi.BoolParameter(
+        default=True,
+        significant=False,
+        description="when True, a line representing the theory prediction (also for theory "
+        "normalized limits) is shown; default: True",
+    )
     save_ranges = luigi.BoolParameter(
         default=False,
         description="save allowed parameter ranges in an additional output; default: False",
@@ -482,16 +488,17 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
                     param_keys=[self.scan_parameter],
                     xsec_kwargs=self.parameter_values_dict,
                 )
-                thy_values = self.get_theory_xsecs(
-                    self.poi,
-                    [self.scan_parameter],
-                    thy_linspace,
-                    self.xsec,
-                    self.br,
-                    xsec_kwargs=self.parameter_values_dict,
-                )
+                if self.show_theory:
+                    thy_values = self.get_theory_xsecs(
+                        self.poi,
+                        [self.scan_parameter],
+                        thy_linspace,
+                        self.xsec,
+                        self.br,
+                        xsec_kwargs=self.parameter_values_dict,
+                    )
                 xsec_unit = self.xsec
-            else:
+            elif self.show_theory:
                 # normalized values
                 thy_values = self.get_theory_xsecs(
                     self.poi,
@@ -633,25 +640,25 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
                 thy_linspace = np.linspace(_limit_values[self.scan_parameter].min(),
                     _limit_values[self.scan_parameter].max(), num=100)
                 if self.xsec in ["pb", "fb"]:
+                    xsec_unit = self.xsec
                     _limit_values = self.convert_to_xsecs(
                         self.poi,
                         _limit_values,
-                        self.xsec,
+                        xsec_unit,
                         self.br,
                         param_keys=[self.scan_parameter],
                         xsec_kwargs=self.parameter_values_dict,
                     )
-                    xsec_unit = self.xsec
-                    if i == 0:
+                    if self.show_theory and i == 0:
                         thy_values = self.get_theory_xsecs(
                             self.poi,
                             [self.scan_parameter],
                             thy_linspace,
-                            self.xsec,
+                            xsec_unit,
                             self.br,
                             xsec_kwargs=self.parameter_values_dict,
                         )
-                elif i == 0:
+                elif self.show_theory and i == 0:
                     # normalized values
                     thy_values = self.get_theory_xsecs(
                         self.poi,
@@ -770,27 +777,27 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
                 thy_linspace = np.linspace(_limit_values[self.scan_parameter].min(),
                     _limit_values[self.scan_parameter].max(), num=100)
                 if self.xsec in ["pb", "fb"]:
+                    xsec_unit = self.xsec
                     _limit_values = self._convert_to_xsecs(
                         hh_model,
                         self.poi,
                         _limit_values,
-                        self.xsec,
+                        xsec_unit,
                         self.br,
                         param_keys=[self.scan_parameter],
                         xsec_kwargs=self.parameter_values_dict,
                     )
-                    xsec_unit = self.xsec
-                    if i == 0:
+                    if self.show_theory and i == 0:
                         thy_values = self._get_theory_xsecs(
                             hh_model,
                             self.poi,
                             [self.scan_parameter],
                             thy_linspace,
-                            self.xsec,
+                            xsec_unit,
                             self.br,
                             xsec_kwargs=self.parameter_values_dict,
                         )
-                elif i == 0:
+                elif self.show_theory and i == 0:
                     # normalized values at one with errors
                     thy_values = self._get_theory_xsecs(
                         hh_model,
@@ -858,6 +865,7 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
 
     xsec = PlotUpperLimits.xsec
     br = PlotUpperLimits.br
+    show_theory = PlotUpperLimits.show_theory
     x_log = luigi.BoolParameter(
         default=False,
         description="apply log scaling to the x-axis; default: False",
@@ -1040,23 +1048,24 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
         xsec_unit = None
         if self.poi in self.r_pois:
             if self.xsec in ["pb", "fb"]:
+                xsec_unit = self.xsec
                 limit_values = self.convert_to_xsecs(
                     self.poi,
                     limit_values,
-                    self.xsec,
+                    xsec_unit,
                     self.br,
                     xsec_kwargs=self.parameter_values_dict,
                 )
-                thy_value = self.get_theory_xsecs(
-                    self.poi,
-                    [self.pseudo_scan_parameter],
-                    [self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.0)],
-                    self.xsec,
-                    self.br,
-                    xsec_kwargs=self.parameter_values_dict,
-                )
-                xsec_unit = self.xsec
-            else:
+                if self.show_theory:
+                    thy_value = self.get_theory_xsecs(
+                        self.poi,
+                        [self.pseudo_scan_parameter],
+                        [self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.0)],
+                        xsec_unit,
+                        self.br,
+                        xsec_kwargs=self.parameter_values_dict,
+                    )
+            elif self.show_theory:
                 # normalized values
                 thy_value = self.get_theory_xsecs(
                     self.poi,

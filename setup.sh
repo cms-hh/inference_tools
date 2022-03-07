@@ -20,6 +20,7 @@ setup() {
 
     export DHI_BASE="$this_dir"
     interactive_setup "$setup_name" || return "$?"
+    export DHI_SETUP_NAME="$setup_name"
     export DHI_STORE_REPO="$DHI_BASE/data/store"
 
     export DHI_EXAMPLE_CARDS_GGF="$( echo /afs/cern.ch/user/m/mfackeld/public/datacards/dnn_score_max/*_dnn_node_HH_2B2VTo2L2Nu_GluGlu_NLO/datacard.txt | sed 's/ /,/g' )"

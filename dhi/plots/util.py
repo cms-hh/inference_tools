@@ -127,19 +127,16 @@ def create_hh_xsbr_label(poi="r", br=None):
 
 
 def determine_limit_digits(limit, is_xsec=False):
-    # TODO: adapt to publication style
+    digits = 0
     if is_xsec:
         if limit < 10:
-            return 2
+            digits = 2
         elif limit < 200:
-            return 1
-        return 0
+            digits = 1
     else:
         if limit < 10:
-            return 2
-        elif limit < 100:
-            return 1
-        return 0
+            digits = 1
+    return digits
 
 
 def make_parameter_label_map(parameter_names, labels=None):
