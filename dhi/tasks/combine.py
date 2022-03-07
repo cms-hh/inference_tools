@@ -163,23 +163,25 @@ class HHModelTask(AnalysisTask):
 
         # get the proper xsec getter, based on poi
         if r_poi == "r_gghh":
-            get_ggf_xsec = module.create_ggf_xsec_func(model.ggf_formula)
-            get_xsec = functools.partial(get_ggf_xsec, nnlo=model.opt("doNNLOscaling"))
-            signature_kwargs = set(inspect.getargspec(get_ggf_xsec).args) - {"nnlo"}
-            has_unc = bool(model.opt("doNNLOscaling"))
+            get_xsec = module.create_ggf_xsec_func(model.ggf_formula)
+            has_unc = get_xsec.has_unc(nnlo=model.opt("doNNLOscaling"))
+            signature_kwargs = get_xsec.xsec_kwargs - {"nnlo"}
+            get_xsec = functools.partial(get_xsec, nnlo=model.opt("doNNLOscaling"))
         elif r_poi == "r_qqhh":
             get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
-            signature_kwargs = set(inspect.getargspec(get_xsec).args)
-            has_unc = True
+            has_unc = get_xsec.has_unc()
+            signature_kwargs = set(get_xsec.xsec_kwargs)
         elif r_poi == "r_vhh":
             get_xsec = module.create_vhh_xsec_func(model.vhh_formula)
-            signature_kwargs = set(inspect.getargspec(get_xsec).args)
-            has_unc = False
+            has_unc = get_xsec.has_unc()
+            signature_kwargs = set(get_xsec.xsec_kwargs)
         else:  # r
-            _get_xsec = model.create_hh_xsec_func()
-            get_xsec = functools.partial(_get_xsec, nnlo=model.opt("doNNLOscaling"))
-            signature_kwargs = set(inspect.getargspec(_get_xsec).args) - {"nnlo"}
-            has_unc = True
+            get_xsec = model.create_hh_xsec_func()
+            has_unc = get_xsec.has_unc(ggf_nnlo=model.opt("doNNLOscaling"))
+            signature_kwargs = set(get_xsec.xsec_kwargs)
+            if "ggf_nnlo" in signature_kwargs:
+                signature_kwargs -= {"ggf_nnlo"}
+                get_xsec = functools.partial(get_xsec, ggf_nnlo=model.opt("doNNLOscaling"))
 
         # compute the scale conversion
         scale = {"pb": 1.0, "fb": 1000.0}[unit]

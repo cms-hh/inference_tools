@@ -414,7 +414,10 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
             else:
                 hint = "when calculating limits on 'XS', nuisances related to signal cross " \
                     "sections should be frozen (nuisance group 'signal_norm_xs' in the combination)"
-            self.logger.info("HINT: " + hint)
+            self.logger.info("hint: " + hint)
+        elif self.br != law.NO_STR:
+            self.logger.warning("when calculating limits on POI {} without conversion into a cross "
+                "section with --xs, adding --br has no effect".format(self.poi))
 
     def requires(self):
         return [
@@ -914,7 +917,10 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
             else:
                 hint = "when calculating limits on 'XS', nuisances related to signal cross " \
                     "sections should be frozen (nuisance group 'signal_norm_xs' in the combination)"
-            self.logger.info("HINT: " + hint)
+            self.logger.info("hint: " + hint)
+        elif self.br != law.NO_STR:
+            self.logger.warning("when calculating limits on POI {} without conversion into a cross "
+                "section with --xs, adding --br has no effect".format(self.poi))
 
         # check the length of extra labels
         n = self.n_datacard_entries

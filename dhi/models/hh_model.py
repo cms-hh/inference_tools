@@ -803,11 +803,13 @@ class HHModelBase(PhysicsModelBase):
 
         errors = []
         for formula_key, formula in self.get_formulae().items():
+            print("\nmatching processes for {}:".format(formula_key))
+
             if not self.process_scales[formula]:
+                print("  none")
                 continue
 
             # print matched process per expected sample
-            print("\nmatching processes for {}:".format(formula_key))
             max_len = max(len(sample.label) for sample in formula.samples)
             unmatched_samples = []
             for sample in formula.samples:
@@ -1368,12 +1370,12 @@ def create_ggf_xsec_func(ggf_formula):
     """
     Creates and returns a function that can be used to calculate numeric ggf cross section values in
     pb given an appropriate :py:class:`GGFFormula` instance *ggf_formula*. The returned function has
-    the signature ``(kl=1.0, kt=1.0, nnlo=True, unc=None)``.
+    the signature ``(kl=1.0, kt=1.0, ggf_nnlo=True, unc=None)``.
 
-    When *nnlo* is *False*, the constant k-factor is still applied. Otherwise, the returned value is
-    in full next-to-next-to-leading order. In this case, *unc* can be set to eiher "up" or "down" to
-    return the up / down varied cross section instead where the uncertainty is composed of a *kl*
-    dependent QCDscale + mtop uncertainty and a flat PDF uncertainty of 3%.
+    When *ggf_nnlo* is *False*, the constant k-factor is still applied. Otherwise, the returned
+    value is in full next-to-next-to-leading order. In this case, *unc* can be set to eiher "up" or
+    "down" to return the up / down varied cross section instead where the uncertainty is composed of
+    a *kl* dependent QCDscale + mtop uncertainty and a flat PDF uncertainty of 3%.
 
     Example:
 
@@ -1384,7 +1386,7 @@ def create_ggf_xsec_func(ggf_formula):
         print(get_ggf_xsec(kl=2.))
         # -> 0.013803...
 
-        print(get_ggf_xsec(kl=2., nnlo=False))
+        print(get_ggf_xsec(kl=2., ggf_nnlo=False))
         # -> 0.013852...
 
         print(get_ggf_xsec(kl=2., unc="up"))
@@ -1439,20 +1441,26 @@ def create_ggf_xsec_func(ggf_formula):
         return xsec
 
     # wrap into another function to apply defaults and nlo-to-nnlo scaling
-    def wrapper(kl=1.0, kt=1.0, nnlo=True, unc=None):
+    def wrapper(kl=1.0, kt=1.0, ggf_nnlo=True, unc=None):
         xsec = xsec_func(kl, kt, *(sample.xs for sample in ggf_formula.samples))[0, 0]
 
         # nnlo scaling?
-        if nnlo:
+        if ggf_nnlo:
             xsec = nlo2nnlo(xsec, kl)
 
         # apply uncertainties?
         if unc:
-            if not nnlo:
+            if not ggf_nnlo:
                 raise NotImplementedError("NLO ggf cross section uncertainties are not implemented")
             xsec = apply_uncertainty_nnlo(kl, xsec, unc)
 
         return xsec
+
+    # store names of kwargs in the signature for easier access to features
+    wrapper.xsec_kwargs = {"kl", "kt", "ggf_nnlo", "unc"}
+
+    # store a function that evaluates whether the wrapper has uncertainties based on other settings
+    wrapper.has_unc = lambda ggf_nnlo, **kwargs: bool(ggf_nnlo)
 
     return wrapper
 
@@ -1496,6 +1504,12 @@ def create_vbf_xsec_func(vbf_formula):
 
         return xsec
 
+    # store a function that evaluates whether the wrapper has uncertainties based on other settings
+    wrapper.xsec_kwargs = {"C2V", "CV", "kl", "unc"}
+
+    # store a function that evaluates whether the wrapper has uncertainties
+    wrapper.has_unc = lambda **kwargs: True
+
     return wrapper
 
 
@@ -1523,6 +1537,12 @@ def create_vhh_xsec_func(vhh_formula):
         xsec = xsec_func(C2V, CV, kl, *(sample.xs for sample in vhh_formula.samples))[0, 0]
         return xsec
 
+    # store names of kwargs in the signature for easier access to features
+    wrapper.xsec_kwargs = {"C2V", "CV", "kl"}
+
+    # store a function that evaluates whether the wrapper has uncertainties based on other settings
+    wrapper.has_unc = lambda **kwargs: False
+
     return wrapper
 
 
@@ -1532,9 +1552,9 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None, vhh_formula=None):
     pb given appropriate *ggf_formula*, *vbf_formula* and *vhh_formula* instances. When a forumla
     evaluates to *False* (the default), the corresponding process is not considered in the inclusive
     calculation. The returned function has the signature
-    ``(kl=1.0, kt=1.0, C2V=1.0, CV=1.0, nnlo=True, unc=None)``.
+    ``(kl=1.0, kt=1.0, C2V=1.0, CV=1.0, ggf_nnlo=True, unc=None)``.
 
-    The *nnlo* setting only affects the ggf component of the cross section. When *nnlo* is *False*,
+    The *ggf_nnlo* setting only affects the ggf component of the cross section. When it is *False*,
     the constant k-factor of the ggf calculation is still applied. Otherwise, the returned value is
     in full next-to-next-to-leading order for ggf. *unc* can be set to eiher "up" or "down" to
     return the up / down varied cross section instead where the uncertainty is composed of a *kl*
@@ -1551,7 +1571,7 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None, vhh_formula=None):
         print(get_hh_xsec(kl=2.))
         # -> 0.015226...
 
-        print(get_hh_xsec(kl=2., nnlo=False))
+        print(get_hh_xsec(kl=2., ggf_nnlo=False))
         # -> 0.015275...
 
         print(get_hh_xsec(kl=2., unc="up"))
@@ -1569,8 +1589,8 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None, vhh_formula=None):
     get_vhh_xsec = create_vhh_xsec_func(vhh_formula) if vhh_formula else no_xsec
 
     # create a combined wrapper with the merged signature
-    def wrapper(kl=1.0, kt=1.0, C2V=1.0, CV=1.0, nnlo=True, unc=None):
-        ggf_xsec = get_ggf_xsec(kl=kl, kt=kt, nnlo=nnlo)
+    def wrapper(kl=1.0, kt=1.0, C2V=1.0, CV=1.0, ggf_nnlo=True, unc=None):
+        ggf_xsec = get_ggf_xsec(kl=kl, kt=kt, ggf_nnlo=ggf_nnlo)
         vbf_xsec = get_vbf_xsec(C2V=C2V, CV=CV, kl=kl)
         vhh_xsec = get_vhh_xsec(C2V=C2V, CV=CV, kl=kl)
         xsec = ggf_xsec + vbf_xsec + vhh_xsec
@@ -1580,7 +1600,7 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None, vhh_formula=None):
             if unc.lower() not in ["up", "down"]:
                 raise ValueError("unc must be 'up' or 'down', got '{}'".format(unc))
             # ggf uncertainty
-            ggf_unc = get_ggf_xsec(kl=kl, kt=kt, nnlo=nnlo, unc=unc) - ggf_xsec
+            ggf_unc = get_ggf_xsec(kl=kl, kt=kt, ggf_nnlo=ggf_nnlo, unc=unc) - ggf_xsec
             # vbf uncertainty
             vbf_unc = get_vbf_xsec(C2V=C2V, CV=CV, kl=kl, unc=unc) - vbf_xsec
             # vhh uncertainty
@@ -1591,6 +1611,13 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None, vhh_formula=None):
             xsec += unc
 
         return xsec
+
+    # store names of kwargs in the signature for easier access to features
+    getters = [get_ggf_xsec, get_vbf_xsec, get_vhh_xsec]
+    wrapper.xsec_kwargs = set.union(*(g.xsec_kwargs for g in getters if g != no_xsec))
+
+    # store a function that evaluates whether the wrapper has uncertainties based on other settings
+    wrapper.has_unc = lambda **kwargs: any((g != no_xsec and g.has_unc(**kwargs)) for g in getters)
 
     return wrapper
 
@@ -1605,6 +1632,7 @@ get_vbf_xsec = create_vbf_xsec_func(model_default.vbf_formula)
 get_vhh_xsec = create_vhh_xsec_func(model_default_vhh.vhh_formula)
 
 # default combined cross section getter using the formulas of the *model_default* and
-# *model_default_vhh* models
+# *model_default_vhh* models (analyses investigating only a subset of channels, e.g. ggf + vbf
+# should not rely on this function but rather use HHModel.create_hh_xsec_func)
 get_hh_xsec = create_hh_xsec_func(model_default.ggf_formula, model_default.vbf_formula,
     model_default_vhh.vhh_formula)
