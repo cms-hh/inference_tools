@@ -110,7 +110,7 @@ class AnalysisTask(BaseTask):
         _prefer_cli = law.util.make_list(kwargs.get("_prefer_cli", []))
         if "version" not in _prefer_cli:
             _prefer_cli.append("version")
-        kwargs["_prefer_cli"] = _prefer_cli
+        kwargs["_prefer_cli"] = set(_prefer_cli) | cls.prefer_params_cli
 
         return super(AnalysisTask, cls).req_params(inst, **kwargs)
 
