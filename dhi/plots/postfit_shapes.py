@@ -12,6 +12,7 @@ from collections import defaultdict, OrderedDict
 
 import six
 import uproot
+from scinum import Number
 
 from dhi.config import poi_data, campaign_labels, colors, cms_postfix
 from dhi.util import (
@@ -423,34 +424,33 @@ def plot_s_over_b(
 
     # fill hep data from histograms
     if hep_data:
-        # simple rounding rule (please adapt if necesssary)
-        rnd = lambda v: round_digits(v, 3)
-
-        # transformers for custom rounding
-        def transform_data(i, x, y, e):
-            return (x, max(round(y), 0.0), (rnd(e[0]), rnd(e[1])))
-
-        def transform_mc(b, y, e):
-            return (rnd(max(y, 0.0)), e)
-
-        # add variables
-        hdt.create_dependent_variable_from_graph(graph_d1, error_label="stat", label="Events",
-            qualifiers=[hdt.create_qualifier("Process", "Data" + data_postfix)], parent=hep_data,
-            transform=transform_data)
-        hdt.create_dependent_variable_from_hist(hist_s1, label="Events",
-            qualifiers=[hdt.create_qualifier("Process", "Signal")], parent=hep_data,
-            transform=transform_mc)
-        dv = hdt.create_dependent_variable_from_hist(hist_b1, label="Events",
-            qualifiers=[hdt.create_qualifier("Process", "Total background")], parent=hep_data,
-            transform=transform_mc)
-        for i, v in enumerate(dv["values"]):
-            hdt.create_error(rnd(hist_b_err_up1.GetBinContent(i + 1)), label="syst", parent=v)
+        qualifiers = lambda proc_name: [hdt.create_qualifier("Process", proc_name)]
+        clip_negative_hist = lambda b, v, e: (max(v, 0), e)
 
         # add split background hists
         if backgrounds:
             for bg, h in zip(backgrounds, hists_bg1):
-                hdt.create_dependent_variable_from_hist(h, label="Events", transform=transform_mc,
-                    qualifiers=[hdt.create_qualifier("Process", str(bg["label"]))], parent=hep_data)
+                hdt.create_dependent_variable_from_hist(h, label="Events", parent=hep_data,
+                    qualifiers=qualifiers(str(bg["label"])), rounding_method=-1,
+                    transform=clip_negative_hist)
+
+        # total background
+        bg_nums = [
+            Number(max(hist_b1.GetBinContent(b), 0), {"syst": hist_b_err_up1.GetBinContent(b)},
+                "pdg+1")
+            for b in range(1, hist_b1.GetXaxis().GetNbins() + 1)
+        ]
+        hdt.create_dependent_variable("Events", parent=hep_data, values=bg_nums,
+            qualifiers=qualifiers("Total background"))
+
+        # signal
+        signal_label = "Signal" + (" limit @ 95% CL" if from_limit else "")
+        hdt.create_dependent_variable_from_hist(hist_s1, label="Events", parent=hep_data,
+            qualifiers=qualifiers(signal_label), transform=clip_negative_hist, rounding_method=-2)
+
+        # data
+        hdt.create_dependent_variable_from_graph(graph_d1, error_label="stat", label="Events",
+            qualifiers=qualifiers("Data" + data_postfix), parent=hep_data, rounding_method=3)
 
     # cms label
     cms_layout = "outside_horizontal"

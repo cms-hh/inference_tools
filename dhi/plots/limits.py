@@ -12,6 +12,7 @@ from collections import OrderedDict
 import six
 import numpy as np
 import scipy.interpolate
+from scinum import Number
 
 from dhi.config import (
     poi_data, br_hh_names, br_hh_colors, campaign_labels, colors, color_sequence, marker_sequence,
@@ -19,7 +20,7 @@ from dhi.config import (
 )
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, create_tgraph, colored, minimize_1d, unique_recarray,
-    make_list, try_int, dict_to_recarray, prepare_output, round_digits,
+    make_list, try_int, dict_to_recarray, prepare_output,
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, create_hh_xsbr_label, determine_limit_digits,
@@ -131,8 +132,8 @@ def plot_limit_scan(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "95% CL limit on {} / {}".format(
-        create_hh_xsbr_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
+    y_title = "95% CL limit on {} / {}".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
+        to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
@@ -326,48 +327,42 @@ def plot_limit_scan(
 
     # fill hep data
     if hep_data:
-        # simple rounding rule (please adapt if necesssary)
-        rnd = lambda v: round_digits(v, 3)
-
-        # transformers for custom rounding
-        def transform_thy(i, x, y, e):
-            if e is not None:
-                e = (rnd(e[0]), rnd(e[1])) if isinstance(e, (list, tuple)) else rnd(e)
-            return (x, rnd(y), e)
+        poi_div = "" if xsec_unit else r" / $\sigma_{Theory}$"
+        poi_qual = create_hh_xsbr_label(poi, hh_process) + poi_div
+        qualifiers = lambda: [hdt.create_qualifier("POI", poi_qual)]
 
         # data entries
         scan_values = list(map(float, expected_values[scan_parameter]))
         hdt.create_independent_variable(poi_data[scan_parameter].label, parent=hep_data,
-            values=[hdt.create_value(rnd(v)) for v in scan_values])
-
-        def exp_limit_value(i, sigma, label):
-            keys = ["limit", "limit_p{}".format(sigma), "limit_m{}".format(sigma)]
-            n, p, m = map(float, (expected_values[key][i] for key in keys))
-            u, d = rnd(p - n), rnd(m - n)
-            return hdt.create_value(rnd(n), errors=[hdt.create_error((u, d), label=label)])
-
-        # expected limits with 68% error
-        hdt.create_dependent_variable("Expected limit, 68%", parent=hep_data,
-            values=[exp_limit_value(i, 1, "68%") for i in range(len(scan_values))],
-            qualifiers=[hdt.create_qualifier("POI", poi)])
-
-        # expected limits with 95% error
-        hdt.create_dependent_variable("Expected limit, 95%", parent=hep_data,
-            values=[exp_limit_value(i, 2, "95%") for i in range(len(scan_values))],
-            qualifiers=[hdt.create_qualifier("POI", poi)])
-
-        # observed limits
-        if has_obs:
-            hdt.create_dependent_variable("Observed limit", parent=hep_data,
-                values=[hdt.create_value(rnd(v)) for v in observed_values["limit"]],
-                qualifiers=[hdt.create_qualifier("POI", poi)])
+            values=[Number(v, default_format=-2) for v in scan_values])
 
         # theory prediction
         if has_thy and xsec_unit:
             l = "th" if has_thy_err else None
-            hdt.create_dependent_variable_from_graph(g_thy, values_x=scan_values, error_label=l,
-                label="Theory prediction", qualifiers=[hdt.create_qualifier("POI", poi)],
-                parent=hep_data, transform=transform_thy)
+            hdt.create_dependent_variable_from_graph(g_thy, x_values=scan_values, error_label=l,
+                label="Theory prediction", unit=xsec_unit, parent=hep_data, qualifiers=qualifiers(),
+                rounding_method="publication")
+
+        def exp_limit_value(i, sigma, label):
+            keys = ["limit", "limit_p{}".format(sigma), "limit_m{}".format(sigma)]
+            n, p, m = map(float, (expected_values[key][i] for key in keys))
+            return Number(n, {label: (p - n, n - m)}, default_format="publication")
+
+        # expected limits with 68% error
+        hdt.create_dependent_variable("Expected limit, 68%", parent=hep_data, unit=xsec_unit,
+            values=[exp_limit_value(i, 1, "68%") for i in range(len(scan_values))],
+            qualifiers=qualifiers())
+
+        # expected limits with 95% error
+        hdt.create_dependent_variable("Expected limit, 95%", parent=hep_data, unit=xsec_unit,
+            values=[exp_limit_value(i, 2, "95%") for i in range(len(scan_values))],
+            qualifiers=qualifiers())
+
+        # observed limits
+        if has_obs:
+            hdt.create_dependent_variable("Observed limit", parent=hep_data, unit=xsec_unit,
+                values=[Number(float(v), default_format=3) for v in observed_values["limit"]],
+                qualifiers=qualifiers())
 
     # legend
     legend_entries_l += (3 - len(legend_entries_l)) * [(h_dummy, " ", "L")]
@@ -517,7 +512,8 @@ def plot_limit_scans(
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
     y_title = "Upper 95% CL limit on {} / {}".format(
-        create_hh_xsbr_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
+        to_root_latex(create_hh_xsbr_label(poi, hh_process)),
+        to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
@@ -839,8 +835,8 @@ def plot_limit_points(
     draw_objs = []
 
     # dummy histogram to control axes
-    x_title = "95% CL limit on {} / {}".format(
-        create_hh_xsbr_label(poi, hh_process), to_root_latex(xsec_unit or "#sigma_{Theory}"))
+    x_title = "95% CL limit on {} / {}".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
+        to_root_latex(xsec_unit or "#sigma_{Theory}"))
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"TitleOffset": 1.2,
@@ -989,50 +985,38 @@ def plot_limit_points(
 
     # fill hep data
     if hep_data:
-        # simple rounding rule (please adapt if necesssary)
-        rnd = lambda v: round_digits(v, 3)
-
-        # transformers for custom rounding
-        def transform_data(i, x, y, e):
-            return (rnd(x), y, e)
-
-        def transform_thy(i, x, y, e):
-            if e is not None:
-                e = (rnd(e[0]), rnd(e[1])) if isinstance(e, (list, tuple)) else rnd(e)
-            return (rnd(x), y, e)
+        poi_div = "" if xsec_unit else r" / $\sigma_{Theory}$"
+        poi_qual = create_hh_xsbr_label(poi, hh_process) + poi_div
+        qualifiers = lambda: [hdt.create_qualifier("POI", poi_qual)]
 
         # data entries
         hdt.create_independent_variable("Measurement", parent=hep_data,
             values=[hdt.create_value(br_hh_names.get(d["name"], d["name"])) for d in data])
 
-        def exp_limit_value(d, sigma, label):
-            vals = list(map(float, d["expected"]))
-            n, p, m = vals[0], vals[1 + 2 * (sigma - 1)], vals[2 + 2 * (sigma - 1)]
-            u, d = rnd(p - n), rnd(m - n)
-            return hdt.create_value(rnd(n), errors=[hdt.create_error((u, d), label=label)])
-
-        # expected limits with 68% error
-        hdt.create_dependent_variable("Expected limit, 68%", parent=hep_data,
-            values=[exp_limit_value(d, 1, "68%") for d in data],
-            qualifiers=[hdt.create_qualifier("POI", poi)])
-
-        # expected limits with 95% error
-        hdt.create_dependent_variable("Expected limit, 95%", parent=hep_data,
-            values=[exp_limit_value(d, 2, "95%") for d in data],
-            qualifiers=[hdt.create_qualifier("POI", poi)])
-
-        # observed limits
-        if has_obs:
-            hdt.create_dependent_variable_from_graph(g_obs, coord="x", label="Observed limit",
-                parent=hep_data, qualifiers=[hdt.create_qualifier("POI", poi)],
-                transform=transform_data)
-
         # theory prediction
         if has_thy and xsec_unit:
             g, lx = (g_thy_area, "th") if has_thy_err else (g_thy_line, None)
             hdt.create_dependent_variable_from_graph(g, coord="x", error_label=lx, parent=hep_data,
-                label="Theory prediction", qualifiers=[hdt.create_qualifier("POI", poi)],
-                transform=transform_thy)
+                label="Theory prediction", unit=xsec_unit, qualifiers=qualifiers(),
+                rounding_method="publication")
+
+        def exp_limit_value(d, sigma, label):
+            vals = list(map(float, d["expected"]))
+            n, p, m = vals[0], vals[1 + 2 * (sigma - 1)], vals[2 + 2 * (sigma - 1)]
+            return Number(n, {label: (p - n, n - m)}, default_format="publication")
+
+        # expected limits with 68% error
+        hdt.create_dependent_variable("Expected limit, 68%", parent=hep_data, unit=xsec_unit,
+            values=[exp_limit_value(d, 1, "68%") for d in data], qualifiers=qualifiers())
+
+        # expected limits with 95% error
+        hdt.create_dependent_variable("Expected limit, 95%", parent=hep_data, unit=xsec_unit,
+            values=[exp_limit_value(d, 2, "95%") for d in data], qualifiers=qualifiers())
+
+        # observed limits
+        if has_obs:
+            hdt.create_dependent_variable_from_graph(g_obs, coord="x", label="Observed limit",
+                parent=hep_data, unit=xsec_unit, qualifiers=qualifiers(), rounding_method=3)
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=430, n=3, props={"NColumns": 2})
@@ -1213,7 +1197,7 @@ def plot_limit_scan_2d(
     x_title = to_root_latex(poi_data[scan_parameter1].label)
     y_title = to_root_latex(poi_data[scan_parameter2].label)
     z_title = "{} 95% CL limit on {} / #sigma_{{Theory}}".format(
-        "Observed" if has_obs else "Expected", create_hh_xsbr_label(poi))
+        "Observed" if has_obs else "Expected", to_root_latex(create_hh_xsbr_label(poi)))
     h_dummy = ROOT.TH2F("h_dummy", ";{};{};{}".format(x_title, y_title, z_title),
         1, x_min, x_max, 1, y_min, y_max)
     r.setup_hist(h_dummy, pad=pad, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
@@ -1404,8 +1388,8 @@ def plot_benchmark_limits(
 
     # dummy histogram to control axes
     x_title = "Shape benchmark"
-    y_title = "95% CL limit on {} / {}".format(
-        create_hh_xsbr_label(poi, hh_process), to_root_latex(xsec_unit))
+    y_title = "95% CL limit on {} / {}".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
+        to_root_latex(xsec_unit))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), n, -0.5, n - 0.5)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
     r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"Ndivisions": n})
@@ -1650,6 +1634,9 @@ def excluded_to_allowed_ranges(excluded_ranges, min_value, max_value):
     taking into account the endpoints given by *min_value* and *max_value*. An open range is denoted
     by a *None*. Thus, (*None*, *None*) would mean that the entire range is allowed.
     """
+    if excluded_ranges is None:
+        return None
+
     # shorthands and checks
     e_ranges = excluded_ranges
     a_ranges = []

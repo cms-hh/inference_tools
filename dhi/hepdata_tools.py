@@ -8,6 +8,7 @@ Collection of lightweight, functional helpers to create HEPData entries.
 from collections import OrderedDict
 
 import yaml
+from scinum import Number, create_hep_data_representer
 
 from dhi.util import DotDict, import_ROOT, prepare_output, create_tgraph
 from dhi.plots.util import get_graph_points
@@ -18,9 +19,12 @@ from dhi.plots.util import get_graph_points
 #
 
 # configure yaml to transparently encode OrderedDict and DotDict instances like normal dicts
-representer = lambda dumper, data: dumper.represent_mapping("tag:yaml.org,2002:map", data.items())
-yaml.add_representer(OrderedDict, representer)
-yaml.add_representer(DotDict, representer)
+map_repr = lambda dumper, data: dumper.represent_mapping("tag:yaml.org,2002:map", data.items())
+yaml.add_representer(OrderedDict, map_repr)
+yaml.add_representer(DotDict, map_repr)
+
+# configure yaml to convert scinum.Number's with uncertainties to hep data value structs
+yaml.add_representer(Number, create_hep_data_representer())
 
 
 class Dumper(yaml.Dumper):
@@ -198,10 +202,10 @@ def create_independent_variable_from_x_axis(x_axis, label=None, unit=None, paren
 
 
 def create_dependent_variable_from_hist(hist, label=None, unit=None, qualifiers=None, parent=None,
-        error_label=None, transform=None):
+        error_label=None, rounding_method=None, transform=None):
     # default transform
     if not callable(transform):
-        transform = lambda bin_number, value, err: (value, err)
+        transform = lambda bin_number, value, error: (value, error)
 
     # default label
     if label is None:
@@ -213,34 +217,32 @@ def create_dependent_variable_from_hist(hist, label=None, unit=None, qualifiers=
         v = hist.GetBinContent(b)
 
         # extract the error
-        err = None
+        err = {}
         if error_label:
             err_u = hist.GetBinErrorUp(b)
             err_d = hist.GetBinErrorLow(b)
-            err = abs(err_u) if err_u == err_d else (err_u, -err_d)
+            err[error_label] = abs(err_u) if err_u == err_d else (err_u, err_d)
 
-        # transform
+        # transform if required, create a number object, and add it
         v, err = transform(b, v, err)
-        errors = None if err is None else [create_error(err, label=error_label)]
-
-        # add a new value
-        values.append(create_value(v, errors=errors))
+        num = Number(v, err, default_format=rounding_method)
+        values.append(num)
 
     return create_dependent_variable(label, unit=unit, qualifiers=qualifiers, values=values,
         parent=parent)
 
 
 def create_dependent_variable_from_graph(graph, label=None, unit=None, qualifiers=None, parent=None,
-        coord="y", values_x=None, error_label=None, transform=None):
+        coord="y", x_values=None, error_label=None, rounding_method=None, transform=None):
     ROOT = import_ROOT()
 
     # checks
-    if coord not in "xy":
+    if coord not in ["x", "y"]:
         raise Exception("coord must be 'x' or 'y', got {}".format(coord))
 
     # default transform
     if not callable(transform):
-        transform = lambda index, x, y, err: (x, y, err)
+        transform = lambda index, x_value, y_value, error: (x_value, y_value, error)
 
     # default label
     if label is None:
@@ -266,21 +268,19 @@ def create_dependent_variable_from_graph(graph, label=None, unit=None, qualifier
             x, y = float(x), float(y)
 
             # extract the error
-            err = None
+            err = {}
             if error_label:
                 err_u = graph.GetErrorXhigh(i)
                 err_d = graph.GetErrorXlow(i)
-                err = abs(err_u) if err_u == err_d else (err_u, -err_d)
+                err[error_label] = abs(err_u) if err_u == err_d else (err_u, err_d)
 
-            # transform
+            # transform if required, create a number object, and add it
             x, y, err = transform(i, x, y, err)
-            errors = None if err is None else [create_error(err, label=error_label)]
-
-            # add a new value
-            values.append(create_value(x, errors=errors))
+            num = Number(x, err, default_format=rounding_method)
+            values.append(num)
 
     else:  # coord == "y"
-        # when y coordonates are requested, consider custom x values and use interpolation splines
+        # when y coordinates are requested, consider custom x values and use interpolation splines
         # for both nominal values and errors
         points = get_graph_points(graph, errors=True)
         gx, gy, errors = points[0], points[1], points[2:]
@@ -294,27 +294,25 @@ def create_dependent_variable_from_graph(graph, label=None, unit=None, qualifier
                 spline_err = make_spline(gx, errors[1])
 
         # determine x values to scan
-        if values_x is None:
-            values_x = gx
+        if x_values is None:
+            x_values = gx
 
-        for i, x in enumerate(values_x):
+        for i, x in enumerate(x_values):
             x = float(x)
             y = spline.Eval(x)
 
             # extract the error
-            err = None
+            err = {}
             if error_label and has_errors:
                 if has_asym_errors:
-                    err = (spline_err_u.Eval(x), -spline_err_d.Eval(x))
+                    err[error_label] = (spline_err_u.Eval(x), spline_err_d.Eval(x))
                 else:
-                    err = spline_err.Eval(x)
+                    err[error_label] = spline_err.Eval(x)
 
-            # transform
+            # transform if required, create a number object, and add it
             x, y, err = transform(i, x, y, err)
-            errors = None if err is None else [create_error(err, label=error_label)]
-
-            # add a new value
-            values.append(create_value(y, errors=errors))
+            num = Number(y, err, default_format=rounding_method)
+            values.append(num)
 
     return create_dependent_variable(label, unit=unit, qualifiers=qualifiers, values=values,
         parent=parent)

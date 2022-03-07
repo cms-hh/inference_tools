@@ -109,7 +109,7 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
     return parameter_labels
 
 
-def create_hh_process_label(poi="r", prefix="pp #rightarrow "):
+def create_hh_process_label(poi="r", prefix=r"pp $\rightarrow$ "):
     proc = {"r": "HH (incl.)", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH")
     return prefix + proc
 
@@ -117,13 +117,13 @@ def create_hh_process_label(poi="r", prefix="pp #rightarrow "):
 def create_hh_br_label(br):
     if not br or br not in br_hh_names:
         return ""
-    return "B({})".format(to_root_latex(br_hh_names[br]))
+    return "B({})".format(br_hh_names[br])
 
 
 def create_hh_xsbr_label(poi="r", br=None):
     br_label = create_hh_br_label(br)
     br_label = (" x " + br_label) if br_label else ""
-    return "#sigma({}){}".format(create_hh_process_label(poi), br_label)
+    return r"$\sigma$({}){}".format(create_hh_process_label(poi), br_label)
 
 
 def determine_limit_digits(limit, is_xsec=False):
