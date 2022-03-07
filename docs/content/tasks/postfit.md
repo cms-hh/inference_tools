@@ -29,7 +29,7 @@ Output:
     graph LR;
     A{{PlotPostfitSOverB}} --> B([FitDiagnostics]);
     A -. optional .-> C([UpperLimits]);
-    B --> D(CreateWorkspace);
+    B --> D([CreateWorkspace]);
     C --> D;
     D --> E(CombineDatacards);
     B -. optional .-> F([Snapshot]);
@@ -110,7 +110,7 @@ Output:
 ```mermaid
     graph LR;
     A(PlotNuisanceLikelihoodScans) --> B([FitDiagnostics]);
-    B --> C(CreateWorkspace);
+    B --> C([CreateWorkspace]);
     C --> D(CombineDatacards);
     B -. optional .-> E([Snapshot]);
     E --> C;

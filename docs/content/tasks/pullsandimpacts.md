@@ -34,7 +34,7 @@ Output:
 graph LR;
     A(PlotPullsAndImpacts) --> B(MergePullsAndImpacts);
     B --> C([PullsAndImpacts]);
-    C --> D(CreateWorkspace);
+    C --> D([CreateWorkspace]);
     D --> E(CombineDatacards);
     C -. optional .-> F([Snapshot]);
     F --> D;
