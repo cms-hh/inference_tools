@@ -71,7 +71,7 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, branch=0)
         else:
-            reqs["workspace"] = CreateWorkspace.req(self)
+            reqs["workspace"] = CreateWorkspace.req(self, branch=0)
         return reqs
 
     def output(self):

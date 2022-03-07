@@ -219,9 +219,16 @@ class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     def workflow_requires(self):
         reqs = super(EFTLimitBase, self).workflow_requires()
+
+        # workspaces of all datacard sequences
         if not self.pilot:
             # require the requirements of all branch tasks when not in pilot mode
-            reqs["workspace"] = {b: t.requires() for b, t in self.get_branch_tasks().items()}
+            reqs["workspace"] = {
+                b: CreateWorkspace.req(self, datacards=self.benchmark_datacards[data],
+                    hh_model=law.NO_STR)
+                for b, data in self.branch_map.items()
+            }
+
         return reqs
 
     @property
@@ -263,7 +270,7 @@ class EFTBenchmarkLimits(EFTBenchmarkBase, EFTLimitBase):
 
     def requires(self):
         return CreateWorkspace.req(self, datacards=self.benchmark_datacards[self.branch_data],
-            hh_model=law.NO_STR)
+            hh_model=law.NO_STR, branch=0)
 
     def output(self):
         parts = self.get_output_postfix(join=False)

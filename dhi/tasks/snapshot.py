@@ -39,11 +39,11 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
 
     def workflow_requires(self):
         reqs = super(Snapshot, self).workflow_requires()
-        reqs["workspace"] = self.requires_from_branch()
+        reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def requires(self):
-        return CreateWorkspace.req(self)
+        return CreateWorkspace.req(self, branch=0)
 
     def output(self):
         name = self.join_postfix(["snapshot", self.get_output_postfix()]) + ".root"

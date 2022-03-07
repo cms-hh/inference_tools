@@ -20,7 +20,7 @@ import law
 import luigi
 import six
 
-from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
+from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, HTCondorWorkflow, ModelParameters
 from dhi.config import poi_data, br_hh
 from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path
 from dhi.datacard_tools import bundle_datacard, read_datacard_blocks
@@ -1751,12 +1751,27 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         output_card.copy_to(output)
 
 
-class CreateWorkspace(DatacardTask, CombineCommandTask):
+class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     priority = 90
 
     allow_empty_hh_model = True
     run_command_in_tmp = True
+
+    exclude_params_req_get = {"start_branch", "end_branch", "branches"}
+    prefer_params_cli = {"workflow", "max_runtime", "htcondor_cpus", "htcondor_mem"}
+
+    def create_branch_map(self):
+        # single branch that does not need special data
+        return [None]
+
+    def workflow_requires(self):
+        reqs = super(CreateWorkspace, self).workflow_requires()
+
+        if not self.input_is_workspace:
+            reqs["datacard"] = CombineDatacards.req(self)
+
+        return reqs
 
     def requires(self):
         if self.input_is_workspace:

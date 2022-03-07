@@ -89,7 +89,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
 
     @law.cached_workflow_property(setter=False, empty_value=law.no_value)
     def workspace_parameters(self):
-        ws_input = CreateWorkspace.req(self).output()
+        ws_input = CreateWorkspace.req(self, branch=0).output()
         if not ws_input.exists():
             return law.no_value
         return get_workspace_parameters(ws_input.path)
@@ -118,7 +118,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         return reqs
 
     def requires(self):
-        reqs = {"workspace": CreateWorkspace.req(self)}
+        reqs = {"workspace": CreateWorkspace.req(self, branch=0)}
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, branch=0)
         return reqs

@@ -171,7 +171,7 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, branch=0)
         else:
-            reqs["workspace"] = CreateWorkspace.req(self)
+            reqs["workspace"] = CreateWorkspace.req(self, branch=0)
 
         # grid this _this_ scan point
         if self.from_grid:
