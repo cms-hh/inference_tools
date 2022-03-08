@@ -296,6 +296,12 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         description="save allowed parameter ranges in an additional output; 1D only; "
         "default: False",
     )
+    plot_style = luigi.Parameter(
+        default=law.NO_STR,
+        significant=False,
+        description="the name of a custom style as provided by the underlying plotting function; "
+        "2D only; no default",
+    )
 
     save_hep_data = None
 
@@ -403,6 +409,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 paper=self.paper,
+                style=self.plot_style if self.plot_style != law.NO_STR else None,
             )
 
     def load_scan_data(self, inputs, recompute_dnll2=True, merge_scans=True):

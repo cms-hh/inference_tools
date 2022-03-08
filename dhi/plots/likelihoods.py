@@ -371,6 +371,7 @@ def plot_likelihood_scan_2d(
     model_parameters=None,
     campaign=None,
     paper=False,
+    style=None,
 ):
     """
     Creates a likelihood plot of the 2D scan of two POIs *poi1* and *poi2*, and saves it at *paths*.
@@ -408,7 +409,8 @@ def plot_likelihood_scan_2d(
     in case *show_contours_only* is not activated. *model_parameters* can be a dictionary of
     key-value pairs of model parameters. *campaign* should refer to the name of a campaign label
     defined in *dhi.config.campaign_labels*. When *paper* is *True*, certain plot configurations are
-    adjusted for use in publications.
+    adjusted for use in publications. Setting *style* leads to slight variations of the plot style.
+    Currently, only the default style is implemented.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d
     """
