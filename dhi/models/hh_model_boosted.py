@@ -42,12 +42,16 @@ class BoostedVBFSample(DefaultVBFSample):
 # note that all samples listed here are used by model_boosted below
 boosted_ggf_samples = OrderedDict()
 add_boosted_ggf_sample = _create_add_sample_func(BoostedGGFSample, boosted_ggf_samples)
+add_boosted_ggf_sample(kl=0.0, kt=1.0, xs=0.069725, label="boosted_ggHH_kl_0_kt_1")
 add_boosted_ggf_sample(kl=1.0, kt=1.0, xs=0.031047, label="boosted_ggHH_kl_1_kt_1")
 add_boosted_ggf_sample(kl=2.45, kt=1.0, xs=0.013124, label="boosted_ggHH_kl_2p45_kt_1")
 add_boosted_ggf_sample(kl=5.0, kt=1.0, xs=0.091172, label="boosted_ggHH_kl_5_kt_1")
-# two additional base points for stabilizing signal pdfs
+# additional base points for stabilizing signal pdfs
 add_boosted_ggf_sample(kl=-10.0, kt=1.0, xs=1.638123, label="boosted_ggHH_kl_m10_kt_1")
 add_boosted_ggf_sample(kl=20.0, kt=1.0, xs=3.378093, label="boosted_ggHH_kl_20_kt_1")
+add_boosted_ggf_sample(kl=-15.0, kt=1.0, xs=3.227967, label="boosted_ggHH_kl_m15_kt_1")
+add_boosted_ggf_sample(kl=25.0,  kt=1.0, xs=5.547927, label="boosted_ggHH_kl_25_kt_1")
+add_boosted_ggf_sample(kl=-3.0,  kt=1.0, xs=0.314664, label="boosted_ggHH_kl_m3_kt_1")
 
 # boosted vbf samples
 # note that all samples listed here are used by model_boosted below
@@ -58,12 +62,16 @@ add_boosted_vbf_sample(CV=1.0, C2V=1.0, kl=0.0, xs=0.0046089, label="boosted_qqH
 add_boosted_vbf_sample(CV=1.0, C2V=1.0, kl=2.0, xs=0.0014228, label="boosted_qqHH_CV_1_C2V_1_kl_2")
 add_boosted_vbf_sample(CV=1.0, C2V=0.0, kl=1.0, xs=0.0270800, label="boosted_qqHH_CV_1_C2V_0_kl_1")
 add_boosted_vbf_sample(CV=1.0, C2V=2.0, kl=1.0, xs=0.0142178, label="boosted_qqHH_CV_1_C2V_2_kl_1")
+add_boosted_vbf_sample(CV=0.5, C2V=1.0, kl=1.0, xs=0.0108237, label="boosted_qqHH_CV_0p5_C2V_1_kl_1")
 add_boosted_vbf_sample(CV=1.5, C2V=1.0, kl=1.0, xs=0.0660185, label="boosted_qqHH_CV_1p5_C2V_1_kl_1")
-# four additional base points for stabilizing signal pdfs
+# additional base points for stabilizing signal pdfs
 add_boosted_vbf_sample(CV=1.0, C2V=2.0, kl=-10.0, xs=0.1149221, label="boosted_qqHH_CV_1_C2V_2_kl_m10")
 add_boosted_vbf_sample(CV=1.0, C2V=2.0, kl=20.0, xs=0.5754886, label="boosted_qqHH_CV_1_C2V_2_kl_20")
 add_boosted_vbf_sample(CV=1.0, C2V=0.0, kl=-10.0, xs=0.2735665, label="boosted_qqHH_CV_1_C2V_0_kl_m10")
 add_boosted_vbf_sample(CV=1.0, C2V=0.0, kl=20.0, xs=0.3365450, label="boosted_qqHH_CV_1_C2V_0_kl_20")
+add_boosted_vbf_sample(CV=1.0, C2V=1.5, kl=-15.0, xs=0.3059198, label="boosted_qqHH_CV_1_C2V_1p5_kl_m15")
+add_boosted_vbf_sample(CV=1.0, C2V=0.5, kl=25.0,  xs=0.6348751, label="boosted_qqHH_CV_1_C2V_0p5_kl_25")
+add_boosted_vbf_sample(CV=1.0, C2V=1.0, kl=-3.0,  xs=0.0287358, label="boosted_qqHH_CV_1_C2V_1_kl_m3")
 
 
 ####################################################################################################
@@ -148,6 +156,6 @@ model_boosted_closure = create_model("model_boosted_closure",
 model_boosted = create_model("model_boosted",
     ggf=model_boosted_closure.ggf_formula.samples,
     vbf=model_boosted_closure.vbf_formula.samples,
-    boosted_ggf=list(boosted_ggf_samples.values()),  # use all
-    boosted_vbf=list(boosted_vbf_samples.values()),  # use all
+    boosted_ggf=[key for key in boosted_ggf_samples.keys() if key not in [(-3, 1), (1, 0)]],  # no (-3, 1), (1, 0)
+    boosted_vbf=[key for key in boosted_vbf_samples.keys() if key not in [(1, 1, -3), (0.5, 1, 1)]] ,  # no (1, 1, -3), (0.5, 1, 1)
 )
