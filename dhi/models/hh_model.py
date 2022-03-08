@@ -1460,7 +1460,7 @@ def create_ggf_xsec_func(ggf_formula):
     wrapper.xsec_kwargs = {"kl", "kt", "ggf_nnlo", "unc"}
 
     # store a function that evaluates whether the wrapper has uncertainties based on other settings
-    wrapper.has_unc = lambda ggf_nnlo, **kwargs: bool(ggf_nnlo)
+    wrapper.has_unc = lambda ggf_nnlo=True, **kwargs: bool(ggf_nnlo)
 
     return wrapper
 

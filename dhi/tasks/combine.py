@@ -164,9 +164,9 @@ class HHModelTask(AnalysisTask):
         # get the proper xsec getter, based on poi
         if r_poi == "r_gghh":
             get_xsec = module.create_ggf_xsec_func(model.ggf_formula)
-            has_unc = get_xsec.has_unc(nnlo=model.opt("doNNLOscaling"))
-            signature_kwargs = get_xsec.xsec_kwargs - {"nnlo"}
-            get_xsec = functools.partial(get_xsec, nnlo=model.opt("doNNLOscaling"))
+            has_unc = get_xsec.has_unc(ggf_nnlo=model.opt("doNNLOscaling"))
+            signature_kwargs = get_xsec.xsec_kwargs - {"ggf_nnlo"}
+            get_xsec = functools.partial(get_xsec, ggf_nnlo=model.opt("doNNLOscaling"))
         elif r_poi == "r_qqhh":
             get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
             has_unc = get_xsec.has_unc()
