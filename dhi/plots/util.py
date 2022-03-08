@@ -110,7 +110,9 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
 
 
 def create_hh_process_label(poi="r", prefix=r"pp $\rightarrow$ "):
-    proc = {"r": "HH (incl.)", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH")
+    # please note the possible ambiguity in the process between r and r_gghh, and consider using
+    # sth like "HH (incl.)" for r (however, this was recently discouraged)
+    proc = {"r": "HH", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH")
     return prefix + proc
 
 

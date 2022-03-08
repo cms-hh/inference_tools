@@ -34,7 +34,8 @@ the following examples demonstrate the datacard resolution.
 3. `--datacards ch?/datacard.txt`: Finds the cards located in `ch1` and `ch2`.
 4. `--datacards ch?`: Same as example 3 (see 2).
 5. `--datacards c*`: Matches all directies in `PWD`, so it again finds all datacards.
-6. `--datacards analysis1`: When relative paths lead to matches in the current directory, the path resolution is checked again relative to the directory `$DHI_DATACARDS_RUN2` when set. Therefore in finds `$DHI_DATACARDS_RUN2/analysis1/datacard.txt`.
+6. `--datacards analysis1`: When relative paths do **not** match anything in the current directory, the path resolution is checked again relative to the directory `$DHI_DATACARDS_RUN2` when set. Therefore in finds `$DHI_DATACARDS_RUN2/analysis1/datacard.txt` in the example above.
+7. `--datacards analysis1,ch*,cards3`: Combination of the examples above.
 
 
 #### `--hh-model` parameter
