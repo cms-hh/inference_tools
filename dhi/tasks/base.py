@@ -19,7 +19,7 @@ from dhi.util import call_hook, expand_path
 
 
 law.contrib.load(
-    "cms", "git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks",
+    "cms", "git", "htcondor", "numpy", "slack", "telegram", "root", "tasks",
 )
 
 dhi_remote_job = str(os.getenv("DHI_REMOTE_JOB", "0")).lower() in ("1", "true", "yes")

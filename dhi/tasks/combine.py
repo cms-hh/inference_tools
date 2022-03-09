@@ -12,7 +12,6 @@ import shlex
 import importlib
 import itertools
 import functools
-import inspect
 from abc import abstractproperty
 from collections import defaultdict, OrderedDict
 
@@ -1760,7 +1759,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
     allow_empty_hh_model = True
     run_command_in_tmp = True
 
-    exclude_params_req_get = {"start_branch", "end_branch", "branches"}
+    exclude_params_req_get = {"start_branch", "end_branch", "branches", "workflow"}
     prefer_params_cli = {"workflow", "max_runtime", "htcondor_cpus", "htcondor_mem"}
 
     def create_branch_map(self):
