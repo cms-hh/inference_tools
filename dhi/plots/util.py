@@ -287,7 +287,7 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
     elif interpolation == "rbf":
         # parse arguments in order
         spec = [("function", str), ("smooth", float), ("epsilon", float)]
-        rbf_args = {}
+        rbf_args = {"norm": 'seuclidean'}
         for val, (name, _type) in zip(interp_args, spec):
             try:
                 rbf_args[name] = _type(val)
