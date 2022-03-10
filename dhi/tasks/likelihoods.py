@@ -275,11 +275,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         "comma-separated options for 'function', 'smooth' and 'epsilon' arguments can be added in "
         "that order; 2D only; default: root",
     )
-    show_contours_only = luigi.BoolParameter(
-        default=False,
-        description="show only 1 and 2 sigma b/w contours instead of color-coded dnll2 values; "
-        "2D only; default: False",
-    )
     show_points = luigi.BoolParameter(
         default=False,
         significant=False,
@@ -295,12 +290,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         default=False,
         description="save allowed parameter ranges in an additional output; 1D only; "
         "default: False",
-    )
-    plot_style = luigi.Parameter(
-        default=law.NO_STR,
-        significant=False,
-        description="the name of a custom style as provided by the underlying plotting function; "
-        "2D only; no default",
     )
 
     save_hep_data = None
@@ -324,8 +313,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         parts = []
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
-        if self.n_pois == 2 and self.show_contours_only:
-            parts.append("contours")
 
         names = self.create_plot_names(["nll{}d".format(self.n_pois), self.get_output_postfix(), parts])
         outputs["plots"] = [self.local_target(name) for name in names]
@@ -391,7 +378,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 values=values,
                 poi1_min=None if self.recompute_best_fit else poi_mins[0],
                 poi2_min=None if self.recompute_best_fit else poi_mins[1],
-                show_contours_only=self.show_contours_only,
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
                 show_significances=self.show_significances,
@@ -409,7 +395,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 paper=self.paper,
-                style=self.plot_style if self.plot_style != law.NO_STR else None,
+                style=self.style if self.style != law.NO_STR else None,
             )
 
     def load_scan_data(self, inputs, recompute_dnll2=True, merge_scans=True):

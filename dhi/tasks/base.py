@@ -654,9 +654,9 @@ class PlotTask(AnalysisTask):
         description="produce plots with certain settings changed for publication; default: False",
     )
     style = luigi.Parameter(
-        default="default",
-        significant=False,
-        description="a string denoting and optional plot style name; default: default",
+        default=law.NO_STR,
+        description="the name of a custom style as provided by the underlying plot function; no "
+        "default",
     )
     save_hep_data = luigi.BoolParameter(
         default=False,
@@ -675,6 +675,8 @@ class PlotTask(AnalysisTask):
             raise Exception("plot names only allowed for file types {}, got {}".format(
                 ",".join(plot_file_types), ",".join(self.file_types)))
 
+        if self.style and self.style != law.NO_STR:
+            parts.append(("style", self.style))
         if self.plot_postfix and self.plot_postfix != law.NO_STR:
             parts.append((self.plot_postfix,))
 
