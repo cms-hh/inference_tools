@@ -276,6 +276,16 @@ setup() {
         # silently index
         law index -q
     fi
+
+
+    #
+    # custom user post-setup hook
+    #
+
+    if [ "$( type -t DHI_POST_SETUP )" = "function" ]; then
+        echo "calling post setup function"
+        DHI_POST_SETUP
+    fi
 }
 
 interactive_setup() {

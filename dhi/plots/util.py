@@ -78,9 +78,6 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
     import plotlib.root as r
     from plotlib.util import merge_dicts
 
-    # merge properties with defaults
-    props = merge_dicts({"TextSize": 20}, props)
-
     # handle grouping
     if grouped:
         # assign to groups

@@ -409,6 +409,8 @@ def plot_likelihood_scan_2d(
     Setting *style* leads to slight variations of the plot style. Valid options are:
 
     - "contours": Only draw 1 and 2 sigma contour lines over a white background and hide the z-axis.
+    - "contours_hcomb": Same as "contours", but style lines, text sizes, etc. similar to the kf-kV
+                        plots of the HComb group.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d
     """
@@ -416,12 +418,28 @@ def plot_likelihood_scan_2d(
     ROOT = import_ROOT()
 
     # check the style and overwrite some settings
-    if style == "contours":
+    _style_contours = style in ["contours", "contours_hcomb"]
+    if _style_contours:
         show_significances = (1, 2)
-        significance_labels = ["68%", "95%"]
+        significance_labels = ["68% CL", "95% CL"]
     else:
         print("unknown style '{}', falling back to default".format(style))
         style = None
+
+    # activate a different style of contours_hcomb
+    if style == "contours_hcomb":
+        s = r.styles.copy(r.styles.current_style_name, "contours_hcomb")
+        s.pad.TopMargin = 0.075
+        s.latex.TextSize = 26
+        s.legend.TextSize = 26
+        s.legend.LineStyle = 1
+        s.legend.LineColor = 1
+        s.legend.LineWidth = 1
+        s.legend.ColumnSeparation = 0.1
+        s.legend_dy = 0.07
+        s.x_axis.LabelSize = s.x_axis.TitleSize = 30
+        s.y_axis.LabelSize = s.y_axis.TitleSize = 30
+        r.styles.push("contours_hcomb")
 
     # check values
     values = make_list(values)
@@ -464,9 +482,9 @@ def plot_likelihood_scan_2d(
         contour_levels_dnll2.append(dnll2)
 
     # refine colors and styles
-    if style == "contours":
+    if _style_contours:
         contour_colors = n_contours * [colors.black]
-        contour_styles = ([1, 2, 7, 9] + max(n_contours - 4, 0) * [8])[:n_contours]
+        contour_styles = ([1, 7, 2, 9] + max(n_contours - 4, 0) * [8])[:n_contours]
     else:
         rest_colors = list(color_sequence)
         contour_colors = [
@@ -493,7 +511,7 @@ def plot_likelihood_scan_2d(
 
     # start plotting
     r.setup_style()
-    pad_props = {} if style == "contours" else {"RightMargin": 0.17, "Logz": True}
+    pad_props = {} if _style_contours else {"RightMargin": 0.17, "Logz": True}
     canvas, (pad,) = r.routines.create_canvas(pad_props=pad_props)
     pad.cd()
     draw_objs = []
@@ -556,7 +574,7 @@ def plot_likelihood_scan_2d(
     legend_entries = []
 
     # setup actual histograms
-    if style != "contours":
+    if not _style_contours:
         for i, h in enumerate(hists):
             r.setup_hist(h, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
             if i == 0:
@@ -582,7 +600,7 @@ def plot_likelihood_scan_2d(
                 draw_objs.append((g, "SAME,C"))
 
             # stop here when only drawing contours
-            if style == "contours":
+            if _style_contours:
                 continue
 
             # get the approximate label width
@@ -626,8 +644,13 @@ def plot_likelihood_scan_2d(
     if show_sm_point:
         g_sm = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
-        draw_objs.insert(-1, (g_sm, "P"))
-        legend_entries.append((g_sm, "SM Higgs" if paper else "Standard model", "P"))
+        draw_objs.append((g_sm, "P"))
+        legend_entries.append((g_sm, "SM Higgs", "P"))
+        # yellow overlay for hcomb style
+        if style == "contours_hcomb":
+            g_sm2 = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
+            r.setup_graph(g_sm2, props={"MarkerStyle": 33, "MarkerSize": 1.4}, color=89)
+            draw_objs.append((g_sm2, "P"))
 
     # central best fit point
     if show_best_fit and scan:
@@ -642,7 +665,7 @@ def plot_likelihood_scan_2d(
         props = {"MarkerStyle": 43, "MarkerSize": 2}
         if show_best_fit_error:
             props = {}
-        elif style == "contours":
+        elif _style_contours:
             props = {"MarkerStyle": 34, "MarkerSize": 2}
         r.setup_graph(g_fit, props=props, color=colors.black)
         draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
@@ -671,23 +694,32 @@ def plot_likelihood_scan_2d(
     if show_best_fit and scan:
         label = "Observed" if paper else make_bf_label(scan.num1_min, scan.num2_min)
         legend_entries.insert(0, (g_fit, label, "PLE" if show_best_fit_error else "P"))
-    if style == "contours":
+    if _style_contours:
         for graphs, level in zip(contours, significance_labels):
             for g in graphs:
                 legend_entries.append((g, level, "L"))
     if legend_entries:
-        if style == "contours":
-            legend = r.routines.create_legend(pad=pad, width=260, n=2,
-                props={"NColumns": 2, "TextSize": 20})
-        else:
-            legend = r.routines.create_legend(pad=pad, width=340, n=len(legend_entries))
+        legend_kwargs = {"pad": pad, "width": 340, "n": len(legend_entries)}
+        if _style_contours:
+            legend_kwargs["n"] = 2
+            legend_kwargs["props"] = {"NColumns": 2}
+            legend_kwargs["width"] = 400 if style == "contours_hcomb" else 260
+        legend = r.routines.create_legend(**legend_kwargs)
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
+
+        # draw the overlay SM point again for hcomb style (depends highly on the legend position)
+        if show_sm_point and style == "contours_hcomb":
+            g_sm2_legend = g_sm2.Clone()
+            g_sm2_legend.SetPoint(1, 1.835, 1.708)
+            draw_objs.append((g_sm2_legend, "P"))
 
     # cms label
     cms_layout = "outside_horizontal"
     _cms_postfix = "" if paper else cms_postfix
-    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    cms_props = {"text_size": 36} if style == "contours_hcomb" else {}
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout,
+        **cms_props)
     draw_objs.extend(cms_labels)
 
     # model parameter labels
@@ -711,6 +743,10 @@ def plot_likelihood_scan_2d(
     r.update_canvas(canvas)
     for path in make_list(paths):
         canvas.SaveAs(path)
+
+    # remove custom styles
+    if style == "contours_hcomb":
+        r.styles.pop()
 
 
 @use_style("dhi_default")
