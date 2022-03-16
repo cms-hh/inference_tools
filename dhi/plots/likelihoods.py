@@ -469,15 +469,25 @@ def plot_likelihood_scan_2d(
     if style == "contours_hcomb":
         s = r.styles.copy(r.styles.current_style_name, "contours_hcomb")
         s.pad.TopMargin = 0.075
-        s.latex.TextSize = 26
+#        s.latex.TextSize = 26
+        s.latex.TextSize = 44
         s.legend.TextSize = 26
         s.legend.LineStyle = 1
         s.legend.LineColor = 1
         s.legend.LineWidth = 1
         s.legend.ColumnSeparation = 0.1
         s.legend_dy = 0.07
-        s.x_axis.LabelSize = s.x_axis.TitleSize = 30
-        s.y_axis.LabelSize = s.y_axis.TitleSize = 30
+#        s.x_axis.LabelSize = s.x_axis.TitleSize = 30
+#        s.y_axis.LabelSize = s.y_axis.TitleSize = 30
+        s.x_axis.LabelSize = 30
+        s.x_axis.TitleSize = 50
+        s.y_axis.LabelSize = 30
+        s.y_axis.TitleSize = 50
+        s.pad.BottomMargin = 0.16
+        s.pad.LeftMargin = 0.16
+        s.y_axis.TitleOffset = 0.8
+        s.x_axis.TitleOffset = 0.8
+
         r.styles.push("contours_hcomb")
 
     # check values
@@ -781,7 +791,7 @@ def plot_likelihood_scan_2d(
     if model_parameters:
         param_kwargs = {}
         if cms_layout.startswith("inside"):
-            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            y_offset = 80 if cms_layout == "inside_vertical" and _cms_postfix else 60
             param_kwargs = {"y_offset": y_offset}
         draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
