@@ -575,8 +575,6 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
 
 class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
 
-    save_hep_data = None
-
     compare_multi_sequence = "multi_datacards"
 
     @classmethod
@@ -607,12 +605,19 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
         if self.y_log:
             parts.append("log")
 
+        # plots
         names = self.create_plot_names(["multilimits", self.get_output_postfix(), parts])
         outputs["plots"] = [self.local_target(name) for name in names]
 
+        # ranges
         if self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
                 self.get_output_postfix()))
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
 
         return outputs
 
@@ -701,6 +706,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
             observed_values=obs_values,
             theory_values=thy_values,
             ranges_path=outputs["ranges"].path if "ranges" in outputs else None,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
@@ -716,8 +722,6 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
 
 
 class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModelTask):
-
-    save_hep_data = None
 
     allow_empty_hh_model = True
     compare_multi_sequence = "hh_models"
@@ -744,12 +748,19 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
         if self.y_log:
             parts.append("log")
 
+        # plots
         names = self.create_plot_names(["multilimitsbymodel", self.get_output_postfix(), parts])
         outputs["plots"] = [self.local_target(name) for name in names]
 
+        # ranges
         if self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
                 self.get_output_postfix()))
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
 
         return outputs
 
@@ -846,6 +857,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
             observed_values=obs_values,
             theory_values=thy_values,
             ranges_path=outputs["ranges"].path if "ranges" in outputs else None,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),

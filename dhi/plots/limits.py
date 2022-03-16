@@ -8,6 +8,7 @@ import json
 import math
 import traceback
 from collections import OrderedDict
+from itertools import chain
 
 import six
 import numpy as np
@@ -418,6 +419,7 @@ def plot_limit_scans(
     observed_values=None,
     theory_values=None,
     ranges_path=None,
+    hep_data_path=None,
     y_log=False,
     x_min=None,
     x_max=None,
@@ -440,7 +442,9 @@ def plot_limit_scans(
     "<scan_parameter>" and "xsec", and optionally "xsec_p1" and "xsec_m1". *names* denote the names
     of limit curves shown in the legend. When a name is found to be in dhi.config.br_hh_names, its
     value is used as a label instead. When *ranges_path* is set, all allowed scan parameter ranges
-    are saved to the given file.
+    are saved to the given file. When *hep_data_path* is set, a yml data file compatible with the
+    HEPData format (https://hepdata-submission.readthedocs.io/en/latest/data_yaml.html) is stored at
+    that path.
 
     When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. *x_min*, *x_max*,
     *y_min* and *y_max* define the axis ranges and default to the range of the given values.
@@ -494,6 +498,11 @@ def plot_limit_scans(
         has_thy_err = "xsec_p1" in theory_values and "xsec_m1" in theory_values
     allowed_ranges = OrderedDict()
 
+    # prepare hep data
+    hep_data = None
+    if hep_data_path:
+        hep_data = hdt.create_hist_data()
+
     # set default ranges
     if x_min is None:
         x_min = min(min(ev[scan_parameter]) for ev in expected_values)
@@ -524,6 +533,7 @@ def plot_limit_scans(
         _color_sequence = [br_hh_colors.root[name] for name in names]
 
     # central values
+    g_exps, g_obss = [], []
     for i, (ev, name, col, ms) in enumerate(zip(expected_values, names, _color_sequence[:n_graphs],
             marker_sequence[:n_graphs])):
         # expected graph
@@ -539,6 +549,7 @@ def plot_limit_scans(
         draw_objs.append((g_exp, "SAME,CP" if show_points and not has_obs else "SAME,C"))
         legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)),
             "LP" if show_points and not has_obs else "L"))
+        g_exps.append(g_exp)
         y_max_value = max(y_max_value, max(limit_values))
         y_min_value = min(y_min_value, min(limit_values))
 
@@ -556,6 +567,7 @@ def plot_limit_scans(
 
         # observed graph
         ov = observed_values[i]
+        g_obss.append(None)
         if ov is not None:
             obs_mask = ~np.isnan(ov["limit"])
             obs_limit_values = ov["limit"][obs_mask]
@@ -570,6 +582,7 @@ def plot_limit_scans(
             draw_objs.append((g_obs, "SAME,CP" if show_points else "SAME,C"))
             legend_entries[-1] = (g_obs, to_root_latex(br_hh_names.get(name, name)),
                 "LP" if show_points else "L")
+            g_obss[-1] = g_obs
             y_max_value = max(y_max_value, max(obs_limit_values))
             y_min_value = min(y_min_value, min(obs_limit_values))
 
@@ -632,6 +645,37 @@ def plot_limit_scans(
         if xsec_unit:
             legend_entries.append(legend_entry)
 
+    # fill hep data
+    if hep_data:
+        poi_div = "" if xsec_unit else r" / $\sigma_{Theory}$"
+        poi_qual = create_hh_xsbr_label(poi, hh_process) + poi_div
+        qualifiers = lambda: [hdt.create_qualifier("POI", poi_qual)]
+
+        # scan value as independent variable
+        scan_values = sorted(set(chain(*(map(float, ev[scan_parameter]) for ev in expected_values))))
+        hdt.create_independent_variable(poi_data[scan_parameter].label, parent=hep_data,
+            values=[Number(v, default_format=-2) for v in scan_values])
+
+        # theory prediction
+        if has_thy and xsec_unit:
+            l = "th" if has_thy_err else None
+            hdt.create_dependent_variable_from_graph(g_thy, x_values=scan_values, error_label=l,
+                label="Theory prediction", unit=xsec_unit, parent=hep_data, qualifiers=qualifiers(),
+                rounding_method="publication")
+
+        # limits per entry
+        for name, g_exp, g_obs in zip(names, g_exps, g_obss):
+            # expected
+            label = name + (", expected" if has_obs else "")
+            hdt.create_dependent_variable_from_graph(g_exp, x_values=scan_values, parent=hep_data,
+                label=label, rounding_method=-2)
+
+            # observed
+            if g_obs:
+                label = name + ", observed"
+                hdt.create_dependent_variable_from_graph(g_obs, x_values=scan_values, parent=hep_data,
+                    label=label, rounding_method=-2)
+
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
     legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
@@ -665,10 +709,14 @@ def plot_limit_scans(
     # draw all objects
     r.routines.draw_objects(draw_objs)
 
-    # save
+    # save plots
     r.update_canvas(canvas)
     for path in make_list(paths):
         canvas.SaveAs(path)
+
+    # save hep data
+    if hep_data_path:
+        hdt.save_hep_data(hep_data, hep_data_path)
 
 
 @use_style("dhi_default")

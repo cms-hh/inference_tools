@@ -4,10 +4,10 @@
 Likelihood plots using ROOT.
 """
 
-import os
 import math
 import json
 from collections import OrderedDict
+from itertools import chain, product
 
 import numpy as np
 import scipy.interpolate
@@ -27,6 +27,7 @@ from dhi.plots.util import (
     infer_binning_from_grid, get_contour_box, make_parameter_label_map, get_text_extent,
     locate_contour_labels,
 )
+import dhi.hepdata_tools as hdt
 
 
 colors = colors.root
@@ -39,6 +40,7 @@ def plot_likelihood_scans_1d(
     data,
     theory_value=None,
     ranges_path=None,
+    hep_data_path=None,
     show_best_fit=False,
     show_best_fit_error=True,
     show_best_fit_line=None,
@@ -70,7 +72,9 @@ def plot_likelihood_scans_1d(
 
     *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
     down uncertainties which is drawn as a vertical bar. When *ranges_path* is set, one and two
-    sigma intervals of the scan parameter are saved to the given file.
+    sigma intervals of the scan parameter are saved to the given file. When *hep_data_path* is set,
+    a yml data file compatible with the HEPData format
+    (https://hepdata-submission.readthedocs.io/en/latest/data_yaml.html) is stored at that path.
 
     When *show_best_fit* (*show_best_fit_error*) is *True*, the best fit error value (and its
     uncertainty) is shown in the corresponding legend entry. When *show_best_fit_line* is *True*, a
@@ -136,6 +140,11 @@ def plot_likelihood_scans_1d(
             shift_negative_values=shift_negative_values, origin=d["origin"],
             min_is_external=d["poi_min"] is not None)
         d["values"] = values
+
+    # prepare hep data
+    hep_data = None
+    if hep_data_path:
+        hep_data = hdt.create_hist_data()
 
     # perform scans
     scans = [
@@ -243,7 +252,8 @@ def plot_likelihood_scans_1d(
 
     # perform scans and draw nll curves
     parameter_ranges = OrderedDict()
-    for d, scan, col, ms in zip(data, scans, _color_sequence[:len(data)], marker_sequence[:len(data)]):
+    g_nlls = []
+    for d, scan, col, ms in zip(data, scans, _color_sequence, marker_sequence):
         if not scan:
             warn("1D likelihood evaluation failed for entry '{}'".format(d["name"]))
 
@@ -253,6 +263,7 @@ def plot_likelihood_scans_1d(
         r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
         draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
+        g_nlls.append(g_nll)
 
         # legend entry with optional best fit value
         g_label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
@@ -297,6 +308,21 @@ def plot_likelihood_scans_1d(
         draw_objs.append(line_thy)
         if not has_thy_err:
             legend_entries.append((line_thy, "Theory prediction", "L"))
+
+    # fill hep data
+    if hep_data:
+        # scan value as independent variable
+        scan_values = sorted(set(chain(*(map(float, d["values"][poi]) for d in data))))
+        hdt.create_independent_variable(poi_data[poi].label, parent=hep_data,
+            values=[Number(v, default_format=-2) for v in scan_values])
+
+        # dnll2 values as dependent variables
+        for d, g_nll in zip(data, g_nlls):
+            label = r"$-2\Delta\log(L)$"
+            if d.get("name"):
+                label += ", " + d["name"]
+            hdt.create_dependent_variable_from_graph(g_nll, x_values=scan_values, parent=hep_data,
+                label=label, rounding_method=-2, transform=lambda i, x, y, err: (x, max(y, 0.0), err))
 
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
@@ -343,6 +369,10 @@ def plot_likelihood_scans_1d(
             json.dump(parameter_ranges, f, indent=4)
         print("saved parameter ranges to {}".format(ranges_path))
 
+    # save hep data
+    if hep_data_path:
+        hdt.save_hep_data(hep_data, hep_data_path)
+
 
 @use_style("dhi_default")
 def plot_likelihood_scan_2d(
@@ -350,6 +380,7 @@ def plot_likelihood_scan_2d(
     poi1,
     poi2,
     values,
+    hep_data_path=None,
     poi1_min=None,
     poi2_min=None,
     show_best_fit=False,
@@ -378,7 +409,9 @@ def plot_likelihood_scan_2d(
     "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be the values of
     the POIs that lead to the best likelihood. Otherwise, they are estimated from the interpolated
     curve. By default, this plot fills a 2D histogram with likelihood values and optionally draws
-    contour lines and additional information on top.
+    contour lines and additional information on top. When *hep_data_path* is set, a yml data file
+    compatible with the HEPData format
+    (https://hepdata-submission.readthedocs.io/en/latest/data_yaml.html) is stored at that path.
 
     When *show_best_fit* (*show_best_fit_error*) is *True*, the nominal (uncertainty on the) best
     fit value is drawn. To overlay lines and labels denoting integer significances corresponding to
@@ -423,8 +456,14 @@ def plot_likelihood_scan_2d(
         show_significances = (1, 2)
         significance_labels = ["68% CL", "95% CL"]
     else:
-        print("unknown style '{}', falling back to default".format(style))
+        if style:
+            print("unknown style '{}', falling back to default".format(style))
         style = None
+
+    # prepare hep data
+    hep_data = None
+    if hep_data_path:
+        hep_data = hdt.create_hist_data()
 
     # activate a different style of contours_hcomb
     if style == "contours_hcomb":
@@ -670,6 +709,22 @@ def plot_likelihood_scan_2d(
         r.setup_graph(g_fit, props=props, color=colors.black)
         draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
 
+    # fill hep data
+    if hep_data:
+        # use the first underlying histogram and add its axes as two independent variables
+        h = hists[0]
+        x_bins = list(range(1, h.GetXaxis().GetNbins() + 1))
+        y_bins = list(range(1, h.GetYaxis().GetNbins() + 1))
+        coords = list(product(x_bins, y_bins))
+        hdt.create_independent_variable(poi_data[poi1].label, parent=hep_data,
+            values=[Number(h.GetXaxis().GetBinCenter(bx), default_format=-2) for bx, _ in coords])
+        hdt.create_independent_variable(poi_data[poi2].label, parent=hep_data,
+            values=[Number(h.GetYaxis().GetBinCenter(by), default_format=-2) for _, by in coords])
+
+        # dnll2 values as dependent variable
+        hdt.create_dependent_variable(r"$-2\Delta\log(L)$", parent=hep_data,
+            values=[Number(max(h.GetBinContent(bx, by), 0.0), default_format=-2) for bx, by in coords])
+
     # legend
     def make_bf_label(num1, num2):
         if show_best_fit_error:
@@ -747,6 +802,10 @@ def plot_likelihood_scan_2d(
     # remove custom styles
     if style == "contours_hcomb":
         r.styles.pop()
+
+    # save hep data
+    if hep_data_path:
+        hdt.save_hep_data(hep_data, hep_data_path)
 
 
 @use_style("dhi_default")

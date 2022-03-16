@@ -19,7 +19,7 @@ from dhi.util import (
     import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors, make_list, warn,
     multi_match, round_digits,
 )
-from dhi.plots.util import use_style, create_model_parameters
+from dhi.plots.util import use_style, create_model_parameters, determine_limit_digits
 import dhi.hepdata_tools as hdt
 
 
@@ -436,15 +436,18 @@ def plot_s_over_b(
 
         # total background
         bg_nums = [
-            Number(max(hist_b1.GetBinContent(b), 0), {"syst": hist_b_err_up1.GetBinContent(b)},
-                "pdg+1")
+            Number(max(hist_b1.GetBinContent(b), 0), {"postfit": hist_b_err_up1.GetBinContent(b)},
+                "publication")
             for b in range(1, hist_b1.GetXaxis().GetNbins() + 1)
         ]
         hdt.create_dependent_variable("Events", parent=hep_data, values=bg_nums,
             qualifiers=qualifiers("Total background"))
 
         # signal
-        signal_label = "Signal" + (" limit @ 95% CL" if from_limit else "")
+        signal_label = "Signal"
+        if from_limit:
+            digits = determine_limit_digits(signal_limit)
+            signal_label += " x {{:.{}f}} (95% CL limit)".format(digits).format(signal_limit)
         hdt.create_dependent_variable_from_hist(hist_s1, label="Events", parent=hep_data,
             qualifiers=qualifiers(signal_label), transform=clip_negative_hist, rounding_method=-2)
 

@@ -292,8 +292,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         "default: False",
     )
 
-    save_hep_data = None
-
     force_n_pois = (1, 2)
     force_n_scan_parameters = (1, 2)
     sort_pois = False
@@ -314,12 +312,19 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
+        # plots
         names = self.create_plot_names(["nll{}d".format(self.n_pois), self.get_output_postfix(), parts])
         outputs["plots"] = [self.local_target(name) for name in names]
 
+        # ranges
         if self.n_pois == 1 and self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
                 self.get_output_postfix()))
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
 
         return outputs
 
@@ -354,6 +359,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 data=data,
                 theory_value=theory_value,
                 ranges_path=outputs["ranges"].path if "ranges" in outputs else None,
+                hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
                 show_significances=self.show_significances,
@@ -376,6 +382,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 values=values,
+                hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
                 poi1_min=None if self.recompute_best_fit else poi_mins[0],
                 poi2_min=None if self.recompute_best_fit else poi_mins[1],
                 show_best_fit=self.show_best_fit,
@@ -509,12 +516,19 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
+        # plots
         names = self.create_plot_names(["multinll{}d".format(self.n_pois), self.get_output_postfix(), parts])
         outputs["plots"] = [self.local_target(name) for name in names]
 
+        # ranges
         if self.n_pois == 1 and self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
                 self.get_output_postfix()))
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
 
         return outputs
 
@@ -566,6 +580,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 data=data,
                 theory_value=theory_value,
                 ranges_path=outputs["ranges"].path if "ranges" in outputs else None,
+                hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
                 show_best_fit_indicators=False,
@@ -630,12 +645,19 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
+        # plots
         names = self.create_plot_names(["multinllbymodel{}d".format(self.n_pois), self.get_output_postfix(), parts])
         outputs["plots"] = [self.local_target(name) for name in names]
 
+        # ranges
         if self.n_pois == 1 and self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
                 self.get_output_postfix()))
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
 
         return outputs
 
@@ -689,6 +711,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
                 data=data,
                 theory_value=theory_value,
                 ranges_path=outputs["ranges"].path if "ranges" in outputs else None,
+                hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
                 show_best_fit=self.show_best_fit,
                 show_best_fit_indicators=False,
                 show_significances=self.show_significances,

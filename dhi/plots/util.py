@@ -76,7 +76,6 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
     *model_parameters* with same values.
     """
     import plotlib.root as r
-    from plotlib.util import merge_dicts
 
     # handle grouping
     if grouped:
