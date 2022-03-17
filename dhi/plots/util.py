@@ -39,6 +39,9 @@ def _setup_styles():
     s.legend_dy = 32
     s.legend.TextSize = 20
     s.legend.FillStyle = 1
+    s.x_axis.SetDecimals = True
+    s.y_axis.SetDecimals = True
+    s.z_axis.SetDecimals = True
     s.style.PaintTextFormat = "1.2f"
 
 
