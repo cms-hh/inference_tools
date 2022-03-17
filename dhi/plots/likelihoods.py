@@ -442,8 +442,8 @@ def plot_likelihood_scan_2d(
     Setting *style* leads to slight variations of the plot style. Valid options are:
 
     - "contours": Only draw 1 and 2 sigma contour lines over a white background and hide the z-axis.
-    - "contours_hcomb": Same as "contours", but style lines, text sizes, etc. similar to the kf-kV
-                        plots of the HComb group.
+    - "contours_hcomb": Same as "contours", but line styles, text sizes, etc. are similar to the
+                        kf-kV plots of the HComb group.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d
     """
@@ -466,29 +466,27 @@ def plot_likelihood_scan_2d(
         hep_data = hdt.create_hist_data()
 
     # activate a different style of contours_hcomb
+    style_changed = False
     if style == "contours_hcomb":
         s = r.styles.copy(r.styles.current_style_name, "contours_hcomb")
         s.pad.TopMargin = 0.075
-#        s.latex.TextSize = 26
-        s.latex.TextSize = 44
+        s.pad.BottomMargin = 0.16
+        s.pad.LeftMargin = 0.16
         s.legend.TextSize = 26
         s.legend.LineStyle = 1
         s.legend.LineColor = 1
         s.legend.LineWidth = 1
         s.legend.ColumnSeparation = 0.1
         s.legend_dy = 0.07
-#        s.x_axis.LabelSize = s.x_axis.TitleSize = 30
-#        s.y_axis.LabelSize = s.y_axis.TitleSize = 30
         s.x_axis.LabelSize = 30
         s.x_axis.TitleSize = 50
+        s.x_axis.TitleOffset = 0.8
         s.y_axis.LabelSize = 30
         s.y_axis.TitleSize = 50
-        s.pad.BottomMargin = 0.16
-        s.pad.LeftMargin = 0.16
         s.y_axis.TitleOffset = 0.8
-        s.x_axis.TitleOffset = 0.8
-
+        # use it
         r.styles.push("contours_hcomb")
+        style_changed = True
 
     # check values
     values = make_list(values)
@@ -776,13 +774,13 @@ def plot_likelihood_scan_2d(
         # draw the overlay SM point again for hcomb style (depends highly on the legend position)
         if show_sm_point and style == "contours_hcomb":
             g_sm2_legend = g_sm2.Clone()
-            g_sm2_legend.SetPoint(1, 1.835, 1.708)
+            g_sm2_legend.SetPoint(1, 1.525, 1.685)
             draw_objs.append((g_sm2_legend, "P"))
 
     # cms label
     cms_layout = "outside_horizontal"
     _cms_postfix = "" if paper else cms_postfix
-    cms_props = {"text_size": 36} if style == "contours_hcomb" else {}
+    cms_props = {"text_size": 44} if style == "contours_hcomb" else {}
     cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout,
         **cms_props)
     draw_objs.extend(cms_labels)
@@ -790,15 +788,17 @@ def plot_likelihood_scan_2d(
     # model parameter labels
     if model_parameters:
         param_kwargs = {}
+        param_kwargs["props"] = {"TextSize": 30} if style == "contours_hcomb" else {}
         if cms_layout.startswith("inside"):
-            y_offset = 80 if cms_layout == "inside_vertical" and _cms_postfix else 60
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
             param_kwargs = {"y_offset": y_offset}
         draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
+        props = {"TextSize": 40} if style == "contours_hcomb" else {}
         campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
-        campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad)
+        campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad, props=props)
         draw_objs.append(campaign_label)
 
     # draw all objects
@@ -810,7 +810,7 @@ def plot_likelihood_scan_2d(
         canvas.SaveAs(path)
 
     # remove custom styles
-    if style == "contours_hcomb":
+    if style_changed:
         r.styles.pop()
 
     # save hep data
