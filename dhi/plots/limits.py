@@ -1639,7 +1639,7 @@ def _print_excluded_ranges(param_name, scan_name, scan_values, ranges, interpola
         if min([r - value, value - l]) <= 10**(-1 * digits):
             return True
 
-        # case2: pass when the granularity is sufficiently fine
+        # case2: pass when the granularity is sufficiently high
         if r - l <= 10**(1 - digits):
             return True
 
@@ -1663,15 +1663,16 @@ def _print_excluded_ranges(param_name, scan_name, scan_values, ranges, interpola
 
     # start printing
     print("")
-    title = "Excluded ranges of parameter '{}' in scan '{}' (from {} interpolation)".format(
+    title = "Excluded ranges of parameter '{}' in scan '{}' (from {} interpolation):".format(
         param_name, scan_name, interpolation)
     print(title)
     print(len(title) * "=")
-    print("(granularity potentially insufficient for accurate interpolation)")
     if not ranges:
-        print("-")
-    for start, stop in ranges:
-        print("  - " + format_range(start, stop))
+        print("no excluded ranges found")
+    else:
+        print("(granularity potentially insufficient for accurate interpolation)")
+        for start, stop in ranges:
+            print("  - " + format_range(start, stop))
     print("")
 
 
