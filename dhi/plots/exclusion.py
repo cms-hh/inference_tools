@@ -8,7 +8,7 @@ import math
 
 import numpy as np
 
-from dhi.config import poi_data, campaign_labels, colors, br_hh_names, cms_postfix
+from dhi.config import poi_data, campaign_labels, colors, br_hh_names, cms_postfix, cms_postfix_preliminary, hh_references
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, make_list, warn
 from dhi.plots.limits import evaluate_limit_scan_1d, _print_excluded_ranges
 from dhi.plots.likelihoods import (
@@ -41,6 +41,7 @@ def plot_exclusion_and_bestfit_1d(
     h_lines=None,
     campaign=None,
     paper=False,
+    summary=False
 ):
     """
     Creates a plot showing exluded regions of a *poi* over a *scan_parameter* for multiple analyses
@@ -102,7 +103,7 @@ def plot_exclusion_and_bestfit_1d(
     pad_width = pad_width or 800  # pixels
     top_margin = 35  # pixels
     bottom_margin = 70  # pixels
-    left_margin = left_margin or 150  # pixels
+    left_margin = left_margin or 160 if summary else 150 # pixels
     right_margin = right_margin or 20  # pixels
     entry_height = entry_height or 90  # pixels
     head_space = 130  # pixels
@@ -228,14 +229,22 @@ def plot_exclusion_and_bestfit_1d(
     h_dummy.GetYaxis().SetBinLabel(1, "")
     label_tmpl = "%s"
     label_tmpl_scan = "#splitline{%s}{#scale[0.75]{%s = %s}}"
+    label_tmpl_summary = "#splitline{%s}{#splitline{#scale[0.75]{%s = %s}}{#scale[0.65]{%s}}}"
     for i, (d, scan) in enumerate(zip(data, scans)):
         # name labels
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
         if scan:
-            label = label_tmpl_scan % (label, scan_label, scan.num_min.str("%.2f", style="root",
-                force_asymmetric=True, styles={"space": ""}))
+            if summary :
+                label_summary = to_root_latex(hh_references.get(d["name"], d["name"]))
+                label = label_tmpl_summary % (label, scan_label, scan.num_min.str("%.2f", style="root",
+                    force_asymmetric=True, styles={"space": ""}), label_summary)
+            else :
+                label = label_tmpl_scan % (label, scan_label, scan.num_min.str("%.2f", style="root",
+                    force_asymmetric=True, styles={"space": ""}))
         else:
             label = label_tmpl % (label,)
+
+
         label_x = r.get_x(10, canvas)
         label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
         label = ROOT.TLatex(label_x, label_y, label)
@@ -258,7 +267,7 @@ def plot_exclusion_and_bestfit_1d(
 
     # cms label
     cms_layout = "outside_horizontal"
-    _cms_postfix = "" if paper else cms_postfix
+    _cms_postfix = cms_postfix_preliminary if summary else ("" if paper else cms_postfix)
     cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
     draw_objs.extend(cms_labels)
 

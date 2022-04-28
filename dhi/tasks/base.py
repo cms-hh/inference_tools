@@ -653,6 +653,10 @@ class PlotTask(AnalysisTask):
         default=False,
         description="produce plots with certain settings changed for publication; default: False",
     )
+    summary = luigi.BoolParameter(
+        default=False,
+        description="produce plots with certain settings changed for publication; default: False",
+    )
     style = luigi.Parameter(
         default=law.NO_STR,
         description="the name of a custom style as provided by the underlying plot function; no "

@@ -138,6 +138,7 @@ class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIP
             h_lines=self.h_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             paper=self.paper,
+            summary=self.summary
         )
 
 
