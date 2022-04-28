@@ -19,7 +19,7 @@ from dhi.util import call_hook, expand_path
 
 
 law.contrib.load(
-    "cms", "git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks",
+    "cms", "git", "htcondor", "numpy", "slack", "telegram", "root", "tasks",
 )
 
 dhi_remote_job = str(os.getenv("DHI_REMOTE_JOB", "0")).lower() in ("1", "true", "yes")
@@ -110,7 +110,7 @@ class AnalysisTask(BaseTask):
         _prefer_cli = law.util.make_list(kwargs.get("_prefer_cli", []))
         if "version" not in _prefer_cli:
             _prefer_cli.append("version")
-        kwargs["_prefer_cli"] = _prefer_cli
+        kwargs["_prefer_cli"] = set(_prefer_cli) | cls.prefer_params_cli
 
         return super(AnalysisTask, cls).req_params(inst, **kwargs)
 
@@ -571,7 +571,6 @@ class CommandTask(AnalysisTask):
 
     @law.decorator.log
     @law.decorator.notify
-    @law.decorator.safe_output
     def run(self, **kwargs):
         self.pre_run_command()
 
@@ -655,9 +654,14 @@ class PlotTask(AnalysisTask):
         description="produce plots with certain settings changed for publication; default: False",
     )
     style = luigi.Parameter(
-        default="default",
-        significant=False,
-        description="a string denoting and optional plot style name; default: default",
+        default=law.NO_STR,
+        description="the name of a custom style as provided by the underlying plot function; no "
+        "default",
+    )
+    save_hep_data = luigi.BoolParameter(
+        default=False,
+        description="save plot and meta data in a yaml file, compatible with the HEPData 'data' "
+        "file syntax; default: False",
     )
 
     def get_axis_limit(self, value):
@@ -666,11 +670,13 @@ class PlotTask(AnalysisTask):
         return None if value == -1000.0 else value
 
     def create_plot_names(self, parts):
-        plot_file_types = ["pdf", "png", "log"]
+        plot_file_types = ["pdf", "png", "root", "log"]
         if any(t not in plot_file_types for t in self.file_types):
             raise Exception("plot names only allowed for file types {}, got {}".format(
                 ",".join(plot_file_types), ",".join(self.file_types)))
 
+        if self.style and self.style != law.NO_STR:
+            parts.append(("style", self.style))
         if self.plot_postfix and self.plot_postfix != law.NO_STR:
             parts.append((self.plot_postfix,))
 

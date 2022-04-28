@@ -53,7 +53,7 @@ Output:
     graph LR;
     A(PlotLikelihoodScan) --> B(MergeLikelihoodScan);
     B --> C([LikelihoodScan]);
-    C -. either .-> D(CreateWorkspace);
+    C -. either .-> D([CreateWorkspace]);
     D --> E(CombineDatacards);
     C -. or .-> F([Snapshot]);
     F --> D;
@@ -174,8 +174,8 @@ Output:
     A --> ...;
     B1 --> C1([LikelihoodScan]);
     B2 --> C2([LikelihoodScan]);
-    C1 -. either .-> D1(CreateWorkspace);
-    C2 -. either .-> D2(CreateWorkspace);
+    C1 -. either .-> D1([CreateWorkspace]);
+    C2 -. either .-> D2([CreateWorkspace]);
     D1 --> E1(CombineDatacards);
     D2 --> E2(CombineDatacards);
     C1 -. or .-> F1([Snapshot]);
@@ -299,8 +299,8 @@ Output:
     A --> ...;
     B1 --> C1([LikelihoodScan]);
     B2 --> C2([LikelihoodScan]);
-    C1 -. either .-> D1(CreateWorkspace);
-    C2 -. either .-> D2(CreateWorkspace);
+    C1 -. either .-> D1([CreateWorkspace]);
+    C2 -. either .-> D2([CreateWorkspace]);
     D1 --> E(CombineDatacards);
     D2 --> E;
     C1 -. or .-> F1([Snapshot]);

@@ -433,8 +433,8 @@ def plot_exclusion_and_bestfit_2d(
 
     # style graphs and add to draw objects, from outer to inner graphs (-2, -1, +1, +2), followed by
     # nominal or observed
-    color_68 = colors.green if style == "brazil" else colors.grey
-    color_95 = colors.yellow if style == "brazil" else colors.light_grey
+    color_68 = colors.brazil_green if style == "brazil" else colors.grey
+    color_95 = colors.brazil_yellow if style == "brazil" else colors.light_grey
 
     # +2 sigma exclusion
     if has_unc2:

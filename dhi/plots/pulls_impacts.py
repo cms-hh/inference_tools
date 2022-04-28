@@ -272,8 +272,8 @@ def plot_pulls_impacts(
             # place points always on zero, set errors to act as impact values
             g_impact_hi.SetPoint(idx, 0, idx - 0.5)
             g_impact_lo.SetPoint(idx, 0, idx - 0.5)
-            g_impact_hi.SetPointError(idx, 0 if u > 0 else -u, u if u > 0 else 0, 0.5, 0.5)
-            g_impact_lo.SetPointError(idx, -d if d < 0 else 0, 0 if d < 0 else d, 0.5, 0.5)
+            g_impact_hi.SetPointError(idx, -u if u < 0 else 0, u if u > 0 else 0, 0.5, 0.5)
+            g_impact_lo.SetPointError(idx, -d if d < 0 else 0, d if d > 0 else 0, 0.5, 0.5)
             # fill overlap graph with up values in case of equal signs and larger down impact
             if u * d > 0 and abs(d) > abs(u):
                 g_impact_overlap.SetPoint(idx, 0, idx - 0.5)

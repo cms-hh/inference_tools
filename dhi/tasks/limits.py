@@ -171,7 +171,7 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, branch=0)
         else:
-            reqs["workspace"] = CreateWorkspace.req(self)
+            reqs["workspace"] = CreateWorkspace.req(self, branch=0)
 
         # grid this _this_ scan point
         if self.from_grid:
@@ -383,6 +383,12 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
         significant=False,
         description="show points of central limit values; default: False",
     )
+    show_theory = luigi.BoolParameter(
+        default=True,
+        significant=False,
+        description="when True, a line representing the theory prediction (also for theory "
+        "normalized limits) is shown; default: True",
+    )
     save_ranges = luigi.BoolParameter(
         default=False,
         description="save allowed parameter ranges in an additional output; default: False",
@@ -414,7 +420,10 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
             else:
                 hint = "when calculating limits on 'XS', nuisances related to signal cross " \
                     "sections should be frozen (nuisance group 'signal_norm_xs' in the combination)"
-            self.logger.info("HINT: " + hint)
+            self.logger.info("hint: " + hint)
+        elif self.br != law.NO_STR:
+            self.logger.warning("when calculating limits on POI {} without conversion into a cross "
+                "section with --xs, adding --br has no effect".format(self.poi))
 
     def requires(self):
         return [
@@ -423,8 +432,6 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
         ]
 
     def output(self):
-        outputs = {}
-
         # additional postfix
         parts = []
         if self.xsec in ["pb", "fb"]:
@@ -434,12 +441,21 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
         if self.y_log:
             parts.append("log")
 
+        outputs = {}
+
+        # plots
         names = self.create_plot_names(["limits", self.get_output_postfix(), parts])
         outputs["plots"] = [self.local_target(name) for name in names]
 
+        # ranges
         if self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
                 self.get_output_postfix()))
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
 
         return outputs
 
@@ -472,16 +488,17 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
                     param_keys=[self.scan_parameter],
                     xsec_kwargs=self.parameter_values_dict,
                 )
-                thy_values = self.get_theory_xsecs(
-                    self.poi,
-                    [self.scan_parameter],
-                    thy_linspace,
-                    self.xsec,
-                    self.br,
-                    xsec_kwargs=self.parameter_values_dict,
-                )
+                if self.show_theory:
+                    thy_values = self.get_theory_xsecs(
+                        self.poi,
+                        [self.scan_parameter],
+                        thy_linspace,
+                        self.xsec,
+                        self.br,
+                        xsec_kwargs=self.parameter_values_dict,
+                    )
                 xsec_unit = self.xsec
-            else:
+            elif self.show_theory:
                 # normalized values
                 thy_values = self.get_theory_xsecs(
                     self.poi,
@@ -524,6 +541,7 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
             observed_values=obs_values,
             theory_values=thy_values,
             ranges_path=outputs["ranges"].path if "ranges" in outputs else None,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
@@ -587,12 +605,19 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
         if self.y_log:
             parts.append("log")
 
+        # plots
         names = self.create_plot_names(["multilimits", self.get_output_postfix(), parts])
         outputs["plots"] = [self.local_target(name) for name in names]
 
+        # ranges
         if self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
                 self.get_output_postfix()))
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
 
         return outputs
 
@@ -620,25 +645,25 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
                 thy_linspace = np.linspace(_limit_values[self.scan_parameter].min(),
                     _limit_values[self.scan_parameter].max(), num=100)
                 if self.xsec in ["pb", "fb"]:
+                    xsec_unit = self.xsec
                     _limit_values = self.convert_to_xsecs(
                         self.poi,
                         _limit_values,
-                        self.xsec,
+                        xsec_unit,
                         self.br,
                         param_keys=[self.scan_parameter],
                         xsec_kwargs=self.parameter_values_dict,
                     )
-                    xsec_unit = self.xsec
-                    if i == 0:
+                    if self.show_theory and i == 0:
                         thy_values = self.get_theory_xsecs(
                             self.poi,
                             [self.scan_parameter],
                             thy_linspace,
-                            self.xsec,
+                            xsec_unit,
                             self.br,
                             xsec_kwargs=self.parameter_values_dict,
                         )
-                elif i == 0:
+                elif self.show_theory and i == 0:
                     # normalized values
                     thy_values = self.get_theory_xsecs(
                         self.poi,
@@ -681,6 +706,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
             observed_values=obs_values,
             theory_values=thy_values,
             ranges_path=outputs["ranges"].path if "ranges" in outputs else None,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
@@ -722,12 +748,19 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
         if self.y_log:
             parts.append("log")
 
+        # plots
         names = self.create_plot_names(["multilimitsbymodel", self.get_output_postfix(), parts])
         outputs["plots"] = [self.local_target(name) for name in names]
 
+        # ranges
         if self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
                 self.get_output_postfix()))
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
 
         return outputs
 
@@ -755,27 +788,27 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
                 thy_linspace = np.linspace(_limit_values[self.scan_parameter].min(),
                     _limit_values[self.scan_parameter].max(), num=100)
                 if self.xsec in ["pb", "fb"]:
+                    xsec_unit = self.xsec
                     _limit_values = self._convert_to_xsecs(
                         hh_model,
                         self.poi,
                         _limit_values,
-                        self.xsec,
+                        xsec_unit,
                         self.br,
                         param_keys=[self.scan_parameter],
                         xsec_kwargs=self.parameter_values_dict,
                     )
-                    xsec_unit = self.xsec
-                    if i == 0:
+                    if self.show_theory and i == 0:
                         thy_values = self._get_theory_xsecs(
                             hh_model,
                             self.poi,
                             [self.scan_parameter],
                             thy_linspace,
-                            self.xsec,
+                            xsec_unit,
                             self.br,
                             xsec_kwargs=self.parameter_values_dict,
                         )
-                elif i == 0:
+                elif self.show_theory and i == 0:
                     # normalized values at one with errors
                     thy_values = self._get_theory_xsecs(
                         hh_model,
@@ -824,6 +857,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
             observed_values=obs_values,
             theory_values=thy_values,
             ranges_path=outputs["ranges"].path if "ranges" in outputs else None,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
@@ -843,6 +877,7 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
 
     xsec = PlotUpperLimits.xsec
     br = PlotUpperLimits.br
+    show_theory = PlotUpperLimits.show_theory
     x_log = luigi.BoolParameter(
         default=False,
         description="apply log scaling to the x-axis; default: False",
@@ -902,7 +937,10 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
             else:
                 hint = "when calculating limits on 'XS', nuisances related to signal cross " \
                     "sections should be frozen (nuisance group 'signal_norm_xs' in the combination)"
-            self.logger.info("HINT: " + hint)
+            self.logger.info("hint: " + hint)
+        elif self.br != law.NO_STR:
+            self.logger.warning("when calculating limits on POI {} without conversion into a cross "
+                "section with --xs, adding --br has no effect".format(self.poi))
 
         # check the length of extra labels
         n = self.n_datacard_entries
@@ -972,8 +1010,18 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
         if self.external_limits:
             parts.append("ext" + law.util.create_hash(self.external_limits))
 
+        outputs = {}
+
+        # plots
         names = self.create_plot_names(["limitsatpoint", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -984,7 +1032,7 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
 
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load limit values
         names = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
@@ -1012,23 +1060,24 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
         xsec_unit = None
         if self.poi in self.r_pois:
             if self.xsec in ["pb", "fb"]:
+                xsec_unit = self.xsec
                 limit_values = self.convert_to_xsecs(
                     self.poi,
                     limit_values,
-                    self.xsec,
+                    xsec_unit,
                     self.br,
                     xsec_kwargs=self.parameter_values_dict,
                 )
-                thy_value = self.get_theory_xsecs(
-                    self.poi,
-                    [self.pseudo_scan_parameter],
-                    [self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.0)],
-                    self.xsec,
-                    self.br,
-                    xsec_kwargs=self.parameter_values_dict,
-                )
-                xsec_unit = self.xsec
-            else:
+                if self.show_theory:
+                    thy_value = self.get_theory_xsecs(
+                        self.poi,
+                        [self.pseudo_scan_parameter],
+                        [self.parameter_values_dict.get(self.pseudo_scan_parameter, 1.0)],
+                        xsec_unit,
+                        self.br,
+                        xsec_kwargs=self.parameter_values_dict,
+                    )
+            elif self.show_theory:
                 # normalized values
                 thy_value = self.get_theory_xsecs(
                     self.poi,
@@ -1068,9 +1117,10 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_limit_points",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             poi=self.poi,
             data=data,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             sort_by=None if self.sort_by == law.NO_STR else self.sort_by,
@@ -1105,6 +1155,8 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
         significant=False,
         description="comma-separated values for drawing vertical lines; no default",
     )
+
+    save_hep_data = None
 
     force_n_pois = 1
     force_n_scan_parameters = 2

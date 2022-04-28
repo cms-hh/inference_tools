@@ -100,8 +100,8 @@ Output:
 graph LR;
     A(PlotEFTBenchmarkLimits) --> B(MergeEFTBenchmarkLimits);
     B --> C([EFTBenchmarkLimits]);
-    C --> D1(CreateWorkspace);
-    C --> D2(CreateWorkspace);
+    C --> D1([CreateWorkspace]);
+    C --> D2([CreateWorkspace]);
     C --> ...;
     D1 --> E1(CombineDatacards);
     D2 --> E2(CombineDatacards);

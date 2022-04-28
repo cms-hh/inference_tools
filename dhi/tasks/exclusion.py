@@ -34,6 +34,7 @@ class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIP
     y_max = None
     z_min = None
     z_max = None
+    save_hep_data = None
 
     force_n_pois = 1
     force_n_scan_parameters = 1
@@ -170,8 +171,10 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
         description="name of a branching ratio defined in dhi.config.br_hh to scale the cross "
         "section when --xsec is set; choices: '',{}; no default".format(",".join(br_hh.keys())),
     )
+
     z_min = None
     z_max = None
+    save_hep_data = None
 
     force_n_pois = 1
     force_n_scan_parameters = 2

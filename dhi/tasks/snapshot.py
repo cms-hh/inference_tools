@@ -8,7 +8,6 @@ import copy
 
 import law
 import luigi
-import six
 
 from dhi.tasks.base import HTCondorWorkflow
 from dhi.tasks.combine import (
@@ -27,24 +26,11 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
     allow_parameter_values_in_pois = True
     run_command_in_tmp = True
 
-    exclude_params_req_get = {"start_branch", "end_branch", "branches"}
-
-    @classmethod
-    def req_params(cls, *args, **kwargs):
-        prefer_cli = kwargs.get("_prefer_cli", None)
-        if isinstance(prefer_cli, six.string_types):
-            prefer_cli = {prefer_cli}
-        else:
-            prefer_cli = {prefer_cli} if prefer_cli else set()
-
-        # prefer all kinds of parameters from the command line
-        prefer_cli |= {
-            "toys", "frozen_parameters", "frozen_groups", "minimizer", "parameter_values",
-            "parameter_ranges", "workflow", "max_runtime",
-        }
-
-        kwargs["_prefer_cli"] = prefer_cli
-        return super(Snapshot, cls).req_params(*args, **kwargs)
+    exclude_params_req_get = {"start_branch", "end_branch", "branches", "workflow"}
+    prefer_params_cli = {
+        "toys", "frozen_parameters", "frozen_groups", "minimizer", "parameter_values",
+        "parameter_ranges", "workflow", "max_runtime",
+    }
 
     def create_branch_map(self):
         # single branch that does not need special data
@@ -52,11 +38,11 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
 
     def workflow_requires(self):
         reqs = super(Snapshot, self).workflow_requires()
-        reqs["workspace"] = self.requires_from_branch()
+        reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def requires(self):
-        return CreateWorkspace.req(self)
+        return CreateWorkspace.req(self, branch=0)
 
     def output(self):
         name = self.join_postfix(["snapshot", self.get_output_postfix()]) + ".root"

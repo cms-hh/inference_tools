@@ -23,7 +23,9 @@ import os
 import json
 from collections import OrderedDict
 
-from dhi.util import import_ROOT, real_path, multi_match, create_console_logger, patch_object
+from dhi.util import (
+    import_ROOT, real_path, multi_match, create_console_logger, patch_object, prepare_output,
+)
 
 
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
@@ -97,11 +99,7 @@ def extract_fit_result(input_file, obj_name, output_file, keep_patterns=None, sk
     tfile.Close()
 
     # save as json
-    output_file = real_path(output_file)
-    if os.path.exists(output_file):
-        os.remove(output_file)
-    elif not os.path.exists(os.path.dirname(output_file)):
-        os.makedirs(os.path.dirname(output_file))
+    output_file = prepare_output(output_file)
     with open(output_file, "w") as f:
         json.dump(data, f, indent=4)
     logger.info("saved output file {}".format(output_file))

@@ -19,7 +19,7 @@ law run PlotUpperLimits \
 ```
 
 Note that the above command uses `r` as the default POI and `kl,-25,25` as the default scan parameter and range.
-See the task parameters below for fore info.
+See the task parameters below for more info.
 
 Output:
 
@@ -30,15 +30,16 @@ Output:
 
 ```mermaid
 graph LR;
-    A(PlotUpperLimits) --> B(MergeUpperLimits);
+    A{{PlotUpperLimits}} --> B(MergeUpperLimits);
     B --> C([UpperLimits]);
-    C -. either .-> D(CreateWorkspace);
+    C -. either .-> D([CreateWorkspace]);
     D --> E(CombineDatacards);
     C -. or .-> F([Snapshot]);
     F --> D;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
+Hexagonal boxes mark tasks that can produce [HEPData](https://hepdata-submission.readthedocs.io/en/latest/) compatible yaml files.
 
 
 #### Parameters
@@ -116,7 +117,7 @@ law run PlotMultipleUpperLimits \
 ```
 
 Note that the above command uses `r` as the default POI and `kl,-25,25` as the default scan parameter and range.
-See the task parameters below for fore info.
+See the task parameters below for more info.
 
 Output:
 
@@ -132,8 +133,8 @@ graph LR;
     A --> ...;
     B1 --> C1([UpperLimits]);
     B2 --> C2([UpperLimits]);
-    C1 -. either .-> D1(CreateWorkspace);
-    C2 -. either .-> D2(CreateWorkspace);
+    C1 -. either .-> D1([CreateWorkspace]);
+    C2 -. either .-> D2([CreateWorkspace]);
     D1 --> E1(CombineDatacards);
     D2 --> E2(CombineDatacards);
     C1 -. or .-> F1([Snapshot]);
@@ -202,7 +203,7 @@ law run PlotUpperLimitsAtPoint \
 ```
 
 Note that the above command uses `r` as the default POI.
-See the task parameters below for fore info.
+See the task parameters below for more info.
 
 Output:
 
@@ -213,11 +214,11 @@ Output:
 
 ```mermaid
 graph LR;
-    A(PlotUpperLimitsAtPoint) --> B1([UpperLimits]);
+    A{{PlotUpperLimitsAtPoint}} --> B1([UpperLimits]);
     A --> B2([UpperLimits]);
     A --> ...;
-    B1 -. either .-> C1(CreateWorkspace);
-    B2 -. either .-> C2(CreateWorkspace);
+    B1 -. either .-> C1([CreateWorkspace]);
+    B2 -. either .-> C2([CreateWorkspace]);
     C1 --> D1(CombineDatacards);
     C2 --> D2(CombineDatacards);
     B1 -. or .-> E1([Snapshot]);
@@ -227,6 +228,7 @@ graph LR;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
+Hexagonal boxes mark tasks that can produce [HEPData](https://hepdata-submission.readthedocs.io/en/latest/) compatible yaml files.
 
 
 #### Parameters

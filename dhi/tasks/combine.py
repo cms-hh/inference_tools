@@ -12,7 +12,6 @@ import shlex
 import importlib
 import itertools
 import functools
-import inspect
 from abc import abstractproperty
 from collections import defaultdict, OrderedDict
 
@@ -20,10 +19,10 @@ import law
 import luigi
 import six
 
-from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
+from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, HTCondorWorkflow, ModelParameters
 from dhi.config import poi_data, br_hh
 from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path
-from dhi.datacard_tools import bundle_datacard
+from dhi.datacard_tools import bundle_datacard, read_datacard_blocks
 
 
 def require_hh_model(func):
@@ -163,23 +162,25 @@ class HHModelTask(AnalysisTask):
 
         # get the proper xsec getter, based on poi
         if r_poi == "r_gghh":
-            get_ggf_xsec = module.create_ggf_xsec_func(model.ggf_formula)
-            get_xsec = functools.partial(get_ggf_xsec, nnlo=model.opt("doNNLOscaling"))
-            signature_kwargs = set(inspect.getargspec(get_ggf_xsec).args) - {"nnlo"}
-            has_unc = bool(model.opt("doNNLOscaling"))
+            get_xsec = module.create_ggf_xsec_func(model.ggf_formula)
+            has_unc = get_xsec.has_unc(ggf_nnlo=model.opt("doNNLOscaling"))
+            signature_kwargs = get_xsec.xsec_kwargs - {"ggf_nnlo"}
+            get_xsec = functools.partial(get_xsec, ggf_nnlo=model.opt("doNNLOscaling"))
         elif r_poi == "r_qqhh":
             get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
-            signature_kwargs = set(inspect.getargspec(get_xsec).args)
-            has_unc = True
+            has_unc = get_xsec.has_unc()
+            signature_kwargs = set(get_xsec.xsec_kwargs)
         elif r_poi == "r_vhh":
             get_xsec = module.create_vhh_xsec_func(model.vhh_formula)
-            signature_kwargs = set(inspect.getargspec(get_xsec).args)
-            has_unc = False
+            has_unc = get_xsec.has_unc()
+            signature_kwargs = set(get_xsec.xsec_kwargs)
         else:  # r
-            _get_xsec = model.create_hh_xsec_func()
-            get_xsec = functools.partial(_get_xsec, nnlo=model.opt("doNNLOscaling"))
-            signature_kwargs = set(inspect.getargspec(_get_xsec).args) - {"nnlo"}
-            has_unc = True
+            get_xsec = model.create_hh_xsec_func()
+            has_unc = get_xsec.has_unc(ggf_nnlo=model.opt("doNNLOscaling"))
+            signature_kwargs = set(get_xsec.xsec_kwargs)
+            if "ggf_nnlo" in signature_kwargs:
+                signature_kwargs -= {"ggf_nnlo"}
+                get_xsec = functools.partial(get_xsec, ggf_nnlo=model.opt("doNNLOscaling"))
 
         # compute the scale conversion
         scale = {"pb": 1.0, "fb": 1000.0}[unit]
@@ -1707,23 +1708,27 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         output_card = tmp_dir.child("merged_XXXXXX.txt", type="f", mktemp_pattern=True)
         self.run_command(self.build_command(datacards, output_card.path), cwd=tmp_dir.path)
 
-        # remove ggf and vbf processes that are not covered by the physics model
+        # remove signal processes that are not covered by the physics model
         if not self.hh_model_empty:
             mod, model = self.load_hh_model()
 
-            # build two sets of all available hh processes and those actually used in the model
-            all_procs = set()
-            model_procs = set()
-            for r_poi, proc in [("r_gghh", "ggf"), ("r_qqhh", "vbf"), ("r_vhh", "vhh")]:
-                all_samples = getattr(mod, proc + "_samples", None)
-                formula = getattr(model, proc + "_formula", None)
-                if not all_samples or not formula:
-                    continue
-                all_procs |= {s.label for s in all_samples.values()}
-                model_procs |= {s.label for s in formula.samples}
+            # get all datacard processes
+            blocks = read_datacard_blocks(output_card.path)
+            procs = blocks["rates"][1].strip().split()[1:]
+            proc_ids = map(int, blocks["rates"][2].strip().split()[1:])
+            signal_procs = set(proc for proc, proc_id in zip(procs, proc_ids) if proc_id <= 0)
 
-            # subtract the sets to see which processes to remove
-            to_remove = all_procs - model_procs
+            # loop through model formulae and determine signal processes that are not covered
+            to_remove = set()
+            formulae = model.get_formulae().values()
+            for proc in signal_procs:
+                for formula in formulae:
+                    if any(sample.matches_process(proc) for sample in formula.samples):
+                        break
+                else:
+                    to_remove.add(proc)
+
+            # actual removal
             if to_remove:
                 from dhi.scripts.remove_processes import remove_processes
                 self.logger.info("trying to remove processe(s) '{}' from the combined datacard as "
@@ -1735,7 +1740,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             if not model.opt("doklDependentUnc"):
                 from dhi.scripts.remove_parameters import remove_parameters
                 self.logger.info("trying to remove '{}' from the combined datacard as the model "
-                    "does not add need it".format(model.ggf_kl_dep_unc))
+                    "does not add it".format(model.ggf_kl_dep_unc))
                 remove_parameters(output_card.path, [model.ggf_kl_dep_unc])
 
         # copy shape files and the datacard to the output location
@@ -1747,12 +1752,27 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         output_card.copy_to(output)
 
 
-class CreateWorkspace(DatacardTask, CombineCommandTask):
+class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     priority = 90
 
     allow_empty_hh_model = True
     run_command_in_tmp = True
+
+    exclude_params_req_get = {"start_branch", "end_branch", "branches", "workflow"}
+    prefer_params_cli = {"workflow", "max_runtime", "htcondor_cpus", "htcondor_mem"}
+
+    def create_branch_map(self):
+        # single branch that does not need special data
+        return [None]
+
+    def workflow_requires(self):
+        reqs = super(CreateWorkspace, self).workflow_requires()
+
+        if not self.input_is_workspace:
+            reqs["datacard"] = CombineDatacards.req(self)
+
+        return reqs
 
     def requires(self):
         if self.input_is_workspace:

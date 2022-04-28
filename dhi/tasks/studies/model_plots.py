@@ -57,6 +57,8 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
         description="apply log scaling to the y-axis; default: False",
     )
 
+    save_hep_data = None
+
     # signal labels
     s_labels = {
         "hh": "HH",

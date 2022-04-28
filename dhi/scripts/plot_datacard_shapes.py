@@ -34,7 +34,7 @@ import six
 from dhi.datacard_tools import ShapeLine, manipulate_datacard, expand_variables, expand_file_lines
 from dhi.util import (
     TFileCache, import_ROOT, create_console_logger, patch_object, multi_match, make_unique,
-    real_path, to_root_latex,
+    real_path, to_root_latex, prepare_output,
 )
 from dhi.plots.util import use_style
 from dhi.config import colors, cms_postfix
@@ -96,9 +96,7 @@ def plot_datacard_shapes(datacard, rules, stack=False, directory=".", file_type=
         return
 
     # prepare the output directory
-    directory = real_path(directory)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    directory = prepare_output(directory, is_dir=True)
 
     # read the datacard content
     with manipulate_datacard(datacard, read_structured=True) as (blocks, content):
@@ -506,9 +504,7 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, file_
 
     # save
     r.update_canvas(canvas)
-    if not os.path.exists(os.path.dirname(path)):
-        os.makedirs(os.path.dirname(path))
-    canvas.SaveAs(path)
+    canvas.SaveAs(prepare_output(path))
 
 
 def transform_binning(hist, binning):

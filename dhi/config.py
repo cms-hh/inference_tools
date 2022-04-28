@@ -77,22 +77,23 @@ br_hh_names = DotDict(
     bbbb_boosted=r"4b, high $m_{HH}$",
     bbbb_boosted_ggf=r"4b #scale[0.75]{high $m_{HH}$, ggF}",
     bbbb_boosted_vbf=r"4b #scale[0.75]{high $m_{HH}$, VBF}",
-    bbvv=r"bbVV",
-    bbww=r"bbWW",
-    bbwwqqlv=r"bbWW, qql$\nu$",
-    bbwwlvlv=r"bbWW, 2l2$\nu$",
-    bbzz=r"bbZZ",
-    bbzzqqll=r"bbZZ, qqll",
-    bbzzllll=r"bbZZ",
-    bbtt=r"bb$\tau\tau$",
-    bbgg=r"bb$\gamma\gamma$",
-    ttww=r"WW$\tau\tau",
-    ttzz=r"ZZ$\tau\tau",
-    tttt=r"$\tau\tau\tau\tau$",
-    wwww=r"WWWW",
-    zzzz=r"ZZZZ",
-    wwzz=r"WWZZ",
-    wwgg=r"WW$\gamma\gamma$",
+    bbbb_all=r"bb bb",
+    bbvv=r"bb VV",
+    bbww=r"b bWW",
+    bbwwqqlv=r"bb WW, qql$\nu$",
+    bbwwlvlv=r"bb WW, 2l2$\nu$",
+    bbzz=r"bb ZZ",
+    bbzzqqll=r"bb ZZ, qqll",
+    bbzzllll=r"bb ZZ",
+    bbtt=r"bb $\tau\tau$",
+    bbgg=r"bb $\gamma\gamma$",
+    ttww=r"WW $\tau\tau",
+    ttzz=r"ZZ $\tau\tau",
+    tttt=r"$\tau\tau$ $\tau\tau$",
+    wwww=r"WW WW",
+    zzzz=r"ZZ ZZ",
+    wwzz=r"WW ZZ",
+    wwgg=r"WW $\gamma\gamma$",
     multilepton="Multilepton",
 )
 # aliases
@@ -117,21 +118,18 @@ campaign_labels.update(br_hh_names)
 # poi defaults (value, range, points, taken from physics model) and labels
 # note: C2V and CV are not following kappa notation and are upper case to be consistent to the model
 poi_data = DotDict(
-    r=DotDict(range=(-20.0, 20.0), label="r", sm_value=1.0),
-    r_gghh=DotDict(range=(-20.0, 20.0), label="r_{gghh}", sm_value=1.0),
-    r_qqhh=DotDict(range=(-20.0, 20.0), label="r_{qqhh}", sm_value=1.0),
-    r_vhh=DotDict(range=(-20.0, 20.0), label="r_{vhh}", sm_value=1.0),
-    kl=DotDict(range=(-30.0, 30.0), label=r"\kappa_{\lambda}", sm_value=1.0),
-    kt=DotDict(range=(-10.0, 10.0), label=r"\kappa_{t}", sm_value=1.0),
-    C2V=DotDict(range=(-10.0, 10.0), label=r"\kappa_{2V}", sm_value=1.0),
-    CV=DotDict(range=(-10.0, 10.0), label=r"\kappa_{V}", sm_value=1.0),
-    C2=DotDict(range=(-2.0, 3.0), label=r"c_{2}", sm_value=0.0),
-    CG=DotDict(range=(-2.0, 2.0), label=r"c_{g}", sm_value=0.0),
-    C2G=DotDict(range=(-2.0, 2.0), label=r"c_{2g}", sm_value=0.0),
+    r=DotDict(range=(-20.0, 20.0), label=r"$r$", sm_value=1.0),
+    r_gghh=DotDict(range=(-20.0, 20.0), label=r"$r_{gghh}$", sm_value=1.0),
+    r_qqhh=DotDict(range=(-20.0, 20.0), label=r"$r_{qqhh}$", sm_value=1.0),
+    r_vhh=DotDict(range=(-20.0, 20.0), label=r"$r_{vhh}$", sm_value=1.0),
+    kl=DotDict(range=(-30.0, 30.0), label=r"$\kappa_{\lambda}$", sm_value=1.0),
+    kt=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
+    C2V=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{2V}$", sm_value=1.0),
+    CV=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{V}$", sm_value=1.0),
+    C2=DotDict(range=(-2.0, 3.0), label=r"$C_{2}$", sm_value=0.0),
+    CG=DotDict(range=(-2.0, 2.0), label=r"$C_{g}$", sm_value=0.0),
+    C2G=DotDict(range=(-2.0, 2.0), label=r"$C_{2g}$", sm_value=0.0),
 )
-# add "$" embedded labels
-for poi, data in poi_data.items():
-    data["label_math"] = "${}$".format(data.label)
 
 # colors
 colors = DotDict(
@@ -161,6 +159,8 @@ colors = DotDict(
         blue_signal=(67, 118, 201),
         blue_signal_trans=(67, 118, 201, 0.5),
         purple=881,
+        brazil_yellow=800,  # kOrange
+        brazil_green=417,  # kGreen + 1
     ),
 )
 

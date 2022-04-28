@@ -16,7 +16,9 @@ from collections import OrderedDict, defaultdict
 import law
 import six
 
-from dhi.util import import_ROOT, real_path, multi_match, copy_no_collisions, TFileCache
+from dhi.util import (
+    import_ROOT, real_path, multi_match, copy_no_collisions, TFileCache, prepare_output,
+)
 
 
 #: Parameter directives excluding groups, autoMCStats and nuisace edit lines.
@@ -593,10 +595,7 @@ def manipulate_datacard(datacard, target_datacard=None, read_only=False, read_st
 
     # prepare the target location when given
     if target_datacard:
-        target_datacard = real_path(target_datacard)
-        target_dirname = os.path.dirname(target_datacard)
-        if not os.path.exists(target_dirname):
-            os.makedirs(target_dirname)
+        target_datacard = prepare_output(target_datacard)
 
     # prepare the writer
     if writer == "simple":
@@ -862,13 +861,9 @@ def bundle_datacard(datacard, directory, shapes_directory=".", skip_shapes=False
     datacard is returned.
     """
     # prepare the directories
-    directory = real_path(directory)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    directory = prepare_output(directory, is_dir=True)
     shapes_directory_relative = not shapes_directory.startswith("/")
-    shapes_directory = real_path(os.path.join(directory, shapes_directory or "."))
-    if not os.path.exists(shapes_directory):
-        os.makedirs(shapes_directory)
+    shapes_directory = prepare_output(os.path.join(directory, shapes_directory or "."), is_dir=True)
 
     # copy the card itself
     src_datacard = real_path(datacard)
