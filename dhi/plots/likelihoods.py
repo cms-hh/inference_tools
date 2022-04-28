@@ -4,10 +4,10 @@
 Likelihood plots using ROOT.
 """
 
-import os
 import math
 import json
 from collections import OrderedDict
+from itertools import chain, product
 
 import numpy as np
 import scipy.interpolate
@@ -20,13 +20,14 @@ from dhi.config import (
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match, convert_rooargset,
-    make_list, unique_recarray, dict_to_recarray, warn,
+    make_list, unique_recarray, dict_to_recarray, warn, prepare_output,
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, fill_hist_from_points, get_contours, get_y_range,
     infer_binning_from_grid, get_contour_box, make_parameter_label_map, get_text_extent,
     locate_contour_labels,
 )
+import dhi.hepdata_tools as hdt
 
 
 colors = colors.root
@@ -39,6 +40,7 @@ def plot_likelihood_scans_1d(
     data,
     theory_value=None,
     ranges_path=None,
+    hep_data_path=None,
     show_best_fit=False,
     show_best_fit_error=True,
     show_best_fit_line=None,
@@ -62,15 +64,17 @@ def plot_likelihood_scans_1d(
     All information should be passed as a list *data*. Entries must be dictionaries with the
     following content:
 
-        - "values": A mapping to lists of values or a record array with keys "<poi1_name>",
-          "<poi2_name>" and "dnll2".
+        - "values": A mapping to lists of values or a record array with keys "<poi1_name>" and
+                    "dnll2".
         - "poi_min": A float describing the best fit value of the POI. When not set, the minimum is
           estimated from the interpolated curve.
         - "name": A name of the data to be shown in the legend.
 
     *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
     down uncertainties which is drawn as a vertical bar. When *ranges_path* is set, one and two
-    sigma intervals of the scan parameter are saved to the given file.
+    sigma intervals of the scan parameter are saved to the given file. When *hep_data_path* is set,
+    a yml data file compatible with the HEPData format
+    (https://hepdata-submission.readthedocs.io/en/latest/data_yaml.html) is stored at that path.
 
     When *show_best_fit* (*show_best_fit_error*) is *True*, the best fit error value (and its
     uncertainty) is shown in the corresponding legend entry. When *show_best_fit_line* is *True*, a
@@ -108,10 +112,6 @@ def plot_likelihood_scans_1d(
         show_best_fit_line = show_best_fit
     if show_best_fit_indicators is None:
         show_best_fit_indicators = show_best_fit
-    if ranges_path:
-        ranges_path = os.path.expandvars(os.path.expanduser(ranges_path))
-        if not os.path.exists(os.path.dirname(ranges_path)):
-            os.makedirs(os.path.dirname(ranges_path))
 
     # validate data entries
     for i, d in enumerate(data):
@@ -140,6 +140,11 @@ def plot_likelihood_scans_1d(
             shift_negative_values=shift_negative_values, origin=d["origin"],
             min_is_external=d["poi_min"] is not None)
         d["values"] = values
+
+    # prepare hep data
+    hep_data = None
+    if hep_data_path:
+        hep_data = hdt.create_hist_data()
 
     # perform scans
     scans = [
@@ -247,7 +252,8 @@ def plot_likelihood_scans_1d(
 
     # perform scans and draw nll curves
     parameter_ranges = OrderedDict()
-    for d, scan, col, ms in zip(data, scans, _color_sequence[:len(data)], marker_sequence[:len(data)]):
+    g_nlls = []
+    for d, scan, col, ms in zip(data, scans, _color_sequence, marker_sequence):
         if not scan:
             warn("1D likelihood evaluation failed for entry '{}'".format(d["name"]))
 
@@ -257,6 +263,7 @@ def plot_likelihood_scans_1d(
         r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
         draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
+        g_nlls.append(g_nll)
 
         # legend entry with optional best fit value
         g_label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
@@ -279,11 +286,10 @@ def plot_likelihood_scans_1d(
             draw_objs.append(line_fit)
 
         # store parameter ranges
-        if ranges_path:
-            key = poi
-            if d["name"]:
-                key += "__{}".format(d["name"])
-            parameter_ranges[key] = scan["summary"]
+        key = poi
+        if d["name"]:
+            key += "__{}".format(d["name"])
+        parameter_ranges[key] = scan["summary"]
 
     # theory prediction with uncertainties
     if theory_value:
@@ -302,6 +308,21 @@ def plot_likelihood_scans_1d(
         draw_objs.append(line_thy)
         if not has_thy_err:
             legend_entries.append((line_thy, "Theory prediction", "L"))
+
+    # fill hep data
+    if hep_data:
+        # scan value as independent variable
+        scan_values = sorted(set(chain(*(map(float, d["values"][poi]) for d in data))))
+        hdt.create_independent_variable(poi_data[poi].label, parent=hep_data,
+            values=[Number(v, default_format=-2) for v in scan_values])
+
+        # dnll2 values as dependent variables
+        for d, g_nll in zip(data, g_nlls):
+            label = r"$-2\Delta\log(L)$"
+            if d.get("name"):
+                label += ", " + d["name"]
+            hdt.create_dependent_variable_from_graph(g_nll, x_values=scan_values, parent=hep_data,
+                label=label, rounding_method=-2, transform=lambda i, x, y, err: (x, max(y, 0.0), err))
 
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
@@ -343,9 +364,14 @@ def plot_likelihood_scans_1d(
 
     # save parameter ranges
     if ranges_path:
+        ranges_path = prepare_output(ranges_path)
         with open(ranges_path, "w") as f:
             json.dump(parameter_ranges, f, indent=4)
-        print("saved parameter ranges to file")
+        print("saved parameter ranges to {}".format(ranges_path))
+
+    # save hep data
+    if hep_data_path:
+        hdt.save_hep_data(hep_data, hep_data_path)
 
 
 @use_style("dhi_default")
@@ -354,6 +380,7 @@ def plot_likelihood_scan_2d(
     poi1,
     poi2,
     values,
+    hep_data_path=None,
     poi1_min=None,
     poi2_min=None,
     show_best_fit=False,
@@ -374,13 +401,17 @@ def plot_likelihood_scan_2d(
     model_parameters=None,
     campaign=None,
     paper=False,
+    style=None,
 ):
     """
     Creates a likelihood plot of the 2D scan of two POIs *poi1* and *poi2*, and saves it at *paths*.
     *values* should be a mapping to lists of values or a record array with keys "<poi1_name>",
     "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be the values of
     the POIs that lead to the best likelihood. Otherwise, they are estimated from the interpolated
-    curve.
+    curve. By default, this plot fills a 2D histogram with likelihood values and optionally draws
+    contour lines and additional information on top. When *hep_data_path* is set, a yml data file
+    compatible with the HEPData format
+    (https://hepdata-submission.readthedocs.io/en/latest/data_yaml.html) is stored at that path.
 
     When *show_best_fit* (*show_best_fit_error*) is *True*, the nominal (uncertainty on the) best
     fit value is drawn. To overlay lines and labels denoting integer significances corresponding to
@@ -408,6 +439,12 @@ def plot_likelihood_scan_2d(
     refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When *paper* is
     *True*, certain plot configurations are adjusted for use in publications.
 
+    Setting *style* leads to slight variations of the plot style. Valid options are:
+
+    - "contours": Only draw 1 and 2 sigma contour lines over a white background and hide the z-axis.
+    - "contours_hcomb": Same as "contours", but line styles, text sizes, etc. are similar to the
+                        kf-kV plots of the HComb group.
+
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d
     """
 
@@ -419,6 +456,44 @@ def plot_likelihood_scan_2d(
 
     import plotlib.root as r
     ROOT = import_ROOT()
+
+    # check the style and overwrite some settings
+    _style_contours = style in ["contours", "contours_hcomb"]
+    if _style_contours:
+        show_significances = (1, 2)
+        significance_labels = ["68% CL", "95% CL"]
+    else:
+        if style:
+            print("unknown style '{}', falling back to default".format(style))
+        style = None
+
+    # prepare hep data
+    hep_data = None
+    if hep_data_path:
+        hep_data = hdt.create_hist_data()
+
+    # activate a different style of contours_hcomb
+    style_changed = False
+    if style == "contours_hcomb":
+        s = r.styles.copy(r.styles.current_style_name, "contours_hcomb")
+        s.pad.TopMargin = 0.075
+        s.pad.BottomMargin = 0.16
+        s.pad.LeftMargin = 0.16
+        s.legend.TextSize = 26
+        s.legend.LineStyle = 1
+        s.legend.LineColor = 1
+        s.legend.LineWidth = 1
+        s.legend.ColumnSeparation = 0.1
+        s.legend_dy = 0.07
+        s.x_axis.LabelSize = 30
+        s.x_axis.TitleSize = 50
+        s.x_axis.TitleOffset = 0.8
+        s.y_axis.LabelSize = 30
+        s.y_axis.TitleSize = 50
+        s.y_axis.TitleOffset = 0.8
+        # use it
+        r.styles.push("contours_hcomb")
+        style_changed = True
 
     # check values
     values = make_list(values)
@@ -441,21 +516,38 @@ def plot_likelihood_scan_2d(
     joined_values = unique_recarray(dict_to_recarray(values), cols=[poi1, poi2])
 
     # determine contours independent of plotting
-    contour_levels = [1, 2, 3, 5]
+    contour_levels = [1, 2, 3, 4, 5]
+    contour_colors = {
+        1: colors.brazil_green,
+        2: colors.brazil_yellow,
+        3: colors.blue_cream,
+        4: colors.orange,
+        5: colors.red_cream,
+    }
     if show_significances and isinstance(show_significances, (list, tuple)):
         contour_levels = list(show_significances)
+    n_contours = len(contour_levels)
+
     # convert to dnll2 values for 2 degrees of freedom
     contour_levels_dnll2 = []
     for l in contour_levels:
         is_cl = isinstance(l, float) and l < 1
         dnll2 = get_chi2_level_from_cl(l, 2) if is_cl else get_chi2_level(l, 2)
         contour_levels_dnll2.append(dnll2)
-    if paper :
-        contour_colors = [colors.black, colors.black]
-        contour_style = [1, 2]
-    else :
-        contour_colors = [colors.green, colors.yellow, colors.blue_cream] + color_sequence
-        contour_style = [1] * len(contour_colors)
+
+    # refine colors and styles
+    if _style_contours:
+        contour_colors = n_contours * [colors.black]
+        contour_styles = ([1, 7, 2, 9] + max(n_contours - 4, 0) * [8])[:n_contours]
+    else:
+        rest_colors = list(color_sequence)
+        contour_colors = [
+            (contour_colors[l] if l in contour_colors else rest_colors.pop(0))
+            for l in contour_levels
+        ]
+        contour_styles = n_contours * [1]
+
+    # get the contours
     contours = get_contours(joined_values[poi1], joined_values[poi2], joined_values["dnll2"],
         levels=contour_levels_dnll2, frame_kwargs=[{"mode": "edge", "width": 1.}],
         interpolation=interpolation_method)
@@ -473,7 +565,8 @@ def plot_likelihood_scan_2d(
 
     # start plotting
     r.setup_style()
-    canvas, (pad,) = r.routines.create_canvas(pad_props={"RightMargin": 0.17, "Logz": True})
+    pad_props = {} if _style_contours else {"RightMargin": 0.17, "Logz": True}
+    canvas, (pad,) = r.routines.create_canvas(pad_props=pad_props)
     pad.cd()
     draw_objs = []
 
@@ -535,6 +628,7 @@ def plot_likelihood_scan_2d(
     legend_entries = []
 
     # setup actual histograms
+<<<<<<< HEAD
     for i, h in enumerate(hists):
         r.setup_hist(h, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
         if i == 0:
@@ -544,6 +638,17 @@ def plot_likelihood_scan_2d(
             draw_objs.append((h, "SAME,COLZ"))
         # for debugging purposes
         # draw_objs.append((h, "SAME,TEXT"))
+=======
+    if not _style_contours:
+        for i, h in enumerate(hists):
+            r.setup_hist(h, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
+            if i == 0:
+                r.setup_z_axis(h.GetZaxis(), pad=pad, props={"Title": z_title, "TitleSize": 24,
+                    "TitleOffset": 1.5})
+            draw_objs.append((h, "SAME,COLZ"))
+            # for debugging purposes
+            # draw_objs.append((h, "SAME,TEXT"))
+>>>>>>> 5635379e34e6d338a66076fd79b5fc6e16614c57
 
     # significance contours
     if show_significances:
@@ -555,10 +660,20 @@ def plot_likelihood_scan_2d(
 
         # cache for label positions
         all_positions = []
+<<<<<<< HEAD
         for graphs, level, col, ss in zip(contours, contour_levels, contour_colors[:len(contours)], contour_style):
             for g in graphs:
                 r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors(col), "LineStyle": ss})
+=======
+        for graphs, level, col, ls in zip(contours, contour_levels, contour_colors, contour_styles):
+            for g in graphs:
+                r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors(col), "LineStyle": ls})
+>>>>>>> 5635379e34e6d338a66076fd79b5fc6e16614c57
                 draw_objs.append((g, "SAME,C"))
+
+            # stop here when only drawing contours
+            if _style_contours:
+                continue
 
             # get the approximate label width
             if not paper :
@@ -586,7 +701,7 @@ def plot_likelihood_scan_2d(
                     draw_objs.append((sig_label, "SAME"))
 
     # draw the first contour box
-    if show_box:
+    if show_box and scan:
         box_num1, box_num2 = scan.box_nums[0]
         box_t = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("up"), box_num2("up"))
         box_b = ROOT.TLine(box_num1("down"), box_num2("down"), box_num1("up"), box_num2("down"))
@@ -602,15 +717,25 @@ def plot_likelihood_scan_2d(
     if show_sm_point:
         g_sm = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
+<<<<<<< HEAD
         draw_objs.insert(-1, (g_sm, "P"))
         if paper :
             SM_legend = "SM Higgs"
         else :
             SM_legend = "Standard model"
         legend_entries.append((g_sm, SM_legend, "P"))
+=======
+        draw_objs.append((g_sm, "P"))
+        legend_entries.append((g_sm, "SM Higgs", "P"))
+        # yellow overlay for hcomb style
+        if style == "contours_hcomb":
+            g_sm2 = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
+            r.setup_graph(g_sm2, props={"MarkerStyle": 33, "MarkerSize": 1.4}, color=89)
+            draw_objs.append((g_sm2, "P"))
+>>>>>>> 5635379e34e6d338a66076fd79b5fc6e16614c57
 
     # central best fit point
-    if scan:
+    if show_best_fit and scan:
         g_fit = ROOT.TGraphAsymmErrors(1)
         g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
         if scan.num1_min.uncertainties and show_best_fit_error:
@@ -619,10 +744,33 @@ def plot_likelihood_scan_2d(
         if scan.num2_min.uncertainties and show_best_fit_error:
             g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
             g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
+<<<<<<< HEAD
         props = {} if show_best_fit_error else {"MarkerStyle": 34, "MarkerSize": 2}
+=======
+        props = {"MarkerStyle": 43, "MarkerSize": 2}
+        if show_best_fit_error:
+            props = {}
+        elif _style_contours:
+            props = {"MarkerStyle": 34, "MarkerSize": 2}
+>>>>>>> 5635379e34e6d338a66076fd79b5fc6e16614c57
         r.setup_graph(g_fit, props=props, color=colors.black)
-        if show_best_fit:
-            draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
+        draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
+
+    # fill hep data
+    if hep_data:
+        # use the first underlying histogram and add its axes as two independent variables
+        h = hists[0]
+        x_bins = list(range(1, h.GetXaxis().GetNbins() + 1))
+        y_bins = list(range(1, h.GetYaxis().GetNbins() + 1))
+        coords = list(product(x_bins, y_bins))
+        hdt.create_independent_variable(poi_data[poi1].label, parent=hep_data,
+            values=[Number(h.GetXaxis().GetBinCenter(bx), default_format=-2) for bx, _ in coords])
+        hdt.create_independent_variable(poi_data[poi2].label, parent=hep_data,
+            values=[Number(h.GetYaxis().GetBinCenter(by), default_format=-2) for _, by in coords])
+
+        # dnll2 values as dependent variable
+        hdt.create_dependent_variable(r"$-2\Delta\log(L)$", parent=hep_data,
+            values=[Number(max(h.GetBinContent(bx, by), 0.0), default_format=-2) for bx, by in coords])
 
     # legend
     def make_bf_label(num1, num2):
@@ -646,6 +794,7 @@ def plot_likelihood_scan_2d(
     if show_box:
         legend_entries.insert(0, (box_legend_entry, make_bf_label(box_num1, box_num2), "F"))
     if show_best_fit and scan:
+<<<<<<< HEAD
         if paper :
             legend_entries.insert(0, (g_fit, "Observed",
                 "PLE" if show_best_fit_error else "P"))
@@ -668,18 +817,42 @@ def plot_likelihood_scan_2d(
                 for g in graphs:
                     legend_entries.insert(0, (g, level, "L"))
 
+=======
+        label = "Observed" if paper else make_bf_label(scan.num1_min, scan.num2_min)
+        legend_entries.insert(0, (g_fit, label, "PLE" if show_best_fit_error else "P"))
+    if _style_contours:
+        for graphs, level in zip(contours, significance_labels):
+            for g in graphs:
+                legend_entries.append((g, level, "L"))
+    if legend_entries:
+        legend_kwargs = {"pad": pad, "width": 340, "n": len(legend_entries)}
+        if _style_contours:
+            legend_kwargs["n"] = 2
+            legend_kwargs["props"] = {"NColumns": 2}
+            legend_kwargs["width"] = 400 if style == "contours_hcomb" else 260
+        legend = r.routines.create_legend(**legend_kwargs)
+>>>>>>> 5635379e34e6d338a66076fd79b5fc6e16614c57
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
+
+        # draw the overlay SM point again for hcomb style (depends highly on the legend position)
+        if show_sm_point and style == "contours_hcomb":
+            g_sm2_legend = g_sm2.Clone()
+            g_sm2_legend.SetPoint(1, 1.525, 1.685)
+            draw_objs.append((g_sm2_legend, "P"))
 
     # cms label
     cms_layout = "outside_horizontal"
     _cms_postfix = "" if paper else cms_postfix
-    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    cms_props = {"text_size": 44} if style == "contours_hcomb" else {}
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout,
+        **cms_props)
     draw_objs.extend(cms_labels)
 
     # model parameter labels
     if model_parameters:
         param_kwargs = {}
+        param_kwargs["props"] = {"TextSize": 30} if style == "contours_hcomb" else {}
         if cms_layout.startswith("inside"):
             y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
             param_kwargs = {"y_offset": y_offset}
@@ -687,8 +860,9 @@ def plot_likelihood_scan_2d(
 
     # campaign label
     if campaign:
+        props = {"TextSize": 40} if style == "contours_hcomb" else {}
         campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
-        campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad)
+        campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad, props=props)
         draw_objs.append(campaign_label)
 
     # draw all objects
@@ -698,6 +872,14 @@ def plot_likelihood_scan_2d(
     r.update_canvas(canvas)
     for path in make_list(paths):
         canvas.SaveAs(path)
+
+    # remove custom styles
+    if style_changed:
+        r.styles.pop()
+
+    # save hep data
+    if hep_data_path:
+        hdt.save_hep_data(hep_data, hep_data_path)
 
 
 @use_style("dhi_default")

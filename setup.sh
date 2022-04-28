@@ -20,6 +20,7 @@ setup() {
 
     export DHI_BASE="$this_dir"
     interactive_setup "$setup_name" || return "$?"
+    export DHI_SETUP_NAME="$setup_name"
     export DHI_STORE_REPO="$DHI_BASE/data/store"
 
     export DHI_EXAMPLE_CARDS_GGF="$( echo /afs/cern.ch/user/m/mfackeld/public/datacards/dnn_score_max/*_dnn_node_HH_2B2VTo2L2Nu_GluGlu_NLO/datacard.txt | sed 's/ /,/g' )"
@@ -178,7 +179,7 @@ setup() {
     [ "$?" != "0" ] && ulimit -S -s unlimited
 
     # local stack
-    local sw_version="1"
+    local sw_version="3"
     local flag_file_sw="$DHI_SOFTWARE/.sw_good"
     [ "$DHI_REINSTALL_SOFTWARE" = "1" ] && rm -f "$flag_file_sw"
     if [ ! -f "$flag_file_sw" ]; then
@@ -189,8 +190,9 @@ setup() {
         # python packages
         dhi_pip_install six==1.15.0 || return "$?"
         dhi_pip_install luigi==2.8.13 || return "$?"
-        dhi_pip_install --no-deps git+https://github.com/riga/scinum.git || return "$?"
+        dhi_pip_install scinum==1.4.0 || return "$?"
         dhi_pip_install tabulate==0.8.7 || return "$?"
+        dhi_pip_install PyYAML==5.4.1 || return "$?"
 
         # optional packages, disabled at the moment
         # dhi_pip_install python-telegram-bot==12.3.0
@@ -273,6 +275,16 @@ setup() {
 
         # silently index
         law index -q
+    fi
+
+
+    #
+    # custom user post-setup hook
+    #
+
+    if [ "$( type -t DHI_POST_SETUP )" = "function" ]; then
+        echo "calling post setup function"
+        DHI_POST_SETUP
     fi
 }
 

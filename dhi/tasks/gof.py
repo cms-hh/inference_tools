@@ -102,7 +102,7 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, branch=0, _exclude={"toys"})
         else:
-            reqs["workspace"] = CreateWorkspace.req(self)
+            reqs["workspace"] = CreateWorkspace.req(self, branch=0)
         return reqs
 
     def output(self):
@@ -206,6 +206,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
 
     z_min = None
     z_max = None
+    save_hep_data = None
 
     sort_pois = False
 

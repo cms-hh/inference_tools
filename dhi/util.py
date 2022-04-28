@@ -10,6 +10,7 @@ import re
 import shutil
 import itertools
 import array
+import math
 import contextlib
 import tempfile
 import operator
@@ -127,12 +128,17 @@ def call_hook(name, *args, **kwargs):
     return func(*args, **kwargs)
 
 
-class DotDict(dict):
+class DotDict(OrderedDict):
     """
     Dictionary providing item access via attributes.
     """
 
+    FORWARD_UPSTREAM = ["_OrderedDict__root"]
+
     def __getattr__(self, attr):
+        if attr in self.FORWARD_UPSTREAM:
+            return super(DotDict, self).__getattr__(attr)
+
         return self[attr]
 
     def copy(self):
@@ -157,6 +163,19 @@ def real_path(path):
     Takes a *path* and returns its real, absolute location with all variables expanded.
     """
     return os.path.realpath(expand_path(path))
+
+
+def prepare_output(path, is_dir=False):
+    """
+    Creates output directories for an output file about to be written to *path*. When *is_dir* is
+    *True*, *path* is considered a directory and will be created. The real, expanded path is
+    returned.
+    """
+    path = real_path(path)
+    dirname = path if is_dir else os.path.dirname(path)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    return path
 
 
 def get_dcr2_path():
@@ -244,6 +263,24 @@ def linspace(start, stop, steps, precision=7):
     import numpy as np
 
     return np.linspace(start, stop, steps).round(precision).tolist()
+
+
+def round_digits(v, n, round_fn=round):
+    # trivial case
+    if not v:
+        return v
+
+    # get the exponent
+    exp = int(math.floor(math.log(abs(v), 10)))
+
+    # raise the number, apply rounding and lower it again
+    v = round_fn(v / 10.0**(exp - n + 1)) * 10**(exp - n + 1)
+
+    # hack to get rid of floating point uncertainties
+    v = str(v)
+    v = float(v[:v.find(".") + n + 1])
+
+    return v
 
 
 def get_neighbor_coordinates(shape, i, j):
@@ -402,9 +439,7 @@ def copy_no_collisions(path, directory, postfix_format="_{}"):
     file extension. The full path to the created file is returned.
     """
     # prepare the dst directory
-    directory = os.path.expandvars(os.path.expanduser(directory))
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    directory = prepare_output(directory, is_dir=True)
 
     # get the expanded src path
     src_path = os.path.expandvars(os.path.expanduser(path))

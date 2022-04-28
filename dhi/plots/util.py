@@ -39,6 +39,9 @@ def _setup_styles():
     s.legend_dy = 32
     s.legend.TextSize = 20
     s.legend.FillStyle = 1
+    s.x_axis.SetDecimals = True
+    s.y_axis.SetDecimals = True
+    s.z_axis.SetDecimals = True
     s.style.PaintTextFormat = "1.2f"
 
 
@@ -76,10 +79,6 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
     *model_parameters* with same values.
     """
     import plotlib.root as r
-    from plotlib.util import merge_dicts
-
-    # merge properties with defaults
-    props = merge_dicts({"TextSize": 20}, props)
 
     # handle grouping
     if grouped:
@@ -109,37 +108,36 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
     return parameter_labels
 
 
-def create_hh_process_label(poi="r"):
-    proc = {"r": "HH (incl.)", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH")
-    return "pp #rightarrow " + proc
+def create_hh_process_label(poi="r", prefix=r"pp $\rightarrow$ "):
+    # please note the possible ambiguity in the process between r and r_gghh, and consider using
+    # sth like "HH (incl.)" for r (however, this was recently discouraged)
+    proc = {"r": "HH", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH")
+    return prefix + proc
 
 
 def create_hh_br_label(br):
     if not br or br not in br_hh_names:
         return ""
-    return "B({})".format(to_root_latex(br_hh_names[br]))
+    return "B({})".format(br_hh_names[br])
 
 
 def create_hh_xsbr_label(poi="r", br=None):
     br_label = create_hh_br_label(br)
     br_label = (" x " + br_label) if br_label else ""
-    return "#sigma({}){}".format(create_hh_process_label(poi), br_label)
+    return r"$\sigma$({}){}".format(create_hh_process_label(poi), br_label)
 
 
 def determine_limit_digits(limit, is_xsec=False):
-    # TODO: adapt to publication style
+    digits = 0
     if is_xsec:
         if limit < 10:
-            return 2
+            digits = 2
         elif limit < 200:
-            return 1
-        return 0
+            digits = 1
     else:
         if limit < 10:
-            return 2
-        elif limit < 100:
-            return 1
-        return 0
+            digits = 1
+    return digits
 
 
 def make_parameter_label_map(parameter_names, labels=None):
@@ -288,7 +286,7 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
     elif interpolation == "rbf":
         # parse arguments in order
         spec = [("function", str), ("smooth", float), ("epsilon", float)]
-        rbf_args = {}
+        rbf_args = {"norm": "seuclidean"}
         for val, (name, _type) in zip(interp_args, spec):
             try:
                 rbf_args[name] = _type(val)

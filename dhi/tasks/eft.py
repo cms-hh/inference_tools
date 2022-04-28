@@ -161,54 +161,56 @@ class EFTBenchmarkBase(EFTBase):
         self.benchmark_datacards = OrderedDict((name, self.eft_datacards[name]) for name in names)
 
 
-class EFTScanBase(EFTBase):
+# the EFTScanBase is currently not needed as we have a didicated model
+# so expect the commented lines to be removed soon
+# class EFTScanBase(EFTBase):
 
-    scan_range = law.CSVParameter(
-        default=(-100., 100.),
-        cls=luigi.FloatParameter,
-        min_len=2,
-        max_len=2,
-        sort=True,
-        description="the range of the scan parameter extracted from the datacards in the format "
-        "'min,max'; when empty, the full range is used; no default",
-    )
+#     scan_range = law.CSVParameter(
+#         default=(-100., 100.),
+#         cls=luigi.FloatParameter,
+#         min_len=2,
+#         max_len=2,
+#         sort=True,
+#         description="the range of the scan parameter extracted from the datacards in the format "
+#         "'min,max'; when empty, the full range is used; no default",
+#     )
 
-    def __init__(self, *args, **kwargs):
-        super(EFTScanBase, self).__init__(*args, **kwargs)
+#     def __init__(self, *args, **kwargs):
+#         super(EFTScanBase, self).__init__(*args, **kwargs)
 
-        # get the name of the parameter to scan
-        scan_parameters = set(map(extract_eft_scan_parameter, self.eft_datacards.keys()))
-        if len(scan_parameters) != 1:
-            raise Exception("datacards belong to more than one EFT scan parameter: {}".format(
-                ",".join(scan_parameters)))
-        self.scan_parameter = list(scan_parameters)[0]
+#         # get the name of the parameter to scan
+#         scan_parameters = set(map(extract_eft_scan_parameter, self.eft_datacards.keys()))
+#         if len(scan_parameters) != 1:
+#             raise Exception("datacards belong to more than one EFT scan parameter: {}".format(
+#                 ",".join(scan_parameters)))
+#         self.scan_parameter = list(scan_parameters)[0]
 
-        # sort EFT datacards according to scan parameter values
-        values = sort_eft_scan_names(self.scan_parameter, self.eft_datacards.keys())
+#         # sort EFT datacards according to scan parameter values
+#         values = sort_eft_scan_names(self.scan_parameter, self.eft_datacards.keys())
 
-        # apply the requested scan range
-        scan_min = max(self.scan_range[0], min(v for _, v in values))
-        scan_max = min(self.scan_range[1], max(v for _, v in values))
-        self.scan_range = (scan_min, scan_max)
+#         # apply the requested scan range
+#         scan_min = max(self.scan_range[0], min(v for _, v in values))
+#         scan_max = min(self.scan_range[1], max(v for _, v in values))
+#         self.scan_range = (scan_min, scan_max)
 
-        # store a mapping of scan value to datacards
-        self.scan_datacards = OrderedDict(
-            (v, self.eft_datacards[name])
-            for name, v in values
-            if scan_min <= v <= scan_max
-        )
+#         # store a mapping of scan value to datacards
+#         self.scan_datacards = OrderedDict(
+#             (v, self.eft_datacards[name])
+#             for name, v in values
+#             if scan_min <= v <= scan_max
+#         )
 
-    def get_output_postfix(self, join=True):
-        parts = super(EFTScanBase, self).get_output_postfix(join=False)
+#     def get_output_postfix(self, join=True):
+#         parts = super(EFTScanBase, self).get_output_postfix(join=False)
 
-        # insert the scan parameter value when this is a workflow branch, and the range otherwise
-        if isinstance(self, law.BaseWorkflow) and self.is_branch():
-            scan_part = [self.scan_parameter, self.branch_data]
-        else:
-            scan_part = ["scan", self.scan_parameter] + list(self.scan_range)
-        parts.insert(2 if self.unblinded else 1, scan_part)
+#         # insert the scan parameter value when this is a workflow branch, and the range otherwise
+#         if isinstance(self, law.BaseWorkflow) and self.is_branch():
+#             scan_part = [self.scan_parameter, self.branch_data]
+#         else:
+#             scan_part = ["scan", self.scan_parameter] + list(self.scan_range)
+#         parts.insert(2 if self.unblinded else 1, scan_part)
 
-        return self.join_postfix(parts) if join else parts
+#         return self.join_postfix(parts) if join else parts
 
 
 class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
@@ -217,9 +219,16 @@ class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     def workflow_requires(self):
         reqs = super(EFTLimitBase, self).workflow_requires()
+
+        # workspaces of all datacard sequences
         if not self.pilot:
             # require the requirements of all branch tasks when not in pilot mode
-            reqs["workspace"] = {b: t.requires() for b, t in self.get_branch_tasks().items()}
+            reqs["workspace"] = {
+                b: CreateWorkspace.req(self, datacards=self.benchmark_datacards[data],
+                    hh_model=law.NO_STR)
+                for b, data in self.branch_map.items()
+            }
+
         return reqs
 
     @property
@@ -261,7 +270,7 @@ class EFTBenchmarkLimits(EFTBenchmarkBase, EFTLimitBase):
 
     def requires(self):
         return CreateWorkspace.req(self, datacards=self.benchmark_datacards[self.branch_data],
-            hh_model=law.NO_STR)
+            hh_model=law.NO_STR, branch=0)
 
     def output(self):
         parts = self.get_output_postfix(join=False)
@@ -327,6 +336,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
     x_max = None
     z_min = None
     z_max = None
+    save_hep_data = None
 
     def requires(self):
         return MergeEFTBenchmarkLimits.req(self)
