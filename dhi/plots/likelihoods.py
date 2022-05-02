@@ -301,13 +301,13 @@ def plot_likelihood_scans_1d(
             r.setup_graph(g_thy, props={"LineColor": colors.red, "FillStyle": 1001,
                 "FillColor": colors.red_trans_50})
             draw_objs.append((g_thy, "SAME,02"))
-            legend_entries.append((g_thy, "Theory prediction", "LF"))
+            legend_entries.append((g_thy, "Standard Model", "LF"))
         # theory line
         line_thy = ROOT.TLine(theory_value[0], y_min, theory_value[0], y_max_line)
         r.setup_line(line_thy, props={"NDC": False}, color=colors.red)
         draw_objs.append(line_thy)
         if not has_thy_err:
-            legend_entries.append((line_thy, "Theory prediction", "L"))
+            legend_entries.append((line_thy, "Standard Model", "L"))
 
     # fill hep data
     if hep_data:

@@ -589,7 +589,7 @@ def plot_exclusion_and_bestfit_2d(
             poi_data[scan_parameter2]["sm_value"])
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
-        legend_entries[2 if has_best_fit else 1] = (g_sm, "Standard model", "P")
+        legend_entries[2 if has_best_fit else 1] = (g_sm, "Standard Model", "P")
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=480, n=3, x2=-44, props={"NColumns": 2})

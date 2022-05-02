@@ -289,7 +289,13 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
 
     @property
     def toys_postfix(self):
-        tpl_to_str = lambda tpl: "_".join(map(str, tpl))
+        def tpl_to_str(tpl):
+            vals = list(map(str, tpl))
+            s = "_".join(vals[:5])
+            if len(vals) > 5:
+                s += "_" + law.util.create_hash(vals)
+            return s
+
         return "t{}_tpb{}".format(tpl_to_str(self.toys), tpl_to_str(self.toys_per_branch))
 
     def requires(self):

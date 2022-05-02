@@ -291,7 +291,7 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
             try:
                 rbf_args[name] = _type(val)
             except:
-                raise Exception("cannot parse value {} for rbf argument {} to {}".format(
+                print("WARNING: cannot parse value {} for rbf argument {} to {}".format(
                     val, name, _type))
         interp = scipy.interpolate.Rbf(x_values, y_values, z_values, **rbf_args)
 
