@@ -42,7 +42,7 @@ bootstrap_htcondor_standalone() {
     export DHI_REMOTE_JOB="1"
 
     # source the law wlcg tools, mainly for law_wlcg_get_file
-    source "law_wlcg_tools{{file_postfix}}.sh" ""
+    source "{{wlcg_tools}}" ""
 
     # start loading bundles
     mkdir -p "$DHI_SOFTWARE"

@@ -247,7 +247,8 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
             config.custom_content.append(("getenv", "true"))
 
         # include the wlcg specific tools script in the input sandbox
-        config.input_files.append(law.util.law_src_path("contrib/wlcg/scripts/law_wlcg_tools.sh"))
+        config.input_files["wlcg_tools"] = law.util.law_src_path(
+            "contrib/wlcg/scripts/law_wlcg_tools.sh")
 
         # the CERN htcondor setup requires a "log" config, but we can safely set it to /dev/null
         # if you are interested in the logs of the batch system itself, set a meaningful value here
