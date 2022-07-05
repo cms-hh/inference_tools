@@ -11,7 +11,10 @@ import luigi
 import numpy as np
 
 from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, view_output_plots
-from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
+from dhi.tasks.combine import (
+    CombineCommandTask, POITask, POIPlotTask, CreateWorkspace, MultiDatacardTask,
+    POIMultiTask,
+)
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
 from dhi.datacard_tools import get_workspace_parameters
 
@@ -576,6 +579,96 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
             parameters_per_page=self.parameters_per_page,
             selected_page=self.page,
             only_parameters=self.only_parameters,
+            skip_parameters=self.skip_parameters,
+            order_parameters=self.order_parameters,
+            order_by_impact=self.order_by_impact,
+            pull_range=self.pull_range,
+            impact_range=self.impact_range,
+            best_fit_value=self.show_best_fit,
+            labels=None if self.labels == law.NO_STR else self.labels,
+            label_size=None if self.label_size == law.NO_INT else self.label_size,
+            pad_width=None if self.pad_width == law.NO_INT else self.pad_width,
+            left_margin=None if self.left_margin == law.NO_INT else self.left_margin,
+            right_margin=None if self.right_margin == law.NO_INT else self.right_margin,
+            entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
+            paper=self.paper,
+        )
+
+
+class PlotMultiplePullsAndImpacts(PlotPullsAndImpacts, POIMultiTask, MultiDatacardTask):
+
+    # fix some parameters
+    order_by_impact = False
+    show_best_fit = False
+    mc_stats = False
+    parameters_per_page = False
+
+    compare_multi_sequence = "multi_datacards"
+
+    @classmethod
+    def modify_param_values(cls, params):
+        params = PlotPullsAndImpacts.modify_param_values.__func__.__get__(cls)(params)
+        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
+        return params
+
+    def requires(self):
+        return {
+            name: MergePullsAndImpacts.req(self, datacards=datacards, **kwargs)
+            for name, datacards, kwargs in zip(
+                self.datacard_names, self.multi_datacards, self.get_multi_task_kwargs(),
+            )
+        }
+
+    @law.decorator.log
+    @law.decorator.notify
+    @view_output_plots
+    @law.decorator.safe_output
+    def run(self):
+        # prepare the output
+        outputs = self.output()
+        outputs[0].parent.touch()
+
+        inp = self.input()
+        # load input data
+        data = OrderedDict({
+            name: inp[name].load(formatter="json")
+            for name in sorted(self.input().keys())
+        })
+
+        # add datacard_name as tag
+        for name, info in data.items():
+            params = info["params"]
+            for entry in params:
+                entry["tag"] = name
+
+        # we can only compare those, which are there for all datacard groups
+        # (and those which were choosen through cli args)
+        only_parameters = set.intersection(*[
+            set([p["name"] for p in d["params"]])
+            for d in data.values()
+        ])
+        if self.only_parameters:
+            only_parameters &= set(self.only_parameters)
+        only_parameters = tuple(only_parameters)
+
+        # flatten now, take first for 'POIs' and 'method',
+        # just as placeholder to preserve 'data' format for plot function
+        first = next(iter(data.values()))
+        data = {
+            "POIs": first["POIs"],
+            "params": sum([d["params"] for d in data.values()], []),
+            "method": first["method"],
+        }
+
+        # abuse and call the plot function
+        self.call_plot_func(
+            "dhi.plots.pulls_impacts.plot_pulls_impacts",
+            paths=[outp.path for outp in outputs],
+            data=data,
+            parameters_per_page=len(self.datacard_names),
+            selected_page=self.page,
+            only_parameters=only_parameters,
             skip_parameters=self.skip_parameters,
             order_parameters=self.order_parameters,
             order_by_impact=self.order_by_impact,

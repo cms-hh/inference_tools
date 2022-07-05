@@ -125,7 +125,7 @@ def plot_pulls_impacts(
         print("{} remaining parameters after filtering".format(len(params)))
 
     # apply ordering
-    params.sort(key=lambda param: param.name)
+    params.sort(key=lambda param: (param.name, param.tag))
     if order_by_impact:
         # failures to np.inf
         v = lambda x: np.inf if np.isnan(x) else x
@@ -245,7 +245,8 @@ def plot_pulls_impacts(
         h_dummy.GetYaxis().SetBinLabel(1, "")
         for i, param in enumerate(_params):
             # parameter labels
-            label = to_root_latex(labels.get(param.name, param.name))
+            label = param.tag or param.name
+            label = to_root_latex(labels.get(label, label))
             if param.invalid:
                 label = "#bf{{{}}}".format(label)
             label = ROOT.TLatex(x_min - (x_max - x_min) * 0.01, n - i - 0.5, label)
@@ -365,6 +366,10 @@ def plot_pulls_impacts(
         # campaign label
         if campaign:
             campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
+            # if we have a 'tag', we only plot the tag name, so we add the actual nuisance name once
+            # together with the campaign
+            if param.tag is not None:
+                campaign_label += ", {}".format(to_root_latex(labels.get(param.name, param.name)))
             campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, x_offset=22,
                 y_offset=90 if paper else 105)
             draw_objs.append(campaign_label)
@@ -410,6 +415,7 @@ class Parameter(object):
         self.type = data["type"]
         self.groups = data["groups"]
         self.invalid = np.any(np.isnan(self.poi))
+        self.tag = data.get("tag")
 
         # compute two sided impacts, store as [low, high] preserving signs
         self.impact = [
