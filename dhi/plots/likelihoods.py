@@ -1047,6 +1047,7 @@ def plot_nuisance_likelihood_scans(
     model_parameters=None,
     campaign=None,
     paper=False,
+    show_derivatives=False,
 ):
     r"""
     Creates a plot showing the change of the negative log-likelihood, previously obtained for a
@@ -1076,6 +1077,8 @@ def plot_nuisance_likelihood_scans(
     is *True*. *model_parameters* can be a dictionary of key-value pairs of model parameters.
     *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
     When *paper* is *True*, certain plot configurations are adjusted for use in publications.
+
+    The first and second order derivatives of the negative log likelihood function are added by *show_derivatives*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/postfit.html#nuisance-parameter-influence-on-likelihood
     """
@@ -1128,18 +1131,28 @@ def plot_nuisance_likelihood_scans(
             raise Exception("parameter {} not found in workspace".format(name))
         param_bf = param.getVal()
         nll_base = nll.getVal()
-        x_values, y_values = [], []
+        if show_derivatives:
+            grad1 = nll.derivative(param, 1)
+            grad2 = nll.derivative(param, 2)
+            dy_values, ddy_values = [], []
         print("scanning parameter {}".format(name))
+        x_values, y_values = [], []
         for x in scan_values:
             x_diff = x * (pre_u if x >= 0 else -pre_d)
             param.setVal(param_bf + x_diff)
             x_values.append(x_diff if show_diff else (param_bf + x_diff))
             y_values.append(2 * (nll.getVal() - nll_base))
-        curve_data[name] = (x_values, y_values)
+            if show_derivatives:
+                dy_values.append(2 * grad1.getVal())
+                ddy_values.append(2 * grad2.getVal())
+        curve_data[name] = OrderedDict({"nll": (x_values, y_values)})
+        if show_derivatives:
+            curve_data[name]["grad1"] = (x_values, dy_values)
+            curve_data[name]["grad2"] = (x_values, ddy_values)
 
     # sort?
     if sort_max:
-        param_names.sort(key=lambda name: -max(curve_data[name][1]))
+        param_names.sort(key=lambda name: -max(curve_data[name]["nll"][1]))
 
     # group parameters
     param_groups = [[]]
@@ -1171,8 +1184,8 @@ def plot_nuisance_likelihood_scans(
                 canvas.Print(path + ("[" if path.endswith(".pdf") else ""))
 
         # get y range
-        y_min_value = min(min(curve_data[name][1]) for name in names)
-        y_max_value = max(max(curve_data[name][1]) for name in names)
+        y_min_value = min(min(curve_data[name]["nll"][1]) for name in names)
+        y_max_value = max(max(curve_data[name]["nll"][1]) for name in names)
         _y_min = y_min
         _y_max = y_max
         _y_min, _y_max, y_max_line = get_y_range(0. if y_log else y_min_value, y_max_value, y_min,
@@ -1203,19 +1216,25 @@ def plot_nuisance_likelihood_scans(
                 draw_objs.append(line)
 
         # nll graphs
+        line_styles = {"nll": 1, "grad1": 2, "grad2": 3}
         for name, col in zip(names, color_sequence[:len(names)]):
-            x, y = curve_data[name]
-            g_nll = create_tgraph(len(x), x, y)
-            r.setup_graph(g_nll, props={"LineWidth": 2, "LineStyle": 1}, color=colors[col])
-            draw_objs.append((g_nll, "SAME,C"))
-            label = to_root_latex(labels.get(name, name))
-            legend_entries.append((g_nll, label, "L"))
+            for key, (x, y) in curve_data[name].items():
+                g_nll = create_tgraph(len(x), x, y)
+                r.setup_graph(g_nll, props={"LineWidth": 2, "LineStyle": line_styles.get(key, 1)},
+                    color=colors[col])
+                draw_objs.append((g_nll, "SAME,L"))
+                label = to_root_latex(labels.get(name, name))
+                if key != "nll":
+                    label += " ({})".format(key)
+                legend_entries.append((g_nll, label, "L"))
 
         # legend
         legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
         legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
-        legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
-            props={"NColumns": legend_cols, "TextSize": 16})
+        legend_kwargs = dict(width=legend_cols * 210, n=legend_rows)
+        if show_derivatives:
+            legend_kwargs["x2"] = -420
+        legend = r.routines.create_legend(pad=pad, props={"NColumns": legend_cols, "TextSize": 16}, **legend_kwargs)
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
         legend_box = r.routines.create_legend_box(legend, pad, "trl",
