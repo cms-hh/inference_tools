@@ -400,6 +400,11 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
         description="when True, the x-axis shows differences of nuisance parameters with respect "
         "to the best fit value instead of absolute values; default: False",
     )
+    show_derivatives = luigi.BoolParameter(
+        default=False,
+        description="when True, the first and second order derivatives are shown in addition; for "
+        "clearer visibility, --parameters-per-page will be set to 1; default: False",
+    )
     labels = PlotPullsAndImpacts.labels
 
     mc_stats_patterns = ["*prop_bin*"]
@@ -409,6 +414,13 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
     z_max = None
 
     force_n_pois = 1
+
+    def __init__(self, *args, **kwargs):
+        super(PlotNuisanceLikelihoodScans, self).__init__(*args, **kwargs)
+
+        # adjust parameters
+        if self.show_derivatives:
+            self.parameters_per_page = 1
 
     def requires(self):
         # normally, we would require FitDiagnostics without saved uncertainties no matter what,
@@ -480,4 +492,5 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 paper=self.paper,
+                show_derivatives=self.show_derivatives,
             )
