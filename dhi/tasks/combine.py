@@ -12,17 +12,17 @@ import shlex
 import importlib
 import itertools
 import functools
-import inspect
+from abc import abstractproperty
 from collections import defaultdict, OrderedDict
 
 import law
 import luigi
 import six
 
-from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
+from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, HTCondorWorkflow, ModelParameters
 from dhi.config import poi_data, br_hh
 from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path
-from dhi.datacard_tools import bundle_datacard
+from dhi.datacard_tools import bundle_datacard, read_datacard_blocks
 
 
 def require_hh_model(func):
@@ -162,23 +162,25 @@ class HHModelTask(AnalysisTask):
 
         # get the proper xsec getter, based on poi
         if r_poi == "r_gghh":
-            get_ggf_xsec = module.create_ggf_xsec_func(model.ggf_formula)
-            get_xsec = functools.partial(get_ggf_xsec, nnlo=model.opt("doNNLOscaling"))
-            signature_kwargs = set(inspect.getargspec(get_ggf_xsec).args) - {"nnlo"}
-            has_unc = bool(model.opt("doNNLOscaling"))
+            get_xsec = module.create_ggf_xsec_func(model.ggf_formula)
+            has_unc = get_xsec.has_unc(ggf_nnlo=model.opt("doNNLOscaling"))
+            signature_kwargs = get_xsec.xsec_kwargs - {"ggf_nnlo"}
+            get_xsec = functools.partial(get_xsec, ggf_nnlo=model.opt("doNNLOscaling"))
         elif r_poi == "r_qqhh":
             get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
-            signature_kwargs = set(inspect.getargspec(get_xsec).args)
-            has_unc = True
+            has_unc = get_xsec.has_unc()
+            signature_kwargs = set(get_xsec.xsec_kwargs)
         elif r_poi == "r_vhh":
             get_xsec = module.create_vhh_xsec_func(model.vhh_formula)
-            signature_kwargs = set(inspect.getargspec(get_xsec).args)
-            has_unc = False
+            has_unc = get_xsec.has_unc()
+            signature_kwargs = set(get_xsec.xsec_kwargs)
         else:  # r
-            _get_xsec = model.create_hh_xsec_func()
-            get_xsec = functools.partial(_get_xsec, nnlo=model.opt("doNNLOscaling"))
-            signature_kwargs = set(inspect.getargspec(_get_xsec).args) - {"nnlo"}
-            has_unc = True
+            get_xsec = model.create_hh_xsec_func()
+            has_unc = get_xsec.has_unc(ggf_nnlo=model.opt("doNNLOscaling"))
+            signature_kwargs = set(get_xsec.xsec_kwargs)
+            if "ggf_nnlo" in signature_kwargs:
+                signature_kwargs -= {"ggf_nnlo"}
+                get_xsec = functools.partial(get_xsec, ggf_nnlo=model.opt("doNNLOscaling"))
 
         # compute the scale conversion
         scale = {"pb": 1.0, "fb": 1000.0}[unit]
@@ -574,9 +576,6 @@ class DatacardTask(HHModelTask):
                 parts.append(p)
             store_dir = "__".join(p.replace(os.sep, "_") for p in parts)
 
-        # sort inject files
-        inject = sorted(inject)
-
         return datacards, inject, store_dir
 
     @classmethod
@@ -636,7 +635,7 @@ class DatacardTask(HHModelTask):
 class MultiDatacardTask(DatacardTask):
 
     multi_datacards = law.MultiCSVParameter(
-        description="multiple path sequnces to input datacards separated by a colon; supported "
+        description="multiple path sequences to input datacards separated by a colon; supported "
         "formats are '[bin=]path', '[bin=]paths@store_directory for the last datacard in the "
         "sequence, and '@store_directory' for easier configuration; supports globbing and brace "
         "expansion",
@@ -1016,6 +1015,10 @@ class POITask(DatacardTask, ParameterValuesTask):
         choices=all_pois,
         description="names of POIs; choices: {}; default: (r,)".format(",".join(all_pois)),
     )
+    unblinded = luigi.BoolParameter(
+        default=False,
+        description="unblinded computation and plotting of results; default: False",
+    )
     frozen_parameters = law.CSVParameter(
         default=(),
         unique=True,
@@ -1028,10 +1031,6 @@ class POITask(DatacardTask, ParameterValuesTask):
         unique=True,
         sort=True,
         description="comma-separated names of groups of parameters to be frozen",
-    )
-    unblinded = luigi.BoolParameter(
-        default=False,
-        description="unblinded computation and plotting of results; default: False",
     )
 
     force_n_pois = None
@@ -1063,13 +1062,24 @@ class POITask(DatacardTask, ParameterValuesTask):
 
         # remove r and k pois from frozen parameters as they are frozen by default, sort the rest
         if "frozen_parameters" in params:
+            multi = isinstance(getattr(cls, "frozen_parameters"), law.MultiCSVParameter)
+            if not multi:
+                params["frozen_parameters"] = (params["frozen_parameters"],)
             params["frozen_parameters"] = tuple(
-                sorted(p for p in params["frozen_parameters"] if p not in cls.all_pois)
+                tuple(sorted(p for p in fp if p not in cls.all_pois))
+                for fp in params["frozen_parameters"]
             )
+            if not multi:
+                params["frozen_parameters"] = params["frozen_parameters"][0]
 
         # sort frozen groups
         if "frozen_groups" in params:
-            params["frozen_groups"] = tuple(sorted(params["frozen_groups"]))
+            multi = isinstance(getattr(cls, "frozen_groups"), law.MultiCSVParameter)
+            if not multi:
+                params["frozen_groups"] = (params["frozen_groups"],)
+            params["frozen_groups"] = tuple(tuple(sorted(fg)) for fg in params["frozen_groups"])
+            if not multi:
+                params["frozen_groups"] = params["frozen_groups"][0]
 
         return params
 
@@ -1109,6 +1119,11 @@ class POITask(DatacardTask, ParameterValuesTask):
                     raise Exception("{!r}: parameter values are not allowed to be in POIs, but "
                         "found '{}'".format(self, p))
 
+        # check the type of the unblinded parameter (for downstream extensibility)
+        if self.unblinded is not None and not isinstance(self.unblinded, (bool, tuple)):
+            raise TypeError("{!r}: unblinded must refer to a bool or tuple, but found '{}'".format(
+                self, self.unblinded))
+
     def get_empty_hh_model_pois(self):
         # hook that can be implemented to configure the r (and possibly k) POIs to be used
         # when not hh model is configured
@@ -1125,9 +1140,15 @@ class POITask(DatacardTask, ParameterValuesTask):
     def get_output_postfix(self, join=True, exclude_params=None, include_params=None):
         parts = []
 
-        # add the unblinded flag
-        if self.unblinded:
-            parts.append(["unblinded"])
+        # add the unblinded flag, or a hash in case of multiple values
+        if isinstance(self.unblinded, bool):
+            if self.unblinded:
+                parts.append(["unblinded"])
+        elif self.unblinded:
+            if all(self.unblinded):
+                parts.append(["unblinded"])
+            elif any(self.unblinded):
+                parts.append(["unblinded_{}".format("".join(map(str, map(int, self.unblinded))))])
 
         # add pois
         parts.append(["poi"] + list(self.pois))
@@ -1143,11 +1164,27 @@ class POITask(DatacardTask, ParameterValuesTask):
 
         # add frozen paramaters
         if self.frozen_parameters:
-            parts.append(["fzp"] + list(self.frozen_parameters))
+            # multi-safe
+            multi = isinstance(getattr(self.__class__, "frozen_parameters"), law.MultiCSVParameter)
+            fp = self.frozen_parameters if multi else (self.frozen_parameters,)
+            for _fp in fp:
+                # just join the first five and continue with an optional hash
+                fp_str = "_".join(_fp[:5])
+                if len(_fp) > 5:
+                    fp_str += "_" + law.util.create_hash(_fp)
+                parts.append(["fzp", fp_str])
 
         # add frozen groups
         if self.frozen_groups:
-            parts.append(["fzg"] + list(self.frozen_groups))
+            # multi-safe
+            multi = isinstance(getattr(self.__class__, "frozen_groups"), law.MultiCSVParameter)
+            fg = self.frozen_groups if multi else (self.frozen_groups,)
+            for _fg in fg:
+                # just join the first five and continue with an optional hash
+                fg_str = "_".join(_fg[:5])
+                if len(_fg) > 5:
+                    fg_str += "_" + law.util.create_hash(_fg)
+                parts.append(["fzg", fg_str])
 
         return self.join_postfix(parts) if join else parts
 
@@ -1203,10 +1240,97 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     @property
     def blinded(self):
-        return not self.unblinded
+        if self.unblinded is None:
+            raise Exception("cannot infer attribute 'blinded' when 'unblinded' is None")
+
+        # trivial case
+        if isinstance(self.unblinded, bool):
+            return not self.unblinded
+
+        # at this point, it must be tuple
+        if not self.unblinded:
+            raise Exception("cannot convert empty tuple 'unblinded' to property 'blinded'")
+
+        # flip flags
+        return tuple(map((lambda b: not b), self.unblinded))
 
     def htcondor_output_postfix(self):
         return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
+
+
+class POIMultiTask(POITask):
+
+    unblinded = law.CSVParameter(
+        cls=luigi.BoolParameter,
+        default=(False,),
+        min_len=1,
+        description="comma-separated list of booleans defining which set of results should be "
+        "unblinded; the length should be one or match the number of datacard sequences or models; "
+        "default: (False,)",
+    )
+    frozen_parameters = law.MultiCSVParameter(
+        description="multiple comma-separated sequences of names of parameters to be frozen in "
+        "addition to non-POI parameters; sequences should be colon-separated and the number of "
+        "sequences should be zero, one or match the number of datacard sequences or models; "
+        "no default",
+        default=(),
+    )
+    frozen_groups = law.MultiCSVParameter(
+        description="multiple comma-separated sequences of names of parameter groups to be frozen "
+        "in addition to non-POI parameters; sequences should be colon-separated and the number of "
+        "sequences should be zero, one or match the number of datacard sequences or models; "
+        "no default",
+        default=(),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(POIMultiTask, self).__init__(*args, **kwargs)
+
+        # check unblinded
+        n = len(getattr(self, self.compare_multi_sequence))
+        if self.unblinded is not None and len(self.unblinded) not in (1, n):
+            raise Exception("{!r}: the number of --unblinded values ({}) must be one or match "
+                "that of {} ({})".format(self, len(self.unblinded),
+                self.compare_multi_sequence, n))
+
+        # check frozen_parameters
+        if self.frozen_parameters is not None and len(self.frozen_parameters) not in (0, 1, n):
+            raise Exception("{!r}: the number of --frozen-parameters sequences ({}) must be zero, "
+                "one or match that of {} ({})".format(self, len(self.frozen_parameters),
+                self.compare_multi_sequence, n))
+
+        # check frozen_groups
+        if self.frozen_groups is not None and len(self.frozen_groups) not in (0, 1, n):
+            raise Exception("{!r}: the number of --frozen-groups sequences ({}) must be zero, "
+                "one or match that of {} ({})".format(self, len(self.frozen_groups),
+                self.compare_multi_sequence, n))
+
+    @abstractproperty
+    def compare_multi_sequence(self):
+        return
+
+    def get_multi_task_kwargs(self):
+        n = len(getattr(self, self.compare_multi_sequence))
+
+        attrs = ["unblinded", "frozen_parameters", "frozen_groups"]
+        keys = []
+        values = []
+
+        for i, attr in enumerate(attrs):
+            value = getattr(self, attr)
+            if value is None:
+                continue
+            if len(value) == 0:
+                value = ((),) * n
+            elif len(value) == 1:
+                value *= n
+            keys.append(attr)
+            values.append(value)
+
+        return [
+            {key: _values[i] for key, _values in zip(keys, values)}
+            for i in range(n)
+        ]
 
 
 class POIScanTask(POITask, ParameterScanTask):
@@ -1584,23 +1708,27 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         output_card = tmp_dir.child("merged_XXXXXX.txt", type="f", mktemp_pattern=True)
         self.run_command(self.build_command(datacards, output_card.path), cwd=tmp_dir.path)
 
-        # remove ggf and vbf processes that are not covered by the physics model
+        # remove signal processes that are not covered by the physics model
         if not self.hh_model_empty:
             mod, model = self.load_hh_model()
 
-            # build two sets of all available hh processes and those actually used in the model
-            all_procs = set()
-            model_procs = set()
-            for r_poi, proc in [("r_gghh", "ggf"), ("r_qqhh", "vbf"), ("r_vhh", "vhh")]:
-                all_samples = getattr(mod, proc + "_samples", None)
-                formula = getattr(model, proc + "_formula", None)
-                if not all_samples or not formula:
-                    continue
-                all_procs |= {s.label for s in all_samples.values()}
-                model_procs |= {s.label for s in formula.samples}
+            # get all datacard processes
+            blocks = read_datacard_blocks(output_card.path)
+            procs = blocks["rates"][1].strip().split()[1:]
+            proc_ids = map(int, blocks["rates"][2].strip().split()[1:])
+            signal_procs = set(proc for proc, proc_id in zip(procs, proc_ids) if proc_id <= 0)
 
-            # subtract the sets to see which processes to remove
-            to_remove = all_procs - model_procs
+            # loop through model formulae and determine signal processes that are not covered
+            to_remove = set()
+            formulae = model.get_formulae().values()
+            for proc in signal_procs:
+                for formula in formulae:
+                    if any(sample.matches_process(proc) for sample in formula.samples):
+                        break
+                else:
+                    to_remove.add(proc)
+
+            # actual removal
             if to_remove:
                 from dhi.scripts.remove_processes import remove_processes
                 self.logger.info("trying to remove processe(s) '{}' from the combined datacard as "
@@ -1612,7 +1740,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             if not model.opt("doklDependentUnc"):
                 from dhi.scripts.remove_parameters import remove_parameters
                 self.logger.info("trying to remove '{}' from the combined datacard as the model "
-                    "does not add need it".format(model.ggf_kl_dep_unc))
+                    "does not add it".format(model.ggf_kl_dep_unc))
                 remove_parameters(output_card.path, [model.ggf_kl_dep_unc])
 
         # copy shape files and the datacard to the output location
@@ -1624,12 +1752,27 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         output_card.copy_to(output)
 
 
-class CreateWorkspace(DatacardTask, CombineCommandTask):
+class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     priority = 90
 
     allow_empty_hh_model = True
     run_command_in_tmp = True
+
+    exclude_params_req_get = {"start_branch", "end_branch", "branches", "workflow"}
+    prefer_params_cli = {"workflow", "max_runtime", "htcondor_cpus", "htcondor_mem"}
+
+    def create_branch_map(self):
+        # single branch that does not need special data
+        return [None]
+
+    def workflow_requires(self):
+        reqs = super(CreateWorkspace, self).workflow_requires()
+
+        if not self.input_is_workspace:
+            reqs["datacard"] = CombineDatacards.req(self)
+
+        return reqs
 
     def requires(self):
         if self.input_is_workspace:

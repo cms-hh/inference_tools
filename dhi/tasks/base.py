@@ -8,18 +8,21 @@ import os
 import re
 import math
 import importlib
+import getpass
 from collections import OrderedDict
 
 import luigi
 import law
 import six
 
-from dhi.util import call_hook
+from dhi.util import call_hook, expand_path
 
 
 law.contrib.load(
-    "cms", "git", "htcondor", "matplotlib", "numpy", "slack", "telegram", "root", "tasks",
+    "cms", "git", "htcondor", "numpy", "slack", "telegram", "root", "tasks",
 )
+
+dhi_remote_job = str(os.getenv("DHI_REMOTE_JOB", "0")).lower() in ("1", "true", "yes")
 
 
 class BaseTask(law.Task):
@@ -107,7 +110,7 @@ class AnalysisTask(BaseTask):
         _prefer_cli = law.util.make_list(kwargs.get("_prefer_cli", []))
         if "version" not in _prefer_cli:
             _prefer_cli.append("version")
-        kwargs["_prefer_cli"] = _prefer_cli
+        kwargs["_prefer_cli"] = set(_prefer_cli) | cls.prefer_params_cli
 
         return super(AnalysisTask, cls).req_params(inst, **kwargs)
 
@@ -176,12 +179,19 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         description="number of CPUs to request; empty value leads to the cluster default setting; "
         "no default",
     )
+    htcondor_mem = law.BytesParameter(
+        default=law.NO_FLOAT,
+        unit="GB",
+        significant=False,
+        description="amount of memory to request; the default unit is GB; empty value leads to the "
+        "cluster default setting; no default",
+    )
     htcondor_flavor = luigi.ChoiceParameter(
         default=os.getenv("DHI_HTCONDOR_FLAVOR", "cern"),
-        choices=("cern",),
+        choices=("cern", "naf", "infn"),
         significant=False,
-        description="the 'flavor' (i.e. configuration name) of the batch system; choices: cern; "
-        "default: {}".format(os.getenv("DHI_HTCONDOR_FLAVOR", "cern")),
+        description="the 'flavor' (i.e. configuration name) of the batch system; choices: "
+        "cern,naf,infn; default: {}".format(os.getenv("DHI_HTCONDOR_FLAVOR", "cern")),
     )
     htcondor_getenv = luigi.BoolParameter(
         default=False,
@@ -197,7 +207,8 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
     )
 
     exclude_params_branch = {
-        "max_runtime", "htcondor_cpus", "htcondor_flavor", "htcondor_getenv", "htcondor_group",
+        "max_runtime", "htcondor_cpus", "htcondor_mem", "htcondor_flavor", "htcondor_getenv",
+        "htcondor_group",
     }
 
     def htcondor_workflow_requires(self):
@@ -223,14 +234,21 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 
     def htcondor_job_config(self, config, job_num, branches):
         # use cc7 at CERN (http://batchdocs.web.cern.ch/batchdocs/local/submit.html#os-choice)
-        if self.htcondor_flavor == "cern":
+        # and NAF
+        if self.htcondor_flavor in ("cern", "naf"):
             config.custom_content.append(("requirements", '(OpSysAndVer =?= "CentOS7")'))
+        # architecture at INFN
+        if self.htcondor_flavor == "infn":
+            config.custom_content.append(
+                ("requirements", 'TARGET.OpSys == "LINUX" && (TARGET.Arch != "DUMMY")'))
+
         # copy the entire environment when requests
         if self.htcondor_getenv:
             config.custom_content.append(("getenv", "true"))
 
         # include the wlcg specific tools script in the input sandbox
-        config.input_files.append(law.util.law_src_path("contrib/wlcg/scripts/law_wlcg_tools.sh"))
+        config.input_files["wlcg_tools"] = law.util.law_src_path(
+            "contrib/wlcg/scripts/law_wlcg_tools.sh")
 
         # the CERN htcondor setup requires a "log" config, but we can safely set it to /dev/null
         # if you are interested in the logs of the batch system itself, set a meaningful value here
@@ -241,7 +259,22 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 
         # request cpus
         if self.htcondor_cpus > 0:
-            config.custom_content.append(("RequestCpus", self.htcondor_cpus))
+            if self.htcondor_flavor == "naf":
+                self.logger.warning("--htcondor-cpus has no effect on NAF resources, use "
+                    "--htcondor-mem instead")
+            else:
+                config.custom_content.append(("RequestCpus", self.htcondor_cpus))
+
+        # request memory
+        if self.htcondor_mem > 0:
+            if self.htcondor_flavor == "cern":
+                self.logger.warning("--htcondor-mem has no effect on CERN resources, use "
+                    "--htcondor-cpus instead")
+            elif self.htcondor_flavor == "naf":
+                # NAF uses MB
+                config.custom_content.append(("RequestMemory", self.htcondor_mem * 1024))
+            else:
+                config.custom_content.append(("RequestMemory", self.htcondor_mem))
 
         # accounting group for priority on the cluster
         if self.htcondor_group and self.htcondor_group != law.NO_STR:
@@ -254,6 +287,14 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
             pattern = os.path.basename(task.get_file_pattern())
             return ",".join(uris), pattern
 
+        # prepare the hook file location
+        hook_file = os.getenv("DHI_HOOK_FILE", "")
+        if hook_file:
+            hook_file = expand_path(hook_file)
+            dhi_base = expand_path("$DHI_BASE")
+            if hook_file.startswith(dhi_base):
+                hook_file = os.path.relpath(hook_file, dhi_base)
+
         # render_variables are rendered into all files sent with a job
         config.render_variables["dhi_env_path"] = os.environ["PATH"]
         config.render_variables["dhi_env_pythonpath"] = os.environ["PYTHONPATH"]
@@ -264,6 +305,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         config.render_variables["dhi_combine_standalone"] = os.environ["DHI_COMBINE_STANDALONE"]
         config.render_variables["dhi_task_namespace"] = os.environ["DHI_TASK_NAMESPACE"]
         config.render_variables["dhi_local_scheduler"] = os.environ["DHI_LOCAL_SCHEDULER"]
+        config.render_variables["dhi_hook_file"] = hook_file
         if self.htcondor_getenv:
             config.render_variables["dhi_bootstrap_name"] = "htcondor_getenv"
         else:
@@ -294,14 +336,24 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         return True
 
 
-class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLocalFile):
+class UserTask(AnalysisTask):
+
+    user = luigi.Parameter(
+        default=getpass.getuser(),
+    )
+
+    exclude_params_index = {"user"}
+    exclude_params_req = {"user"}
+
+
+class BundleRepo(UserTask, law.git.BundleGitRepository, law.tasks.TransferLocalFile):
 
     replicas = luigi.IntParameter(
         default=10,
         description="number of replicas to generate; default: 10",
     )
 
-    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2/*", "*~"]
+    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2*/*", "*~", "*.pyc"]
 
     version = None
     task_namespace = None
@@ -336,7 +388,7 @@ class BundleRepo(AnalysisTask, law.git.BundleGitRepository, law.tasks.TransferLo
         self.transfer(bundle)
 
 
-class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile):
+class BundleSoftware(UserTask, law.tasks.TransferLocalFile):
 
     replicas = luigi.IntParameter(
         default=10,
@@ -396,7 +448,7 @@ class BundleSoftware(AnalysisTask, law.tasks.TransferLocalFile):
         self.transfer(bundle)
 
 
-class BundleCMSSW(AnalysisTask, law.cms.BundleCMSSW, law.tasks.TransferLocalFile):
+class BundleCMSSW(UserTask, law.cms.BundleCMSSW, law.tasks.TransferLocalFile):
 
     replicas = luigi.IntParameter(
         default=10,
@@ -450,7 +502,11 @@ class CommandTask(AnalysisTask):
     exclude_index = True
     exclude_params_req = {"custom_args"}
 
+    # by default, do not run in a tmp dir
     run_command_in_tmp = False
+
+    # by default, do not cleanup tmp dirs on error, except when running as a remote job
+    cleanup_tmp_on_error = dhi_remote_job
 
     def build_command(self):
         # this method should build and return the command to run
@@ -486,6 +542,7 @@ class CommandTask(AnalysisTask):
             highlighted_cmd = law.util.colored(cmd, "cyan")
 
         # when no cwd was set and run_command_in_tmp is True, create a tmp dir
+        tmp_dir = None
         if "cwd" not in kwargs and self.run_command_in_tmp:
             tmp_dir = law.LocalDirectoryTarget(is_tmp=True)
             tmp_dir.touch()
@@ -500,13 +557,21 @@ class CommandTask(AnalysisTask):
 
         # raise an exception when the call failed and optional is not True
         if p.returncode != 0 and not optional:
-            raise Exception("command failed with exit code {}: {}".format(p.returncode, cmd))
+            # when requested, make the tmp_dir non-temporary to allow for checks later on
+            if tmp_dir and not self.cleanup_tmp_on_error:
+                tmp_dir.is_tmp = False
+
+            # raise exception
+            msg = "command execution failed"
+            msg += "\nexit code: {}".format(p.returncode)
+            msg += "\ncwd      : {}".format(kwargs.get("cwd", os.getcwd()))
+            msg += "\ncommand  : {}".format(cmd)
+            raise Exception(msg)
 
         return p
 
     @law.decorator.log
     @law.decorator.notify
-    @law.decorator.safe_output
     def run(self, **kwargs):
         self.pre_run_command()
 
@@ -590,9 +655,14 @@ class PlotTask(AnalysisTask):
         description="produce plots with certain settings changed for publication; default: False",
     )
     style = luigi.Parameter(
-        default="default",
-        significant=False,
-        description="a string denoting and optional plot style name; default: default",
+        default=law.NO_STR,
+        description="the name of a custom style as provided by the underlying plot function; no "
+        "default",
+    )
+    save_hep_data = luigi.BoolParameter(
+        default=False,
+        description="save plot and meta data in a yaml file, compatible with the HEPData 'data' "
+        "file syntax; default: False",
     )
 
     def get_axis_limit(self, value):
@@ -601,10 +671,16 @@ class PlotTask(AnalysisTask):
         return None if value == -1000.0 else value
 
     def create_plot_names(self, parts):
+        plot_file_types = ["pdf", "png", "root"]
+        if any(t not in plot_file_types for t in self.file_types):
+            raise Exception("plot names only allowed for file types {}, got {}".format(
+                ",".join(plot_file_types), ",".join(self.file_types)))
+
+        if self.style and self.style != law.NO_STR:
+            parts.append(("style", self.style))
         if self.plot_postfix and self.plot_postfix != law.NO_STR:
             parts.append((self.plot_postfix,))
 
-        assert set(self.file_types) <= set(("pdf", "png", "log")), "Only supported file formats are 'pdf' and 'png'!"
         return ["{}.{}".format(self.join_postfix(parts), ext) for ext in self.file_types]
 
     def get_plot_func(self, func_id):

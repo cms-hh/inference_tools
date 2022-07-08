@@ -95,10 +95,19 @@ def plot_gof_distribution(
 
     # integration graph
     g_int = create_integration_graph(h_toys, data)
-    prob = (np.array(toys) >= data).mean()
     r.setup_graph(g_int, props={"FillStyle": 3345, "FillColor": colors.blue_signal, "LineWidth": 0})
     draw_objs.insert(-1, (g_int, "SAME,02"))
-    legend_entries.append((g_int, "p = {:.1f} %".format(prob * 100), "F"))
+
+    # calculate p-value and uncertainty due to limited number of toys
+    na = (np.array(toys) >= data).sum()
+    nb = len(toys) - na
+    prob = 100. * na / (na + nb)
+    prob_unc = 100. * (na * nb * (na + nb)**-3.0)**0.5
+    if round(prob, 1):
+        prob_text = "p = {:.1f} #pm {:.1f} %".format(prob, prob_unc)
+    else:
+        prob_text = "p = {:.1f} %".format(prob)
+    legend_entries.append((g_int, prob_text, "F"))
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=250, n=len(legend_entries))
@@ -108,13 +117,19 @@ def plot_gof_distribution(
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -222,7 +237,7 @@ def plot_gofs(
         "LabelOffset": r.pixel_to_coord(canvas, y=4)})
     h_dummy.GetYaxis().SetBinLabel(1, "")
     draw_objs.append((h_dummy, "HIST"))
-    y_label_tmpl = "#splitline{%s}{#scale[0.75]{p = %.1f %%}}"
+    y_label_tmpl = "#splitline{%s}{#scale[0.75]{%s}}"
     stats_label_tmpl = "#splitline{#splitline{N = %d}{#mu = %.1f}}{#sigma = %.1f}"
 
     # vertical line at 1
@@ -274,10 +289,19 @@ def plot_gofs(
         if i == 0:
             legend_entries.append((g_data, "Data", "L"))
 
+        # calculate p-value and uncertainty due to limited number of toys
+        na = (np.array(d["toys"]) >= d["data"]).sum()
+        nb = len(d["toys"]) - na
+        prob = 100. * na / (na + nb)
+        prob_unc = 100. * (na * nb * (na + nb)**-3.0)**0.5
+        if round(prob, 1):
+            prob_text = "p = {:.1f} #pm {:.1f} %".format(prob, prob_unc)
+        else:
+            prob_text = "p = {:.1f} %".format(prob)
+
         # name labels on the y-axis
-        prob = (np.array(d["toys"]) > d["data"]).mean()
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
-        label = y_label_tmpl % (label, prob * 100.)
+        label = y_label_tmpl % (label, prob_text)
         label_x = r.get_x(10, canvas)
         label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
         label = ROOT.TLatex(label_x, label_y, label)
@@ -300,13 +324,19 @@ def plot_gofs(
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:

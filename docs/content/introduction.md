@@ -100,14 +100,16 @@ module 'dhi.tasks.base', 3 task(s):
 module 'dhi.tasks.snapshot', 1 task(s):
     - Snapshot
 
-module 'dhi.tasks.limits', 7 task(s):
+module 'dhi.tasks.limits', 9 task(s):
     - UpperLimits
+    - UpperLimitsGrid
     - PlotUpperLimitsAtPoint
     - PlotUpperLimits
     - PlotUpperLimits2D
     - PlotMultipleUpperLimitsByModel
     - PlotMultipleUpperLimits
     - MergeUpperLimits
+    - MergeUpperLimitsGrid
 
 module 'dhi.tasks.likelihoods', 5 task(s):
     - LikelihoodScan
@@ -159,7 +161,7 @@ module 'dhi.tasks.exclusion', 2 task(s):
     - PlotExclusionAndBestFit
     - PlotExclusionAndBestFit2D
 
-written 46 task(s) to index file '/your/path/inference/.law/index'
+written 48 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type

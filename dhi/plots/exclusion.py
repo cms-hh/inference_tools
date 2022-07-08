@@ -11,7 +11,9 @@ import numpy as np
 from dhi.config import poi_data, campaign_labels, colors, br_hh_names, cms_postfix
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, make_list, warn
 from dhi.plots.limits import evaluate_limit_scan_1d, _print_excluded_ranges
-from dhi.plots.likelihoods import evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d
+from dhi.plots.likelihoods import (
+    _preprocess_values, evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d,
+)
 from dhi.plots.util import (
     use_style, create_model_parameters, invert_graph, get_contours, get_text_extent,
     locate_contour_labels,
@@ -89,13 +91,12 @@ def plot_exclusion_and_bestfit_1d(
     assert all("nll_values" in d for d in data)
     n = len(data)
     has_obs = any("observed_limits" in d for d in data)
-    scan_values = np.array(data[0]["expected_limits"][scan_parameter])
 
     # set default ranges
     if x_min is None:
-        x_min = min(scan_values)
+        x_min = min([min(d["expected_limits"][scan_parameter]) for d in data])
     if x_max is None:
-        x_max = max(scan_values)
+        x_max = max([max(d["expected_limits"][scan_parameter]) for d in data])
 
     # some constants for plotting
     pad_width = pad_width or 800  # pixels
@@ -144,6 +145,7 @@ def plot_exclusion_and_bestfit_1d(
         for i, d in enumerate(data):
             if data_key not in d:
                 continue
+            scan_values = np.array(d[data_key][scan_parameter])
             scan = evaluate_limit_scan_1d(scan_values, d[data_key]["limit"], interpolation="linear")
             ranges = scan.excluded_ranges
             _print_excluded_ranges(scan_parameter, "{} {}, {}".format(poi, kind, d["name"]),
@@ -174,15 +176,24 @@ def plot_exclusion_and_bestfit_1d(
         # dummy legend entry
         legend_entries.append((h_dummy, " ", ""))
 
-    # best fit values
-    scans = [
-        evaluate_likelihood_scan_1d(
-            d["nll_values"][scan_parameter],
-            d["nll_values"]["dnll2"],
-            poi_min=d.get("scan_min"),
-        ) if d and d.get("nll_values") is not None else None
-        for d in data
-    ]
+    # perform scans to extract best fit values
+    scans = []
+    for d in data:
+        if not d or d.get("nll_values") is None:
+            scans.append(None)
+            continue
+
+        # preprocess values
+        poi_min = d.get("scan_min")
+        dnll2_values, poi_values = _preprocess_values(d["nll_values"]["dnll2"],
+            (poi, d["nll_values"][scan_parameter]), shift_negative_values=True, remove_nans=True,
+            min_is_external=poi_min is not None, origin="entry '{}'".format(d["name"]))
+
+        # evaluate the scan
+        scans.append(evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min,
+            origin="entry '{}'".format(d["name"])))
+
+    # draw best fit values
     if any(scans):
         f = int(show_best_fit_error)
         g_bestfit = create_tgraph(n,
@@ -221,7 +232,8 @@ def plot_exclusion_and_bestfit_1d(
         # name labels
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
         if scan:
-            label = label_tmpl_scan % (label, scan_label, scan.num_min.str("%.1f", style="root"))
+            label = label_tmpl_scan % (label, scan_label, scan.num_min.str("%.2f", style="root",
+                force_asymmetric=True, styles={"space": ""}))
         else:
             label = label_tmpl % (label,)
         label_x = r.get_x(10, canvas)
@@ -244,13 +256,19 @@ def plot_exclusion_and_bestfit_1d(
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -283,6 +301,7 @@ def plot_exclusion_and_bestfit_2d(
     recompute_best_fit=False,
     scan_minima=None,
     show_sm_point=True,
+    interpolation_method="root",
     x_min=None,
     x_max=None,
     y_min=None,
@@ -308,12 +327,15 @@ def plot_exclusion_and_bestfit_2d(
     not set explicitely. *xsec_unit* can be a string that is appended to every label.
 
     When *nll_values* is set, it is used to extract expected best fit values and their uncertainties
-    which are drawn as well when *show_best_fit_error* is *True*. When set, it should be a mapping to
-    lists of values or a record array with keys "<scan_parameter1>", "<scan_parameter2>" and
+    which are drawn as well when *show_best_fit_error* is *True*. When set, it should be a mapping
+    to lists of values or a record array with keys "<scan_parameter1>", "<scan_parameter2>" and
     "dnll2". By default, the position of the best value is directly extracted from the likelihood
     values. However, when *scan_minima* is a 2-tuple of positions per scan parameter, this best fit
     value is used instead, e.g. to use combine's internally interpolated value. The standard model
-    point at (1, 1) as drawn as well unless *show_sm_point* is *False*.
+    point at (1, 1) as drawn as well unless *show_sm_point* is *False*. *interpolation_method* can
+    either be "root" (TGraph2D), "linear" or "cubic" (scipy.interpolate.interp2d), or "rbf"
+    (scipy.interpolate.Rbf). In case a tuple is passed, the method should be the first element,
+    followed by optional configuration options.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the range of the x- and y-axis, respectively, and
     default to the scan parameter ranges found in *expected_limits*. *model_parameters* can be a
@@ -406,12 +428,13 @@ def plot_exclusion_and_bestfit_2d(
             expected_limits[key],
             levels=[1.],
             frame_kwargs=[{"mode": "edge"}] + [{"mode": "contour+"}],
+            interpolation=interpolation_method,
         )[0]
 
     # style graphs and add to draw objects, from outer to inner graphs (-2, -1, +1, +2), followed by
     # nominal or observed
-    color_68 = colors.green if style == "brazil" else colors.grey
-    color_95 = colors.yellow if style == "brazil" else colors.light_grey
+    color_68 = colors.brazil_green if style == "brazil" else colors.grey
+    color_95 = colors.brazil_yellow if style == "brazil" else colors.light_grey
 
     # +2 sigma exclusion
     if has_unc2:
@@ -451,6 +474,7 @@ def plot_exclusion_and_bestfit_2d(
             xsec_values[scan_parameter2],
             xsec_values["xsec"],
             levels=xsec_levels,
+            interpolation=interpolation_method,
         )
 
         # draw them
@@ -507,6 +531,7 @@ def plot_exclusion_and_bestfit_2d(
             observed_limits["limit"],
             levels=[1.],
             frame_kwargs=[{"mode": "edge"}] + [{"mode": "contour+"}],
+            interpolation=interpolation_method,
         )[0]
 
         # draw them
@@ -522,16 +547,22 @@ def plot_exclusion_and_bestfit_2d(
 
     # best fit point
     if nll_values:
+        # preprocess values
+        dnll2, nll_scan_values1, nll_scan_values2 = _preprocess_values(
+            nll_values["dnll2"], (scan_parameter1, nll_values[scan_parameter1]),
+            (scan_parameter2, nll_values[scan_parameter2]), remove_nans=True,
+            shift_negative_values=True, min_is_external=bool(scan_minima))
+
+        # scan
         scan = evaluate_likelihood_scan_2d(
-            nll_values[scan_parameter1],
-            nll_values[scan_parameter2],
-            nll_values["dnll2"],
+            nll_scan_values1,
+            nll_scan_values2,
+            dnll2,
             poi1_min=scan_minima[0] if scan_minima and show_best_fit_error else None,
             poi2_min=scan_minima[1] if scan_minima and show_best_fit_error else None,
         )
-        if not scan:
-            warn("2D likelihood evaluation failed")
-        else:
+
+        if scan:
             g_fit = ROOT.TGraphAsymmErrors(1)
             g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
             if show_best_fit_error:
@@ -549,6 +580,8 @@ def plot_exclusion_and_bestfit_2d(
                     color=colors.black)
                 draw_objs.append((g_fit, "PZ"))
                 legend_entries[1] = (g_fit, "Best fit value", "P")
+        else:
+            warn("2D likelihood evaluation failed")
 
     # SM point
     if show_sm_point:
@@ -556,7 +589,7 @@ def plot_exclusion_and_bestfit_2d(
             poi_data[scan_parameter2]["sm_value"])
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
-        legend_entries[2 if has_best_fit else 1] = (g_sm, "Standard model", "P")
+        legend_entries[2 if has_best_fit else 1] = (g_sm, "Standard Model", "P")
 
     # legend
     legend = r.routines.create_legend(pad=pad, width=480, n=3, x2=-44, props={"NColumns": 2})
@@ -566,13 +599,19 @@ def plot_exclusion_and_bestfit_2d(
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:

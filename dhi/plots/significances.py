@@ -11,7 +11,8 @@ import scipy as sp
 import scipy.stats
 
 from dhi.config import (
-    poi_data, br_hh_names, campaign_labels, colors, color_sequence, marker_sequence, cms_postfix,
+    poi_data, br_hh_names, br_hh_colors, campaign_labels, colors, color_sequence, marker_sequence,
+    cms_postfix,
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, make_list, unique_recarray, dict_to_recarray,
@@ -178,13 +179,19 @@ def plot_significance_scan_1d(
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -280,9 +287,15 @@ def plot_significance_scans_1d(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
+    # special case regarding color handling: when all entry names are valid keys in br_hh_colors,
+    # replace the default color sequence to deterministically assign same colors to channels
+    _color_sequence = color_sequence
+    if all(name in br_hh_colors.root for name in names):
+        _color_sequence = [br_hh_colors.root[name] for name in names]
+
     # expected values
-    for i, (vals, col, ms) in enumerate(zip(values[::-1], color_sequence[:n_graphs][::-1],
-            marker_sequence[:n_graphs][::-1])):
+    for i, (vals, name, col, ms) in enumerate(zip(values, names, _color_sequence[:n_graphs],
+            marker_sequence[:n_graphs])):
         y_vals = vals["significance"]
         if show_p_values:
             y_vals = sp.stats.norm.sf(y_vals)
@@ -290,8 +303,7 @@ def plot_significance_scans_1d(
         r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": ms,
             "MarkerSize": 1.2}, color=colors[col])
         draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
-        name = names[n_graphs - i - 1]
-        legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)),
+        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)),
             "LP" if show_points else "L"))
         y_max_value = max(y_max_value, max(y_vals))
         y_min_value = min(y_min_value, min(y_vals))
@@ -325,25 +337,28 @@ def plot_significance_scans_1d(
             draw_objs.insert(1, sig_label)
 
     # legend
-    legend_cols = int(math.ceil(len(legend_entries) / 4.))
-    legend_rows = min(len(legend_entries), 4)
-    legend = r.routines.create_legend(pad=pad, y2=-20, width=legend_cols * 160, n=legend_rows,
+    legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
+    legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
+    legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
         props={"NColumns": legend_cols, "TextSize": 18})
-    r.setup_legend(legend)
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
     legend_box = r.routines.create_legend_box(legend, pad, "tr",
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
+    # cms label
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
+        layout="outside_horizontal")
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-        postfix="" if paper else cms_postfix)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if legend_cols == 3:
+            param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -507,13 +522,19 @@ def plot_significance_scan_2d(
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
         draw_objs.insert(-1, (g_sm, "P"))
 
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:

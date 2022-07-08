@@ -125,7 +125,7 @@ def plot_pulls_impacts(
         print("{} remaining parameters after filtering".format(len(params)))
 
     # apply ordering
-    params.sort(key=lambda param: param.name)
+    params.sort(key=lambda param: (param.name, param.tag))
     if order_by_impact:
         # failures to np.inf
         v = lambda x: np.inf if np.isnan(x) else x
@@ -245,11 +245,13 @@ def plot_pulls_impacts(
         h_dummy.GetYaxis().SetBinLabel(1, "")
         for i, param in enumerate(_params):
             # parameter labels
-            label = to_root_latex(labels.get(param.name, param.name))
+            label = param.tag or param.name
+            label = to_root_latex(labels.get(label, label))
             if param.invalid:
                 label = "#bf{{{}}}".format(label)
             label = ROOT.TLatex(x_min - (x_max - x_min) * 0.01, n - i - 0.5, label)
-            r.setup_latex(label, props={"NDC": False, "TextAlign": 32, "TextSize": label_size})
+            r.setup_latex(label, props={"NDC": False, "TextAlign": 32, "TextSize": label_size,
+                "TextColor": param.label_color})
             draw_objs.append(label)
 
             # left and right ticks
@@ -271,8 +273,8 @@ def plot_pulls_impacts(
             # place points always on zero, set errors to act as impact values
             g_impact_hi.SetPoint(idx, 0, idx - 0.5)
             g_impact_lo.SetPoint(idx, 0, idx - 0.5)
-            g_impact_hi.SetPointError(idx, 0 if u > 0 else -u, u if u > 0 else 0, 0.5, 0.5)
-            g_impact_lo.SetPointError(idx, -d if d < 0 else 0, 0 if d < 0 else d, 0.5, 0.5)
+            g_impact_hi.SetPointError(idx, -u if u < 0 else 0, u if u > 0 else 0, 0.5, 0.5)
+            g_impact_lo.SetPointError(idx, -d if d < 0 else 0, d if d > 0 else 0, 0.5, 0.5)
             # fill overlap graph with up values in case of equal signs and larger down impact
             if u * d > 0 and abs(d) > abs(u):
                 g_impact_overlap.SetPoint(idx, 0, idx - 0.5)
@@ -298,7 +300,10 @@ def plot_pulls_impacts(
         outside = lambda n: not (x_min <= n <= x_max)
         # rate param or not in x-range
         g_pull = ROOT.TGraphAsymmErrors(n,
-            arr([(-1e5 if param.is_rate_param or outside(param.pull[1]) else param.pull[1]) for param in _params]),
+            arr([(
+                -1e5 if param.type == "Unconstrained" or outside(param.pull[1]) else param.pull[1])
+                for param in _params
+            ]),
             arr([n - i - 0.5 for i in range(n)]),
             arr([-param.pull[0] for param in _params]),
             arr([param.pull[2] for param in _params]),
@@ -308,7 +313,7 @@ def plot_pulls_impacts(
         r.setup_graph(g_pull, props={"MarkerStyle": 20, "MarkerSize": 1.2, "LineWidth": 1})
         draw_objs.append((g_pull, "PEZ"))
 
-        # plain post-fit intervals as texts for rateParam's
+        # plain post-fit intervals as texts for unconstrained parameters
         rate_label_tmpl = "%.2f^{ +%.2f}_{ -%.2f}"
         for i, param in enumerate(_params):
             # failed fit
@@ -318,12 +323,11 @@ def plot_pulls_impacts(
                     "TextSize": label_size})
                 draw_objs.append(rate_label)
                 continue
-            # rate param or outside of x-range
-            if param.is_rate_param or outside(param.pull[1]):
-                attr = "postfit" if param.is_rate_param else "pull"
-                down, nominal, up = getattr(param, attr)
-                flip = -1 if param.is_rate_param else 1
-                rate_label = rate_label_tmpl % (nominal, up - nominal, flip * (down - nominal))
+            # unconstrained or outside of x-range
+            if param.type == "Unconstrained" or outside(param.pull[1]):
+                down, nominal, up = param.pull
+                flip = -1 if param.type == "Unconstrained" else 1
+                rate_label = rate_label_tmpl % (nominal, up, flip * down)
                 rate_label = ROOT.TLatex(0, n - i - 0.5, rate_label)
                 r.setup_latex(rate_label, props={"NDC": False, "TextAlign": 22, "TextSize": 16})
                 draw_objs.append(rate_label)
@@ -354,12 +358,18 @@ def plot_pulls_impacts(
             draw_objs.append(fit_label)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad, postfix="" if paper else cms_postfix)
+        _cms_postfix = "" if paper else cms_postfix
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
+            layout="inside_vertical")
         draw_objs.extend(cms_labels)
 
         # campaign label
         if campaign:
             campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
+            # if we have a 'tag', we only plot the tag name, so we add the actual nuisance name once
+            # together with the campaign
+            if param.tag is not None:
+                campaign_label += ", {}".format(to_root_latex(labels.get(param.name, param.name)))
             campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, x_offset=22,
                 y_offset=90 if paper else 105)
             draw_objs.append(campaign_label)
@@ -384,6 +394,15 @@ class Parameter(object):
     provides easy access to quantities.
     """
 
+    # CH-style type-dependent label colors
+    COLORS = {
+        "Gaussian": 1,
+        "Poisson": 8,
+        "AsymmetricGaussian": 9,
+        "Unconstrained": 39,
+        "Unrecognised": 2,
+    }
+
     def __init__(self, data, poi):
         super(Parameter, self).__init__()
 
@@ -396,6 +415,7 @@ class Parameter(object):
         self.type = data["type"]
         self.groups = data["groups"]
         self.invalid = np.any(np.isnan(self.poi))
+        self.tag = data.get("tag")
 
         # compute two sided impacts, store as [low, high] preserving signs
         self.impact = [
@@ -403,7 +423,7 @@ class Parameter(object):
             self.poi[2] - self.poi[1],
         ]
 
-        # compute relative pulls (following logic in plotImpacts.py)
+        # helper to compute pulls relative to prefit (following logic in plotImpacts.py)
         def pull(i):
             abs_pull = self.postfit[i] - self.prefit[1]
             # normalize
@@ -412,14 +432,27 @@ class Parameter(object):
             else:
                 return abs_pull / (self.prefit[1] - self.prefit[0])
 
-        # store as [low, central, high] preserving signs
-        self.pull = [pull(0) - pull(1), pull(1), pull(2) - pull(1)]
+        # store pulls as [low, central, high] preserving signs for normal parameters
+        # and a copy of (reordered) postfit values for unconstrained ones
+        if self.type == "Unconstrained":
+            self.pull = [
+                self.postfit[0] - self.postfit[1],
+                self.postfit[1],
+                self.postfit[2] - self.postfit[1],
+            ]
+        else:
+            self.pull = [
+                pull(0) - pull(1),
+                pull(1),
+                pull(2) - pull(1),
+            ]
 
         # whether or not this parameter comes from autoMCStats
         self.is_mc_stats = self.name.startswith("prop_bin")
 
-        # whether or not this parameter comes from a rateParam
-        self.is_rate_param = self.type == "Unrecognised" and tuple(self.prefit) == (2.0, 1.0, 0.0)
+    @property
+    def label_color(self):
+        return self.COLORS.get(self.type, self.COLORS["Unrecognised"])
 
 
 def read_patterns(patterns):

@@ -69,15 +69,18 @@ class FitDiagnostics(POITask, CombineCommandTask, SnapshotUser, law.LocalWorkflo
 
     def workflow_requires(self):
         reqs = super(FitDiagnostics, self).workflow_requires()
-        reqs["workspace"] = CreateWorkspace.req(self)
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self)
         return reqs
 
     def requires(self):
-        reqs = {"workspace": CreateWorkspace.req(self)}
+        reqs = {}
         if self.use_snapshot:
             reqs["snapshot"] = Snapshot.req(self, branch=0)
+        else:
+            reqs["workspace"] = CreateWorkspace.req(self, branch=0)
         return reqs
 
     def get_output_postfix(self, join=True):
@@ -130,13 +133,13 @@ class FitDiagnostics(POITask, CombineCommandTask, SnapshotUser, law.LocalWorkflo
             " --verbose 1"
             " --mass {self.mass}"
             " {blinded_args}"
+            " {snapshot_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameterRanges {self.joined_parameter_ranges}"
             " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {flags}"
-            " {snapshot_args}"
             " {self.combine_optimization_args}"
             " && "
             "mv higgsCombineTest.FitDiagnostics.mH{self.mass_int}{postfix}.root {output_result}"
@@ -174,6 +177,12 @@ class PlotPostfitSOverB(PostfitPlotBase):
         significant=False,
         description="comma-separated list of bin edges to use; when a single number is passed, a "
         "automatic binning is applied with that number of bins; default: (8,)",
+    )
+    order_without_sqrt = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when True, order by 'prefit log S/B' instead of 'prefit log S/sqrt(B)'; "
+        "default: False",
     )
     show_best_fit = luigi.BoolParameter(
         default=False,
@@ -240,6 +249,7 @@ class PlotPostfitSOverB(PostfitPlotBase):
         "'label', 'shapes', 'fill_color', 'fill_style' and 'line_color'; 'shapes' should be a list "
         "of strings in the format 'CHANNEL/PROCESS'; patterns are supported; no default",
     )
+
     x_min = None
     x_max = None
     z_max = None
@@ -290,9 +300,19 @@ class PlotPostfitSOverB(PostfitPlotBase):
         if self.backgrounds != law.NO_STR:
             parts.append(["bkgs", law.util.create_hash(real_path(self.backgrounds))])
 
+        outputs = {}
+
+        # plots
         name = "prefitsoverb" if self.prefit else "postfitsoverb"
         names = self.create_plot_names([name, self.get_output_postfix()] + parts)
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -301,7 +321,7 @@ class PlotPostfitSOverB(PostfitPlotBase):
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # get the path to the fit diagnostics file
         inputs = self.input()
@@ -317,10 +337,12 @@ class PlotPostfitSOverB(PostfitPlotBase):
         # call the plot function
         self.call_plot_func(
             "dhi.plots.postfit_shapes.plot_s_over_b",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             poi=self.pois[0],
             fit_diagnostics_path=fit_diagnostics_path,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
             bins=self.bins if len(self.bins) > 1 else int(self.bins[0]),
+            order_without_sqrt=self.order_without_sqrt,
             signal_superimposed=self.signal_superimposed,
             signal_scale=self.signal_scale,
             signal_scale_ratio=self.signal_scale_ratio,
@@ -381,6 +403,11 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
         description="when True, the x-axis shows differences of nuisance parameters with respect "
         "to the best fit value instead of absolute values; default: False",
     )
+    show_derivatives = luigi.BoolParameter(
+        default=False,
+        description="when True, the first and second order derivatives are shown in addition; for "
+        "clearer visibility, --parameters-per-page will be set to 1; default: False",
+    )
     labels = PlotPullsAndImpacts.labels
 
     mc_stats_patterns = ["*prop_bin*"]
@@ -390,6 +417,13 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
     z_max = None
 
     force_n_pois = 1
+
+    def __init__(self, *args, **kwargs):
+        super(PlotNuisanceLikelihoodScans, self).__init__(*args, **kwargs)
+
+        # adjust parameters
+        if self.show_derivatives:
+            self.parameters_per_page = 1
 
     def requires(self):
         # normally, we would require FitDiagnostics without saved uncertainties no matter what,
@@ -461,6 +495,7 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 paper=self.paper,
+                show_derivatives=self.show_derivatives,
             )
 
 class PlotDistributionsAndTables(POIPlotTask):

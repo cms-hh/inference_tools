@@ -57,10 +57,10 @@ def remove_shape_bins(datacard, rules, directory=None, mass="125"):
 
     1. Colon-separated bin indices to remove, starting at 1. Values in the format 'A-B' refer to a
        range from A to B (inclusive). Omitting B will select all bins equal to and above A.
-    2. An expression 'PROCESS(<|>)THRESHOLD', with special processes 'S', 'B', 'SB', 'SOB', and
-       'STN' being interpreted as combined signal, background, signal+background, signal/background
-       and signal/sqrt(background). Process names support patterns where a leading '!' negates their
-       meaning. Process names can be joined via '+' to create sums.
+    2. An expression 'PROCESS(<|>)THRESHOLD', with special processes 'D', 'S', 'B', 'SB', 'SOB', and
+       'STN' being interpreted as data, combined signal, background, signal+background,
+       signal/background and signal/sqrt(background). Process names support patterns where a leading
+       '!' negates their meaning. Process names can be joined via '+' to effectively stack them.
     3. The location of a function in the format 'module.func_name' with signature
        (datacard_content, datacard_bin, histograms) that should return indices of bins to remove.
 
@@ -178,7 +178,7 @@ def remove_shape_bins(datacard, rules, directory=None, mass="125"):
                 if expr[0] != COMP:
                     continue
                 for proc in expr[1]:
-                    if proc in ["S", "B", "SB", "SOB", "STN", "D"]:
+                    if proc in ["D", "S", "B", "SB", "SOB", "STN", "D"]:
                         continue
                     elif proc not in all_signal_names + all_background_names:
                         raise Exception("process '{}' in rule {} does not exist in datacard".format(
@@ -318,16 +318,20 @@ def remove_shape_bins(datacard, rules, directory=None, mass="125"):
                             procs, _, _, comp_fn = expr[1:]
 
                             # get bin values
-                            if len(procs) == 1 and procs[0] in ["S", "B", "SB", "SOB", "STN"]:
-                                # prepare signal and background values if needed
-                                bin_values_s, bin_values_b = None, None
+                            if len(procs) == 1 and procs[0] in ["D", "S", "B", "SB", "SOB", "STN"]:
+                                # prepare data, signal and background values if needed
+                                bin_values_d, bin_values_s, bin_values_b = None, None, None
+                                if procs[0] in ["D"]:
+                                    bin_values_d = get_bin_contents(["data_obs"])
                                 if procs[0] in ["S", "SB", "SOB", "STN"]:
                                     bin_values_s = get_bin_contents(signal_names[bin_name])
                                 if procs[0] in ["B", "SB", "SOB", "STN"]:
                                     bin_values_b = get_bin_contents(background_names[bin_name])
 
                                 # prepare special bin values
-                                if procs[0] == "S":
+                                if procs[0] == "D":
+                                    bin_values = bin_values_d
+                                elif procs[0] == "S":
                                     bin_values = bin_values_s
                                 elif procs[0] == "B":
                                     bin_values = bin_values_b
@@ -374,11 +378,14 @@ def remove_shape_bins(datacard, rules, directory=None, mass="125"):
                         bin_name))
                     continue
 
-                logger.info("dropping {} of {} shape bin(s) in datacard bin {}".format(
+                # log how many bins are removed
+                fn = logger.warning if len(indices) == bin_nums[bin_name] else logger.info
+                fn("dropping {} of {} shape bin(s) in datacard bin {}".format(
                     len(indices), bin_nums[bin_name], bin_name))
-                logger.info("shape bin indices to remove in bin {}: {}".format(
+                logger.debug("shape bin indices to remove in bin {}: {}".format(
                     bin_name, ",".join(map(str, indices))))
 
+                # loop through shapes and trigger the actual bin removal
                 for proc_name, (nom_shape, syst_shapes) in _shapes.items():
                     # update the nominal hist
                     tfile, owner, hist, name = nom_shape
@@ -482,13 +489,13 @@ if __name__ == "__main__":
         "a bin pattern negates its meaning; an 'EXPRESSION' can either be a list of "
         "colon-separated bin indices to remove (starting at 1) with values 'A-B' being interpreted "
         "as ranges from A to B (inclusive), a simple expression 'PROCESS(<|>)THRESHOLD' (with "
-        "special processes 'S', 'B', 'SB', 'SOB' and 'STN' being interpreted as combined signal, "
-        "background, signal+background, signal/background, and signal/sqrt(background)), or the "
-        "location of a function in the format 'module.func_name' with signature (datacard_content, "
-        "datacard_bin, histograms) that should return indices of bins to remove; mutliple rules "
-        "passed in the same expression are AND concatenated; the rules of multiple arguments are "
-        "OR concatenated; each argument can also be a file containing "
-        "'BIN,EXPRESSION[,EXPRESSION]' values line by line")
+        "special processes 'D', 'S', 'B', 'SB', 'SOB' and 'STN' being interpreted as data, "
+        "combined signal, background, signal+background, signal/background, and "
+        "signal/sqrt(background)), or the location of a function in the format 'module.func_name' "
+        "with signature (datacard_content, datacard_bin, histograms) that should return indices of "
+        "bins to remove; mutliple rules passed in the same expression are AND concatenated; the "
+        "rules of multiple arguments are OR concatenated; each argument can also be a file "
+        "containing 'BIN,EXPRESSION[,EXPRESSION]' values line by line")
     parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
         "datacard and shape files are stored; when not set, the input files are changed in-place")
     parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")

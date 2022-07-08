@@ -20,7 +20,7 @@ import numpy as np
 import scipy.interpolate
 
 from dhi.config import poi_data, br_hh_names
-from dhi.util import import_ROOT, import_file, try_int, to_root_latex, make_list
+from dhi.util import import_ROOT, import_file, try_int, to_root_latex, make_list, InterExtrapolator
 
 
 _styles = {}
@@ -39,6 +39,9 @@ def _setup_styles():
     s.legend_dy = 32
     s.legend.TextSize = 20
     s.legend.FillStyle = 1
+    s.x_axis.SetDecimals = True
+    s.y_axis.SetDecimals = True
+    s.z_axis.SetDecimals = True
     s.style.PaintTextFormat = "1.2f"
 
 
@@ -76,10 +79,6 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
     *model_parameters* with same values.
     """
     import plotlib.root as r
-    from plotlib.util import merge_dicts
-
-    # merge properties with defaults
-    props = merge_dicts({"TextSize": 20}, props)
 
     # handle grouping
     if grouped:
@@ -109,37 +108,36 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
     return parameter_labels
 
 
-def create_hh_process_label(poi="r"):
-    proc = {"r": "HH (incl.)", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH")
-    return "pp #rightarrow " + proc
+def create_hh_process_label(poi="r", prefix=r"pp $\rightarrow$ "):
+    # please note the possible ambiguity in the process between r and r_gghh, and consider using
+    # sth like "HH (incl.)" for r (however, this was recently discouraged)
+    proc = {"r": "HH", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH")
+    return prefix + proc
 
 
 def create_hh_br_label(br):
     if not br or br not in br_hh_names:
         return ""
-    return "B({})".format(to_root_latex(br_hh_names[br]))
+    return "B({})".format(br_hh_names[br])
 
 
 def create_hh_xsbr_label(poi="r", br=None):
     br_label = create_hh_br_label(br)
     br_label = (" x " + br_label) if br_label else ""
-    return "#sigma({}){}".format(create_hh_process_label(poi), br_label)
+    return r"$\sigma$({}){}".format(create_hh_process_label(poi), br_label)
 
 
 def determine_limit_digits(limit, is_xsec=False):
-    # TODO: adapt to publication style
+    digits = 0
     if is_xsec:
         if limit < 10:
-            return 2
+            digits = 2
         elif limit < 200:
-            return 1
-        return 0
+            digits = 1
     else:
         if limit < 10:
-            return 2
-        elif limit < 100:
-            return 1
-        return 0
+            digits = 1
+    return digits
 
 
 def make_parameter_label_map(parameter_names, labels=None):
@@ -260,7 +258,7 @@ def frame_histogram(hist, x_width, y_width, mode="edge", frame_value=None, conto
 
 # helper to fill each bin in a 2D histogram from potentially sparse points via interpolation
 def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=None, replace_nan=None,
-        interpolation="tgraph2d"):
+        interpolation="root"):
     ROOT = import_ROOT()
 
     # remove or replace nans in z_values
@@ -274,13 +272,28 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
         z_values[nan_indices] = replace_nan
 
     # create an interpolation function
-    if interpolation == "tgraph2d":
+    interp_args = ()
+    if isinstance(interpolation, (list, tuple)):
+        interpolation, interp_args = interpolation[0], interpolation[1:]
+    if interpolation in ("tgraph2d", "root"):
         g = ROOT.TGraph2D(len(z_values))
         for i, (x, y, z) in enumerate(zip(x_values, y_values, z_values)):
             g.SetPoint(i, x, y, z)
         interp = lambda x, y: g.Interpolate(x, y)
-    elif interpolation.startswith("interp2d_"):
-        interp = scipy.interpolate.interp2d(x_values, y_values, z_values, kind=interpolation[9:])
+    elif interpolation in ("linear", "cubic", "quintic"):
+        interp = InterExtrapolator(x_values, y_values, z_values, kind2d=interpolation,
+            kind1d=interpolation)
+    elif interpolation == "rbf":
+        # parse arguments in order
+        spec = [("function", str), ("smooth", float), ("epsilon", float)]
+        rbf_args = {"norm": "seuclidean"}
+        for val, (name, _type) in zip(interp_args, spec):
+            try:
+                rbf_args[name] = _type(val)
+            except:
+                print("WARNING: cannot parse value {} for rbf argument {} to {}".format(
+                    val, name, _type))
+        interp = scipy.interpolate.Rbf(x_values, y_values, z_values, **rbf_args)
 
     # helper for limiting z values
     def cap_z(z):

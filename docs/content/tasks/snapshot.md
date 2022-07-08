@@ -12,7 +12,7 @@ As an example, the workflow triggered by `PlotLikelihoodScan` with the additiona
     A(PlotLikelihoodScan) --> B(MergeLikelihoodScan);
     B --> C([LikelihoodScan]);
     C --> D([Snapshot]);
-    D --> E(CreateWorkspace);
+    D --> E([CreateWorkspace]);
     E --> F(CombineDatacards);
 ```
 
@@ -38,7 +38,7 @@ law run Snapshot \
 
 ```mermaid
     graph LR;
-    A([Snapshot]) --> B(CreateWorkspace);
+    A([Snapshot]) --> B([CreateWorkspace]);
     B --> C(CombineDatacards);
 ```
 

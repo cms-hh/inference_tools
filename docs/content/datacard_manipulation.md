@@ -430,6 +430,60 @@ optional arguments:
 ```
 
 
+### Scale
+
+```shell hl_lines="1"
+>scale_parameters.py --help
+
+usage: scale_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
+                           [--log-level LOG_LEVEL] [--log-name LOG_NAME]
+                           DATACARD factor NAME [NAME ...]
+
+Script to scale the effect of one or multiple (nuisance) parameters in a
+datacard. Currently, only parameters with columnar type "lnN" and "lnU" are
+supported. Example usage:
+
+# scale by 0.5 via simple names
+> scale_parameters.py datacard.txt 0.5 alpha_s_ttH alpha_s_tt -d output_directory
+
+# flip by 0.5 via name patterns (note the quotes)
+> scale_parameters.py datacard.txt 0.5 'alpha_s_*' -d output_directory
+
+# flip by 0.5 via bin, process and name patterns (note the quotes)
+> scale_parameters.py datacard.txt 0.5 '*,ch1,alpha_s_*' -d output_directory
+
+# scale by 0.5 via rules in files
+> scale_parameters.py datacard.txt 0.5 my_rules.txt -d output_directory
+
+Note: The use of an output directory is recommended to keep input files
+      unchanged.
+
+positional arguments:
+  DATACARD              the datacard to read and possibly update (see
+                        --directory)
+  factor                factor by which parameters are scaled
+  NAME                  names of parameters whose effect should be scaled in
+                        the format '[BIN,PROCESS,]PARAMETER'; when a bin and
+                        process names are given, the effect is only scaled in
+                        those; patterns are supported; prepending '!' to a
+                        pattern negates its meaning; a name can also refer to
+                        a file with names in the above format line by line
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --directory [DIRECTORY], -d [DIRECTORY]
+                        directory in which the updated datacard and shape
+                        files are stored; when not set, the input files are
+                        changed in-place
+  --no-shapes, -n       do not copy shape files to the output directory when
+                        --directory is set
+  --log-level LOG_LEVEL, -l LOG_LEVEL
+                        python log level; default: INFO
+  --log-name LOG_NAME   name of the logger on the command line; default:
+                        scale_parameters
+```
+
+
 ## Adjusting processes
 
 ### Remove
@@ -689,9 +743,9 @@ positional arguments:
                         remove (starting at 1) with values 'A-B' being
                         interpreted as ranges from A to B (inclusive), a
                         simple expression 'PROCESS(<|>)THRESHOLD' (with
-                        special processes 'S', 'B', 'SB', 'SOB' and 'STN'
-                        being interpreted as combined signal, background,
-                        signal+background, signal/background, and
+                        special processes 'D', 'S', 'B', 'SB', 'SOB' and 'STN'
+                        being interpreted as data, combined signal,
+                        background, signal+background, signal/background, and
                         signal/sqrt(background)), or the location of a
                         function in the format 'module.func_name' with
                         signature (datacard_content, datacard_bin, histograms)
@@ -1033,7 +1087,7 @@ Example usage:
 # (note the quotes)
 > extract_fit_result.py fit.root fit_b output.json --keep 'CMS_*'
 
-# extract variables from a fit result 'fit_b' except thise starting with 'CMS_'
+# extract variables from a fit result 'fit_b' except those starting with 'CMS_'
 # (note the quotes)
 > extract_fit_result.py fit.root fit_b output.json --skip 'CMS_*'
 

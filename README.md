@@ -1,6 +1,6 @@
 # HH Inference Tools
 
-[![Documentation badge](https://img.shields.io/badge/Documentation-passing-brightgreen)](http://cms-hh.web.cern.ch/cms-hh/tools/inference/index.html) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Documentation badge](https://img.shields.io/badge/Documentation-passing-brightgreen)](http://cms-hh.web.cern.ch/cms-hh/tools/inference/index.html)
 
 
 ## Cloning the repository
@@ -40,7 +40,7 @@ source setup.sh some_name
 
 where the value of `some_name` is your choice, and the script interactively guides you through the quick setup process.
 To use the same configuration the next time, **make sure to use the same value you passed before**.
-Internally, a file `.setups/some_name.sh` is created which contains export statements line by lines that you can be update anytime.
+Internally, a file `.setups/some_name.sh` is created which contains export statements line by line that you can be update anytime.
 
 
 #### Integrating the `datacards_run2` repository
@@ -103,14 +103,16 @@ module 'dhi.tasks.base', 3 task(s):
 module 'dhi.tasks.snapshot', 1 task(s):
     - Snapshot
 
-module 'dhi.tasks.limits', 7 task(s):
+module 'dhi.tasks.limits', 9 task(s):
     - UpperLimits
+    - UpperLimitsGrid
     - PlotUpperLimitsAtPoint
     - PlotUpperLimits
     - PlotUpperLimits2D
     - PlotMultipleUpperLimitsByModel
     - PlotMultipleUpperLimits
     - MergeUpperLimits
+    - MergeUpperLimitsGrid
 
 module 'dhi.tasks.likelihoods', 5 task(s):
     - LikelihoodScan
@@ -162,7 +164,7 @@ module 'dhi.tasks.exclusion', 2 task(s):
     - PlotExclusionAndBestFit
     - PlotExclusionAndBestFit2D
 
-written 46 task(s) to index file '/your/path/inference/.law/index'
+written 48 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type

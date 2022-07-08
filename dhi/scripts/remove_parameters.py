@@ -141,7 +141,8 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                     if effects.count("-") == len(effects):
                         to_remove.append(i)
                         removed_nuisances.append(param_name)
-                        logger.info("remove {} parameter {}".format(param_type, param_name))
+                        logger.info("no effect left, remove {} parameter {}".format(
+                            param_type, param_name))
                     else:
                         blocks["parameters"][i] = " ".join([param_name, param_type] + effects)
 

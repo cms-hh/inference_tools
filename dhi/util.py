@@ -10,14 +10,17 @@ import re
 import shutil
 import itertools
 import array
+import math
 import contextlib
 import tempfile
 import operator
 import logging
 from collections import OrderedDict
 
-import six
+import numpy as np
+import scipy.interpolate
 from law.util import no_value, multi_match, make_unique, make_list  # noqa
+import six
 
 # modules and objects from lazy imports
 _plt = None
@@ -92,8 +95,17 @@ def _load_hooks():
     global _hook_data
 
     if _hook_data is no_value:
-        path = expand_path("$DHI_HOOK_FILE")
-        _hook_data = (path, import_file(path)) if os.path.isfile(path) else None
+        if os.getenv("DHI_HOOK_FILE", ""):
+            path = expand_path("$DHI_HOOK_FILE")
+            # when the path is relative, always resolve it w.r.t. DHI_BASE
+            if path and not path.startswith(os.sep):
+                path = expand_path(os.path.join("$DHI_BASE", path))
+            if not path or not os.path.isfile(path):
+                raise Exception("DHI_HOOK_FILE refers to '{}' but it does not exist; either unset the "
+                    "variable or set it to the path of an existing file".format(path))
+            _hook_data = (path, import_file(path))
+        else:
+            _hook_data = None
 
     return _hook_data
 
@@ -116,12 +128,17 @@ def call_hook(name, *args, **kwargs):
     return func(*args, **kwargs)
 
 
-class DotDict(dict):
+class DotDict(OrderedDict):
     """
     Dictionary providing item access via attributes.
     """
 
+    FORWARD_UPSTREAM = ["_OrderedDict__root"]
+
     def __getattr__(self, attr):
+        if attr in self.FORWARD_UPSTREAM:
+            return super(DotDict, self).__getattr__(attr)
+
         return self[attr]
 
     def copy(self):
@@ -146,6 +163,19 @@ def real_path(path):
     Takes a *path* and returns its real, absolute location with all variables expanded.
     """
     return os.path.realpath(expand_path(path))
+
+
+def prepare_output(path, is_dir=False):
+    """
+    Creates output directories for an output file about to be written to *path*. When *is_dir* is
+    *True*, *path* is considered a directory and will be created. The real, expanded path is
+    returned.
+    """
+    path = real_path(path)
+    dirname = path if is_dir else os.path.dirname(path)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    return path
 
 
 def get_dcr2_path():
@@ -233,6 +263,24 @@ def linspace(start, stop, steps, precision=7):
     import numpy as np
 
     return np.linspace(start, stop, steps).round(precision).tolist()
+
+
+def round_digits(v, n, round_fn=round):
+    # trivial case
+    if not v:
+        return v
+
+    # get the exponent
+    exp = int(math.floor(math.log(abs(v), 10)))
+
+    # raise the number, apply rounding and lower it again
+    v = round_fn(v / 10.0**(exp - n + 1)) * 10**(exp - n + 1)
+
+    # hack to get rid of floating point uncertainties
+    v = str(v)
+    v = float(v[:v.find(".") + n + 1])
+
+    return v
 
 
 def get_neighbor_coordinates(shape, i, j):
@@ -391,9 +439,7 @@ def copy_no_collisions(path, directory, postfix_format="_{}"):
     file extension. The full path to the created file is returned.
     """
     # prepare the dst directory
-    directory = os.path.expandvars(os.path.expanduser(directory))
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    directory = prepare_output(directory, is_dir=True)
 
     # get the expanded src path
     src_path = os.path.expandvars(os.path.expanduser(path))
@@ -877,3 +923,89 @@ class ROOTColorGetter(object):
             return c
 
         raise AttributeError("cannot interpret '{}' as color".format(obj))
+
+
+class InterExtrapolator(object):
+
+    def __init__(self, x_values, y_values, z_values, kind2d="linear", kind1d="linear",
+            epsilon_x=1e-3, epsilon_y=1e-3, warn_treshold=0.15):
+        super(InterExtrapolator, self).__init__()
+
+        # nan check
+        if np.isnan(z_values).sum() > 0:
+            raise Exception("z_values contain NaN values")
+
+        # store valus
+        self.x_values = np.array(x_values)
+        self.y_values = np.array(y_values)
+        self.z_values = np.array(z_values)
+        self.kind2d = kind2d
+        self.kind1d = kind1d
+        self.epsilon_x = epsilon_x
+        self.epsilon_y = epsilon_y
+        self.warn_treshold = warn_treshold
+
+        # default interpolation
+        self.interp2d = scipy.interpolate.interp2d(x_values, y_values, z_values, kind=self.kind2d)
+
+        # caches for 1d interpolators
+        self.interps1d_x = {}
+        self.interps1d_y = {}
+
+    def has_xy(self, x, y):
+        x_mask = (np.abs(self.x_values - x) <= self.epsilon_x)
+        y_mask = (np.abs(self.y_values - y) <= self.epsilon_y)
+        return (x_mask & y_mask).sum() > 0
+
+    def get_row(self, y):
+        # find indices of y_values that are close to the target y
+        mask = np.abs(self.y_values - y) <= self.epsilon_y
+
+        if mask.sum() == 0:
+            raise Exception("no row x values found at y = {}".format(y))
+
+        return self.x_values[mask], self.y_values[mask], self.z_values[mask]
+
+    def get_col(self, x):
+        # find indices of x_values that are close to the target x
+        mask = np.abs(self.x_values - x) <= self.epsilon_x
+
+        if mask.sum() == 0:
+            raise Exception("no column y values found at x = {}".format(x))
+
+        return self.x_values[mask], self.y_values[mask], self.z_values[mask]
+
+    def get_row_interp(self, y):
+        if y not in self.interps1d_y:
+            xs, _, zs = self.get_row(y)
+            self.interps1d_y[y] = scipy.interpolate.interp1d(xs, zs, kind=self.kind1d,
+                fill_value="extrapolate")
+
+        return self.interps1d_y[y]
+
+    def get_col_interp(self, x):
+        if x not in self.interps1d_x:
+            _, ys, zs = self.get_col(x)
+            self.interps1d_x[x] = scipy.interpolate.interp1d(ys, zs, kind=self.kind1d,
+                fill_value="extrapolate")
+
+        return self.interps1d_x[x]
+
+    def __call__(self, x, y):
+        # strategy: if (x, y) is covered by the interpolator, use it, and otherwise perform two
+        # 1D interpolations across row (column) values with the same y (x) coordinate and average
+        if self.has_xy(x, y):
+            return self.interp2d(x, y)
+
+        # perform the two 1D interpolations
+        z_row = self.get_row_interp(y)(x)
+        z_col = self.get_col_interp(x)(y)
+
+        # check if the asymmetry is below a threshold
+        asym = (z_row - z_col) / (z_row + z_col + 1e-5)
+        if asym > self.warn_treshold:
+            warn("{}: asymmetry between 1D interpolations from row ({:.3f}) and column ({:.3f}) at "
+                "point ({}, {}) is {:.3f}, larger than {}".format(self.__class__.__name__, z_row,
+                z_col, x, y, asym, self.warn_treshold))
+
+        return 0.5 * (z_row + z_col)

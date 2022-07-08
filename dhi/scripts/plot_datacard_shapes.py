@@ -34,10 +34,10 @@ import six
 from dhi.datacard_tools import ShapeLine, manipulate_datacard, expand_variables, expand_file_lines
 from dhi.util import (
     TFileCache, import_ROOT, create_console_logger, patch_object, multi_match, make_unique,
-    real_path, to_root_latex,
+    real_path, to_root_latex, prepare_output,
 )
 from dhi.plots.util import use_style
-from dhi.config import colors
+from dhi.config import colors, cms_postfix
 
 
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
@@ -96,9 +96,7 @@ def plot_datacard_shapes(datacard, rules, stack=False, directory=".", file_type=
         return
 
     # prepare the output directory
-    directory = real_path(directory)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    directory = prepare_output(directory, is_dir=True)
 
     # read the datacard content
     with manipulate_datacard(datacard, read_structured=True) as (blocks, content):
@@ -395,7 +393,7 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, file_
     h_dummy1 = ROOT.TH1F("dummy1", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy1, pad=pad1, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
     r.setup_x_axis(h_dummy1.GetXaxis(), pad=pad1, props=x_props)
-    r.setup_y_axis(h_dummy1.GetYaxis(), pad=pad1, props={"TitleOffset": 1.6})
+    r.setup_y_axis(h_dummy1.GetYaxis(), pad=pad1, props={"TitleOffset": 1.6, "MoreLogLabels": True})
     draw_objs1.append((h_dummy1, "HIST"))
     if plot_syst:
         r.setup_x_axis(h_dummy1.GetXaxis(), pad1, props={"Title": "", "LabelSize": 0})
@@ -487,7 +485,8 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, file_
     draw_objs1.insert(-1, legend_box)
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad1, layout="outside_horizontal")
+    cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="outside_horizontal",
+        pad=pad1)
     draw_objs1.extend(cms_labels)
 
     # campaign label
@@ -505,9 +504,7 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, file_
 
     # save
     r.update_canvas(canvas)
-    if not os.path.exists(os.path.dirname(path)):
-        os.makedirs(os.path.dirname(path))
-    canvas.SaveAs(path)
+    canvas.SaveAs(prepare_output(path))
 
 
 def transform_binning(hist, binning):

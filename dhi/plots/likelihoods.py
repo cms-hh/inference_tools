@@ -5,6 +5,9 @@ Likelihood plots using ROOT.
 """
 
 import math
+import json
+from collections import OrderedDict
+from itertools import chain, product
 
 import numpy as np
 import scipy.interpolate
@@ -12,243 +15,22 @@ import scipy.optimize
 from scinum import Number
 
 from dhi.config import (
-    poi_data, br_hh_names, campaign_labels, chi2_levels, colors, color_sequence, marker_sequence,
-    cms_postfix, get_chi2_level, get_chi2_level_from_cl,
+    poi_data, br_hh_names, br_hh_colors, campaign_labels, chi2_levels, colors, color_sequence,
+    marker_sequence, cms_postfix, get_chi2_level, get_chi2_level_from_cl,
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match, convert_rooargset,
-    make_list, unique_recarray, dict_to_recarray, warn,
+    make_list, unique_recarray, dict_to_recarray, warn, prepare_output,
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, fill_hist_from_points, get_contours, get_y_range,
     infer_binning_from_grid, get_contour_box, make_parameter_label_map, get_text_extent,
     locate_contour_labels,
 )
+import dhi.hepdata_tools as hdt
 
 
 colors = colors.root
-
-
-@use_style("dhi_default")
-def plot_likelihood_scan_1d(
-    paths,
-    poi,
-    values,
-    theory_value=None,
-    poi_min=None,
-    show_best_fit=True,
-    show_best_fit_error=True,
-    show_significances=(1, 2, 3, 5),
-    shift_negative_values=False,
-    x_min=None,
-    x_max=None,
-    y_min=None,
-    y_max=None,
-    y_log=False,
-    model_parameters=None,
-    campaign=None,
-    show_points=False,
-    paper=False,
-):
-    """
-    Creates a likelihood plot of the 1D scan of a *poi* and saves it at *paths*. *values* should be
-    a mapping to lists of values or a record array with keys "<poi_name>" and "dnll2".
-    *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
-    down uncertainties which is drawn as a vertical bar.
-
-    When *poi_min* is set, it should be the value of the poi that leads to the best likelihood.
-    Otherwise, it is estimated from the interpolated curve. When *show_best_fit*
-    (*show_best_fit_error*) is *False*, the nominal (uncertainty on the) best fit value is not
-    shown. To overlay lines and labels denoting integer significances corresponding to 1D likelihood
-    scans, *show_significances* can be set to *True* to show significances up to 9 sigma, or a list
-    of sigmas (integer, >= 1) or confidence levels (float, < 1). In case there are negative dnll2
-    values, *shift_negative_values* can be set to *True* to shift them vertically so that the
-    minimum is located at 0 again.
-
-    *x_min* and *x_max* define the x-axis range of POI, and *y_min* and
-    *y_max* control the range of the y-axis. When *y_log* is *True*, the y-axis is plotted with a
-    logarithmic scale. *model_parameters* can be a dictionary of key-value pairs of model
-    parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*. When *show_points* is *True*, the central scan points are drawn on
-    top of the interpolated curve. When *paper* is *True*, certain plot configurations are adjusted
-    for use in publications.
-
-    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#1d
-    """
-    import plotlib.root as r
-    ROOT = import_ROOT()
-
-    # get valid poi and delta nll values
-    poi_values = np.array(values[poi], dtype=np.float32)
-    dnll2_values = np.array(values["dnll2"], dtype=np.float32)
-
-    # preprocess values (nan detection, negative shift)
-    dnll2_values, poi_values = _preprocess_values(dnll2_values, (poi, poi_values),
-        shift_negative_values=shift_negative_values, min_is_external=poi_min is not None)
-
-    # set x range
-    if x_min is None:
-        x_min = min(poi_values)
-    if x_max is None:
-        x_max = max(poi_values)
-
-    # set y range
-    y_max_value = max(dnll2_values[(poi_values >= x_min) & (poi_values <= x_max)])
-    y_min, y_max, y_max_line = get_y_range(dnll2_values.min(), y_max_value, y_min, y_max, log=y_log)
-
-    # evaluate the scan, run interpolation and error estimation
-    scan = evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=poi_min)
-    if not scan:
-        warn("1D likelihood evaluation failed")
-
-    # start plotting
-    r.setup_style()
-    canvas, (pad,) = r.routines.create_canvas(pad_props={"Logy": y_log})
-    pad.cd()
-    draw_objs = []
-    legend_entries = []
-
-    # dummy histogram to control axes
-    x_title = to_root_latex(poi_data[poi].label)
-    y_title = "-2 #Delta log(L)"
-    h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
-    r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
-    draw_objs.append((h_dummy, "HIST"))
-
-    if show_best_fit and show_best_fit_error:
-        # vertical 1 and 2 sigma indicators
-        if scan:
-            for value in [scan.poi_p1, scan.poi_m1, scan.poi_p2, scan.poi_m2]:
-                if value is not None:
-                    line = ROOT.TLine(value, y_min, value, scan.interp(value))
-                    r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
-                    draw_objs.append(line)
-
-        # horizontal lines matching the vertical indicators above
-        if not show_significances:
-            for n in [chi2_levels[1][1], chi2_levels[1][2]]:
-                if y_min <= n <= y_max_line:
-                    line = ROOT.TLine(x_min, n, x_max, n)
-                    r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2,
-                        "NDC": False})
-                    draw_objs.append(line)
-
-    if show_significances:
-        # horizontal significance lines and labels
-        if isinstance(show_significances, (list, tuple)):
-            sigs = list(show_significances)
-        else:
-            sigs = list(range(1, 9 + 1))
-        for sig in sigs:
-            # get the dnll2 value and build the label
-            is_cl = isinstance(sig, float) and sig < 1
-            if is_cl:
-                # convert confidence level to dnll2 value
-                dnll2 = get_chi2_level_from_cl(sig, 1)
-            else:
-                # convert significance to dnll2 value
-                sig = int(round(sig))
-                dnll2 = get_chi2_level(sig, 1)
-
-            # do not show when vertically out of range
-            if dnll2 >= y_max_line:
-                continue
-
-            # create the line
-            sig_line = ROOT.TLine(x_min, dnll2, x_max, dnll2)
-            r.setup_line(sig_line, props={"NDC": False, "LineWidth": 1}, color=colors.grey)
-            draw_objs.append(sig_line)
-
-            # create and position the label
-            sig_label_y = math.log(dnll2 / y_min) / math.log(y_max / y_min)
-            sig_label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
-            sig_label_y += pad.GetBottomMargin() + 0.00375
-            if is_cl:
-                sig_label = "{:f}".format(sig * 100).rstrip("0").rstrip(".") + "%"
-            else:
-                sig_label = "{}#sigma".format(sig)
-            sig_label = r.routines.create_top_right_label(sig_label, pad=pad, x_offset=5,
-                y=sig_label_y, props={"TextSize": 18, "TextColor": colors.grey, "TextAlign": 31})
-            draw_objs.append(sig_label)
-
-    # theory prediction with uncertainties
-    if theory_value:
-        has_thy_err = len(theory_value) == 3
-        if has_thy_err:
-            # theory graph
-            g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1],
-                0, y_max_line - y_min)
-            r.setup_graph(g_thy, props={"LineColor": colors.red, "FillStyle": 1001,
-                "FillColor": colors.red_trans_50})
-            draw_objs.append((g_thy, "SAME,02"))
-            legend_entries.append((g_thy, "Theory prediction", "LF"))
-        # theory line
-        line_thy = ROOT.TLine(theory_value[0], y_min, theory_value[0], y_max_line)
-        r.setup_line(line_thy, props={"NDC": False}, color=colors.red)
-        draw_objs.append(line_thy)
-        if not has_thy_err:
-            legend_entries.append((line_thy, "Theory prediction", "L"))
-
-    # vertical line for best fit value
-    if show_best_fit and scan and (x_min <= scan.poi_min <= x_max):
-        line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
-        r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors.black)
-        draw_objs.append(line_fit)
-
-    # print values
-    if scan:
-        def sigma_line(n, p, m):
-            rnd = lambda v: "{:+.3f}".format(v)
-            return "{} sigma: {} / {} ([{}, {}])".format(
-                n,
-                "--" if p is None else rnd(p - scan.poi_min),
-                "--" if m is None else rnd(m - scan.poi_min),
-                "--" if m is None else rnd(m),
-                "--" if p is None else rnd(p),
-            )
-        print("best fit value: {:+.3f}".format(scan.poi_min))
-        print("       " + sigma_line(1, scan.poi_p1, scan.poi_m1))
-        print("       " + sigma_line(2, scan.poi_p2, scan.poi_m2))
-
-    # nll curve
-    g_nll = create_tgraph(len(poi_values), poi_values, dnll2_values)
-    r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": 20, "MarkerSize": 0.75})
-    draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
-    if show_best_fit and show_best_fit_error and scan:
-        fit_label = "{} = {}".format(to_root_latex(poi_data[poi].label),
-            scan.num_min.str(format="%.2f", style="root"))
-    else:
-        fit_label = to_root_latex(poi_data[poi].label)
-    legend_entries.insert(0, (g_nll, fit_label, "LP" if show_points else "L"))
-
-    # legend
-    legend = r.routines.create_legend(pad=pad, width=230, n=len(legend_entries))
-    r.setup_legend(legend)
-    for tpl in legend_entries:
-        legend.AddEntry(*tpl)
-    draw_objs.append(legend)
-
-    # model parameter labels
-    if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
-    draw_objs.extend(cms_labels)
-
-    # campaign label
-    if campaign:
-        campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
-        campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad)
-        draw_objs.append(campaign_label)
-
-    # draw all objects
-    r.routines.draw_objects(draw_objs)
-
-    # save
-    r.update_canvas(canvas)
-    for path in make_list(paths):
-        canvas.SaveAs(path)
 
 
 @use_style("dhi_default")
@@ -257,9 +39,15 @@ def plot_likelihood_scans_1d(
     poi,
     data,
     theory_value=None,
-    show_best_fit=True,
+    ranges_path=None,
+    hep_data_path=None,
+    show_best_fit=False,
+    show_best_fit_error=True,
+    show_best_fit_line=None,
+    show_best_fit_indicators=None,
     show_significances=(1, 2, 3, 5),
     shift_negative_values=False,
+    interpolate_above=None,
     v_lines=None,
     x_min=None,
     x_max=None,
@@ -276,25 +64,37 @@ def plot_likelihood_scans_1d(
     All information should be passed as a list *data*. Entries must be dictionaries with the
     following content:
 
-        - "values": A mapping to lists of values or a record array with keys "<poi1_name>",
-          "<poi2_name>" and "dnll2".
+        - "values": A mapping to lists of values or a record array with keys "<poi1_name>" and
+                    "dnll2".
         - "poi_min": A float describing the best fit value of the POI. When not set, the minimum is
           estimated from the interpolated curve.
         - "name": A name of the data to be shown in the legend.
 
     *theory_value* can be a 3-tuple denoting the nominal theory prediction of the POI and its up and
-    down uncertainties which is drawn as a vertical bar. When *show_best_fit* is *False*, the best
-    fit value indicator per data entry is not shown. To overlay lines and labels denoting integer
-    significances corresponding to 1D likelihood scans, *show_significances* can be set to *True* to
-    show significances up to 9 sigma, or a list of sigmas (integer, >= 1) or confidence levels
-    (float, < 1). In case there are negative dnll2 values, *shift_negative_values* can be set to
-    *True* to shift them vertically so that the minimum is located at 0 again. *v_lines* can be a
-    list of x-values at which vertical, dashed lines are drawn for visual guidance.
+    down uncertainties which is drawn as a vertical bar. When *ranges_path* is set, one and two
+    sigma intervals of the scan parameter are saved to the given file. When *hep_data_path* is set,
+    a yml data file compatible with the HEPData format
+    (https://hepdata-submission.readthedocs.io/en/latest/data_yaml.html) is stored at that path.
 
-    *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control the range of
-    the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale. When
-    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
+    When *show_best_fit* (*show_best_fit_error*) is *True*, the best fit error value (and its
+    uncertainty) is shown in the corresponding legend entry. When *show_best_fit_line* is *True*, a
+    vertical line is shown at the position of the best fit value. When *show_best_fit_indicators* is
+    *True* and only a single scan is shown, vertical indicators of the one and two sigma intervals
+    of the best fit value, when requested in *show_significances*, are shown. The two latter
+    arguments default to the value of *show_best_fit*.
+
+    To overlay lines and labels denoting integer significances corresponding to 1D likelihood scans,
+    *show_significances* can be set to *True* to show significances up to 9 sigma, or a list of
+    sigmas (integer, >= 1) or confidence levels (float, < 1). In case there are negative dnll2
+    values, *shift_negative_values* can be set to *True* to shift them vertically so that the
+    minimum is located at 0 again. When *interpolate_above* is defined, values that exceed this
+    threshold are removed and interpolated using adjacent values instead.
+
+    *v_lines* can be a list of x-values at which vertical, dashed lines are drawn for visual
+    guidance. *x_min* and *x_max* define the x-axis range of POI, and *y_min* and *y_max* control
+    the range of the y-axis. When *y_log* is *True*, the y-axis is plotted with a logarithmic scale.
+    When *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign*
+    should refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
     *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
     When *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
@@ -302,6 +102,16 @@ def plot_likelihood_scans_1d(
     """
     import plotlib.root as r
     ROOT = import_ROOT()
+
+    # input checks and transformations
+    if theory_value is not None:
+        theory_value = make_list(theory_value)
+    if not show_best_fit:
+        show_best_fit_error = False
+    if show_best_fit_line is None:
+        show_best_fit_line = show_best_fit
+    if show_best_fit_indicators is None:
+        show_best_fit_indicators = show_best_fit
 
     # validate data entries
     for i, d in enumerate(data):
@@ -316,6 +126,8 @@ def plot_likelihood_scans_1d(
         d.setdefault("poi_min", None)
         # default name
         d.setdefault("name", str(i + 1))
+        # origin (for printouts)
+        d["origin"] = None if not d["name"] else "entry '{}'".format(d["name"])
         # drop all fields except for required ones
         values = {
             k: np.array(v, dtype=np.float32)
@@ -324,9 +136,22 @@ def plot_likelihood_scans_1d(
         }
         # preprocess values (nan detection, negative shift)
         values["dnll2"], values[poi] = _preprocess_values(values["dnll2"], (poi, values[poi]),
-            shift_negative_values=shift_negative_values, origin="entry '{}'".format(d["name"]),
+            remove_nans=True, remove_above=interpolate_above,
+            shift_negative_values=shift_negative_values, origin=d["origin"],
             min_is_external=d["poi_min"] is not None)
         d["values"] = values
+
+    # prepare hep data
+    hep_data = None
+    if hep_data_path:
+        hep_data = hdt.create_hist_data()
+
+    # perform scans
+    scans = [
+        evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"], poi_min=d["poi_min"],
+            origin=d["origin"])
+        for d in data
+    ]
 
     # set x range
     if x_min is None:
@@ -380,13 +205,26 @@ def plot_likelihood_scans_1d(
             if dnll2 >= y_max_line:
                 continue
 
+            # vertical indicators at 1 and 2 sigma when only one curve is shown
+            if show_best_fit_indicators and len(data) == 1 and scans[0] and sig in [1, 2]:
+                values = map(lambda s: getattr(scans[0], "poi_{}{}".format(s, sig)), "pm")
+                for value in values:
+                    if value is None or not (x_min < value < x_max):
+                        continue
+                    line = ROOT.TLine(value, y_min, value, scans[0].interp(value))
+                    r.setup_line(line, props={"LineColor": colors.black, "LineStyle": 2, "NDC": False})
+                    draw_objs.append(line)
+
             # create the line
             sig_line = ROOT.TLine(x_min, dnll2, x_max, dnll2)
             r.setup_line(sig_line, props={"NDC": False, "LineWidth": 1}, color=colors.grey)
             draw_objs.append(sig_line)
 
             # create and position the label
-            sig_label_y = math.log(dnll2 / y_min) / math.log(y_max / y_min)
+            if y_log:
+                sig_label_y = math.log(dnll2 / y_min) / math.log(y_max / y_min)
+            else:
+                sig_label_y = dnll2 / (y_max - y_min)
             sig_label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
             sig_label_y += pad.GetBottomMargin() + 0.00375
             if is_cl:
@@ -406,12 +244,16 @@ def plot_likelihood_scans_1d(
                     "NDC": False})
                 draw_objs.append(line)
 
+    # special case regarding color handling: when all entry names are valid keys in br_hh_colors,
+    # replace the default color sequence to deterministically assign same colors to channels
+    _color_sequence = color_sequence
+    if all(d["name"] in br_hh_colors.root for d in data):
+        _color_sequence = [br_hh_colors.root[d["name"]] for d in data]
+
     # perform scans and draw nll curves
-    for d, col, ms in zip(data[::-1], color_sequence[:len(data)][::-1],
-            marker_sequence[:len(data)][::-1]):
-        # evaluate the scan, run interpolation and error estimation
-        scan = evaluate_likelihood_scan_1d(d["values"][poi], d["values"]["dnll2"],
-            poi_min=d["poi_min"])
+    parameter_ranges = OrderedDict()
+    g_nlls = []
+    for d, scan, col, ms in zip(data, scans, _color_sequence, marker_sequence):
         if not scan:
             warn("1D likelihood evaluation failed for entry '{}'".format(d["name"]))
 
@@ -421,32 +263,66 @@ def plot_likelihood_scans_1d(
         r.setup_graph(g_nll, props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             color=colors[col])
         draw_objs.append((g_nll, "SAME,CP" if show_points else "SAME,C"))
-        legend_entries.insert(0, (g_nll, to_root_latex(br_hh_names.get(d["name"], d["name"])),
-            "LP" if show_points else "L"))
+        g_nlls.append(g_nll)
+
+        # legend entry with optional best fit value
+        g_label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
+        if scan and show_best_fit:
+            if show_best_fit_error:
+                bf_label = scan.num_min.str(format="%.2f", style="root", force_asymmetric=True,
+                    styles={"space": ""})
+            else:
+                bf_label = "{:.2f}".format(scan.num_min())
+            if g_label:
+                g_label += ", {}".format(bf_label)
+            else:
+                g_label = "{} = {}".format(to_root_latex(poi_data[poi].label), bf_label)
+        legend_entries.append((g_nll, g_label, "LP" if show_points else "L"))
 
         # vertical line denoting the best fit value
-        if show_best_fit and scan and (x_min <= scan.poi_min <= x_max):
+        if show_best_fit_line and scan and (x_min <= scan.poi_min <= x_max):
             line_fit = ROOT.TLine(scan.poi_min, y_min, scan.poi_min, y_max_line)
             r.setup_line(line_fit, props={"LineWidth": 2, "NDC": False}, color=colors[col])
             draw_objs.append(line_fit)
+
+        # store parameter ranges
+        key = poi
+        if d["name"]:
+            key += "__{}".format(d["name"])
+        parameter_ranges[key] = scan["summary"]
 
     # theory prediction with uncertainties
     if theory_value:
         has_thy_err = len(theory_value) == 3
         if has_thy_err:
             # theory graph
-            g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1],
-                0, y_max_line - y_min)
+            g_thy = create_tgraph(1, theory_value[0], y_min, theory_value[2], theory_value[1], 0,
+                y_max_line - y_min)
             r.setup_graph(g_thy, props={"LineColor": colors.red, "FillStyle": 1001,
                 "FillColor": colors.red_trans_50})
-            draw_objs.insert(-len(data), (g_thy, "SAME,02"))
-            legend_entries.append((g_thy, "Theory prediction", "LF"))
+            draw_objs.append((g_thy, "SAME,02"))
+            legend_entries.append((g_thy, "Standard Model", "LF"))
         # theory line
         line_thy = ROOT.TLine(theory_value[0], y_min, theory_value[0], y_max_line)
         r.setup_line(line_thy, props={"NDC": False}, color=colors.red)
         draw_objs.append(line_thy)
         if not has_thy_err:
-            legend_entries.insert(-len(data), (line_thy, "Theory prediction", "L"))
+            legend_entries.append((line_thy, "Standard Model", "L"))
+
+    # fill hep data
+    if hep_data:
+        # scan value as independent variable
+        scan_values = sorted(set(chain(*(map(float, d["values"][poi]) for d in data))))
+        hdt.create_independent_variable(poi_data[poi].label, parent=hep_data,
+            values=[Number(v, default_format=-2) for v in scan_values])
+
+        # dnll2 values as dependent variables
+        for d, g_nll in zip(data, g_nlls):
+            label = r"$-2\Delta\log(L)$"
+            if d.get("name"):
+                label += ", " + d["name"]
+            hdt.create_dependent_variable_from_graph(g_nll, x_values=scan_values, parent=hep_data,
+                label=label, rounding_method=-2, transform=lambda i, x, y, err: (x, max(y, 0.0), err))
 
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
@@ -459,15 +335,18 @@ def plot_likelihood_scans_1d(
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
+    # cms label
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
+        layout="outside_horizontal")
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad,
-            y_offset=40 if len(legend_entries) < 9 else 130))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-        postfix="" if paper else cms_postfix)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if legend_cols == 3:
+            param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -483,6 +362,17 @@ def plot_likelihood_scans_1d(
     for path in make_list(paths):
         canvas.SaveAs(path)
 
+    # save parameter ranges
+    if ranges_path:
+        ranges_path = prepare_output(ranges_path)
+        with open(ranges_path, "w") as f:
+            json.dump(parameter_ranges, f, indent=4)
+        print("saved parameter ranges to {}".format(ranges_path))
+
+    # save hep data
+    if hep_data_path:
+        hdt.save_hep_data(hep_data, hep_data_path)
+
 
 @use_style("dhi_default")
 def plot_likelihood_scan_2d(
@@ -490,6 +380,7 @@ def plot_likelihood_scan_2d(
     poi1,
     poi2,
     values,
+    hep_data_path=None,
     poi1_min=None,
     poi2_min=None,
     show_best_fit=False,
@@ -497,6 +388,8 @@ def plot_likelihood_scan_2d(
     show_significances=(1, 2, 3, 5),
     shift_negative_values=False,
     interpolate_nans=False,
+    interpolate_above=None,
+    interpolation_method="root",
     show_sm_point=True,
     show_box=False,
     x_min=None,
@@ -508,13 +401,17 @@ def plot_likelihood_scan_2d(
     model_parameters=None,
     campaign=None,
     paper=False,
+    style=None,
 ):
     """
     Creates a likelihood plot of the 2D scan of two POIs *poi1* and *poi2*, and saves it at *paths*.
     *values* should be a mapping to lists of values or a record array with keys "<poi1_name>",
     "<poi2_name>" and "dnll2". When *poi1_min* and *poi2_min* are set, they should be the values of
     the POIs that lead to the best likelihood. Otherwise, they are estimated from the interpolated
-    curve.
+    curve. By default, this plot fills a 2D histogram with likelihood values and optionally draws
+    contour lines and additional information on top. When *hep_data_path* is set, a yml data file
+    compatible with the HEPData format
+    (https://hepdata-submission.readthedocs.io/en/latest/data_yaml.html) is stored at that path.
 
     When *show_best_fit* (*show_best_fit_error*) is *True*, the nominal (uncertainty on the) best
     fit value is drawn. To overlay lines and labels denoting integer significances corresponding to
@@ -523,12 +420,17 @@ def plot_likelihood_scan_2d(
     negative dnll2 values, *shift_negative_values* can be set to *True* to shift them vertically so
     that the minimum is located at 0 again. Points where the dnll2 value is NaN are visualized as
     white pixels by default. However, when *interpolate_nans* is set, these values are smoothed out
-    with information from neighboring pixels through ROOT's TGraph2D.Interpolate feature (similar
-    to how its line interpolation draws values between two discrete points in a 1D graph). The
-    standard model point at (1, 1) as drawn as well unless *show_sm_point* is *False*. The best fit
-    value is drawn with uncertainties on one POI being estimated while setting the other POI to its
-    best value. When *show_box* is *True*, a box containing the 1 sigma contour is shown and used
-    to estimate the dimensions of the standard error following the prescription at
+    with information from neighboring pixels through ROOT's TGraph2D.Interpolate feature (similar to
+    how its line interpolation draws values between two discrete points in a 1D graph). When
+    *interpolate_above* is defined, the same interpolation is applied to values that exceed this
+    threshold. *interpolation_method* can either be "root" (TGraph2D), "linear" or "cubic"
+    (scipy.interpolate.interp2d), or "rbf" (scipy.interpolate.Rbf). In case a tuple is passed, the
+    method should be the first element, followed by optional configuration options.
+
+    The standard model point at (1, 1) as drawn as well unless *show_sm_point* is *False*. The best
+    fit value is drawn with uncertainties on one POI being estimated while setting the other POI to
+    its best value. When *show_box* is *True*, a box containing the 1 sigma contour is shown and
+    used to estimate the dimensions of the standard error following the prescription at
     https://pdg.lbl.gov/2020/reviews/rpp2020-rev-statistics.pdf (e.g. Fig. 40.5).
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
@@ -537,10 +439,54 @@ def plot_likelihood_scan_2d(
     refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When *paper* is
     *True*, certain plot configurations are adjusted for use in publications.
 
+    Setting *style* leads to slight variations of the plot style. Valid options are:
+
+    - "contours": Only draw 1 and 2 sigma contour lines over a white background and hide the z-axis.
+    - "contours_hcomb": Same as "contours", but line styles, text sizes, etc. are similar to the
+                        kf-kV plots of the HComb group.
+
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d
     """
     import plotlib.root as r
     ROOT = import_ROOT()
+
+    # check the style and overwrite some settings
+    _style_contours = style in ["contours", "contours_hcomb"]
+    if _style_contours:
+        show_significances = (1, 2)
+        significance_labels = ["68% CL", "95% CL"]
+    else:
+        if style:
+            print("unknown style '{}', falling back to default".format(style))
+        style = None
+
+    # prepare hep data
+    hep_data = None
+    if hep_data_path:
+        hep_data = hdt.create_hist_data()
+
+    # activate a different style of contours_hcomb
+    style_changed = False
+    if style == "contours_hcomb":
+        s = r.styles.copy(r.styles.current_style_name, "contours_hcomb")
+        s.pad.TopMargin = 0.075
+        s.pad.BottomMargin = 0.16
+        s.pad.LeftMargin = 0.16
+        s.legend.TextSize = 26
+        s.legend.LineStyle = 1
+        s.legend.LineColor = 1
+        s.legend.LineWidth = 1
+        s.legend.ColumnSeparation = 0.1
+        s.legend_dy = 0.07
+        s.x_axis.LabelSize = 30
+        s.x_axis.TitleSize = 50
+        s.x_axis.TitleOffset = 0.8
+        s.y_axis.LabelSize = 30
+        s.y_axis.TitleSize = 50
+        s.y_axis.TitleOffset = 0.8
+        # use it
+        r.styles.push("contours_hcomb")
+        style_changed = True
 
     # check values
     values = make_list(values)
@@ -555,7 +501,7 @@ def plot_likelihood_scan_2d(
         # preprocess values (nan detection, negative shift)
         _values["dnll2"], _values[poi1], _values[poi2] = _preprocess_values(_values["dnll2"],
             (poi1, _values[poi1]), (poi2, _values[poi2]), remove_nans=interpolate_nans,
-            shift_negative_values=shift_negative_values,
+            shift_negative_values=shift_negative_values, remove_above=interpolate_above,
             min_is_external=poi1_min is not None and poi2_min is not None)
         values[i] = _values
 
@@ -563,18 +509,41 @@ def plot_likelihood_scan_2d(
     joined_values = unique_recarray(dict_to_recarray(values), cols=[poi1, poi2])
 
     # determine contours independent of plotting
-    contour_levels = [1, 2, 3, 5]
+    contour_levels = [1, 2, 3, 4, 5]
+    contour_colors = {
+        1: colors.brazil_green,
+        2: colors.brazil_yellow,
+        3: colors.blue_cream,
+        4: colors.orange,
+        5: colors.red_cream,
+    }
     if show_significances and isinstance(show_significances, (list, tuple)):
         contour_levels = list(show_significances)
+    n_contours = len(contour_levels)
+
     # convert to dnll2 values for 2 degrees of freedom
     contour_levels_dnll2 = []
     for l in contour_levels:
         is_cl = isinstance(l, float) and l < 1
         dnll2 = get_chi2_level_from_cl(l, 2) if is_cl else get_chi2_level(l, 2)
         contour_levels_dnll2.append(dnll2)
-    contour_colors = [colors.green, colors.yellow, colors.blue_cream] + color_sequence
+
+    # refine colors and styles
+    if _style_contours:
+        contour_colors = n_contours * [colors.black]
+        contour_styles = ([1, 7, 2, 9] + max(n_contours - 4, 0) * [8])[:n_contours]
+    else:
+        rest_colors = list(color_sequence)
+        contour_colors = [
+            (contour_colors[l] if l in contour_colors else rest_colors.pop(0))
+            for l in contour_levels
+        ]
+        contour_styles = n_contours * [1]
+
+    # get the contours
     contours = get_contours(joined_values[poi1], joined_values[poi2], joined_values["dnll2"],
-        levels=contour_levels_dnll2, frame_kwargs=[{"mode": "edge", "width": 1.}])
+        levels=contour_levels_dnll2, frame_kwargs=[{"mode": "edge", "width": 1.}],
+        interpolation=interpolation_method)
 
     # evaluate the scan, run interpolation and error estimation
     scan = evaluate_likelihood_scan_2d(joined_values[poi1], joined_values[poi2],
@@ -584,11 +553,13 @@ def plot_likelihood_scan_2d(
 
     # reset the box flag if necessary
     if show_box and (not scan or not scan.box_nums[0][0] or not scan.box_nums[0][1]):
+        warn("disabling show_box due to missing or failed scan")
         show_box = False
 
     # start plotting
     r.setup_style()
-    canvas, (pad,) = r.routines.create_canvas(pad_props={"RightMargin": 0.17, "Logz": True})
+    pad_props = {} if _style_contours else {"RightMargin": 0.17, "Logz": True}
+    canvas, (pad,) = r.routines.create_canvas(pad_props=pad_props)
     pad.cd()
     draw_objs = []
 
@@ -600,8 +571,13 @@ def plot_likelihood_scan_2d(
 
         # get the z range
         dnll2 = np.array(_values["dnll2"])
-        _z_min = np.nanmin(dnll2) or (0.1 * dnll2[dnll2 > 0].min())
+        _z_min = np.nanmin(dnll2)
         _z_max = np.nanmax(dnll2)
+
+        # when there is no negative value, shift zeros to 0.1 of the smallest, non-zero value
+        if _z_min == 0:
+            _z_min = 0.1 * dnll2[dnll2 > 0].min()
+            dnll2[dnll2 == 0] = _z_min
 
         # infer axis limits from the first set of values
         if i == 0:
@@ -610,25 +586,29 @@ def plot_likelihood_scan_2d(
             y_min = _y_min if y_min is None else y_min
             y_max = _y_max if y_max is None else y_max
             z_min = _z_min if z_min is None else z_min
-            z_max = _z_max if z_max is None else z_max
 
-        # when there are NaN's, set them to values right below the z_min which causes ROOT to draw
-        # white pixels
+        # when there are still NaN's, set them to values right below the z_min,
+        # which causes ROOT to draw white pixels
         z_min_fill = z_min
         nan_mask = np.isnan(dnll2)
-        if not interpolate_nans and nan_mask.sum():
+        if nan_mask.sum() and not interpolate_nans:
             warn(
                 "WARNING: {} NaN(s) will be drawn as white pixels; consider enabling NaN "
                 "interpolation (--interpolate-nans when triggered by a law task)".format(
                     nan_mask.sum())
             )
-            dnll2[np.isnan(dnll2)] = 0.9 * z_min
+            dnll2[nan_mask] = 0.9 * z_min
             z_min_fill = None
 
         # fill and store the histogram
         h = ROOT.TH2F("h" + str(i), "", _x_bins, _x_min, _x_max, _y_bins, _y_min, _y_max)
-        fill_hist_from_points(h, _values[poi1], _values[poi2], dnll2, z_min=z_min_fill, z_max=z_max)
+        fill_hist_from_points(h, _values[poi1], _values[poi2], dnll2, z_min=z_min_fill,
+            interpolation=interpolation_method)
         hists.append(h)
+
+        # infer z_max separately after possible extrapolation
+        if i == 0:
+            z_max = _z_max if z_max is None else z_max
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[poi1].label)
@@ -641,14 +621,15 @@ def plot_likelihood_scan_2d(
     legend_entries = []
 
     # setup actual histograms
-    for i, h in enumerate(hists):
-        r.setup_hist(h, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
-        if i == 0:
-            r.setup_z_axis(h.GetZaxis(), pad=pad, props={"Title": z_title, "TitleSize": 24,
-                "TitleOffset": 1.5})
-        draw_objs.append((h, "SAME,COLZ"))
-        # for debugging purposes
-        # draw_objs.append((h, "SAME,TEXT"))
+    if not _style_contours:
+        for i, h in enumerate(hists):
+            r.setup_hist(h, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
+            if i == 0:
+                r.setup_z_axis(h.GetZaxis(), pad=pad, props={"Title": z_title, "TitleSize": 24,
+                    "TitleOffset": 1.5})
+            draw_objs.append((h, "SAME,COLZ"))
+            # for debugging purposes
+            # draw_objs.append((h, "SAME,TEXT"))
 
     # significance contours
     if show_significances:
@@ -660,10 +641,14 @@ def plot_likelihood_scan_2d(
 
         # cache for label positions
         all_positions = []
-        for graphs, level, col in zip(contours, contour_levels, contour_colors[:len(contours)]):
+        for graphs, level, col, ls in zip(contours, contour_levels, contour_colors, contour_styles):
             for g in graphs:
-                r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors(col)})
+                r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors(col), "LineStyle": ls})
                 draw_objs.append((g, "SAME,C"))
+
+            # stop here when only drawing contours
+            if _style_contours:
+                continue
 
             # get the approximate label width
             is_cl = isinstance(level, float) and level < 1
@@ -671,26 +656,26 @@ def plot_likelihood_scan_2d(
                 text = "{:f}".format(level * 100).rstrip("0").rstrip(".") + "%"
             else:
                 text = "{}#sigma".format(level)
-            label_width, label_height = get_text_extent(text, 16, 43)
+            label_width, label_height = get_text_extent(text, 18, 43)
             label_width *= px_to_x
             label_height *= py_to_y
 
             # calculate and store the position
             label_positions = locate_contour_labels(graphs, label_width, label_height, pad_width,
                 pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions,
-                label_offset=1.2)
+                label_offset=0.9)
             all_positions.extend(label_positions)
             pad.cd()
 
             # draw them
             for x, y, rot in label_positions:
                 sig_label = ROOT.TLatex(0., 0., text)
-                r.setup_latex(sig_label, props={"NDC": False, "TextSize": 18, "TextAlign": 21,
+                r.setup_latex(sig_label, props={"NDC": False, "TextSize": 16, "TextAlign": 21,
                     "TextColor": colors(col), "TextAngle": rot, "X": x, "Y": y})
                 draw_objs.append((sig_label, "SAME"))
 
     # draw the first contour box
-    if show_box:
+    if show_box and scan:
         box_num1, box_num2 = scan.box_nums[0]
         box_t = ROOT.TLine(box_num1("down"), box_num2("up"), box_num1("up"), box_num2("up"))
         box_b = ROOT.TLine(box_num1("down"), box_num2("down"), box_num1("up"), box_num2("down"))
@@ -706,11 +691,16 @@ def plot_likelihood_scan_2d(
     if show_sm_point:
         g_sm = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
         r.setup_graph(g_sm, props={"MarkerStyle": 33, "MarkerSize": 2.5}, color=colors.red)
-        draw_objs.insert(-1, (g_sm, "P"))
-        legend_entries.append((g_sm, "Standard model", "P"))
+        draw_objs.append((g_sm, "P"))
+        legend_entries.append((g_sm, "SM Higgs", "P"))
+        # yellow overlay for hcomb style
+        if style == "contours_hcomb":
+            g_sm2 = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
+            r.setup_graph(g_sm2, props={"MarkerStyle": 33, "MarkerSize": 1.4}, color=89)
+            draw_objs.append((g_sm2, "P"))
 
     # central best fit point
-    if scan:
+    if show_best_fit and scan:
         g_fit = ROOT.TGraphAsymmErrors(1)
         g_fit.SetPoint(0, scan.num1_min(), scan.num2_min())
         if scan.num1_min.uncertainties and show_best_fit_error:
@@ -719,19 +709,40 @@ def plot_likelihood_scan_2d(
         if scan.num2_min.uncertainties and show_best_fit_error:
             g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
             g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
-        props = {} if show_best_fit_error else {"MarkerStyle": 43, "MarkerSize": 2}
+        props = {"MarkerStyle": 43, "MarkerSize": 2}
+        if show_best_fit_error:
+            props = {}
+        elif _style_contours:
+            props = {"MarkerStyle": 34, "MarkerSize": 2}
         r.setup_graph(g_fit, props=props, color=colors.black)
-        if show_best_fit:
-            draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
+        draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
+
+    # fill hep data
+    if hep_data:
+        # use the first underlying histogram and add its axes as two independent variables
+        h = hists[0]
+        x_bins = list(range(1, h.GetXaxis().GetNbins() + 1))
+        y_bins = list(range(1, h.GetYaxis().GetNbins() + 1))
+        coords = list(product(x_bins, y_bins))
+        hdt.create_independent_variable(poi_data[poi1].label, parent=hep_data,
+            values=[Number(h.GetXaxis().GetBinCenter(bx), default_format=-2) for bx, _ in coords])
+        hdt.create_independent_variable(poi_data[poi2].label, parent=hep_data,
+            values=[Number(h.GetYaxis().GetBinCenter(by), default_format=-2) for _, by in coords])
+
+        # dnll2 values as dependent variable
+        hdt.create_dependent_variable(r"$-2\Delta\log(L)$", parent=hep_data,
+            values=[Number(max(h.GetBinContent(bx, by), 0.0), default_format=-2) for bx, by in coords])
 
     # legend
     def make_bf_label(num1, num2):
         if show_best_fit_error:
             return "{} = {} ,  {} = {}".format(
                 to_root_latex(poi_data[poi1].label),
-                "-" if num1 is None else num1.str(format="%.2f", style="root"),
+                "-" if num1 is None else num1.str(format="%.2f", style="root",
+                    force_asymmetric=True, styles={"space": ""}),
                 to_root_latex(poi_data[poi2].label),
-                "-" if num2 is None else num2.str(format="%.2f", style="root"),
+                "-" if num2 is None else num2.str(format="%.2f", style="root",
+                    force_asymmetric=True, styles={"space": ""}),
             )
         else:
             return "{} = {:.2f} ,  {} = {:.2f}".format(
@@ -744,25 +755,50 @@ def plot_likelihood_scan_2d(
     if show_box:
         legend_entries.insert(0, (box_legend_entry, make_bf_label(box_num1, box_num2), "F"))
     if show_best_fit and scan:
-        legend_entries.insert(0, (g_fit, make_bf_label(scan.num1_min, scan.num2_min),
-            "PLE" if show_best_fit_error else "P"))
+        label = "Observed" if paper else make_bf_label(scan.num1_min, scan.num2_min)
+        legend_entries.insert(0, (g_fit, label, "PLE" if show_best_fit_error else "P"))
+    if _style_contours:
+        for graphs, level in zip(contours, significance_labels):
+            for g in graphs:
+                legend_entries.append((g, level, "L"))
     if legend_entries:
-        legend = r.routines.create_legend(pad=pad, width=340, n=len(legend_entries))
+        legend_kwargs = {"pad": pad, "width": 340, "n": len(legend_entries)}
+        if _style_contours:
+            legend_kwargs["n"] = 2
+            legend_kwargs["props"] = {"NColumns": 2}
+            legend_kwargs["width"] = 400 if style == "contours_hcomb" else 260
+        legend = r.routines.create_legend(**legend_kwargs)
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
 
-    # model parameter labels
-    if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=100))
+        # draw the overlay SM point again for hcomb style (depends highly on the legend position)
+        if show_sm_point and style == "contours_hcomb":
+            g_sm2_legend = g_sm2.Clone()
+            g_sm2_legend.SetPoint(1, 1.525, 1.685)
+            draw_objs.append((g_sm2_legend, "P"))
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix="" if paper else cms_postfix, pad=pad)
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_props = {"text_size": 44} if style == "contours_hcomb" else {}
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout,
+        **cms_props)
     draw_objs.extend(cms_labels)
+
+    # model parameter labels
+    if model_parameters:
+        param_kwargs = {}
+        param_kwargs["props"] = {"TextSize": 30} if style == "contours_hcomb" else {}
+        if cms_layout.startswith("inside"):
+            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            param_kwargs = {"y_offset": y_offset}
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
+        props = {"TextSize": 40} if style == "contours_hcomb" else {}
         campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
-        campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad)
+        campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad, props=props)
         draw_objs.append(campaign_label)
 
     # draw all objects
@@ -773,6 +809,14 @@ def plot_likelihood_scan_2d(
     for path in make_list(paths):
         canvas.SaveAs(path)
 
+    # remove custom styles
+    if style_changed:
+        r.styles.pop()
+
+    # save hep data
+    if hep_data_path:
+        hdt.save_hep_data(hep_data, hep_data_path)
+
 
 @use_style("dhi_default")
 def plot_likelihood_scans_2d(
@@ -781,11 +825,13 @@ def plot_likelihood_scans_2d(
     poi2,
     data,
     shift_negative_values=False,
+    interpolate_nans=True,
+    interpolate_above=None,
+    interpolation_method="root",
     x_min=None,
     x_max=None,
     y_min=None,
     y_max=None,
-    fill_nans=True,
     model_parameters=None,
     campaign=None,
     paper=False,
@@ -805,11 +851,16 @@ def plot_likelihood_scans_2d(
     them vertically so that the minimum is located at 0 again.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the axis range of *poi1* and *poi2*, respectively,
-    and default to the ranges of the poi values. When *fill_nans* is *True*, points with failed
-    fits, denoted by nan values, are filled with the averages of neighboring fits. When
-    *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When *paper* is
-    *True*, certain plot configurations are adjusted for use in publications.
+    and default to the ranges of the poi values. When *interpolate_nans* is *True*, points with
+    failed fits, denoted by nan values, are filled with the averages of neighboring fits. When
+    *interpolate_above* is defined, the same interpolation is applied to values that exceed this
+    threshold. *interpolation_method* can either be "root" (TGraph2D), "linear" or "cubic"
+    (scipy.interpolate.interp2d), or "rbf" (scipy.interpolate.Rbf). In case a tuple is passed, the
+    method should be the first element, followed by optional configuration options.
+
+    When *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign*
+    should refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
+    *paper* is *True*, certain plot configurations are adjusted for use in publications.
 
     Example: Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d_1
     """
@@ -831,6 +882,8 @@ def plot_likelihood_scans_2d(
         assert len(d["poi_mins"]) == 2
         # default name
         d.setdefault("name", str(i + 1))
+        # origin (for printouts)
+        d["origin"] = None if not d["name"] else "entry '{}'".format(d["name"])
         # drop all fields except for required ones and convert to arrays
         values = {
             k: np.array(v, dtype=np.float32)
@@ -840,7 +893,8 @@ def plot_likelihood_scans_2d(
         # preprocess values (nan detection, negative shift)
         values["dnll2"], values[poi1], values[poi2] = _preprocess_values(values["dnll2"],
             (poi1, values[poi1]), (poi2, values[poi2]), shift_negative_values=shift_negative_values,
-            origin="entry '{}'".format(d["name"]), min_is_external=None not in d["poi_mins"])
+            remove_nans=interpolate_nans, remove_above=interpolate_above,
+            origin=d["origin"], min_is_external=None not in d["poi_mins"])
         d["values"] = values
 
     # determine contours independent of plotting
@@ -851,6 +905,7 @@ def plot_likelihood_scans_2d(
             d["values"]["dnll2"],
             levels=[chi2_levels[2][1], chi2_levels[2][2]],
             frame_kwargs=[{"mode": "edge"}],
+            interpolation=interpolation_method,
         )
         for d in data
     ]
@@ -879,8 +934,14 @@ def plot_likelihood_scans_2d(
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))
 
+    # special case regarding color handling: when all entry names are valid keys in br_hh_colors,
+    # replace the default color sequence to deterministically assign same colors to channels
+    _color_sequence = color_sequence
+    if all(d["name"] in br_hh_colors.root for d in data):
+        _color_sequence = [br_hh_colors.root[d["name"]] for d in data]
+
     # loop through data entries
-    for d, (cont1, cont2), col in zip(data[::-1], contours[::-1], color_sequence[:len(data)][::-1]):
+    for d, (cont1, cont2), col in zip(data, contours, _color_sequence[:len(data)]):
         # evaluate the scan
         scan = evaluate_likelihood_scan_2d(
             d["values"][poi1], d["values"][poi2], d["values"]["dnll2"],
@@ -897,7 +958,7 @@ def plot_likelihood_scans_2d(
             r.setup_graph(g2, props={"LineWidth": 2, "LineStyle": 2, "LineColor": colors[col]})
             draw_objs.append((g2, "SAME,C"))
         name = to_root_latex(br_hh_names.get(d["name"], d["name"]))
-        legend_entries.insert(-1, (g1, name, "L"))
+        legend_entries.append((g1, name, "L"))
 
         # best fit point
         if scan:
@@ -935,14 +996,18 @@ def plot_likelihood_scans_2d(
         props={"LineWidth": 0, "FillColor": colors.white_trans_70})
     draw_objs.insert(-1, legend_box)
 
+    # cms label
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
+        layout="outside_horizontal")
+    draw_objs.extend(cms_labels)
+
     # model parameter labels
     if model_parameters:
-        draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
-
-    # cms label
-    cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-        postfix="" if paper else cms_postfix)
-    draw_objs.extend(cms_labels)
+        param_kwargs = {}
+        if legend_cols == 3:
+            param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+        draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
     if campaign:
@@ -982,6 +1047,7 @@ def plot_nuisance_likelihood_scans(
     model_parameters=None,
     campaign=None,
     paper=False,
+    show_derivatives=False,
 ):
     r"""
     Creates a plot showing the change of the negative log-likelihood, previously obtained for a
@@ -1011,6 +1077,8 @@ def plot_nuisance_likelihood_scans(
     is *True*. *model_parameters* can be a dictionary of key-value pairs of model parameters.
     *campaign* should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
     When *paper* is *True*, certain plot configurations are adjusted for use in publications.
+
+    The first and second order derivatives of the negative log likelihood function are added by *show_derivatives*.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/postfit.html#nuisance-parameter-influence-on-likelihood
     """
@@ -1063,18 +1131,28 @@ def plot_nuisance_likelihood_scans(
             raise Exception("parameter {} not found in workspace".format(name))
         param_bf = param.getVal()
         nll_base = nll.getVal()
-        x_values, y_values = [], []
+        if show_derivatives:
+            grad1 = nll.derivative(param, 1)
+            grad2 = nll.derivative(param, 2)
+            dy_values, ddy_values = [], []
         print("scanning parameter {}".format(name))
+        x_values, y_values = [], []
         for x in scan_values:
             x_diff = x * (pre_u if x >= 0 else -pre_d)
             param.setVal(param_bf + x_diff)
             x_values.append(x_diff if show_diff else (param_bf + x_diff))
             y_values.append(2 * (nll.getVal() - nll_base))
-        curve_data[name] = (x_values, y_values)
+            if show_derivatives:
+                dy_values.append(2 * grad1.getVal())
+                ddy_values.append(2 * grad2.getVal())
+        curve_data[name] = OrderedDict({"nll": (x_values, y_values)})
+        if show_derivatives:
+            curve_data[name]["grad1"] = (x_values, dy_values)
+            curve_data[name]["grad2"] = (x_values, ddy_values)
 
     # sort?
     if sort_max:
-        param_names.sort(key=lambda name: -max(curve_data[name][1]))
+        param_names.sort(key=lambda name: -max(curve_data[name]["nll"][1]))
 
     # group parameters
     param_groups = [[]]
@@ -1106,8 +1184,8 @@ def plot_nuisance_likelihood_scans(
                 canvas.Print(path + ("[" if path.endswith(".pdf") else ""))
 
         # get y range
-        y_min_value = min(min(curve_data[name][1]) for name in names)
-        y_max_value = max(max(curve_data[name][1]) for name in names)
+        y_min_value = min(min(curve_data[name]["nll"][1]) for name in names)
+        y_max_value = max(max(curve_data[name]["nll"][1]) for name in names)
         _y_min = y_min
         _y_max = y_max
         _y_min, _y_max, y_max_line = get_y_range(0. if y_log else y_min_value, y_max_value, y_min,
@@ -1138,33 +1216,43 @@ def plot_nuisance_likelihood_scans(
                 draw_objs.append(line)
 
         # nll graphs
+        line_styles = {"nll": 1, "grad1": 2, "grad2": 3}
         for name, col in zip(names, color_sequence[:len(names)]):
-            x, y = curve_data[name]
-            g_nll = create_tgraph(len(x), x, y)
-            r.setup_graph(g_nll, props={"LineWidth": 2, "LineStyle": 1}, color=colors[col])
-            draw_objs.append((g_nll, "SAME,C"))
-            label = to_root_latex(labels.get(name, name))
-            legend_entries.append((g_nll, label, "L"))
+            for key, (x, y) in curve_data[name].items():
+                g_nll = create_tgraph(len(x), x, y)
+                r.setup_graph(g_nll, props={"LineWidth": 2, "LineStyle": line_styles.get(key, 1)},
+                    color=colors[col])
+                draw_objs.append((g_nll, "SAME,L"))
+                label = to_root_latex(labels.get(name, name))
+                if key != "nll":
+                    label += " ({})".format(key)
+                legend_entries.append((g_nll, label, "L"))
 
         # legend
         legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
         legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
-        legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
-            props={"NColumns": legend_cols, "TextSize": 16})
+        legend_kwargs = dict(width=legend_cols * 210, n=legend_rows)
+        if show_derivatives:
+            legend_kwargs["x2"] = -420
+        legend = r.routines.create_legend(pad=pad, props={"NColumns": legend_cols, "TextSize": 16}, **legend_kwargs)
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
         legend_box = r.routines.create_legend_box(legend, pad, "trl",
             props={"LineWidth": 0, "FillColor": colors.white_trans_70})
         draw_objs.insert(-1, legend_box)
 
+        # cms label
+        _cms_postfix = "" if paper else cms_postfix
+        cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
+            layout="outside_horizontal")
+        draw_objs.extend(cms_labels)
+
         # model parameter labels
         if model_parameters:
-            draw_objs.extend(create_model_parameters(model_parameters, pad, y_offset=180))
-
-        # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad, layout="outside_horizontal",
-            postfix="" if paper else cms_postfix)
-        draw_objs.extend(cms_labels)
+            param_kwargs = {}
+            if legend_cols == 3:
+                param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+            draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
         # campaign label
         if campaign:
@@ -1185,12 +1273,13 @@ def plot_nuisance_likelihood_scans(
 
 
 def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True,
-        shift_negative_values=False, min_is_external=False, origin=None, epsilon=1e-8):
+        remove_above=None, shift_negative_values=False, min_is_external=False, origin=None,
+        epsilon=1e-5):
     # unpack data
     poi1, poi1_values = poi1_data
     poi2, poi2_values = poi2_data or (None, None)
     pois = ", ".join(filter(None, [poi1, poi2]))
-    origin = (" ({})".format(origin)) if origin else ""
+    origin = " ({})".format(origin) if origin else ""
 
     # helper to find poi values for coordinates of a given mask
     def find_coords(mask):
@@ -1198,7 +1287,7 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
         coords = "\n  - ".join(", ".join(map(str, vals)) for vals in poi_values[mask])
         return coords
 
-    # warn about nans and remove them
+    # warn about NaNs and remove them
     nan_mask = np.isnan(dnll2_values)
     if nan_mask.sum():
         warn(
@@ -1212,6 +1301,20 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
                 poi2_values = poi2_values[~nan_mask]
             print("removed {} NaN(s)".format(nan_mask.sum()))
 
+    # warn about values that exceed the interpolation threshold when set
+    if remove_above and remove_above > 0:
+        above_mask = dnll2_values > remove_above
+        if above_mask.sum():
+            warn(
+                "INFO: found {} high (> {}) dnll2 values{}; POI coordinates ({}):\n  - {}".format(
+                    above_mask.sum(), remove_above, origin, pois, find_coords(above_mask))
+            )
+            dnll2_values = dnll2_values[~above_mask]
+            poi1_values = poi1_values[~above_mask]
+            if poi2:
+                poi2_values = poi2_values[~above_mask]
+            print("removed {} high values".format(above_mask.sum()))
+
     # warn about negative dnll2 values
     neg_mask = dnll2_values < 0
     if neg_mask.sum():
@@ -1220,9 +1323,9 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
         # issue a warning about potentially wrong external best fit values
         if min_is_external and not slightly_neg:
             warn(
-                "WARNING: {} dnll2 values{} have negative values, implying that that combine might "
-                "have found a local rather than the global minimum; consider re-running combine "
-                "with different fit options or allow this function to recompute the minimum via "
+                "WARNING: {} dnll2 values{} have negative values, implying that combine might have "
+                "found a local rather than the global minimum; consider re-running combine with "
+                "different fit options or allow this function to recompute the minimum via "
                 "scipy.interpolate and scipy.minimize on the likelihood curve by not passing "
                 "combine's result (--recompute-best-fit when triggered by a law task); POI "
                 "coordinates ({}):\n  - {}".format(
@@ -1250,7 +1353,7 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
     # when the previous step did not shift values to 0,
     # detect cases where the positive minimum is > 0 and shift values
     if not neg_mask.sum() and (dnll2_values > 0).sum():
-        pos_min = dnll2_values[dnll2_values > 0].min()
+        pos_min = dnll2_values[dnll2_values >= 0].min()
         if pos_min > 0:
             slightly_pos = pos_min < epsilon
             if slightly_pos:
@@ -1270,11 +1373,13 @@ def _preprocess_values(dnll2_values, poi1_data, poi2_data=None, remove_nans=True
     return (dnll2_values, poi1_values) + ((poi2_values,) if poi2 else ())
 
 
-def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
+def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None, origin=None):
     """
     Takes the results of a 1D likelihood profiling scan given by the *poi_values* and the
     corresponding *delta_2nll* values, performs an interpolation and returns certain results of the
     scan in a dict. When *poi_min* is *None*, it is estimated from the interpolated curve.
+
+    Please consider preprocessing values with :py:func:`_preprocess_values` first.
 
     The returned fields are:
 
@@ -1289,7 +1394,10 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     - ``poi_m2``: The poi value corresponding to the -2 sigma variation, or *None* when the
       calculation failed.
     - ``num_min``: A Number instance representing the best fit value and its 1 sigma uncertainty.
+    - ``summary``: A dictionary with poi minimum, uncertainties and ranges.
     """
+    origin = " ({})".format(origin) if origin else ""
+
     # ensure we are dealing with arrays
     poi_values = np.array(poi_values)
     dnll2_values = np.array(dnll2_values)
@@ -1298,17 +1406,19 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
     poi_values_min = poi_values.min()
     poi_values_max = poi_values.max()
 
-    # remove values where dnll2 is nan
-    mask = ~np.isnan(dnll2_values)
+    # remove values where dnll2 is NaN
+    nan_mask = np.isnan(dnll2_values)
+    mask = ~nan_mask
     poi_values = poi_values[mask]
     dnll2_values = dnll2_values[mask]
     n_nans = (~mask).sum()
     if n_nans:
-        warn("WARNING: found {} NaN(s) in values in 1D likelihood evaluation".format(n_nans))
+        warn("WARNING: found {} NaN(s) in values{} in 1D likelihood evaluation".format(
+            n_nans, origin))
 
     # first, obtain an interpolation function
-    # interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="linear")
     try:
+        # interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="linear")
         interp = scipy.interpolate.interp1d(poi_values, dnll2_values, kind="cubic",
             fill_value="extrapolate")
     except:
@@ -1316,7 +1426,7 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
 
     # recompute the minimum and compare with the existing one when given
     xcheck = poi_min is not None
-    print("extracting POI minimum {}...".format("as cross check " if xcheck else ""))
+    print("extracting POI minimum{} {}...".format(origin, "as cross check " if xcheck else ""))
     objective = lambda x: interp(x)
     bounds = (poi_values_min + 1e-4, poi_values_max - 1e-4)
     res = minimize_1d(objective, bounds)
@@ -1325,14 +1435,14 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
             raise Exception("could not find minimum of dnll2 interpolation: {}".format(res.message))
     else:
         poi_min_new = res.x[0]
-        print("done, found {:.4f}".format(poi_min_new))
+        print("done{}, found {:.4f}".format(origin, poi_min_new))
         if xcheck:
             # compare and optionally issue a warning (threshold to be optimized)
             if abs(poi_min - poi_min_new) >= 0.03:
                 warn(
-                    "WARNING: external POI minimum {:.4f} (from combine) differs from the "
+                    "WARNING: external POI minimum {:.4f}{} (from combine) differs from the "
                     "recomputed value {:.4f} (from scipy.interpolate and scipy.minimize)".format(
-                        poi_min, poi_min_new)
+                        poi_min, origin, poi_min_new)
                 )
         else:
             poi_min = poi_min_new
@@ -1350,23 +1460,62 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
             # minimize
             objective = lambda x: abs(interp(x) - v)
             res = minimize_1d(objective, bounds)
-            return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
+
+            # retry once
+            success = lambda: res.status == 0 and (bounds[0] < res.x[0] < bounds[1])
+            if not success():
+                res = minimize_1d(objective, bounds)
+
+            return res.x[0] if success() else None
 
         return (
             minimize([poi_min, poi_values_max - 1e-4]),
             minimize([poi_min, poi_values_min + 1e-4]),
         )
 
-    # get the intersections with values corresponding to 1 and 2 sigma
-    # (taken from solving chi2_1_cdf(x) = 1 or 2 sigma gauss intervals)
+    # get the intersections with values corresponding to 1, 2 and 3 sigma
+    # (taken from solving chi2_1_cdf(x) = 1,2,3 sigma gauss intervals)
     poi_p1, poi_m1 = get_intersections(chi2_levels[1][1])
     poi_p2, poi_m2 = get_intersections(chi2_levels[1][2])
+    poi_p3, poi_m3 = get_intersections(chi2_levels[1][3])
 
     # create a Number object wrapping the best fit value and its 1 sigma error when given
     unc = None
     if poi_p1 is not None and poi_m1 is not None:
         unc = (poi_p1 - poi_min, poi_min - poi_m1)
     num_min = Number(poi_min, unc)
+
+    # build summary
+    summary = OrderedDict([
+        ("best_fit", poi_min),
+        ("range", [
+            [poi_m1, poi_p1],
+            [poi_m2, poi_p2],
+            [poi_m3, poi_p3],
+        ]),
+        ("uncertainty", [
+            [(poi_p1 and (poi_p1 - poi_min)), (poi_m1 and (poi_m1 - poi_min))],
+            [(poi_p2 and (poi_p2 - poi_min)), (poi_m2 and (poi_m2 - poi_min))],
+            [(poi_p3 and (poi_p3 - poi_min)), (poi_m3 and (poi_m3 - poi_min))],
+        ]),
+    ])
+
+    # print values
+    def sigma_line(n, p, m):
+        rnd = lambda v: "{:+.4f}".format(v)
+        return "{} sigma: {} / {} ([{}, {}])".format(
+            n,
+            "--" if p is None else rnd(p - poi_min),
+            "--" if m is None else rnd(m - poi_min),
+            "--" if m is None else rnd(m),
+            "--" if p is None else rnd(p),
+        )
+    print("best fit value{}: {:+.4f}".format(origin, poi_min))
+    print("    " + sigma_line(1, poi_p1, poi_m1))
+    if poi_p2 is not None or poi_m2 is not None:
+        print("    " + sigma_line(2, poi_p2, poi_m2))
+    if poi_p3 is not None or poi_m3 is not None:
+        print("    " + sigma_line(3, poi_p3, poi_m3))
 
     return DotDict(
         interp=interp,
@@ -1375,7 +1524,10 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None):
         poi_m1=poi_m1,
         poi_p2=poi_p2,
         poi_m2=poi_m2,
+        poi_p3=poi_p3,
+        poi_m3=poi_m3,
         num_min=num_min,
+        summary=summary,
     )
 
 
@@ -1394,7 +1546,9 @@ def evaluate_likelihood_scan_2d(
     *poi1_values*, *poi2_values* and *dnll2_values* should all be 1D with the same length. When
     *poi1_min* and *poi2_min* are *None*, they are estimated from the interpolated curve.
     When *contours* are given, it should be a nested list of graph objects, where each contained
-    list represents the graphs that constitute a contour. The
+    list represents the graphs that constitute a contour.
+
+    Please consider preprocessing values with :py:func:`_preprocess_values` first.
 
     The returned fields are:
 
@@ -1433,8 +1587,9 @@ def evaluate_likelihood_scan_2d(
     poi2_values_min = poi2_values.min()
     poi2_values_max = poi2_values.max()
 
-    # remove values where dnll2 is nan
-    mask = ~np.isnan(dnll2_values)
+    # remove values where dnll2 is NaN
+    nan_mask = np.isnan(dnll2_values)
+    mask = ~nan_mask
     poi1_values = poi1_values[mask]
     poi2_values = poi2_values[mask]
     dnll2_values = dnll2_values[mask]
@@ -1507,7 +1662,13 @@ def evaluate_likelihood_scan_2d(
             # minimize
             objective = lambda x: abs(_interp(x) - v)
             res = minimize_1d(objective, bounds)
-            return res.x[0] if res.status == 0 and (bounds[0] < res.x[0] < bounds[1]) else None
+
+            # retry once
+            success = lambda: res.status == 0 and (bounds[0] < res.x[0] < bounds[1])
+            if not success():
+                res = minimize_1d(objective, bounds)
+
+            return res.x[0] if success() else None
 
         return (
             minimize([poi_min, poi_values_max - 1e-4]),
