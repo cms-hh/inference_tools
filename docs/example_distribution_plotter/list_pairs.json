@@ -1,0 +1,12 @@
+{
+  "final_state_X_distributions" :
+  {
+    "plot_options" : "$DHI_BASE/docs/example_distribution_plotter/plot_options.json",
+    "plots_list"   : "$DHI_BASE/docs/example_distribution_plotter/plots_list.json"
+  },
+  "final_state_X_tables" :
+  {
+    "plot_options" : "$DHI_BASE/docs/example_distribution_plotter/table_options.json",
+    "plots_list"   : "$DHI_BASE/docs/example_distribution_plotter/tables_list.json"
+  }
+}
