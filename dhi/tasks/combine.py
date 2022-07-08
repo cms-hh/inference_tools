@@ -1472,6 +1472,15 @@ class CombineCommandTask(CommandTask):
         " --X-rtd MINIMIZER_multiMin_maskChannels=2"
     )
 
+    combine_timming_options = (
+    " --for-fits"
+    " --no-wrappers"
+    " --optimize-simpdf-constraints cms"
+    " --X-pack-asympows"
+    " --X-optimizeMHDependency=fixed"
+    #" --use-histsum" -- NOt yet on the latest combine release
+    )
+
     option_aliases = {
         "-d": ["--datacard"],
         "-M": ["--method"],
@@ -1759,6 +1768,12 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
         description="when set, a log file along with the result workpace with timming and memory usage "
         "; default: False",
     )
+    not_optimize_WS_timming = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when set, do not use additional combine flags to optimize the making of the "
+        "workspaces for fits only; default: False",
+    )
 
     priority = 90
 
@@ -1805,6 +1820,8 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
             for name, opt in model.hh_options.items():
                 model_args.append("--physics-option {}={}".format(name, opt["value"]))
 
+        if not self.not_optimize_WS_timming :
+            model_args.append(self.combine_timming_options)
 
         test_timming_options = test_timming_options_base(self.output().path, self.test_timming)
 
