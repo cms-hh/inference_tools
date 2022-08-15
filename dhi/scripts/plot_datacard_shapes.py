@@ -472,9 +472,9 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, file_
         h_dummy2.SetMaximum(y_max2)
 
         # add to plots
-        draw_objs2.append((hist_d_trans2, "SAME,HIST"))
-        draw_objs2.append((hist_u_trans2, "SAME,HIST"))
-        draw_objs2.append((hist_n_trans2, "SAME,HIST"))
+        draw_objs2.append((hist_d_trans2, "SAME,HIST,E"))
+        draw_objs2.append((hist_u_trans2, "SAME,HIST,E"))
+        draw_objs2.append((hist_n_trans2, "SAME,HIST,E"))
 
     # legend
     legend = r.routines.create_legend(pad=pad1, width=250, n=len(legend_entries))
