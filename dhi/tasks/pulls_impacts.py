@@ -83,6 +83,12 @@ class PullsAndImpactsBase(POITask, SnapshotUser):
 
 class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
+    retry_no_analytic = luigi.BoolParameter(
+        default=False,
+        description="when True, retry failed fits with option '--X-rtd MINIMIZER_no_analytic'; "
+        "default: False",
+    )
+
     run_command_in_tmp = True
 
     def __init__(self, *args, **kwargs):
@@ -243,6 +249,17 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         )
 
         return cmd
+
+    def post_run_command(self):
+        if self.retry_no_analytic and self.method == "default":
+            param = self.branch_map[self.branch]
+            if MergePullsAndImpacts.load_default_fit(self.output()["result"], self.pois[0], param, keep_failures=False):
+                return
+            self.logger.info("Rerunning parameter fit '{}' with option '--X-rtd MINIMIZER_no_analytic'".format(param))
+            self.custom_args += " --X-rtd MINIMIZER_no_analytic"
+            cmd, highlighted_cmd = self.get_command()
+            self.run_command(cmd, highlighted_cmd=highlighted_cmd)
+        return
 
     def htcondor_output_postfix(self):
         postfix = super(PullsAndImpacts, self).htcondor_output_postfix()
