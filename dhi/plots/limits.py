@@ -1351,7 +1351,6 @@ def plot_limit_scan_2d(
     for path in make_list(paths):
         canvas.SaveAs(path)
 
-
 @use_style("dhi_default")
 def plot_benchmark_limits(
     paths,
@@ -1359,12 +1358,13 @@ def plot_benchmark_limits(
     poi,
     y_min=None,
     y_max=None,
-    y_log=False,
+    y_log=True,
     xsec_unit="fb",
     hh_process=None,
     campaign=None,
-    bar_width=0.6,
+    bar_width=1,
     paper=False,
+    type_plot="shape_BM_all"
 ):
     """
     Creates a plot showing a the limits of BSM benchmarks for a *poi* and saves it at *paths*. *data*
@@ -1406,8 +1406,15 @@ def plot_benchmark_limits(
     import plotlib.root as r
     ROOT = import_ROOT()
 
+    #allows also to only draw jhep03/ jhep 04, maybe with steerable parameter
+    bmlabels=[['JHEP04BM1','1'],['JHEP04BM2','2'],['JHEP04BM3','3'],['JHEP04BM4','4'],['JHEP04BM5','5'],['JHEP04BM6','6'],['JHEP04BM7','7'],['JHEP04BM8','8'],['JHEP04BM9','9'],['JHEP04BM10','10'],['JHEP04BM11','11'],['JHEP04BM12','12'],['JHEP04BM8a','8a'],['JHEP03BM1','1'],['JHEP03BM2','2'],['JHEP03BM3','3'],['JHEP03BM4','4'],['JHEP03BM5','5'],['JHEP03BM6','6'],['JHEP03BM7','7'], ['SM','SM']]
+    if type_plot == "shape_BM_JHEP04":
+        bmlabels=[['JHEP04BM1','1'],['JHEP04BM2','2'],['JHEP04BM3','3'],['JHEP04BM4','4'],['JHEP04BM5','5'],['JHEP04BM6','6'],['JHEP04BM7','7'],['JHEP04BM8','8'],['JHEP04BM9','9'],['JHEP04BM10','10'],['JHEP04BM11','11'],['JHEP04BM12','12'],['JHEP04BM8a','8a'], ['SM','SM']]
+    if type_plot == "shape_BM_JHEP03":
+        bmlabels=[['JHEP03BM1','1'],['JHEP03BM2','2'],['JHEP03BM3','3'],['JHEP03BM4','4'],['JHEP03BM5','5'],['JHEP03BM6','6'],['JHEP03BM7','7'], ['SM','SM']]
+
     # check inputs and get extrema
-    n = len(data)
+    n = len(bmlabels)
     has_obs = False
     y_min_value = 1e5
     y_max_value = -1e5
@@ -1425,26 +1432,42 @@ def plot_benchmark_limits(
 
     # set limits
     y_min, y_max, _ = get_y_range(y_min_value, y_max_value, y_min, y_max, log=y_log)
+    if y_log: y_max *= 4
 
     # setup the default style and create canvas and pad
     r.setup_style()
-    canvas, (pad,) = r.routines.create_canvas(pad_props={"Logy": y_log})
+    width=1200
+    height=600
+    canvas, (pad,) = r.routines.create_canvas(pad_props={"Logy": y_log, "BottomMargin":0.15}, width=width, height=height)
     pad.cd()
     draw_objs = []
     legend_entries = []
 
     # dummy histogram to control axes
-    x_title = "Shape benchmark"
+    x_title = "Benchmark scenario"
     y_title = "95% CL limit on {} ({})".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
         to_root_latex(xsec_unit))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), n, -0.5, n - 0.5)
-    r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
-    r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"Ndivisions": n})
+    r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": 1.2*y_max})
+    r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"Ndivisions": n,  "TitleSize":30,"LabelSize":30,"LabelFont":43,"TitleOffset":1.1})
+    r.setup_y_axis(h_dummy.GetYaxis(),pad=pad, props={"TitleSize":30,"LabelSize":30,"LabelFont":43,"TitleOffset":1.1})
     draw_objs.append((h_dummy, "HIST"))
 
+    #change names and sort data
+    newData = []
+    for d in data:
+        if 'SM' in d['name']: d['name'] = 'SM'
+        elif 'JHEP' in d['name']: d['name']= d['name'][d['name'].find('JHEP'):]
+    for dl in bmlabels:
+        for d in data:
+            if dl[0] == d['name']: newData.append(d)
+    data=newData
     # benchmark labels
     for i, d in enumerate(data):
-        h_dummy.GetXaxis().SetBinLabel(i + 1, d["name"])
+        name = d['name']
+        for dl in bmlabels:
+            if dl[0]==d['name']: name = dl[1]
+        h_dummy.GetXaxis().SetBinLabel(i + 1, name)
 
     # helper to read values into graphs
     def create_graph(key="expected", sigma=None):
@@ -1455,6 +1478,10 @@ def plot_benchmark_limits(
                 continue
             x[i] = i - 0.5 * bar_width
             x_err_u[i] = bar_width
+            if key=="observed":
+                x[i] = i
+                x_err_u[i] = 0.5*bar_width
+                x_err_d[i] = 0.5*bar_width
             y[i] = d[key][0]
             if sigma:
                 y_err_d[i] = y[i] - d[key][sigma * 2]
@@ -1463,33 +1490,41 @@ def plot_benchmark_limits(
 
     # 2 sigma band
     g_2sigma = create_graph(sigma=2)
-    r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.brazil_yellow})
+    r.setup_graph(g_2sigma, props={"LineWidth": 2, "LineStyle": 1, "FillColor": colors.brazil_yellow, "LineColor": colors.brazil_yellow})
     draw_objs.append((g_2sigma, "SAME,2"))
-    legend_entries.append((g_2sigma, r"95% expected", "LF"))
+    legend_entries.append((g_2sigma, r"95% expected", "F"))
 
     # 1 sigma band
     g_1sigma = create_graph(sigma=1)
-    r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.brazil_green})
+    r.setup_graph(g_1sigma, props={"LineWidth": 2, "LineStyle": 1, "FillColor": colors.brazil_green, "LineColor": colors.brazil_green})
     draw_objs.append((g_1sigma, "SAME,2"))
-    legend_entries.insert(0, (g_1sigma, r"68% expected", "LF"))
+    legend_entries.insert(0, (g_1sigma, r"68% expected", "F"))
 
     # prepare graphs
     g_exp = create_graph(sigma=0)
-    r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 2})
+    r.setup_graph(g_exp, props={"LineWidth": 5, "LineStyle": 2, 'LineColor':colors.blue})
     draw_objs.append((g_exp, "SAME,EZ"))
     legend_entries.insert(0, (g_exp, "Median expected", "L"))
 
     # observed values
     if has_obs:
         g_obs = create_graph(key="observed")
-        r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1})
-        draw_objs.append((g_obs, "SAME,EZ"))
-        legend_entries.insert(0, (g_obs, "Observed", "L"))
+        r.setup_graph(g_obs, props={"LineWidth": 5, "LineStyle": 1, 'MarkerStyle':20, 'MarkerSize':2})
+        draw_objs.append((g_obs, "SAME,EPZ"))
+        legend_entries.insert(0, (g_obs, "Observed", "LP"))
 
     # legend
     n_cols = 2 if has_obs else 1
     legend = r.routines.create_legend(pad=pad, width=220 * n_cols, n=3, props={"NColumns": n_cols})
     r.fill_legend(legend, legend_entries)
+    legend.SetX1(0.3)
+    legend.SetX2(0.3+0.5)
+    legend.SetY1(0.75)
+    legend.SetY2(0.9)
+    legend.SetBorderSize(0)
+    legend.SetNColumns(2)
+    legend.SetTextSize(0.041)
+    legend.SetTextFont(42)
     draw_objs.append(legend)
 
     # cms label
@@ -1507,11 +1542,231 @@ def plot_benchmark_limits(
     # draw all objects
     r.routines.draw_objects(draw_objs)
 
-    # save
+    jhepl_label_x = 0.15
+    jhepl_label_y = 0.75
+    jhepl_label = "#splitline{#bf{JHEP04}}{#bf{benchmarks}}"
+    if type_plot == "shape_BM_JHEP03":
+        jhepl_label = "#splitline{#bf{JHEP03}}{#bf{benchmarks}}"
+    jhepl = ROOT.TLatex()
+    jhepl.SetNDC()
+    jhepl.SetTextAngle(0)
+    jhepl.SetTextAlign(12)
+    jhepl.SetTextSize(1.5*0.04)
+    jhepl.DrawLatex(jhepl_label_x, jhepl_label_y, jhepl_label)
+    if type_plot == "shape_BM_all":
+        jhepl_label2 = "#splitline{#bf{JHEP03}}{#bf{benchmarks}}"
+        jhepl2 = ROOT.TLatex()
+        jhepl2.SetNDC()
+        jhepl2.SetTextAngle(0)
+        jhepl2.SetTextAlign(12)
+        jhepl2.SetTextSize(1.5*0.04)
+        jhepl_label_x2 = 0.76
+        jhepl2.DrawLatex(jhepl_label_x2, jhepl_label_y, jhepl_label2)
+        theLine = ROOT.TLine()
+        theLine.SetLineWidth(5)
+        theLine.SetLineColor(ROOT.kRed)
+        theLine.SetLineStyle(9)
+        theLine.DrawLineNDC(0.65,0.155,0.65,0.7)
+        theLine2 = ROOT.TLine()
+        theLine2.SetLineWidth(5)
+        theLine2.SetLineColor(ROOT.kRed)
+        theLine2.SetLineStyle(9)
+        theLine2.DrawLineNDC(0.93,0.155,0.93,0.7)
     r.update_canvas(canvas)
     for path in make_list(paths):
         canvas.SaveAs(path)
 
+@use_style("dhi_default")
+def plot_multi_benchmark_limits(
+    paths,
+    data,
+    poi,
+    y_min=None,
+    y_max=None,
+    y_log=True,
+    xsec_unit="fb",
+    hh_process=None,
+    campaign=None,
+    bar_width=1,
+    paper=False,
+    type_plot="shape_BM_all"
+):        
+    import plotlib.root as r
+    ROOT = import_ROOT()
+    #allows also to only draw jhep03/ jhep 04, maybe with steerable parameter
+    bmlabels=[['JHEP04BM1','1'],['JHEP04BM2','2'],['JHEP04BM3','3'],['JHEP04BM4','4'],['JHEP04BM5','5'],['JHEP04BM6','6'],['JHEP04BM7','7'],['JHEP04BM8','8'],['JHEP04BM9','9'],['JHEP04BM10','10'],['JHEP04BM11','11'],['JHEP04BM12','12'],['JHEP04BM8a','8a'],['JHEP03BM1','1'],['JHEP03BM2','2'],['JHEP03BM3','3'],['JHEP03BM4','4'],['JHEP03BM5','5'],['JHEP03BM6','6'],['JHEP03BM7','7'], ['SM','SM']]
+    if type_plot == "shape_BM_JHEP04":
+        bmlabels=[['JHEP04BM1','1'],['JHEP04BM2','2'],['JHEP04BM3','3'],['JHEP04BM4','4'],['JHEP04BM5','5'],['JHEP04BM6','6'],['JHEP04BM7','7'],['JHEP04BM8','8'],['JHEP04BM9','9'],['JHEP04BM10','10'],['JHEP04BM11','11'],['JHEP04BM12','12'],['JHEP04BM8a','8a'], ['SM','SM']]
+    if type_plot == "shape_BM_JHEP03":
+        bmlabels=[['JHEP03BM1','1'],['JHEP03BM2','2'],['JHEP03BM3','3'],['JHEP03BM4','4'],['JHEP03BM5','5'],['JHEP03BM6','6'],['JHEP03BM7','7'], ['SM','SM']]
+    
+    n = len(bmlabels)
+    has_obs = False
+    y_min_value = 1e5
+    y_max_value = -1e5
+    for key in data.keys():
+        #n = len(data[key])
+        for d in data[key]:
+            assert "name" in d
+            assert "expected" in d
+            y_min_value = min(y_min_value, min(d["expected"]))
+            y_max_value = max(y_max_value, max(d["expected"]))
+            if "observed" in d:
+                assert isinstance(d["observed"], (float, int))
+                has_obs = True
+                y_min_value = min(y_min_value, d["observed"])
+                y_max_value = max(y_max_value, d["observed"])
+                d["observed"] = [d["observed"]]
+    # set limits
+    y_min, y_max, _ = get_y_range(y_min_value, y_max_value, y_min, y_max, log=y_log)
+    if y_log: y_max *= 4
+
+    # setup the default style and create canvas and pad
+    r.setup_style()
+    width, height = [None, None]
+    width=1200
+    height=600
+    canvas, (pad,) = r.routines.create_canvas(pad_props={"Logy": y_log,"BottomMargin":0.15}, width=width, height=height)
+    pad.cd()
+    draw_objs = []
+    legend_entries = []
+    # dummy histogram to control axes
+    x_title = "Benchmark scenario"
+    y_title = "95% CL limit on {} ({})".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
+                                               to_root_latex(xsec_unit))
+    h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), n, -0.5, n - 0.5)
+    r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
+    r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"Ndivisions": n, "TitleSize":30,"LabelSize":30,"LabelFont":43,"TitleOffset":1.1 })
+    r.setup_y_axis(h_dummy.GetYaxis(),pad=pad, props={"TitleSize":30,"LabelSize":30,"LabelFont":43,"TitleOffset":1.1})
+    draw_objs.append((h_dummy, "HIST"))
+    
+    #change names and sort data
+    for key in data.keys():
+        newData = []
+        for d in data[key]:
+            if 'SM' in d['name']: d['name'] = 'SM'
+            elif 'JHEP' in d['name']: d['name']= d['name'][d['name'].find('JHEP'):]
+        for dl in bmlabels:
+            for d in data[key]:
+                if dl[0] == d['name']: newData.append(d)
+        data[key]=newData
+
+    # benchmark labels
+    for i, d in enumerate(data[data.keys()[0]]):
+        name = d['name']
+        for dl in bmlabels:
+            if dl[0]==d['name']: name = dl[1]
+        h_dummy.GetXaxis().SetBinLabel(i + 1, name)
+
+    # helper to read values into graphs
+    def create_graph(data, key="expected", sigma=None):
+        args = x, y, x_err_d, x_err_u, y_err_d, y_err_u = [n * [0.] for _ in range(6)]
+        for i, d in enumerate(data):
+            if key not in d:
+                y[i] = -1.e5
+                continue
+            x[i] = i - 0.5 * bar_width
+            x_err_u[i] = bar_width
+            if key=="observed":
+                x[i] = i
+                x_err_u[i] = 0.5*bar_width
+                x_err_d[i] = 0.5*bar_width
+            y[i] = d[key][0]
+            if sigma:
+                y_err_d[i] = y[i] - d[key][sigma * 2]
+                y_err_u[i] = d[key][sigma * 2 - 1] - y[i]
+        return create_tgraph(n, *args)
+        # prepare graphs
+    for nk, key in enumerate(data.keys()):
+        g_exp = create_graph(data[key], sigma=0)
+        g_obs = create_graph(data[key], key="observed")
+        color = colors[color_sequence[nk]]
+        marker = marker_sequence[nk]
+        if 'combination' in key: color = colors.black
+        if has_obs:
+            r.setup_graph(g_exp, props={"LineWidth": 5, "LineStyle": 2, 'LineColor':color})
+            r.setup_graph(g_obs, props={"LineWidth": 5, "LineStyle": 1, 'MarkerStyle':marker, 'MarkerSize':2, 'LineColor':color, 'MarkerColor': color})
+            legend_entries.insert(0, (g_obs, key, "L"))
+        else:
+            r.setup_graph(g_exp, props={"LineWidth": 5, "LineStyle": 1, 'LineColor':color, 'MarkerStyle': marker, 'MarkerColor': color, 'MarkerSize':2})
+            legend_entries.insert(0, (g_exp, key, "L"))
+        draw_objs.append((g_exp, "SAME,EZ"))
+        draw_objs.append((g_obs, "SAME,EPZ"))
+
+    # legend
+    n_cols = 4
+    legend = r.routines.create_legend(pad=pad, width=220 * n_cols, n=3, props={"NColumns": n_cols})
+    r.fill_legend(legend, legend_entries)
+    legend.SetX1(0.2)
+    legend.SetX2(0.9)
+    legend.SetY1(0.75)
+    legend.SetY2(0.9)
+    legend.SetBorderSize(0)
+    legend.SetNColumns(2)
+    legend.SetTextSize(0.041)
+    legend.SetTextFont(42)
+    draw_objs.append(legend)
+
+    # cms label
+    cms_layout = "outside_horizontal"
+    _cms_postfix = "" if paper else cms_postfix
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    draw_objs.extend(cms_labels)
+
+    # campaign label
+    if campaign:
+        campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
+        campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad)
+        draw_objs.append(campaign_label)
+
+    # draw all objects
+    r.routines.draw_objects(draw_objs)
+
+
+    obsexp_label_x = 0.55
+    obsexp_label_y = 0.78
+    obsexp_label ="#bf{Solid (dashed) lines: observed (median expected) limits}"
+    if not has_obs:
+        obsexp_label ="#bf{Solid lines: median expected limits}"
+    obsexp = ROOT.TLatex()
+    obsexp.SetNDC()
+    obsexp.SetTextAngle(0)
+    obsexp.SetTextAlign(23)
+    obsexp.SetTextSize(0.045)
+    obsexp.DrawLatex(obsexp_label_x, obsexp_label_y, obsexp_label)
+    jhepl_label_x = 0.15
+    jhepl_label_y = 0.635
+    jhepl_label = "#splitline{#bf{JHEP04}}{#bf{benchmarks}}"
+    if type_plot == "shape_BM_JHEP03":
+        jhepl_label = "#splitline{#bf{JHEP03}}{#bf{benchmarks}}"
+    jhepl = ROOT.TLatex()
+    jhepl.SetNDC()
+    jhepl.SetTextAngle(0)
+    jhepl.SetTextAlign(12)
+    jhepl.SetTextSize(1.5*0.04)
+    jhepl.DrawLatex(jhepl_label_x, jhepl_label_y, jhepl_label)
+    if type_plot == "shape_BM_all":
+        jhepl_label2 = "#splitline{#bf{JHEP03}}{#bf{benchmarks}}"
+        jhepl2 = ROOT.TLatex()
+        jhepl2.SetNDC()
+        jhepl2.SetTextAngle(0)
+        jhepl2.SetTextAlign(12)
+        jhepl2.SetTextSize(1.5*0.04)
+        jhepl_label_x2 = 0.76
+        jhepl2.DrawLatex(jhepl_label_x2, jhepl_label_y, jhepl_label2)
+        theLine = ROOT.TLine()
+        theLine.SetLineWidth(5)
+        theLine.SetLineColor(ROOT.kRed)
+        theLine.SetLineStyle(9)
+        theLine.DrawLineNDC(0.65,0.15,0.65,0.65)
+        theLine2 = ROOT.TLine()
+        theLine2.SetLineWidth(5)
+        theLine2.SetLineColor(ROOT.kRed)
+        theLine2.SetLineStyle(9)
+        theLine2.DrawLineNDC(0.93,0.15,0.93,0.65)
+    r.update_canvas(canvas)
+    for path in make_list(paths):
+        canvas.SaveAs(path)
 
 def evaluate_limit_scan_1d(scan_values, limit_values, xsec_scan_values=None, xsec_values=None,
         interpolation="linear"):
