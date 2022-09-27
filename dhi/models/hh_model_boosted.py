@@ -18,7 +18,7 @@ from hh_model import *  # noqa
 from hh_model import (
     GGFSample as DefaultGGFSample, VBFSample as DefaultVBFSample, VHHSample,
     GGFFormula as DefaultGGFFormula, VBFFormula as DefaultVBFFormula, HHModel as DefaultHHModel,
-    ggf_samples, vbf_samples, vhh_samples, _create_add_sample_func,
+    ggf_samples, vbf_samples, vhh_samples, _create_add_sample_func, model_default_vhh
 )
 
 
@@ -158,4 +158,12 @@ model_boosted = create_model("model_boosted",
     vbf=model_boosted_closure.vbf_formula.samples,
     boosted_ggf=[key for key in boosted_ggf_samples.keys() if key not in [(-3, 1), (1, 0)]],  # no (-3, 1), (1, 0)
     boosted_vbf=[key for key in boosted_vbf_samples.keys() if key not in [(1, 1, -3), (0.5, 1, 1)]] ,  # no (1, 1, -3), (0.5, 1, 1)
+)
+
+# boosted model that includes default vhh points
+model_boosted_vhh = create_model(
+    "model_boosted_vhh",
+    ggf=model_boosted.ggf_formula.samples,
+    vbf=model_boosted.vbf_formula.samples,
+    vhh=model_default_vhh.vhh_formula.samples,
 )
