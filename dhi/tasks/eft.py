@@ -10,6 +10,8 @@ from collections import OrderedDict, defaultdict
 
 import law
 import luigi
+import json
+import glob
 
 from dhi.tasks.base import HTCondorWorkflow, PlotTask, view_output_plots
 from dhi.tasks.combine import (
@@ -331,7 +333,11 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
         default=False,
         description="apply log scaling to the y-axis; default: False",
     )
-
+    plot_type = luigi.ChoiceParameter(
+        default="shape_BM_all",
+        choices=["shape_BM_all", "shape_BM_JHEP04", "shape_BM_JHEP03"],
+        description="Which bm points to plot, all + SM, jhep03/04 ones + SM ?",
+    )
     x_min = None
     x_max = None
     z_min = None
@@ -351,7 +357,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
             parts.append("log")
 
         names = self.create_plot_names(["eftbenchmarks", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        return [self.local_target(name) for name in names]  + [self.local_target(name.replace(".pdf", ".json")) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -381,11 +387,26 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
 
             # some printing
             self.publish_message("BM {} -> {}".format(name, record["limit"]))
+        # output as ordered dict, to be read as ordered dictionary from the next tast
+        # fill data entries as expected by the output dict
+        to_output = OrderedDict()
+        with open(outputs[1].path, 'w') as fp:
+            for record in data :
+                to_output.update({record["name"] :
+                    OrderedDict([
+                    ("limit", record["expected"][0]),
+                    ("limit_p1", record["expected"][1]),
+                    ("limit_m1", record["expected"][2]),
+                    ("limit_p2", record["expected"][3]),
+                    ("limit_m2", record["expected"][4]),
+                    ("observed", record["observed"] if self.unblinded else record["expected"][0])
+                     ])})
+            json.dump(to_output, fp, indent=4)
 
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_benchmark_limits",
-            paths=[outp.path for outp in outputs],
+            paths=outputs[0].path, #[outp.path for outp in outputs],
             data=data,
             poi=self.poi,
             y_min=self.get_axis_limit("y_min"),
@@ -395,4 +416,111 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
             hh_process=self.br if self.br in br_hh else None,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             paper=self.paper,
+            type_plot=self.plot_type
+        )
+
+class PlotMultiEFTBenchmarkLimits(PlotTask):
+    multi_datacards = law.MultiCSVParameter(
+        description="multiple path sequnces to input datacards separated by a colon; supported "
+        "formats are '[bin=]path', '[bin=]paths@store_directory for the last datacard in the "
+        "sequence, and '@store_directory' for easier configuration; supports globbing and brace "
+        "expansion",
+        brace_expand=True,
+    )
+
+    xsec = luigi.ChoiceParameter(
+        default="pb",
+        choices=["pb", "fb"],
+        description="convert limits to cross sections in this unit; choices: pb,fb; default: fb",
+    )
+    br = luigi.ChoiceParameter(
+        default=law.NO_STR,
+        choices=[law.NO_STR, ""] + list(br_hh.keys()),
+        description="name of a branching ratio defined in dhi.config.br_hh to scale the cross "
+        "section when xsec is used; choices: '',{}; no default".format(",".join(br_hh.keys())),
+    )
+    y_log = luigi.BoolParameter(
+        default=False,
+        description="apply log scaling to the y-axis; default: False",
+    )
+    datacard_labels = law.CSVParameter(
+        default=(r"bm",),
+        description="one or multiple comma-separated regular expressions for selecting datacards "
+        "from each of the sequences passed in --multi-datacards, and for extracting information "
+        "with a single regex group; when set on the command line, single quotes should be used; "
+        r"default: ('bm',)",
+    )
+    unblinded = luigi.BoolParameter(
+        default=False,
+        description="unblinded computation and plotting of results; default: False",
+    )
+
+    plot_type = luigi.ChoiceParameter(
+        default="shape_BM_all",
+        choices=["shape_BM_all", "shape_BM_JHEP04", "shape_BM_JHEP03"],
+        description="Which bm points to plot, all + SM, jhep03/04 ones + SM ?",
+    )
+
+    def requires(self):
+        for mm, datacards in enumerate(self.multi_datacards) :
+           cards = []
+           for c in sorted(set(glob.glob(datacards[0]))):
+               cards.append(tuple([c]))
+           yield PlotEFTBenchmarkLimits(multi_datacards=tuple(cards), unblinded=self.unblinded, xsec=self.xsec, plot_type=self.plot_type, version = self.version, br=self.br)
+
+    def output(self):
+        # additional postfix
+        parts = []
+        parts.append(self.xsec)
+        if self.br and self.br != law.NO_STR:
+            parts.append(self.br)
+        if self.y_log:
+            parts.append("log")
+
+        names = self.create_plot_names(["multi_benchmarks", parts])
+        if self.unblinded:
+            parts.append(["unblinded"])
+        names2 = self.create_plot_names(["multi_benchmarks", parts])
+        return [self.local_target(name) for name in names] + [self.local_target(name) for name in names2]
+
+    @law.decorator.log
+    @law.decorator.notify
+    @view_output_plots
+    @law.decorator.safe_output
+    def run(self):
+        outputs = self.output()
+        outputs[0].parent.touch()
+        data_all = {}
+        for ll, label in enumerate(self.datacard_labels) :
+             with open(self.input()[ll][1].path, 'r') as fp:
+                 tempdata = json.load(fp, object_pairs_hook=OrderedDict)
+                 limits = []
+                 data_keys_sorted = tempdata.keys()
+                 for dd in data_keys_sorted:
+                     if self.unblinded:
+                         limits.append({
+                             "expected": [tempdata[str(dd)]["limit"], tempdata[str(dd)]["limit_p1"],tempdata[str(dd)]["limit_m1"],tempdata[str(dd)]["limit_m2"],tempdata[str(dd)]["limit_p2"]],
+                             "observed": tempdata[str(dd)]["observed"],
+                             "name": dd
+                         })
+                     else:
+                         limits.append({
+                             "expected": [tempdata[str(dd)]["limit"], tempdata[str(dd)]["limit_p1"],tempdata[str(dd)]["limit_m1"],tempdata[str(dd)]["limit_m2"],tempdata[str(dd)]["limit_p2"]],
+                             "name": dd
+                         })
+                 data_all[label]=limits
+
+        self.call_plot_func(
+            "dhi.plots.limits.plot_multi_benchmark_limits",
+            paths=outputs[0].path,
+            data=data_all,
+            poi = "r_gghh",
+            y_min=self.get_axis_limit("y_min"),
+            y_max=self.get_axis_limit("y_max"),
+            y_log=self.y_log,
+            xsec_unit=self.xsec,
+            hh_process=self.br if self.br in br_hh else None,
+            campaign=self.campaign if self.campaign != law.NO_STR else None,
+            paper=self.paper,
+            type_plot=self.plot_type
         )
