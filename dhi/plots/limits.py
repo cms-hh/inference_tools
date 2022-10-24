@@ -1374,7 +1374,7 @@ def plot_benchmark_limits(
     campaign=None,
     bar_width=1,
     paper=False,
-    summary=False
+    summary=False,
     type_plot="shape_BM_all"
 ):
     """
