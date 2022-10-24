@@ -17,7 +17,7 @@ from scinum import Number
 
 from dhi.config import (
     poi_data, br_hh_names, br_hh_colors, campaign_labels, colors, color_sequence, marker_sequence,
-    cms_postfix,
+    cms_postfix, cms_postfix_preliminary, hh_references
 )
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, create_tgraph, colored, minimize_1d, unique_recarray,
@@ -55,6 +55,7 @@ def plot_limit_scan(
     show_excluded_ranges=False,
     show_points=False,
     paper=False,
+    summary=False
 ):
     """
     Creates a plot for the upper limit scan of a *poi* over a *scan_parameter* and saves it at
@@ -378,7 +379,8 @@ def plot_limit_scan(
 
     # cms label
     cms_layout = "outside_horizontal"
-    _cms_postfix = "" if paper else cms_postfix
+    #_cms_postfix = "" if paper else cms_postfix
+    _cms_postfix = cms_postfix_preliminary if summary else ("" if paper else cms_postfix)
     cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
     draw_objs.extend(cms_labels)
 
@@ -431,6 +433,7 @@ def plot_limit_scans(
     campaign=None,
     show_points=True,
     paper=False,
+    summary=False
 ):
     """
     Creates a plot showing multiple upper limit scans of a *poi* over a *scan_parameter* and saves
@@ -688,7 +691,7 @@ def plot_limit_scans(
     draw_objs.insert(-1, legend_box)
 
     # cms label
-    _cms_postfix = "" if paper else cms_postfix
+    _cms_postfix = cms_postfix_preliminary if summary else "" if paper else cms_postfix
     cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
         layout="outside_horizontal")
     draw_objs.extend(cms_labels)
@@ -741,6 +744,7 @@ def plot_limit_points(
     campaign=None,
     digits=None,
     paper=False,
+    summary=False
 ):
     """
     Creates a plot showing a comparison of limits of multiple analysis (or channels) on a *poi* and
@@ -828,6 +832,10 @@ def plot_limit_points(
             has_thy = True
             x_min_value = min(x_min_value, min(d["theory"]))
             x_max_value = max(x_max_value, max(d["theory"]))
+
+    if summary :
+        scale_xmax = 15
+        x_max_value = x_max_value*scale_xmax
 
     # sort data
     if sort_by == "expected":
@@ -1023,8 +1031,9 @@ def plot_limit_points(
         draw_objs.extend([tl, tr])
 
         # extra labels
-        if d.get("label"):
-            rlabel = to_root_latex(d["label"])
+        if d.get("label") or summary :
+            extra_label = hh_references.get(d["name"], d["name"]) if summary else d["label"]
+            rlabel = to_root_latex(extra_label)
             rlabel_x = r.get_x(10, pad, anchor="right")
             rlabel = ROOT.TLatex(rlabel_x, label_y, rlabel)
             r.setup_latex(rlabel, props={"NDC": True, "TextAlign": 32, "TextSize": 14})
@@ -1072,7 +1081,7 @@ def plot_limit_points(
 
     # cms label
     cms_layout = "outside_horizontal"
-    _cms_postfix = "" if paper else cms_postfix
+    _cms_postfix = cms_postfix_preliminary if summary else "" if paper else cms_postfix
     cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
     draw_objs.extend(cms_labels)
 
@@ -1124,6 +1133,7 @@ def plot_limit_scan_2d(
     h_lines=None,
     v_lines=None,
     paper=False,
+    summary=False
 ):
     """
     Creates a plot for the upper limit scan of a *poi* in two dimensions over *scan_parameter1* and
@@ -1325,7 +1335,7 @@ def plot_limit_scan_2d(
 
     # cms label
     cms_layout = "outside_horizontal"
-    _cms_postfix = "" if paper else cms_postfix
+    _cms_postfix = cms_postfix_preliminary if summary else "" if paper else cms_postfix
     cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
     draw_objs.extend(cms_labels)
 
@@ -1364,6 +1374,7 @@ def plot_benchmark_limits(
     campaign=None,
     bar_width=1,
     paper=False,
+    summary=False,
     type_plot="shape_BM_all"
 ):
     """
@@ -1529,7 +1540,7 @@ def plot_benchmark_limits(
 
     # cms label
     cms_layout = "outside_horizontal"
-    _cms_postfix = "" if paper else cms_postfix
+    _cms_postfix = cms_postfix_preliminary if summary else "" if paper else cms_postfix
     cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
     draw_objs.extend(cms_labels)
 
@@ -1590,7 +1601,7 @@ def plot_multi_benchmark_limits(
     bar_width=1,
     paper=False,
     type_plot="shape_BM_all"
-):        
+):
     import plotlib.root as r
     ROOT = import_ROOT()
     #allows also to only draw jhep03/ jhep 04, maybe with steerable parameter
@@ -1599,7 +1610,7 @@ def plot_multi_benchmark_limits(
         bmlabels=[['JHEP04BM1','1'],['JHEP04BM2','2'],['JHEP04BM3','3'],['JHEP04BM4','4'],['JHEP04BM5','5'],['JHEP04BM6','6'],['JHEP04BM7','7'],['JHEP04BM8','8'],['JHEP04BM9','9'],['JHEP04BM10','10'],['JHEP04BM11','11'],['JHEP04BM12','12'],['JHEP04BM8a','8a'], ['SM','SM']]
     if type_plot == "shape_BM_JHEP03":
         bmlabels=[['JHEP03BM1','1'],['JHEP03BM2','2'],['JHEP03BM3','3'],['JHEP03BM4','4'],['JHEP03BM5','5'],['JHEP03BM6','6'],['JHEP03BM7','7'], ['SM','SM']]
-    
+
     n = len(bmlabels)
     has_obs = False
     y_min_value = 1e5
@@ -1639,7 +1650,7 @@ def plot_multi_benchmark_limits(
     r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"Ndivisions": n, "TitleSize":30,"LabelSize":30,"LabelFont":43,"TitleOffset":1.1 })
     r.setup_y_axis(h_dummy.GetYaxis(),pad=pad, props={"TitleSize":30,"LabelSize":30,"LabelFont":43,"TitleOffset":1.1})
     draw_objs.append((h_dummy, "HIST"))
-    
+
     #change names and sort data
     for key in data.keys():
         newData = []

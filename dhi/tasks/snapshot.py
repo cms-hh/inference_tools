@@ -15,9 +15,15 @@ from dhi.tasks.combine import (
     POITask,
     CreateWorkspace,
 )
-
+from dhi.util import test_timming_options_base
 
 class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+    test_timming = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when set, a log file along with the result workpace with timming and memory usage "
+        "; default: False",
+    )
 
     pois = copy.copy(POITask.pois)
     pois._default = ("r",)
@@ -55,8 +61,11 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
         else:
             blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
 
+        test_timming_options = test_timming_options_base(self.output().path, self.test_timming)
+
         # build the command
         cmd = (
+            "{test_timming_options} "
             "combine -M MultiDimFit {workspace}"
             " {self.custom_args}"
             " --verbose 1"
@@ -77,6 +86,7 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
             workspace=self.input().path,
             output=self.output().path,
             blinded_args=blinded_args,
+            test_timming_options=test_timming_options,
         )
 
         return cmd
