@@ -22,7 +22,7 @@ from dhi.tasks.combine import (
     CreateWorkspace,
 )
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
-from dhi.util import unique_recarray, real_path
+from dhi.util import unique_recarray, real_path, test_timming_options_base
 from dhi.config import br_hh, poi_data
 
 
@@ -123,6 +123,12 @@ class UpperLimitsScanBase(UpperLimitsBase, POIScanTask):
 
 
 class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+    test_timming = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when set, a log file along with the result workpace with timming and memory usage "
+        "; default: False",
+    )
 
     run_command_in_tmp = True
 
@@ -215,8 +221,11 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
                 " --noFitAsimov"
             ).format(self=self)
 
+        test_timming_options = test_timming_options_base(self.output().path, self.test_timming)
+
         # build the command
         cmd = (
+            "{test_timming_options} "
             "combine -M AsymptoticLimits {workspace}"
             " {self.custom_args}"
             " --verbose 1"
@@ -239,6 +248,7 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
             grid_args=grid_args,
             blinded_args=blinded_args,
             snapshot_args=snapshot_args,
+            test_timming_options=test_timming_options,
         )
 
         return cmd

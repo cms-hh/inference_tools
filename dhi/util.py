@@ -90,6 +90,8 @@ def import_file(path, attr=None):
 
     return pkg
 
+def test_timming_options_base(path, test_timming) :
+    return "/usr/bin/time -ao {} -f \"TIME='Elapsed %e User %U Sys %S Mem %M' time \" ".format(path.replace(".root","_timming.log")) if test_timming else " "
 
 def _load_hooks():
     global _hook_data
