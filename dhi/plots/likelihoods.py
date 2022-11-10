@@ -785,6 +785,7 @@ def plot_likelihood_scan_2d(
                 legend_entries.append((g, level, "L"))
     if legend_entries:
         legend_kwargs = {"pad": pad, "width": 340, "n": len(legend_entries)}
+        if eftlines: legend_kwargs["width"]=550
         if _style_contours:
             legend_kwargs["n"] = 2
             legend_kwargs["props"] = {"NColumns": 2}
