@@ -302,6 +302,11 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         "default: False",
     )
 
+    eftlines  = luigi.Parameter(
+        default=None,
+        description="File path for potential eftlines in 2D likelihood plot, ignored for 1D.",
+    )
+
     force_n_pois = (1, 2)
     force_n_scan_parameters = (1, 2)
     sort_pois = False
@@ -413,6 +418,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 paper=self.paper,
                 style=self.style if self.style != law.NO_STR else None,
+                eftlines=self.eftlines,
             )
 
     def load_scan_data(self, inputs, recompute_dnll2=True, merge_scans=True):
