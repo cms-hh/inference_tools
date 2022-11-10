@@ -402,6 +402,7 @@ def plot_likelihood_scan_2d(
     campaign=None,
     paper=False,
     style=None,
+    eftlines=None,
 ):
     """
     Creates a likelihood plot of the 2D scan of two POIs *poi1* and *poi2*, and saves it at *paths*.
@@ -446,6 +447,8 @@ def plot_likelihood_scan_2d(
                         kf-kV plots of the HComb group.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d
+    
+    *eftlines* gives the option to parse a file with predefined theory lines to be added to 2D likelihood plots
     """
 
     # transformations
@@ -725,6 +728,17 @@ def plot_likelihood_scan_2d(
         r.setup_graph(g_fit, props=props, color=colors.black)
         draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
 
+    #Theory lines
+    if eftlines:
+        with open(eftlines,'r') as lines:
+            for l in lines:
+                par = l.split(';')
+                if poi1 != par[0] or poi2 != par[1]: continue
+                templine = ROOT.TF1(par[3],par[2],x_min,x_max)
+                r.setup_func(templine,{"LineWidth":3,"LineStyle":int(par[4])},color=int(par[5]))
+                draw_objs.append((templine,"same"))
+                legend_entries.append((templine,par[3],"L"))
+
     # fill hep data
     if hep_data:
         # use the first underlying histogram and add its axes as two independent variables
@@ -771,6 +785,7 @@ def plot_likelihood_scan_2d(
                 legend_entries.append((g, level, "L"))
     if legend_entries:
         legend_kwargs = {"pad": pad, "width": 340, "n": len(legend_entries)}
+        if eftlines: legend_kwargs["width"]=550
         if _style_contours:
             legend_kwargs["n"] = 2
             legend_kwargs["props"] = {"NColumns": 2}
