@@ -59,7 +59,7 @@ class HHModelTask(AnalysisTask):
         ),
     )
 
-    allow_empty_hh_model = False
+    allow_empty_hh_model = True
 
     def __init__(self, *args, **kwargs):
         super(HHModelTask, self).__init__(*args, **kwargs)
