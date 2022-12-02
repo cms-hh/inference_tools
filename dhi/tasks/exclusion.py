@@ -84,7 +84,7 @@ class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIP
 
         # load input data
         data = []
-        for i, inp in enumerate(self.input()):
+        for i, (inp, unblind) in enumerate(zip(self.input(), self.unblinded)):
             # load limits
             limits = PlotUpperLimits._load_scan_data(inp["limits"], self.scan_parameter_names)
 
@@ -103,7 +103,7 @@ class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIP
                 nll_values=nll_values,
                 scan_min=scan_min,
             )
-            if self.unblinded:
+            if unblind:
                 entry["observed_limits"] = {
                     self.scan_parameter_names[0]: limits[self.scan_parameter_names[0]],
                     "limit": limits["observed"],
