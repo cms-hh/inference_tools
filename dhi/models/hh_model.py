@@ -48,7 +48,7 @@ else:
 
 
 ####################################################################################################
-### Samples
+# Samples
 ####################################################################################################
 
 class HHSample(object):
@@ -177,7 +177,8 @@ add_vbf_sample(CV=0.5, C2V=1.0, kl=1.0, xs=0.0108237, label="qqHH_CV_0p5_C2V_1_k
 add_vbf_sample(CV=1.5, C2V=1.0, kl=1.0, xs=0.0660185, label="qqHH_CV_1p5_C2V_1_kl_1")
 
 # vhh samples with keys (CV, C2V, kl)
-# cross section values are NLO WHH + NNLO ZHH (no k-factor applied) and are only used in create_vhh_xsec_func below
+# cross section values are NLO WHH + NNLO ZHH (no k-factor applied)
+# and are only used in create_vhh_xsec_func below
 vhh_samples = OrderedDict()
 add_vhh_sample = _create_add_sample_func(VHHSample, vhh_samples)
 add_vhh_sample(CV=1.0, C2V=1.0, kl=1.0, xs=0.0008850, label="VHH_CV_1_C2V_1_kl_1")
@@ -464,33 +465,35 @@ class HBRScaler(object):
             self.make_expr("expr::kl_scalBR_{}('(@0 - 1) * {}', kl)".format(d, c1))
 
         # define partial widths as a function of kl, kt, and CV
-        self.make_expr("expr::CVktkl_Gscal_Z('(@0 * @0 + @3) * @1 * @2', CV, SM_BR_hzz, HiggsDecayWidth_UncertaintyScaling_hzz, kl_scalBR_hzz)")
-        self.make_expr("expr::CVktkl_Gscal_W('(@0 * @0 + @3) * @1 * @2', CV, SM_BR_hww, HiggsDecayWidth_UncertaintyScaling_hww, kl_scalBR_hww)")
-        self.make_expr("expr::CVktkl_Gscal_tau('(1 + @4) * @0 * @2 + (1 + @5) * @1 * @3', SM_BR_htt, SM_BR_hmm, HiggsDecayWidth_UncertaintyScaling_htt, HiggsDecayWidth_UncertaintyScaling_hmm,kl_scalBR_htt, kl_scalBR_hmm)")
-        self.make_expr("expr::CVktkl_Gscal_top('(1 + @2) * @0 * @1', SM_BR_hcc, HiggsDecayWidth_UncertaintyScaling_hcc, kl_scalBR_hcc)")
-        self.make_expr("expr::CVktkl_Gscal_bottom('(1 + @3) * (@0 * @2 + @1)', SM_BR_hbb, SM_BR_hss, HiggsDecayWidth_UncertaintyScaling_hbb, kl_scalBR_hbb)")
-        self.make_expr("expr::CVktkl_Gscal_gluon('(@0 + @3) * @1 * @2', Scaling_hgluglu, SM_BR_hgluglu, HiggsDecayWidth_UncertaintyScaling_hgluglu, kl_scalBR_hgluglu)")
-        self.make_expr("expr::CVktkl_Gscal_gamma('(@0 + @6) * @1 * @4 + @2 * @3 * @5', Scaling_hgg, SM_BR_hgg, Scaling_hzg, SM_BR_hzg, HiggsDecayWidth_UncertaintyScaling_hgg, HiggsDecayWidth_UncertaintyScaling_hzg, kl_scalBR_hgg)")
+        self.make_expr("expr::CVktkl_Gscal_Z('(@0 * @0 + @3) * @1 * @2', CV, SM_BR_hzz, HiggsDecayWidth_UncertaintyScaling_hzz, kl_scalBR_hzz)")  # noqa
+        self.make_expr("expr::CVktkl_Gscal_W('(@0 * @0 + @3) * @1 * @2', CV, SM_BR_hww, HiggsDecayWidth_UncertaintyScaling_hww, kl_scalBR_hww)")  # noqa
+        self.make_expr("expr::CVktkl_Gscal_tau('(1 + @4) * @0 * @2 + (1 + @5) * @1 * @3', SM_BR_htt, SM_BR_hmm, HiggsDecayWidth_UncertaintyScaling_htt, HiggsDecayWidth_UncertaintyScaling_hmm,kl_scalBR_htt, kl_scalBR_hmm)")  # noqa
+        self.make_expr("expr::CVktkl_Gscal_top('(1 + @2) * @0 * @1', SM_BR_hcc, HiggsDecayWidth_UncertaintyScaling_hcc, kl_scalBR_hcc)")  # noqa
+        self.make_expr("expr::CVktkl_Gscal_bottom('(1 + @3) * (@0 * @2 + @1)', SM_BR_hbb, SM_BR_hss, HiggsDecayWidth_UncertaintyScaling_hbb, kl_scalBR_hbb)")  # noqa
+        self.make_expr("expr::CVktkl_Gscal_gluon('(@0 + @3) * @1 * @2', Scaling_hgluglu, SM_BR_hgluglu, HiggsDecayWidth_UncertaintyScaling_hgluglu, kl_scalBR_hgluglu)")  # noqa
+        self.make_expr("expr::CVktkl_Gscal_gamma('(@0 + @6) * @1 * @4 + @2 * @3 * @5', Scaling_hgg, SM_BR_hgg, Scaling_hzg, SM_BR_hzg, HiggsDecayWidth_UncertaintyScaling_hgg, HiggsDecayWidth_UncertaintyScaling_hzg, kl_scalBR_hgg)")  # noqa
 
         # fix to have all BRs add up to unity
-        self.make_expr("sum::CVktkl_SMBRs({})".format(", ".join("SM_BR_" + d for d in SM_HIGG_DECAYS)))
+        self.make_expr("sum::CVktkl_SMBRs({})".format(", ".join(
+            "SM_BR_" + d for d in SM_HIGG_DECAYS
+        )))
 
         # total width, normalized to SM
         # (just the sum over the partial widths/SM total BR)
-        self.make_expr("expr::CVktkl_Gscal_tot('(@0 + @1 + @2 + @3 + @4 + @5 + @6) / @7', CVktkl_Gscal_Z, CVktkl_Gscal_W, CVktkl_Gscal_tau, CVktkl_Gscal_top, CVktkl_Gscal_bottom, CVktkl_Gscal_gluon, CVktkl_Gscal_gamma, CVktkl_SMBRs)")
+        self.make_expr("expr::CVktkl_Gscal_tot('(@0 + @1 + @2 + @3 + @4 + @5 + @6) / @7', CVktkl_Gscal_Z, CVktkl_Gscal_W, CVktkl_Gscal_tau, CVktkl_Gscal_top, CVktkl_Gscal_bottom, CVktkl_Gscal_gluon, CVktkl_Gscal_gamma, CVktkl_SMBRs)")  # noqa
 
         # BRs, normalized to SM
         # (scaling as (partial/partial_SM) / (total/total_SM))
-        self.make_expr("expr::CVktkl_BRscal_hww('(@0 * @0 + @3) * @2 / @1', CV, CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hww, kl_scalBR_hww)")
-        self.make_expr("expr::CVktkl_BRscal_hzz('(@0 * @0 + @3) * @2 / @1', CV, CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hzz, kl_scalBR_hzz)")
-        self.make_expr("expr::CVktkl_BRscal_htt('(1 + @2) * @1 / @0', CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_htt, kl_scalBR_htt)")
-        self.make_expr("expr::CVktkl_BRscal_hmm('(1 + @2) * @1 / @0', CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hmm, kl_scalBR_hmm)")
-        self.make_expr("expr::CVktkl_BRscal_hbb('(1 + @2) * @1 / @0', CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hbb, kl_scalBR_hbb)")
-        self.make_expr("expr::CVktkl_BRscal_hcc('(1 + @2) * @1 / @0', CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hcc, kl_scalBR_hcc)")
-        self.make_expr("expr::CVktkl_BRscal_hss('(1 + @2) * @1 / @0', CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hss, kl_scalBR_hss)")
-        self.make_expr("expr::CVktkl_BRscal_hgg('(@0 + @3) * @2 / @1', Scaling_hgg, CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hgg,kl_scalBR_hgg)")
-        self.make_expr("expr::CVktkl_BRscal_hzg('@0 * @2 / @1', Scaling_hzg, CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hzg)")
-        self.make_expr("expr::CVktkl_BRscal_hgluglu('(@0 + @3) * @2 / @1', Scaling_hgluglu, CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hgluglu, kl_scalBR_hgluglu)")
+        self.make_expr("expr::CVktkl_BRscal_hww('(@0 * @0 + @3) * @2 / @1', CV, CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hww, kl_scalBR_hww)")  # noqa
+        self.make_expr("expr::CVktkl_BRscal_hzz('(@0 * @0 + @3) * @2 / @1', CV, CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hzz, kl_scalBR_hzz)")  # noqa
+        self.make_expr("expr::CVktkl_BRscal_htt('(1 + @2) * @1 / @0', CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_htt, kl_scalBR_htt)")  # noqa
+        self.make_expr("expr::CVktkl_BRscal_hmm('(1 + @2) * @1 / @0', CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hmm, kl_scalBR_hmm)")  # noqa
+        self.make_expr("expr::CVktkl_BRscal_hbb('(1 + @2) * @1 / @0', CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hbb, kl_scalBR_hbb)")  # noqa
+        self.make_expr("expr::CVktkl_BRscal_hcc('(1 + @2) * @1 / @0', CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hcc, kl_scalBR_hcc)")  # noqa
+        self.make_expr("expr::CVktkl_BRscal_hss('(1 + @2) * @1 / @0', CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hss, kl_scalBR_hss)")  # noqa
+        self.make_expr("expr::CVktkl_BRscal_hgg('(@0 + @3) * @2 / @1', Scaling_hgg, CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hgg,kl_scalBR_hgg)")  # noqa
+        self.make_expr("expr::CVktkl_BRscal_hzg('@0 * @2 / @1', Scaling_hzg, CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hzg)")  # noqa
+        self.make_expr("expr::CVktkl_BRscal_hgluglu('(@0 + @3) * @2 / @1', Scaling_hgluglu, CVktkl_Gscal_tot, HiggsDecayWidth_UncertaintyScaling_hgluglu, kl_scalBR_hgluglu)")  # noqa
 
         # store the final scaling expression names
         for d in SM_HIGG_DECAYS:
@@ -510,25 +513,25 @@ class HBRScaler(object):
         # create scalings for different production processes which require different formulae
         for p in ["ggH", "qqH"]:
             d = {"prod": p, "ecm": ecm, "cxs": cxs_13[p], "ewk": ewk_13[p], "dzh": dZH}
-            self.make_expr("expr::CVktkl_XSscal_{prod}_{ecm}('(@1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, Scaling_{prod}_{ecm})".format(**d))
-            self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})".format(**d))
+            self.make_expr("expr::CVktkl_XSscal_{prod}_{ecm}('(@1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, Scaling_{prod}_{ecm})".format(**d))  # noqa
+            self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})".format(**d))  # noqa
             self.h_scalings.append("CVktkl_pos_XSscal_{prod}_{ecm}".format(**d))
 
         for p in ["ggZH", "tHq", "tHW"]:
             d = {"prod": p, "ecm": ecm}
-            self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', Scaling_{prod}_{ecm})".format(**d))
+            self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', Scaling_{prod}_{ecm})".format(**d))  # noqa
             self.h_scalings.append("CVktkl_pos_XSscal_{prod}_{ecm}".format(**d))
 
         for p in ["ZH", "WH", "VH"]:
             d = {"prod": p, "ecm": ecm, "cxs": cxs_13[p], "ewk": ewk_13[p], "dzh": dZH}
-            self.make_expr("expr::CVktkl_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, CV)".format(**d))
-            self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})".format(**d))
+            self.make_expr("expr::CVktkl_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, CV)".format(**d))  # noqa
+            self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})".format(**d))  # noqa
             self.h_scalings.append("CVktkl_pos_XSscal_{prod}_{ecm}".format(**d))
 
         for p in ["ttH"]:
             d = {"prod": p, "ecm": ecm, "cxs": cxs_13[p], "ewk": ewk_13[p], "dzh": dZH}
-            self.make_expr("expr::CVktkl_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, kt)".format(**d))
-            self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})".format(**d))
+            self.make_expr("expr::CVktkl_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, kt)".format(**d))  # noqa
+            self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})".format(**d))  # noqa
             self.h_scalings.append("CVktkl_pos_XSscal_{prod}_{ecm}".format(**d))
 
     def find_br_scalings(self, process, bin=None):
@@ -611,7 +614,8 @@ class HBRScaler(object):
         # build the new scaling
         xsbr_scaling = "{}_BRscal_{}".format(xs_scaling, br)
         if not self.get_expr(xsbr_scaling):
-            self.make_expr("expr::{}('@0 * @1 * @2', {}, {}, {})".format(xsbr_scaling, xs_scaling, br_scalings[0], br_scalings[1]))
+            self.make_expr("expr::{}('@0 * @1 * @2', {}, {}, {})".format(
+                xsbr_scaling, xs_scaling, br_scalings[0], br_scalings[1]))
 
         return xsbr_scaling
 
@@ -636,7 +640,8 @@ class HBRScaler(object):
         # build the new scaling
         xsbr_scaling = "{}_BRscal_{}".format(xs_scaling, br)
         if not self.get_expr(xsbr_scaling):
-            self.make_expr("expr::{}('@0 * @1', {}, {})".format(xsbr_scaling, xs_scaling, br_scalings[0]))
+            self.make_expr("expr::{}('@0 * @1', {}, {})".format(
+                xsbr_scaling, xs_scaling, br_scalings[0]))
 
         return xsbr_scaling
 
@@ -1015,7 +1020,7 @@ class HHModel(HHModelBase):
             self.ggf_kl_dep_unc, scale, expr_lo1, expr_lo2, expr_nom))
 
         # create the interpolation
-        # as in https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/blob/102x/interface/ProcessNormalization.h
+        # as in https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/blob/102x/interface/ProcessNormalization.h  # noqa
         d = {"x": self.ggf_kl_dep_unc}
         d["name"] = "{x}_kappa".format(**d)
         d["hi"] = "{x}_kappaHi".format(**d)
@@ -1030,12 +1035,13 @@ class HHModel(HHModelBase):
         d["retCent"] = "{avg} + {alpha} * {halfdiff}".format(**d)
         d["retLow"] = d["logKlo"]
         d["retHigh"] = d["logKhi"]
-        d["retFull"] = "{x} <= -0.5 ? ({retLow}) : {x} >= 0.5 ? ({retHigh}) : ({retCent})".format(**d)
+        d["retFull"] = "{x} <= -0.5 ? ({retLow}) : {x} >= 0.5 ? ({retHigh}) : ({retCent})".format(**d)  # noqa
         d["ret"] = "expr::{name}('exp({retFull})', {{{hi}, {lo}, {x}}})".format(**d)
         self.make_expr(d["ret"])
 
         # add the scaling
-        self.make_expr("expr::scaling_{0}('pow(@0, @1)', {0}_kappa, {0})".format(self.ggf_kl_dep_unc))
+        self.make_expr("expr::scaling_{0}('pow(@0, @1)', {0}_kappa, {0})".format(
+            self.ggf_kl_dep_unc))
 
     def create_scalings(self):
         """
@@ -1099,7 +1105,7 @@ class HHModel(HHModelBase):
                             new_name, self.ggf_kl_dep_unc, name))
                         name = new_name
 
-                    # optionally rescale to nnlo (expecting the normalization to be nlo * k initially)
+                    # optionally rescale to nnlo (expecting the normalization to be nlo*k initially)
                     if self.opt("doNNLOscaling"):
                         new_name = "{}__nlo2nnlo".format(name)
                         nlo_expr = self._create_ggf_xsec_str("nlo", "@0")
@@ -1242,7 +1248,7 @@ class HHModel(HHModelBase):
                 scaling = self.r_expressions[(formula, sample)]
                 # when the BR scaling is enabled, try to extract the decays from the process name
                 if self.opt("doBRscaling"):
-                    scaling = self.h_br_scaler.build_xsbr_scaling_hh(scaling, process, bin) or scaling
+                    scaling = self.h_br_scaler.build_xsbr_scaling_hh(scaling, process, bin) or scaling  # noqa
                 return scaling
 
         # complain when the process is a signal but no sample matched
@@ -1291,7 +1297,7 @@ def create_model(name, ggf=None, vbf=None, vhh=None, **kwargs):
         ggf_samples=get_samples(ggf, ggf_samples, GGFSample),
         vbf_samples=get_samples(vbf, vbf_samples, VBFSample),
         vhh_samples=get_samples(vhh, vhh_samples, VHHSample),
-        **kwargs
+        **kwargs  # noqa
     )
 
 
@@ -1305,7 +1311,7 @@ model_all_vhh = create_model(
     "model_all_vhh",
     ggf=model_all.ggf_formula.samples,
     vbf=model_all.vbf_formula.samples,
-    vhh=[(1, 1, 1), (1, 1, 2), (1, 0, 1), (1, 2, 1), (0.5, 1, 1), (1.5, 1, 1), (1, 1, 0), (1, 1, 20)],
+    vhh=[(1, 1, 1), (1, 1, 2), (1, 0, 1), (1, 2, 1), (0.5, 1, 1), (1.5, 1, 1), (1, 1, 0), (1, 1, 20)],  # noqa
 )
 
 # model used for the combination

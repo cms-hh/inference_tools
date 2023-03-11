@@ -182,7 +182,7 @@ def create_model(name, ggf=None, vbf=None, **kwargs):
         name=name,
         ggf_samples=get_samples(ggf, ggf_samples, GGFSample),
         vbf_samples=get_samples(vbf, vbf_samples, VBFSample),
-        **kwargs
+        **kwargs  # noqa
     )
 
 
