@@ -41,8 +41,6 @@ class BaseTask(law.Task):
 
     interactive_params = law.Task.interactive_params + ["print_command"]
 
-    task_namespace = os.getenv("DHI_TASK_NAMESPACE")
-
     def _print_command(self, args):
         max_depth = int(args[0])
 
@@ -218,8 +216,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         if not self.htcondor_getenv:
             reqs["repo"] = BundleRepo.req(self, replicas=3)
             reqs["software"] = BundleSoftware.req(self, replicas=3)
-            if os.environ["DHI_COMBINE_STANDALONE"] != "True":
-                reqs["cmssw"] = BundleCMSSW.req(self, replicas=3)
+            reqs["cmssw"] = BundleCMSSW.req(self, replicas=3)
 
         return reqs
 
@@ -302,8 +299,6 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         config.render_variables["dhi_base"] = os.environ["DHI_BASE"]
         config.render_variables["dhi_user"] = os.environ["DHI_USER"]
         config.render_variables["dhi_store"] = os.environ["DHI_STORE"]
-        config.render_variables["dhi_combine_standalone"] = os.environ["DHI_COMBINE_STANDALONE"]
-        config.render_variables["dhi_task_namespace"] = os.environ["DHI_TASK_NAMESPACE"]
         config.render_variables["dhi_local_scheduler"] = os.environ["DHI_LOCAL_SCHEDULER"]
         config.render_variables["dhi_hook_file"] = hook_file
         if self.htcondor_getenv:
