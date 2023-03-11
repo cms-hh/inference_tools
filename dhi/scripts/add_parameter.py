@@ -33,8 +33,14 @@ from dhi.util import real_path, multi_match, create_console_logger, patch_object
 logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
-def add_parameter(datacard, param_name, param_type, param_spec=None, directory=None,
-        skip_shapes=False):
+def add_parameter(
+    datacard,
+    param_name,
+    param_type,
+    param_spec=None,
+    directory=None,
+    skip_shapes=False,
+):
     """
     Adds a new parameter with *param_name* and *param_type* to a *datacard*. When *param_spec* is
     given, it should be a list configuring the arguments to be placed behind the parameter
@@ -104,14 +110,18 @@ def add_parameter(datacard, param_name, param_type, param_spec=None, directory=N
         else:
             # the parameter is columnar, so get a list of bins and processs in order of appearance
             if not blocks.get("rates"):
-                raise Exception("adding a columnar parameter requires the datacard to have "
-                    "process rates")
+                raise Exception(
+                    "adding a columnar parameter requires the datacard to have process rates",
+                )
 
             bin_names = blocks["rates"][0].split()[1:]
             process_names = blocks["rates"][1].split()[1:]
             if len(bin_names) != len(process_names):
-                raise Exception("number of bins ({}) and processes ({}) not matching in datacard "
-                    "rates".format(len(bin_names), len(process_names)))
+                raise Exception(
+                    "number of bins ({}) and processes ({}) not matching in datacard rates".format(
+                        len(bin_names), len(process_names),
+                    ),
+                )
 
             # build the new parameter line by looping through bin process pairs
             parts = []
@@ -149,26 +159,61 @@ if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
-        "update (see --directory)")
-    parser.add_argument("name", metavar="NAME", help="name of the parameter to add")
-    parser.add_argument("type", metavar="TYPE", help="type of the parameter to add")
-    parser.add_argument("spec", nargs="*", metavar="SPEC", help="specification of parameter "
-        "arguments; for columnar parameter types (e.g. lnN or shape* nuisances), comma-separated "
-        "triplets in the format '[BIN,PROCESS,]VALUE' are expected; when no bin and process names "
-        "are given, the parameter is added to all existing ones; patterns are supported and "
-        "evaluated in the given order for all existing bin process pairs; prepending '!' to a "
-        "pattern negates its meaning; for all other types, the specification is used as is")
-    parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
-        "datacard and shape files are stored; when not set, the input files are changed in-place")
-    parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
-        "the output directory when --directory is set")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+    parser.add_argument(
+        "input",
+        metavar="DATACARD",
+        help="the datacard to read and possibly update (see --directory)",
+    )
+    parser.add_argument(
+        "name",
+        metavar="NAME",
+        help="name of the parameter to add",
+    )
+    parser.add_argument(
+        "type",
+        metavar="TYPE",
+        help="type of the parameter to add",
+    )
+    parser.add_argument(
+        "spec",
+        nargs="*",
+        metavar="SPEC",
+        help="specification of parameter arguments; for columnar parameter types (e.g. lnN or "
+        "shape* nuisances), comma-separated triplets in the format '[BIN,PROCESS,]VALUE' are "
+        "expected; when no bin and process names are given, the parameter is added to all existing "
+        "ones; patterns are supported and evaluated in the given order for all existing bin process "
+        "pairs; prepending '!' to a pattern negates its meaning; for all other types, the "
+        "specification is used as is",
+    )
+    parser.add_argument(
+        "--directory",
+        "-d",
+        nargs="?",
+        help="directory in which the updated datacard and shape files are stored; when not set, "
+        "the input files are changed in-place",
+    )
+    parser.add_argument(
+        "--no-shapes",
+        "-n",
+        action="store_true",
+        help="do not copy shape files to the output directory when --directory is set",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger
@@ -176,5 +221,11 @@ if __name__ == "__main__":
 
     # add the parameter
     with patch_object(logger, "name", args.log_name):
-        add_parameter(args.input, args.name, args.type, param_spec=args.spec,
-            directory=args.directory, skip_shapes=args.no_shapes)
+        add_parameter(
+            args.input,
+            args.name,
+            args.type,
+            param_spec=args.spec,
+            directory=args.directory,
+            skip_shapes=args.no_shapes,
+        )

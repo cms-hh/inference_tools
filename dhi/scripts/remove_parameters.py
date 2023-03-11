@@ -94,9 +94,12 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
 
             # check if all lists have the same lengths
             if not (len(bin_names) == len(process_names) == len(process_ids) == len(rates)):
-                raise Exception("the number of bin names ({}), process names ({}), process ids "
-                    "({}) and rates ({}) does not match".format(len(bin_names), len(process_names),
-                    len(process_ids), len(rates)))
+                raise Exception(
+                    "the number of bin names ({}), process names ({}), process ids ({}) "
+                    "and rates ({}) does not match".format(
+                        len(bin_names), len(process_names), len(process_ids), len(rates),
+                    ),
+                )
 
             # go through parameter lines
             # remember those to remove and updated columnar parameter lines
@@ -131,8 +134,10 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                                 continue
 
                             effects.append("-")
-                            logger.debug("remove effect {} from {} parameter {} in bin {} and "
-                                "process {}".format(f, param_type, param_name, bin_name, proc_name))
+                            logger.debug(
+                                "remove effect {} from {} parameter {} in bin {} and "
+                                "process {}".format(f, param_type, param_name, bin_name, proc_name),
+                            )
                             break
                         else:
                             effects.append(f)
@@ -142,7 +147,8 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                         to_remove.append(i)
                         removed_nuisances.append(param_name)
                         logger.info("no effect left, remove {} parameter {}".format(
-                            param_type, param_name))
+                            param_type, param_name,
+                        ))
                     else:
                         blocks["parameters"][i] = " ".join([param_name, param_type] + effects)
 
@@ -174,7 +180,8 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
 
                         to_remove.append(i)
                         logger.info("remove {} parameter {} in bin {} and process {}".format(
-                            param_type, param_name, bin_name, proc_name))
+                            param_type, param_name, bin_name, proc_name,
+                        ))
                         break
 
                 else:
@@ -201,7 +208,8 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                         continue
                     if multi_match(param_name, removed_nuisances + single_patterns):
                         logger.info("remove parameter {} from group {}".format(
-                            param_name, group_name))
+                            param_name, group_name,
+                        ))
                         param_names.remove(param_name)
                 group_line = "{} group = {}".format(group_name, " ".join(param_names))
                 blocks["groups"][i] = group_line
@@ -244,8 +252,10 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
                     if len(edit_line) == 5 and multi_match(edit_line[4], single_patterns):
                         to_remove.append(i)
                     elif len(edit_line) >= 7 and multi_match(edit_line[6], single_patterns):
-                        logger.warning("removing 'nuisance edit add' lines with process and bin "
-                            "options is not yet supported")
+                        logger.warning(
+                            "removing 'nuisance edit add' lines with process and bin "
+                            "options is not yet supported",
+                        )
                 elif action in ["freeze", "changepdf"]:
                     if multi_match(edit_line[3], single_patterns):
                         to_remove.append(i)
@@ -260,32 +270,63 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
 
         # decrease kmax in counts
         if removed_nuisances:
-            update_datacard_count(blocks, "kmax", -len(removed_nuisances), diff=True,
-                logger=logger)
+            update_datacard_count(
+                blocks,
+                "kmax",
+                -len(removed_nuisances),
+                diff=True,
+                logger=logger,
+            )
 
 
 if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
-        "update (see --directory)")
-    parser.add_argument("names", nargs="+", metavar="SPEC", help="specifications of parameters to "
-        "remove or a file containing these specifications line by line; a specification should "
-        "have the format '[BIN,PROCESS,]PARAMETER'; when a bin name and process are defined, the "
-        "parameter should be of a type that is defined on a bin and process basis, and is removed "
-        "only in this bin process combination; all values support patterns; prepending '!' to a "
-        "bin or process pattern negates its meaning")
-    parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
-        "datacard and shape files are stored; when not set, the input files are changed in-place")
-    parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
-        "the output directory when --directory is set")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+    parser.add_argument(
+        "input",
+        metavar="DATACARD",
+        help="the datacard to read and possibly update (see --directory)",
+    )
+    parser.add_argument(
+        "names",
+        nargs="+",
+        metavar="SPEC",
+        help="specifications of parameters to remove or a file containing these specifications "
+        "line by line; a specification should have the format '[BIN,PROCESS,]PARAMETER'; when a "
+        "bin name and process are defined, the parameter should be of a type that is defined on a "
+        "bin and process basis, and is removed only in this bin process combination; all values "
+        "support patterns; prepending '!' to a bin or process pattern negates its meaning",
+    )
+    parser.add_argument(
+        "--directory",
+        "-d",
+        nargs="?",
+        help="directory in which the updated datacard and shape files are stored; when not set, "
+        "the input files are changed in-place",
+    )
+    parser.add_argument(
+        "--no-shapes",
+        "-n",
+        action="store_true",
+        help="do not copy shape files to the output directory when --directory is set",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger
@@ -293,5 +334,9 @@ if __name__ == "__main__":
 
     # run the removing
     with patch_object(logger, "name", args.log_name):
-        remove_parameters(args.input, args.names, directory=args.directory,
-            skip_shapes=args.no_shapes)
+        remove_parameters(
+            args.input,
+            args.names,
+            directory=args.directory,
+            skip_shapes=args.no_shapes,
+        )

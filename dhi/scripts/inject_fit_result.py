@@ -40,8 +40,9 @@ def inject_fit_result(input_file, workspace_file, workspace_name):
         if not w:
             raise Exception("no object {} found in {}".format(workspace_name, workspace_file))
         if not isinstance(w, ROOT.RooWorkspace):
-            raise Exception("object {} in {} is not a RooWorkspace".format(
-                workspace_name, workspace_file))
+            raise Exception(
+                "object {} in {} is not a RooWorkspace".format(workspace_name, workspace_file),
+            )
         cache.write_tobj(tfile, w)
         logger.info("read RooWorkspace {} from {}".format(workspace_name, workspace_file))
 
@@ -66,15 +67,37 @@ if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input_file", metavar="INPUT", help="the input json file to read")
-    parser.add_argument("workspace_file", metavar="OUTPUT", help="the workspace file")
-    parser.add_argument("workspace_name", metavar="WORKSPACE", help="name of the workspace")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+    parser.add_argument(
+        "input_file",
+        metavar="INPUT",
+        help="the input json file to read",
+    )
+    parser.add_argument(
+        "workspace_file",
+        metavar="OUTPUT",
+        help="the workspace file",
+    )
+    parser.add_argument(
+        "workspace_name",
+        metavar="WORKSPACE",
+        help="name of the workspace",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger

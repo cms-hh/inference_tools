@@ -61,13 +61,13 @@ if __name__ == "__main__":
     ROOT.gROOT.SetBatch(ROOT.kTRUE)
 
     ap = ArgumentParser(
-        description=extract_cov_json.__doc__ + " Multiple `filename`s can be given simultaneously."
+        description=extract_cov_json.__doc__ + " Multiple `filename`s can be given simultaneously",
     )
     ap.add_argument(
         "-s",
         "--skip",
         default="prefit",
-        help="skip results containing this non-empty string, default: prefit",
+        help="skip results containing this non-empty string; default: prefit",
     )
     ap.add_argument(
         "filename",

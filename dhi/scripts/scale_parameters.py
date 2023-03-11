@@ -54,8 +54,9 @@ def scale_parameters(datacard, factor, patterns, directory=None, skip_shapes=Fal
         if len(p) == 1:
             p = ("*", "*") + p
         elif len(p) != 3:
-            raise Exception("patterns must have the format '[BIN,PROCESS,]NAME', got '{}'".format(
-                pattern))
+            raise Exception(
+                "patterns must have the format '[BIN,PROCESS,]NAME', got '{}'".format(pattern),
+            )
         _patterns.append(p)
     patterns = _patterns
 
@@ -76,8 +77,11 @@ def scale_parameters(datacard, factor, patterns, directory=None, skip_shapes=Fal
         bin_names = blocks["rates"][0].split()[1:]
         process_names = blocks["rates"][1].split()[1:]
         if len(bin_names) != len(process_names):
-            raise Exception("number of bins ({}) and processes ({}) not matching in datacard "
-                "rates".format(len(bin_names), len(process_names)))
+            raise Exception(
+                "number of bins ({}) and processes ({}) not matching in datacard rates".format(
+                    len(bin_names), len(process_names),
+                ),
+            )
 
         # iterate through lines in the "parameters" block
         for i, param_line in enumerate(blocks.get("parameters", [])):
@@ -97,8 +101,12 @@ def scale_parameters(datacard, factor, patterns, directory=None, skip_shapes=Fal
             # get the effects
             effects = param_line[2:]
             if len(effects) != len(bin_names):
-                raise Exception("number of effects of parameter {} ({}) does not match number of "
-                    "bins and processes ({})".format(param_name, len(effects), len(bin_names)))
+                raise Exception(
+                    "number of effects of parameter {} ({}) does not match number of bins and "
+                    "processes ({})".format(
+                        param_name, len(effects), len(bin_names),
+                    ),
+                )
 
             # check patterns for each bin-process combination
             new_effects = list(effects)
@@ -129,9 +137,12 @@ def scale_parameters(datacard, factor, patterns, directory=None, skip_shapes=Fal
                     # store it and stop processing patterns
                     new_effects[j] = str(f)
                     n_changes += 1
-                    logger.debug("scaled effect of {} parameter {} in bin {} and process {} "
-                        "from {} to {}".format(param_type, param_name, bin_name, process_name,
-                        f_orig, f))
+                    logger.debug(
+                        "scaled effect of {} parameter {} in bin {} and process {} from {} "
+                        "to {}".format(
+                            param_type, param_name, bin_name, process_name, f_orig, f,
+                        ),
+                    )
                     break
 
             # replace the line
@@ -145,24 +156,54 @@ if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
-        "update (see --directory)")
-    parser.add_argument("factor", type=float, help="factor by which parameters are scaled")
-    parser.add_argument("names", nargs="+", metavar="NAME", help="names of parameters whose effect "
-        "should be scaled in the format '[BIN,PROCESS,]PARAMETER'; when a bin and process names "
-        "are given, the effect is only scaled in those; patterns are supported; prepending '!' to "
-        "a pattern negates its meaning; a name can also refer to a file with names in the above "
-        "format line by line")
-    parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
-        "datacard and shape files are stored; when not set, the input files are changed in-place")
-    parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
-        "the output directory when --directory is set")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+    parser.add_argument(
+        "input",
+        metavar="DATACARD",
+        help="the datacard to read and possibly update (see --directory)",
+    )
+    parser.add_argument(
+        "factor",
+        type=float,
+        help="factor by which parameters are scaled",
+    )
+    parser.add_argument(
+        "names",
+        nargs="+",
+        metavar="NAME",
+        help="names of parameters whose effect should be scaled in the format "
+        "'[BIN,PROCESS,]PARAMETER'; when a bin and process names are given, the effect is only "
+        "scaled in those; patterns are supported; prepending '!' to a pattern negates its meaning; "
+        "a name can also refer to a file with names in the above format line by line",
+    )
+    parser.add_argument(
+        "--directory",
+        "-d",
+        nargs="?",
+        help="directory in which the updated datacard and shape files are stored; when not set, "
+        "the input files are changed in-place",
+    )
+    parser.add_argument(
+        "--no-shapes",
+        "-n",
+        action="store_true",
+        help="do not copy shape files to the output directory when --directory is set",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger

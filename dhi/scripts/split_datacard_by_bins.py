@@ -83,21 +83,53 @@ if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and split")
-    parser.add_argument("--pattern", "-p", default=None, help="pattern defining the names of "
-        "created datacards where '{}' is replaced with the bin name; default: DATACARD_{}.txt")
-    parser.add_argument("--save-bin-names", "-s", metavar="PATH", help="location of a json file "
-        "in which original bin names are stored")
-    parser.add_argument("--directory", "-d", nargs="?", help="directory in which the datacard and "
-        "its shape files are first bundled into, and where split datacards are saved")
-    parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
-        "the output directory when --directory is set")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+    parser.add_argument(
+        "input",
+        metavar="DATACARD",
+        help="the datacard to read and split",
+    )
+    parser.add_argument(
+        "--pattern",
+        "-p",
+        default=None,
+        help="pattern defining the names of created datacards where '{}' is replaced with the bin "
+        "name; default: DATACARD_{}.txt",
+    )
+    parser.add_argument(
+        "--save-bin-names",
+        "-s",
+        metavar="PATH",
+        help="location of a json file in which original bin names are stored",
+    )
+    parser.add_argument(
+        "--directory",
+        "-d",
+        nargs="?",
+        help="directory in which the datacard and its shape files are first bundled into, and "
+        "where split datacards are saved",
+    )
+    parser.add_argument(
+        "--no-shapes",
+        "-n",
+        action="store_true",
+        help="do not copy shape files to the output directory when --directory is set",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger
@@ -105,5 +137,10 @@ if __name__ == "__main__":
 
     # run the removing
     with patch_object(logger, "name", args.log_name):
-        split_datacard_by_bins(args.input, pattern=args.pattern, store_file=args.save_bin_names,
-            directory=args.directory, skip_shapes=args.no_shapes)
+        split_datacard_by_bins(
+            args.input,
+            pattern=args.pattern,
+            store_file=args.save_bin_names,
+            directory=args.directory,
+            skip_shapes=args.no_shapes,
+        )

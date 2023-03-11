@@ -29,18 +29,41 @@ if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input", metavar="DATACARD", help="the datacard to bundle into the target "
-        "directory; supports patterns to bundle multiple datacards")
-    parser.add_argument("directory", metavar="DIRECTORY", help="target directory")
-    parser.add_argument("--shapes-directory", "-s", metavar="SHAPES_DIRECTORY", default=".",
+    parser.add_argument(
+        "input",
+        metavar="DATACARD",
+        help="the datacard to bundle into the target directory; supports patterns to bundle "
+        "multiple datacards",
+    )
+    parser.add_argument(
+        "directory",
+        metavar="DIRECTORY",
+        help="target directory",
+    )
+    parser.add_argument(
+        "--shapes-directory",
+        "-s",
+        metavar="SHAPES_DIRECTORY",
+        default=".",
         help="an optional subdirectory when shape files are bundled, relative to the target "
-        "directory; default: .")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+        "directory; default: .",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger

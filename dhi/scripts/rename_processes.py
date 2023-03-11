@@ -65,8 +65,11 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
             if not skip_shapes:
                 towner = renamer.get_tobj(tfile, towner_name, "UPDATE")
                 if not towner:
-                    raise Exception("could not find object {} in {} with pattern {}".format(
-                        towner_name, tfile, old_pattern))
+                    raise Exception(
+                        "could not find object {} in {} with pattern {}".format(
+                            towner_name, tfile, old_pattern,
+                        ),
+                    )
             old_pattern = _old_pattern
 
         # try to update the pattern when the shape line's process is specific
@@ -149,8 +152,11 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
 
                     # update the shape name
                     if not skip_shapes:
-                        logger.info("renaming shape {} to {} for process {} in bin {}".format(
-                            old_name, new_name, process_name, bin_name))
+                        logger.info(
+                            "renaming shape {} to {} for process {} in bin {}".format(
+                                old_name, new_name, process_name, bin_name,
+                            ),
+                        )
                         update_shape_name(towner, old_name, new_name)
 
                     # update the pattern in the shape line
@@ -165,8 +171,10 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                                 old_name, new_name, new_pattern, towner = parse_shape_pattern(
                                     shape_line, tfile, process_name, bin_name, syst_name + syst_dir)
                                 if not skip_shapes:
-                                    logger.debug("renaming syst shape {} to {} for process {} in "
-                                        "bin {}".format(old_name, new_name, process_name, bin_name))
+                                    logger.debug(
+                                        "renaming syst shape {} to {} for process {} in "
+                                        "bin {}".format(old_name, new_name, process_name, bin_name),
+                                    )
                                     update_shape_name(towner, old_name, new_name)
                                 if not process_is_wildcard:
                                     new_shape_line.syst_pattern = new_pattern
@@ -179,24 +187,56 @@ if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
-        "update (see --directory)")
-    parser.add_argument("rules", nargs="+", metavar="OLD_NAME=NEW_NAME", help="translation rules "
-        "for one or multiple process names in the format 'OLD_NAME=NEW_NAME', or files containing "
-        "these rules in the same format line by line; OLD_NAME can be a regular expression "
-        "starting with '^' and ending with '$'; in this case, group placeholders in NEW_NAME are "
-        "replaced with the proper matches as described in re.sub()")
-    parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
-        "datacard and shape files are stored; when not set, the input files are changed in-place")
-    parser.add_argument("--no-shapes", "-n", action="store_true", help="do not change process "
-        "names in shape files")
-    parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+    parser.add_argument(
+        "input",
+        metavar="DATACARD",
+        help="the datacard to read and possibly update (see --directory)",
+    )
+    parser.add_argument(
+        "rules",
+        nargs="+",
+        metavar="OLD_NAME=NEW_NAME",
+        help="translation rules for one or multiple process names in the format "
+        "'OLD_NAME=NEW_NAME', or files containing these rules in the same format line by line; "
+        "OLD_NAME can be a regular expression starting with '^' and ending with '$'; in this case, "
+        "group placeholders in NEW_NAME are replaced with the proper matches as described in "
+        "re.sub()",
+    )
+    parser.add_argument(
+        "--directory",
+        "-d",
+        nargs="?",
+        help="directory in which the updated datacard and shape files are stored; when not set, "
+        "the input files are changed in-place",
+    )
+    parser.add_argument(
+        "--no-shapes",
+        "-n",
+        action="store_true",
+        help="do not change process names in shape files",
+    )
+    parser.add_argument(
+        "--mass",
+        "-m",
+        default="125",
+        help="mass hypothesis; default: 125",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger
@@ -204,5 +244,10 @@ if __name__ == "__main__":
 
     # run the renaming
     with patch_object(logger, "name", args.log_name):
-        rename_processes(args.input, args.rules, directory=args.directory,
-            skip_shapes=args.no_shapes, mass=args.mass)
+        rename_processes(
+            args.input,
+            args.rules,
+            directory=args.directory,
+            skip_shapes=args.no_shapes,
+            mass=args.mass,
+        )

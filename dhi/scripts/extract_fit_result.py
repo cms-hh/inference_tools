@@ -54,8 +54,11 @@ def extract_fit_result(input_file, obj_name, output_file, keep_patterns=None, sk
     if not tobj:
         raise Exception("no object {} found in {}".format(obj_name, input_file))
     if not isinstance(tobj, (ROOT.RooFitResult, ROOT.RooWorkspace)):
-        raise Exception("object {} in {} is neither a RooFitResult nor a RooWorkspace".format(
-            obj_name, input_file))
+        raise Exception(
+            "object {} in {} is neither a RooFitResult nor a RooWorkspace".format(
+                obj_name, input_file,
+            ),
+        )
     if isinstance(tobj, ROOT.RooWorkspace):
         logger.info("read RooWorkspace {} from {}".format(obj_name, input_file))
         if snapshot_name:
@@ -123,19 +126,49 @@ if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input_file", metavar="INPUT", help="the input root file to read")
-    parser.add_argument("obj_name", metavar="NAME", help="name of the object to read values from")
-    parser.add_argument("output_file", metavar="OUTPUT", help="name of the output file to write")
-    parser.add_argument("--keep", "-k", default=None, help="comma-separated patterns matching "
-        "names of variables to keep")
-    parser.add_argument("--skip", "-s", default=None, help="comma-separated patterns matching "
-        "names of variables to skip")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+    parser.add_argument(
+        "input_file",
+        metavar="INPUT",
+        help="the input root file to read",
+    )
+    parser.add_argument(
+        "obj_name",
+        metavar="NAME",
+        help="name of the object to read values from",
+    )
+    parser.add_argument(
+        "output_file",
+        metavar="OUTPUT",
+        help="name of the output file to write",
+    )
+    parser.add_argument(
+        "--keep",
+        "-k",
+        default=None,
+        help="comma-separated patterns matching names of variables to keep",
+    )
+    parser.add_argument(
+        "--skip",
+        "-s",
+        default=None,
+        help="comma-separated patterns matching names of variables to skip",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger
@@ -143,6 +176,10 @@ if __name__ == "__main__":
 
     # add the parameter
     with patch_object(logger, "name", args.log_name):
-        extract_fit_result(args.input_file, args.obj_name, args.output_file,
+        extract_fit_result(
+            args.input_file,
+            args.obj_name,
+            args.output_file,
             keep_patterns=args.keep and args.keep.split(","),
-            skip_patterns=args.skip and args.skip.split(","))
+            skip_patterns=args.skip and args.skip.split(","),
+        )
