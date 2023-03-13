@@ -47,11 +47,11 @@ class BaseTask(law.Task):
         print("print task commands with max_depth {}".format(max_depth))
 
         for dep, _, depth in self.walk_deps(max_depth=max_depth, order="pre"):
-            offset = depth * ("|" + law.task.interactive.ind)
+            offset = depth * ("|  ")
             print(offset)
 
             print("{}> {}".format(offset, dep.repr(color=True)))
-            offset += "|" + law.task.interactive.ind
+            offset += "|  "
 
             if isinstance(dep, CommandTask):
                 # when dep is a workflow, take the first branch
@@ -92,7 +92,9 @@ class BaseTask(law.Task):
 
 class AnalysisTask(BaseTask):
 
-    version = luigi.Parameter(description="mandatory version that is encoded into output paths")
+    version = luigi.Parameter(
+        description="mandatory version that is encoded into output paths",
+    )
 
     output_collection_cls = law.SiblingFileCollection
     default_store = "$DHI_STORE"
@@ -153,6 +155,10 @@ class AnalysisTask(BaseTask):
             for part in parts
             if (isinstance(part, int) or part)
         )
+
+    def get_output_postfix(self, join=True):
+        parts = []
+        return self.join_postfix(parts) if join else parts
 
     def call_hook(self, name, **kwargs):
         return call_hook(name, self, **kwargs)
@@ -227,7 +233,8 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
     def htcondor_bootstrap_file(self):
         # each job can define a bootstrap file that is executed prior to the actual job
         # in order to setup software and environment variables
-        return os.path.expandvars("$DHI_BASE/dhi/tasks/remote_bootstrap.sh")
+        bootstrap_file = os.path.expandvars("$DHI_BASE/dhi/tasks/remote_bootstrap.sh")
+        return law.JobInputFile(bootstrap_file, share=True, render_job=True)
 
     def htcondor_job_config(self, config, job_num, branches):
         # use cc7 at CERN (http://batchdocs.web.cern.ch/batchdocs/local/submit.html#os-choice)
@@ -236,16 +243,18 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
             config.custom_content.append(("requirements", '(OpSysAndVer =?= "CentOS7")'))
         # architecture at INFN
         if self.htcondor_flavor == "infn":
-            config.custom_content.append(
-                ("requirements", 'TARGET.OpSys == "LINUX" && (TARGET.Arch != "DUMMY")'))
+            config.custom_content.append((
+                "requirements",
+                'TARGET.OpSys == "LINUX" && (TARGET.Arch != "DUMMY")',
+            ))
 
         # copy the entire environment when requests
         if self.htcondor_getenv:
             config.custom_content.append(("getenv", "true"))
 
         # include the wlcg specific tools script in the input sandbox
-        config.input_files["wlcg_tools"] = law.util.law_src_path(
-            "contrib/wlcg/scripts/law_wlcg_tools.sh")
+        tools_file = law.util.law_src_path("contrib/wlcg/scripts/law_wlcg_tools.sh")
+        config.input_files["wlcg_tools"] = law.JobInputFile(tools_file, share=True, render=False)
 
         # the CERN htcondor setup requires a "log" config, but we can safely set it to /dev/null
         # if you are interested in the logs of the batch system itself, set a meaningful value here
@@ -257,16 +266,18 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         # request cpus
         if self.htcondor_cpus > 0:
             if self.htcondor_flavor == "naf":
-                self.logger.warning("--htcondor-cpus has no effect on NAF resources, use "
-                    "--htcondor-mem instead")
+                self.logger.warning(
+                    "--htcondor-cpus has no effect on NAF resources, use --htcondor-mem instead",
+                )
             else:
                 config.custom_content.append(("RequestCpus", self.htcondor_cpus))
 
         # request memory
         if self.htcondor_mem > 0:
             if self.htcondor_flavor == "cern":
-                self.logger.warning("--htcondor-mem has no effect on CERN resources, use "
-                    "--htcondor-cpus instead")
+                self.logger.warning(
+                    "--htcondor-mem has no effect on CERN resources, use --htcondor-cpus instead",
+                )
             elif self.htcondor_flavor == "naf":
                 # NAF uses MB
                 config.custom_content.append(("RequestMemory", self.htcondor_mem * 1024))
@@ -376,8 +387,9 @@ class BundleRepo(UserTask, law.git.BundleGitRepository, law.tasks.TransferLocalF
         self.bundle(bundle)
 
         # log the size
-        self.publish_message("bundled repository archive, size is {:.2f} {}".format(
-            *law.util.human_bytes(bundle.stat().st_size)))
+        self.publish_message("bundled repository archive, size is {}".format(
+            law.util.human_bytes(bundle.stat().st_size, fmt=True),
+        ))
 
         # transfer the bundle
         self.transfer(bundle)
@@ -436,8 +448,9 @@ class BundleSoftware(UserTask, law.tasks.TransferLocalFile):
         bundle.dump(software_path, filter=_filter)
 
         # log the size
-        self.publish_message("bundled software archive, size is {:.2f} {}".format(
-            *law.util.human_bytes(bundle.stat().st_size)))
+        self.publish_message("bundled software archive, size is {}".format(
+            law.util.human_bytes(bundle.stat().st_size, fmt=True),
+        ))
 
         # transfer the bundle
         self.transfer(bundle)
@@ -475,8 +488,9 @@ class BundleCMSSW(UserTask, law.cms.BundleCMSSW, law.tasks.TransferLocalFile):
         self.bundle(bundle)
 
         # log the size
-        self.publish_message("bundled CMSSW archive, size is {:.2f} {}".format(
-            *law.util.human_bytes(bundle.stat().st_size)))
+        self.publish_message("bundled CMSSW archive, size is {}".format(
+            law.util.human_bytes(bundle.stat().st_size, fmt=True),
+        ))
 
         # transfer the bundle
         self.transfer(bundle)
@@ -492,6 +506,12 @@ class CommandTask(AnalysisTask):
         default="",
         description="custom arguments that are forwarded to the underlying command; they might not "
         "be encoded into output file paths; no default",
+    )
+    test_timing = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when set, a log file is created along the outputs containing timing and "
+        "memory usage information; default: False",
     )
 
     exclude_index = True
@@ -532,6 +552,19 @@ class CommandTask(AnalysisTask):
         # proper command encoding
         cmd = (law.util.quote_cmd(cmd) if isinstance(cmd, (list, tuple)) else cmd).strip()
 
+        # prepend timing instructions
+        if self.test_timing:
+            log_file = self.join_postfix(["timing", self.get_output_postfix()]) + ".log"
+            timing_cmd = (
+                "/usr/bin/time "
+                "-ao {log_file} "
+                "-f \"TIME='Elapsed %e User %U Sys %S Mem %M' time\""
+            ).format(
+                log_file=self.local_target(log_file).path,
+            )
+            cmd = "{} {}".format(timing_cmd, cmd)
+            print("adding timeing command")
+
         # default highlighted command
         if not highlighted_cmd:
             highlighted_cmd = law.util.colored(cmd, "cyan")
@@ -543,6 +576,10 @@ class CommandTask(AnalysisTask):
             tmp_dir.touch()
             kwargs["cwd"] = tmp_dir.path
         self.publish_message("cwd: {}".format(kwargs.get("cwd", os.getcwd())))
+
+        # log the timing command
+        if self.test_timing:
+            self.publish_message("timing: {}".format(timing_cmd))
 
         # call it
         with self.publish_step("running '{}' ...".format(highlighted_cmd)):
@@ -670,17 +707,17 @@ class PlotTask(AnalysisTask):
         return None if value == -1000.0 else value
 
     def create_plot_names(self, parts):
-        plot_file_types = ["pdf", "png", "root", "log"]
+        plot_file_types = ["pdf", "png", "root"]
         if any(t not in plot_file_types for t in self.file_types):
             raise Exception("plot names only allowed for file types {}, got {}".format(
-                ",".join(plot_file_types), ",".join(self.file_types)))
+                ",".join(plot_file_types), ",".join(self.file_types),
+            ))
 
         if self.style and self.style != law.NO_STR:
             parts.append(("style", self.style))
         if self.plot_postfix and self.plot_postfix != law.NO_STR:
             parts.append((self.plot_postfix,))
 
-        assert set(self.file_types) <= set(("pdf", "png", "log")), "Only supported file formats are 'pdf' and 'png'!"
         return ["{}.{}".format(self.join_postfix(parts), ext) for ext in self.file_types]
 
     def get_plot_func(self, func_id):
@@ -692,7 +729,7 @@ class PlotTask(AnalysisTask):
             mod = importlib.import_module(module_id)
         except ImportError as e:
             raise ImportError(
-                "cannot import plot function {} from module {}: {}".format(name, module_id, e)
+                "cannot import plot function {} from module {}: {}".format(name, module_id, e),
             )
 
         func = getattr(mod, name, None)
@@ -783,12 +820,16 @@ class ModelParameters(luigi.Parameter):
 
         for v in value:
             if self._min_len is not None and len(v) - 1 < self._min_len:
-                raise ValueError("the parameter '{}' contains {} value(s), but a minimum of {} is "
-                    "required".format(s(v), len(v) - 1, self._min_len))
+                raise ValueError(
+                    "the parameter '{}' contains {} value(s), but a minimum of {} is "
+                    "required".format(s(v), len(v) - 1, self._min_len),
+                )
 
             if self._max_len is not None and len(v) - 1 > self._max_len:
-                raise ValueError("the parameter '{}' contains {} value(s), but a maximum of {} is "
-                    "required".format(s(v), len(v) - 1, self._max_len))
+                raise ValueError(
+                    "the parameter '{}' contains {} value(s), but a maximum of {} is "
+                    "required".format(s(v), len(v) - 1, self._max_len),
+                )
 
     def parse(self, inp):
         if not inp or inp == law.NO_STR:
