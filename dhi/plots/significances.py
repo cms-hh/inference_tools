@@ -12,11 +12,10 @@ import scipy.stats
 
 from dhi.config import (
     poi_data, br_hh_names, br_hh_colors, campaign_labels, colors, color_sequence, marker_sequence,
-    cms_postfix,
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, make_list, unique_recarray, dict_to_recarray,
-    try_int,
+    try_int, make_tuple,
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, get_y_range, infer_binning_from_grid, get_contours,
@@ -42,7 +41,8 @@ def plot_significance_scan_1d(
     model_parameters=None,
     campaign=None,
     show_points=False,
-    paper=False,
+    cms_postfix=None,
+    style=None,
 ):
     """
     Creates a plot for the significance scan over a *scan_parameter* and saves it at *paths*.
@@ -56,12 +56,21 @@ def plot_significance_scan_1d(
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
     refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
     *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
-    When *paper* is *True*, certain plot configurations are adjusted for use in publications.
+    *cms_postfix* is shown as the postfix behind the CMS label.
 
-    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/significances.html#significance-vs-scan-parameter
+    Supported values for *style*:
+
+    - "paper"
+
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/significances.html#significance-vs-scan-parameter  # noqa
     """
     import plotlib.root as r
     ROOT = import_ROOT()
+
+    # style-based adjustments
+    style = make_tuple(style)
+    if "paper" in style:
+        cms_postfix = None
 
     # helper to check and convert record arrays to dict mappings to arrays
     def check_values(values):
@@ -123,8 +132,10 @@ def plot_significance_scan_1d(
         if show_p_values:
             y_values = sp.stats.norm.sf(y_values)
         g_exp = create_tgraph(n_points_exp, scan_values_exp, y_values)
-        r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-            "MarkerSize": 0.7})
+        r.setup_graph(
+            g_exp,
+            props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20, "MarkerSize": 0.7},
+        )
         draw_objs.append((g_exp, "SAME,C" + ("P" if show_points else "")))
         legend_entries.append((g_exp, "Expected", "L"))
         y_min_value = min(y_min_value, min(y_values))
@@ -136,8 +147,11 @@ def plot_significance_scan_1d(
         if show_p_values:
             y_values = sp.stats.norm.sf(y_values)
         g_obs = create_tgraph(n_points_obs, scan_values_obs, y_values)
-        r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20,
-            "MarkerSize": 0.7}, color=colors.red)
+        r.setup_graph(
+            g_obs,
+            props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": 20, "MarkerSize": 0.7},
+            color=colors.red,
+        )
         draw_objs.append((g_obs, "SAME,PL"))
         legend_entries.append((g_obs, "Observed", "PL"))
         y_max_value = max(y_max_value, max(y_values))
@@ -166,8 +180,13 @@ def plot_significance_scan_1d(
             label_y = math.log(y / y_min) / math.log(y_max / y_min)
             label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
             label_y += pad.GetBottomMargin() + 0.005
-            sig_label = r.routines.create_top_left_label("{}#sigma".format(sig), pad=pad,
-                x_offset=8, y=label_y, props={"TextSize": 18, "TextColor": colors.grey})
+            sig_label = r.routines.create_top_left_label(
+                "{}#sigma".format(sig),
+                pad=pad,
+                x_offset=8,
+                y=label_y,
+                props={"TextSize": 18, "TextColor": colors.grey},
+            )
             draw_objs.insert(1, sig_label)
 
     # legend
@@ -175,21 +194,24 @@ def plot_significance_scan_1d(
     r.setup_legend(legend)
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
-    legend_box = r.routines.create_legend_box(legend, pad, "tr",
-        props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+    legend_box = r.routines.create_legend_box(
+        legend,
+        pad,
+        "tr",
+        props={"LineWidth": 0, "FillColor": colors.white_trans_70},
+    )
     draw_objs.insert(-1, legend_box)
 
     # cms label
     cms_layout = "outside_horizontal"
-    _cms_postfix = "" if paper else cms_postfix
-    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=cms_postfix or "", layout=cms_layout)
     draw_objs.extend(cms_labels)
 
     # model parameter labels
     if model_parameters:
         param_kwargs = {}
         if cms_layout.startswith("inside"):
-            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            y_offset = 100 if cms_layout == "inside_vertical" and cms_postfix else 80
             param_kwargs = {"y_offset": y_offset}
         draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
@@ -223,7 +245,8 @@ def plot_significance_scans_1d(
     model_parameters=None,
     campaign=None,
     show_points=True,
-    paper=False,
+    cms_postfix=None,
+    style=None,
 ):
     """
     Creates a plot showing multiple significance scans over a *scan_parameter* and saves it at
@@ -237,12 +260,21 @@ def plot_significance_scans_1d(
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
     refer to the name of a campaign label defined in *dhi.config.campaign_labels*. When
     *show_points* is *True*, the central scan points are drawn on top of the interpolated curve.
-    When *paper* is *True*, certain plot configurations are adjusted for use in publications.
+    *cms_postfix* is shown as the postfix behind the CMS label.
 
-    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/significances.html#multiple-significance-scans-vs-scan-parameter
+    Supported values for *style*:
+
+    - "paper"
+
+    Example: https://cms-hh.web.cern.ch/tools/inference/tasks/significances.html#multiple-significance-scans-vs-scan-parameter  # noqa
     """
     import plotlib.root as r
     ROOT = import_ROOT()
+
+    # style-based adjustments
+    style = make_tuple(style)
+    if "paper" in style:
+        cms_postfix = None
 
     # convert record arrays to dicts mapping to arrays
     _values = []
@@ -294,17 +326,22 @@ def plot_significance_scans_1d(
         _color_sequence = [br_hh_colors.root[name] for name in names]
 
     # expected values
-    for i, (vals, name, col, ms) in enumerate(zip(values, names, _color_sequence[:n_graphs],
-            marker_sequence[:n_graphs])):
+    for i, (vals, name, col, ms) in enumerate(zip(
+        values, names, _color_sequence[:n_graphs], marker_sequence[:n_graphs]),
+    ):
         y_vals = vals["significance"]
         if show_p_values:
             y_vals = sp.stats.norm.sf(y_vals)
         g_exp = create_tgraph(int(len(scan_values)), scan_values, y_vals)
-        r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": ms,
-            "MarkerSize": 1.2}, color=colors[col])
+        r.setup_graph(
+            g_exp,
+            props={"LineWidth": 2, "LineStyle": 1, "MarkerStyle": ms, "MarkerSize": 1.2},
+            color=colors[col],
+        )
         draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
-        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)),
-            "LP" if show_points else "L"))
+        legend_entries.append(
+            (g_exp, to_root_latex(br_hh_names.get(name, name)), "LP" if show_points else "L"),
+        )
         y_max_value = max(y_max_value, max(y_vals))
         y_min_value = min(y_min_value, min(y_vals))
 
@@ -332,25 +369,40 @@ def plot_significance_scans_1d(
             label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
             label_y += pad.GetBottomMargin() + 0.005
             # from IPython import embed; embed()
-            sig_label = r.routines.create_top_left_label("{}#sigma".format(sig), pad=pad,
-                x_offset=8, y=label_y, props={"TextSize": 18, "TextColor": colors.grey})
+            sig_label = r.routines.create_top_left_label(
+                "{}#sigma".format(sig),
+                pad=pad,
+                x_offset=8,
+                y=label_y,
+                props={"TextSize": 18, "TextColor": colors.grey},
+            )
             draw_objs.insert(1, sig_label)
 
     # legend
     legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
     legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
-    legend = r.routines.create_legend(pad=pad, width=legend_cols * 210, n=legend_rows,
-        props={"NColumns": legend_cols, "TextSize": 18})
+    legend = r.routines.create_legend(
+        pad=pad,
+        width=legend_cols * 210,
+        n=legend_rows,
+        props={"NColumns": legend_cols, "TextSize": 18},
+    )
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
-    legend_box = r.routines.create_legend_box(legend, pad, "tr",
-        props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+    legend_box = r.routines.create_legend_box(
+        legend,
+        pad,
+        "tr",
+        props={"LineWidth": 0, "FillColor": colors.white_trans_70},
+    )
     draw_objs.insert(-1, legend_box)
 
     # cms label
-    _cms_postfix = "" if paper else cms_postfix
-    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
-        layout="outside_horizontal")
+    cms_labels = r.routines.create_cms_labels(
+        pad=pad,
+        postfix=cms_postfix or "",
+        layout="outside_horizontal",
+    )
     draw_objs.extend(cms_labels)
 
     # model parameter labels
@@ -392,7 +444,8 @@ def plot_significance_scan_2d(
     z_log=True,
     model_parameters=None,
     campaign=None,
-    paper=False,
+    cms_postfix=None,
+    style=None,
 ):
     """
     Creates a significance plot of the 2D scan of two parameters *scan_parameter1* and
@@ -406,11 +459,19 @@ def plot_significance_scan_2d(
     *z_max* limit the range of the z-axis. When *z_log* is *True*, the z-axis is plotted with a
     logarithmic scale. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*. When *paper* is *True*, certain plot configurations are adjusted
-    for use in publications.
+    *dhi.config.campaign_labels*. *cms_postfix* is shown as the postfix behind the CMS label.
+
+    Supported values for *style*:
+
+    - "paper"
     """
     import plotlib.root as r
     ROOT = import_ROOT()
+
+    # style-based adjustments
+    style = make_tuple(style)
+    if "paper" in style:
+        cms_postfix = None
 
     # check values
     values = make_list(values)
@@ -428,8 +489,12 @@ def plot_significance_scan_2d(
 
     # determine contours independent of plotting
     contour_levels = [1, 2, 3, 4, 5]  # sigma
-    contours = get_contours(joined_values[scan_parameter1], joined_values[scan_parameter2],
-        joined_values["significance"], levels=contour_levels)
+    contours = get_contours(
+        joined_values[scan_parameter1],
+        joined_values[scan_parameter2],
+        joined_values["significance"],
+        levels=contour_levels,
+    )
 
     # start plotting
     r.setup_style()
@@ -441,7 +506,9 @@ def plot_significance_scan_2d(
     hists = []
     for i, _values in enumerate(values):
         _, _, _x_bins, _y_bins, _x_min, _x_max, _y_min, _y_max = infer_binning_from_grid(
-            _values[scan_parameter1], _values[scan_parameter2])
+            _values[scan_parameter1],
+            _values[scan_parameter2],
+        )
 
         # get the z range
         z_vals = np.array(_values["significance"])
@@ -462,16 +529,30 @@ def plot_significance_scan_2d(
 
         # fill and store the histogram
         h = ROOT.TH2F("h" + str(i), "", _x_bins, _x_min, _x_max, _y_bins, _y_min, _y_max)
-        fill_hist_from_points(h, _values[scan_parameter1], _values[scan_parameter2], z_vals,
-            z_min=z_min, z_max=z_max)
+        fill_hist_from_points(
+            h,
+            _values[scan_parameter1],
+            _values[scan_parameter2],
+            z_vals,
+            z_min=z_min,
+            z_max=z_max,
+        )
         hists.append(h)
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter1].label)
     y_title = to_root_latex(poi_data[scan_parameter2].label)
     z_title = "p-value" if show_p_values else "Significance / #sigma"
-    h_dummy = ROOT.TH2F("h_sig", ";{};{};{}".format(x_title, y_title, z_title),
-        1, x_min, x_max, 1, y_min, y_max)
+    h_dummy = ROOT.TH2F(
+        "h_sig",
+        ";{};{};{}".format(x_title, y_title, z_title),
+        1,
+        x_min,
+        x_max,
+        1,
+        y_min,
+        y_max,
+    )
     r.setup_hist(h_dummy, pad=pad, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
     draw_objs.append((h_dummy, ""))
 
@@ -479,8 +560,11 @@ def plot_significance_scan_2d(
     for i, h in enumerate(hists):
         r.setup_hist(h, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
         if i == 0:
-            r.setup_z_axis(h.GetZaxis(), pad=pad, props={"Title": z_title, "TitleSize": 24,
-                "TitleOffset": 1.5})
+            r.setup_z_axis(
+                h.GetZaxis(),
+                pad=pad,
+                props={"Title": z_title, "TitleSize": 24, "TitleOffset": 1.5},
+            )
         draw_objs.append((h, "SAME,COLZ"))
         # for debugging purposes
         # draw_objs.append((h, "SAME,TEXT"))
@@ -505,15 +589,32 @@ def plot_significance_scan_2d(
         label_height *= py_to_y
 
         # calculate and store the position
-        label_positions = locate_contour_labels(graphs, level, label_width, label_height, pad_width,
-            pad_height, x_min, x_max, y_min, y_max, other_positions=all_positions, label_offset=1.3)
+        label_positions = locate_contour_labels(
+            graphs,
+            level,
+            label_width,
+            label_height,
+            pad_width,
+            pad_height,
+            x_min,
+            x_max,
+            y_min,
+            y_max,
+            other_positions=all_positions,
+            label_offset=1.3,
+        )
         all_positions.extend(label_positions)
 
         # draw them
         for x, y, rot in label_positions:
             xsec_label = ROOT.TLatex(0., 0., text)
-            r.setup_latex(xsec_label, props={"NDC": False, "TextSize": 16, "TextAlign": 22,
-                "TextColor": colors.black, "TextAngle": rot, "X": x, "Y": y})
+            r.setup_latex(
+                xsec_label,
+                props={
+                    "NDC": False, "TextSize": 16, "TextAlign": 22, "TextColor": colors.black,
+                    "TextAngle": rot, "X": x, "Y": y,
+                },
+            )
             draw_objs.append((xsec_label, "SAME"))
 
     # SM point
@@ -524,15 +625,14 @@ def plot_significance_scan_2d(
 
     # cms label
     cms_layout = "outside_horizontal"
-    _cms_postfix = "" if paper else cms_postfix
-    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=cms_postfix or "", layout=cms_layout)
     draw_objs.extend(cms_labels)
 
     # model parameter labels
     if model_parameters:
         param_kwargs = {}
         if cms_layout.startswith("inside"):
-            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            y_offset = 100 if cms_layout == "inside_vertical" and cms_postfix else 80
             param_kwargs = {"y_offset": y_offset}
         draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
