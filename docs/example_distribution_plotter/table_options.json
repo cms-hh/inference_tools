@@ -1,0 +1,28 @@
+{
+  "final_state_X_table":
+  {
+    "fitdiagnosis" : "PATH_FITDIAGNOSIS",
+    "datacard_original" : "none",
+    "bin_name_original" : "none",
+    "procs_plot_options_bkg" : "$DHI_BASE/docs/example_distribution_plotter/final_state_X_plot_options_BKG_colors.json",
+    "procs_plot_options_sig" : "$DHI_BASE/docs/example_distribution_plotter/final_state_X_plot_options_sig_colors.json",
+    "header_legend" : "#splitline{Final state X}{LABEL_BIN}",
+    "labelX" : "FAKE",
+    "minY" : 0.001,
+    "maxY" : 10.0,
+    "minYerr" : -2.1,
+    "maxYerr" : 2.1,
+    "maxYerr_postfit" : 0.6,
+    "minYerr_postfit" : 0.6,
+    "cats_labels_height" : 1.0,
+    "number_columns_legend" : 3,
+    "useLogPlot" : false,
+    "era" : 2016,
+    "align_cats" : [ALIGN_BIN],
+    "align_cats_labelsX" : [ALIGN_CATS_LABELSX],
+    "align_cats_labels" : [ALIGN_LABELS],
+    "single_H_by_era" : false,
+    "scale_signal_in_table" : 100.0,
+    "only_yield_table" : true
+    }
+  }

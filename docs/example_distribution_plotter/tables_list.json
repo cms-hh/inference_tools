@@ -1,0 +1,8 @@
+{
+  "table1" :
+  {
+    "ALIGN_BIN" : "'ch1_2016', 'ch3_2016',  'ch2_2016',  'ch4'",
+    "ALIGN_CATS_LABELSX" : "0, 0, 0, 0",
+    "ALIGN_LABELS" : "['ch1'], ['ch2'], ['ch3'], ['ch4']"
+  }
+}

@@ -88,10 +88,8 @@ setup() {
                 cd "$CMSSW_VERSION/src" && \
                 eval "$( scramv1 runtime -sh )" && \
                 scram b && \
-                git clone --depth 1 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
+                git clone --branch 102x-comb2021 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
                 cd HiggsAnalysis/CombinedLimit && \
-                git fetch --tags && \
-                git checkout tags/v8.2.0 && \
                 chmod ug+x test/diffNuisances.py && \
                 scram b -j ${DHI_INSTALL_CORES}
             ) || return "$?"
@@ -101,10 +99,8 @@ setup() {
                 echo "installing standalone combine at $DHI_SOFTWARE/HiggsAnalysis/CombinedLimit"
                 cd "$DHI_SOFTWARE"
                 rm -rf HiggsAnalysis/CombinedLimit
-                git clone --depth 1 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
+                git clone --branch 102x-comb2021 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
                 cd HiggsAnalysis/CombinedLimit && \
-                git fetch --tags && \
-                git checkout tags/v8.2.0 && \
                 chmod ug+x test/diffNuisances.py && \
                 source env_standalone.sh "" && \
                 make -j ${DHI_INSTALL_CORES} && \

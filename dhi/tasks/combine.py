@@ -15,13 +15,14 @@ import functools
 from abc import abstractproperty
 from collections import defaultdict, OrderedDict
 
+from backports.functools_lru_cache import lru_cache
 import law
 import luigi
 import six
 
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, HTCondorWorkflow, ModelParameters
 from dhi.config import poi_data, br_hh
-from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path
+from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path, test_timming_options_base
 from dhi.datacard_tools import bundle_datacard, read_datacard_blocks
 
 
@@ -59,7 +60,7 @@ class HHModelTask(AnalysisTask):
         ),
     )
 
-    allow_empty_hh_model = False
+    allow_empty_hh_model = True
 
     def __init__(self, *args, **kwargs):
         super(HHModelTask, self).__init__(*args, **kwargs)
@@ -452,6 +453,7 @@ class DatacardTask(HHModelTask):
         return _path, bin_name, inject, store_dir
 
     @classmethod
+    @lru_cache(maxsize=None)
     def resolve_datacards(cls, patterns):
         paths = []
         bin_names = []
@@ -1753,6 +1755,12 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 
 
 class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+    test_timming = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when set, a log file along with the result workpace with timming and memory usage "
+        "; default: False",
+    )
 
     priority = 90
 
@@ -1799,8 +1807,11 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
             for name, opt in model.hh_options.items():
                 model_args.append("--physics-option {}={}".format(name, opt["value"]))
 
+        test_timming_options = test_timming_options_base(self.output().path, self.test_timming)
+
         # build the t2w command
         cmd = (
+            "{test_timming_options} "
             "text2workspace.py {datacard}"
             " {self.custom_args}"
             " --out workspace.root"
@@ -1810,6 +1821,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
             self=self,
             datacard=self.input().path,
             model_args=" ".join(model_args),
+            test_timming_options=test_timming_options,
         )
 
         # add optional workspace injection commands

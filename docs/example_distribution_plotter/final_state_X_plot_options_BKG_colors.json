@@ -1,0 +1,4 @@
+{
+  "BKG_1" : {"color" : 8, "fillStype" : 1001, "make border" : true, "label" : "BKG 1"},
+  "BKG_2" : {"color" : 9, "fillStype" : 1001, "make border" : true, "label" : "t#bar{t} + jets"}
+}
