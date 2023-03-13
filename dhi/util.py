@@ -19,7 +19,7 @@ from collections import OrderedDict
 
 import numpy as np
 import scipy.interpolate
-from law.util import no_value, multi_match, make_unique, make_list  # noqa
+from law.util import no_value, multi_match, make_unique, make_list, make_tuple  # noqa
 import six
 
 # modules and objects from lazy imports

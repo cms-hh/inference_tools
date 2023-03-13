@@ -16,6 +16,7 @@ import law
 import six
 
 from dhi.util import call_hook, expand_path
+from dhi.config import cms_postfix as default_cms_postfix
 
 
 law.contrib.load(
@@ -682,18 +683,15 @@ class PlotTask(AnalysisTask):
         significant=False,
         description="the upper z-axis limit; no default",
     )
-    paper = luigi.BoolParameter(
-        default=False,
-        description="produce plots with certain settings changed for publication; default: False",
+    style = law.CSVParameter(
+        default=(),
+        description="one or more comma-separated names of a custom styles as provided by the "
+        "underlying plot function; no default",
     )
-    summary = luigi.BoolParameter(
-        default=False,
-        description="produce plots with certain settings changed for publication; default: False",
-    )
-    style = luigi.Parameter(
-        default=law.NO_STR,
-        description="the name of a custom style as provided by the underlying plot function; no "
-        "default",
+    cms_postfix = luigi.Parameter(
+        default=default_cms_postfix,
+        significant=False,
+        description="postfix to show after the CMS label; default: '{}'".format(default_cms_postfix),
     )
     save_hep_data = luigi.BoolParameter(
         default=False,
@@ -713,8 +711,8 @@ class PlotTask(AnalysisTask):
                 ",".join(plot_file_types), ",".join(self.file_types),
             ))
 
-        if self.style and self.style != law.NO_STR:
-            parts.append(("style", self.style))
+        if self.style:
+            parts.append(("style", "_".join(self.style)))
         if self.plot_postfix and self.plot_postfix != law.NO_STR:
             parts.append((self.plot_postfix,))
 

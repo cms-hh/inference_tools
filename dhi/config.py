@@ -239,8 +239,5 @@ chi2_levels = {
     for ndof in range(1, 3 + 1)
 }
 
-# postfix after "CMS" labels in plots, shwon when the --paper flag is not used
+# postfix after "CMS" labels in plots
 cms_postfix = os.getenv("DHI_CMS_POSTFIX", "Work in progress")
-
-# postfix after "CMS" labels in plots, shwon when the --preliminary flag is not used
-cms_postfix_preliminary = os.getenv("DHI_CMS_POSTFIX_PRELIMINARY", "Preliminary")
