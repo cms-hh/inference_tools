@@ -16,7 +16,7 @@ __all__ = [
     # formulae
     "HHFormula", "GGFFormula", "VBFFormula", "VHHFormula",
     # br and h scaling
-    "SM_HIGG_DECAYS", "SM_HIGG_PROD", "coeffs_br", "cxs_13", "ewk_13", "dZH", "HBRScaler",
+    "SM_HIGG_DECAYS", "SM_HIGG_PROD", "coeffs_br", "cxs_13", "ewk_13", "dzh", "HBRScaler",
     # model
     "HHModelBase", "HHModel", "create_model", "model_all", "model_default", "model_default_vhh",
     # xsec helpers
@@ -39,12 +39,9 @@ from HiggsAnalysis.CombinedLimit.SMHiggsBuilder import SMHiggsBuilder
 no_value = object()
 
 # default data directory of the SMHiggsBuilder, as used by the HBRScaler
+default_data_dir = None
 if "CMSSW_BASE" in os.environ:
     default_data_dir = "$CMSSW_BASE/src/HiggsAnalysis/CombinedLimit/data/lhc-hxswg"
-elif "DHI_SOFTWARE" in os.environ:
-    default_data_dir = "$DHI_SOFTWARE/HiggsAnalysis/CombinedLimit/data/lhc-hxswg"
-else:
-    default_data_dir = None
 
 
 ####################################################################################################
@@ -152,6 +149,24 @@ def _create_add_sample_func(sample_cls, samples_dict):
         sample = sample_cls(*args, **kwargs)
         samples_dict[sample.key] = sample
     return add_sample
+
+
+# helper to cast a string into an integer of float
+def try_number(s):
+    if not isinstance(s, str):
+        return s
+
+    try:
+        return int(s)
+    except:
+        pass
+
+    try:
+        return float(s)
+    except:
+        pass
+
+    return s
 
 
 # ggf samples with keys (kl, kt)
@@ -392,7 +407,7 @@ ewk_13 = {
     "ttH": 1.014,
     "VH": (0.5 * (0.93 + 0.947)),
 }
-dZH = -1.536e-3
+dzh = -1.536e-3
 
 
 class HBRScaler(object):
@@ -432,6 +447,54 @@ class HBRScaler(object):
         """
         return self.model_builder.out.function(*args, **kwargs)
 
+    def make_var(self, *args, **kwargs):
+        """
+        Shorthand for :py:meth:`model_builder.doVar`.
+        """
+        return self.model_builder.doVar(*args, **kwargs)
+
+    def get_var(self, *args, **kwargs):
+        """
+        Shorthand for :py:meth:`model_builder.out.var`.
+        """
+        return self.model_builder.out.var(*args, **kwargs)
+
+    def make_constant(self, value):
+        """
+        The new RooFit version seems to have dropped support for injecting bare values into formulas
+        using positional expression arguments. This method takes an integer or float *value* and
+        converts it into a constant, named singleton value that can be used instead. The name of the
+        variable is returned. Example:
+
+        .. code-block:: python
+
+            make_constant(1)
+            # creates a RooFit variable "hh_const_1", referring to 1
+
+            make_constant(1.5)
+            # creates a RooFit variable "hh_const_1p5", referring to 1.5
+
+            make_constant(-1.5)
+            # creates a RooFit variable "hh_const_m1p5", referring to -1.5
+        """
+        # build the name
+        if isinstance(value, int):
+            s = str(value)
+        elif isinstance(value, float):
+            s = str(value).replace("-", "m").replace(".", "p")
+        else:
+            raise Exception("cannot build constant from value '{}'".format(value))
+        name = "hh_const_{}".format(s)
+
+        # get or create ot
+        c = self.get_var(name)
+        if not c:
+            self.make_var("{}[{}]".format(name, value))
+            c = self.get_var(name)
+            c.setConstant(True)
+
+        return name
+
     def make_br(self, *args, **kwargs):
         """
         Shorthand for :py:meth:`higgs_builder.makeBR`.
@@ -442,6 +505,12 @@ class HBRScaler(object):
         """
         Shorthand for :py:meth:`higgs_builder.makeScaling`.
         """
+        # replace all values with constants
+        for key, value in list(kwargs.items()):
+            num = try_number(value)
+            if isinstance(num, (int, float)):
+                kwargs[key] = self.make_constant(num)
+
         return self.higgs_builder.makeScaling(*args, **kwargs)
 
     def build_br_scalings(self):
@@ -512,7 +581,7 @@ class HBRScaler(object):
 
         # create scalings for different production processes which require different formulae
         for p in ["ggH", "qqH"]:
-            d = {"prod": p, "ecm": ecm, "cxs": cxs_13[p], "ewk": ewk_13[p], "dzh": dZH}
+            d = {"prod": p, "ecm": ecm, "cxs": cxs_13[p], "ewk": ewk_13[p], "dzh": dzh}
             self.make_expr("expr::CVktkl_XSscal_{prod}_{ecm}('(@1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, Scaling_{prod}_{ecm})".format(**d))  # noqa
             self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})".format(**d))  # noqa
             self.h_scalings.append("CVktkl_pos_XSscal_{prod}_{ecm}".format(**d))
@@ -523,13 +592,13 @@ class HBRScaler(object):
             self.h_scalings.append("CVktkl_pos_XSscal_{prod}_{ecm}".format(**d))
 
         for p in ["ZH", "WH", "VH"]:
-            d = {"prod": p, "ecm": ecm, "cxs": cxs_13[p], "ewk": ewk_13[p], "dzh": dZH}
+            d = {"prod": p, "ecm": ecm, "cxs": cxs_13[p], "ewk": ewk_13[p], "dzh": dzh}
             self.make_expr("expr::CVktkl_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, CV)".format(**d))  # noqa
             self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})".format(**d))  # noqa
             self.h_scalings.append("CVktkl_pos_XSscal_{prod}_{ecm}".format(**d))
 
         for p in ["ttH"]:
-            d = {"prod": p, "ecm": ecm, "cxs": cxs_13[p], "ewk": ewk_13[p], "dzh": dZH}
+            d = {"prod": p, "ecm": ecm, "cxs": cxs_13[p], "ewk": ewk_13[p], "dzh": dzh}
             self.make_expr("expr::CVktkl_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, kt)".format(**d))  # noqa
             self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})".format(**d))  # noqa
             self.h_scalings.append("CVktkl_pos_XSscal_{prod}_{ecm}".format(**d))
@@ -564,7 +633,8 @@ class HBRScaler(object):
                     break
             else:
                 raise Exception("unsupported BR scaling of decay {} for process {} (bin {})".format(
-                    d, process, bin))
+                    d, process, bin,
+                ))
 
         return br, br_scalings
 
@@ -603,13 +673,18 @@ class HBRScaler(object):
         # when no scalings were found, print a warning since this might be intentional and return,
         # when != 2 scalings were found, this is most likely an error
         if not br_scalings:
-            print("WARNING: the HH process {} (bin {}) does not contain valid decay strings to "
+            print(
+                "WARNING: the HH process {} (bin {}) does not contain valid decay strings to "
                 "extract branching ratios to apply the scaling with model parameters".format(
-                    process, bin))
+                    process, bin,
+                ),
+            )
             return None
         elif len(br_scalings) != 2:
-            raise Exception("the HH process {} (bin {}) contains {} valid decay string(s) while "
-                "two were expected".format(process, bin, len(br_scalings)))
+            raise Exception(
+                "the HH process {} (bin {}) contains {} valid decay string(s) while "
+                "two were expected".format(process, bin, len(br_scalings)),
+            )
 
         # build the new scaling
         xsbr_scaling = "{}_BRscal_{}".format(xs_scaling, br)
@@ -629,19 +704,23 @@ class HBRScaler(object):
         # when no scalings were found, print a warning since this might be intentional and return,
         # when != 1 scalings were found, this is most likely an error
         if not br_scalings:
-            print("WARNING: the H process {} (bin {}) does not contain valid decay strings to "
-                "extract branching ratios to apply the scaling with model parameters".format(
-                    process, bin))
+            print(
+                "WARNING: the H process {} (bin {}) does not contain valid decay strings to extract "
+                "branching ratios to apply the scaling with model parameters".format(process, bin),
+            )
             return None
         elif len(br_scalings) != 1:
-            raise Exception("the H process {} (bin {}) contains {} valid decay string(s) while one "
-                "was expected".format(process, bin, len(br_scalings)))
+            raise Exception(
+                "the H process {} (bin {}) contains {} valid decay string(s) while one "
+                "was expected".format(process, bin, len(br_scalings)),
+            )
 
         # build the new scaling
         xsbr_scaling = "{}_BRscal_{}".format(xs_scaling, br)
         if not self.get_expr(xsbr_scaling):
             self.make_expr("expr::{}('@0 * @1', {}, {})".format(
-                xsbr_scaling, xs_scaling, br_scalings[0]))
+                xsbr_scaling, xs_scaling, br_scalings[0],
+            ))
 
         return xsbr_scaling
 
@@ -766,35 +845,40 @@ class HHModelBase(PhysicsModelBase):
         """
         raise NotImplementedError
 
+    @property
+    def model_builder(self):
+        # for compatibility
+        return self.modelBuilder
+
     def make_expr(self, *args, **kwargs):
         """
-        Shorthand for :py:meth:`modelBuilder.factory_`.
+        Shorthand for :py:meth:`model_builder.factory_`.
         """
-        return self.modelBuilder.factory_(*args, **kwargs)
+        return self.model_builder.factory_(*args, **kwargs)
 
     def get_expr(self, *args, **kwargs):
         """
-        Shorthand for :py:meth:`modelBuilder.out.function`.
+        Shorthand for :py:meth:`model_builder.out.function`.
         """
-        return self.modelBuilder.out.function(*args, **kwargs)
+        return self.model_builder.out.function(*args, **kwargs)
 
     def make_var(self, *args, **kwargs):
         """
-        Shorthand for :py:meth:`modelBuilder.doVar`.
+        Shorthand for :py:meth:`model_builder.doVar`.
         """
-        return self.modelBuilder.doVar(*args, **kwargs)
+        return self.model_builder.doVar(*args, **kwargs)
 
     def get_var(self, *args, **kwargs):
         """
-        Shorthand for :py:meth:`modelBuilder.out.var`.
+        Shorthand for :py:meth:`model_builder.out.var`.
         """
-        return self.modelBuilder.out.var(*args, **kwargs)
+        return self.model_builder.out.var(*args, **kwargs)
 
     def make_set(self, *args, **kwargs):
         """
-        Shorthand for :py:meth:`modelBuilder.doSet`.
+        Shorthand for :py:meth:`model_builder.doSet`.
         """
-        return self.modelBuilder.doSet(*args, **kwargs)
+        return self.model_builder.doSet(*args, **kwargs)
 
     def done(self):
         """
@@ -895,7 +979,7 @@ class HHModel(HHModelBase):
         self.register_opt("doklDependentUnc", True, is_flag=True)
         self.register_opt("doBRscaling", True, is_flag=True)
         self.register_opt("doHscaling", True, is_flag=True)
-        for p in self.R_POIS.keys() + self.K_POIS.keys():
+        for p in list(self.R_POIS.keys()) + list(self.K_POIS.keys()):
             if p != "r":
                 self.register_opt("doProfile" + p.replace("_", ""), None)
 
@@ -983,8 +1067,10 @@ class HHModel(HHModelBase):
 
         # set or redefine the MH variable on which some of the BRs depend
         if not self.options.mass:
-            raise Exception("invalid mass value '{}', please provide a valid value using the "
-                "--mass option".format(self.options.mass))
+            raise Exception(
+                "invalid mass value '{}', please provide a valid value using the "
+                "--mass option".format(self.options.mass),
+            )
         if self.get_var("MH"):
             self.get_var("MH").removeRange()
             self.get_var("MH").setVal(self.options.mass)
@@ -1015,9 +1101,11 @@ class HHModel(HHModelBase):
         expr_lo1 = self._create_ggf_xsec_str("unc_d1", "@0")
         expr_lo2 = self._create_ggf_xsec_str("unc_d2", "@0")
         self.make_expr("expr::{}_kappaHi('1.0 + ({}) * ((max({}, {}) / ({})) - 1.0)', kl)".format(
-            self.ggf_kl_dep_unc, scale, expr_hi1, expr_hi2, expr_nom))
+            self.ggf_kl_dep_unc, scale, expr_hi1, expr_hi2, expr_nom,
+        ))
         self.make_expr("expr::{}_kappaLo('1.0 + ({}) * ((min({}, {}) / ({})) - 1.0)', kl)".format(
-            self.ggf_kl_dep_unc, scale, expr_lo1, expr_lo2, expr_nom))
+            self.ggf_kl_dep_unc, scale, expr_lo1, expr_lo2, expr_nom,
+        ))
 
         # create the interpolation
         # as in https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/blob/102x/interface/ProcessNormalization.h  # noqa
@@ -1041,7 +1129,8 @@ class HHModel(HHModelBase):
 
         # add the scaling
         self.make_expr("expr::scaling_{0}('pow(@0, @1)', {0}_kappa, {0})".format(
-            self.ggf_kl_dep_unc))
+            self.ggf_kl_dep_unc,
+        ))
 
     def create_scalings(self):
         """
@@ -1050,7 +1139,7 @@ class HHModel(HHModelBase):
         """
         # initialize the HBRScaler
         self.h_br_scaler = self.h_br_scaler_cls(
-            self.modelBuilder,
+            self.model_builder,
             scale_br=self.opt("doBRscaling"),
             scale_h=self.opt("doHscaling"),
         )
@@ -1188,7 +1277,7 @@ class HHModel(HHModelBase):
         - parameters of coupling modifiers when profiling
         """
         # enable profiling of r and k POIs with a configurable prior when requested
-        for p in self.R_POIS.keys() + self.K_POIS.keys():
+        for p in list(self.R_POIS.keys()) + list(self.K_POIS.keys()):
             value = self.opt("doProfile" + p.replace("_", ""), False)
             if not value:
                 continue
@@ -1196,7 +1285,7 @@ class HHModel(HHModelBase):
             # get the prior and add it
             prior, width = value.split(",", 1) if "," in value else (value, None)
             if prior == "flat":
-                self.modelBuilder.DC.flatParamNuisances[p] = True
+                self.model_builder.DC.flatParamNuisances[p] = True
                 print("adding flat prior for parameter {}".format(p))
             elif prior == "gauss":
                 nuisances.append((p, False, "param", ["1", width, "[-7,7]"], []))
@@ -1236,8 +1325,11 @@ class HHModel(HHModelBase):
 
             # complain when there is more than one hit
             if len(matching_samples) > 1:
-                raise Exception("found {} matches for {} signal process {} in bin {}".format(
-                    len(matching_samples), formula_key, process, bin))
+                raise Exception(
+                    "found {} matches for {} signal process {} in bin {}".format(
+                        len(matching_samples), formula_key, process, bin,
+                    ),
+                )
 
             # get the scale when there is a hit
             if len(matching_samples) == 1:
@@ -1253,8 +1345,9 @@ class HHModel(HHModelBase):
 
         # complain when the process is a signal but no sample matched
         if self.DC.isSignal[process]:
-            raise Exception("signal process {} did not match any HH sample in bin {}".format(
-                process, bin))
+            raise Exception(
+                "signal process {} did not match any HH sample in bin {}".format(process, bin),
+            )
 
         # single H match?
         if self.opt("doHscaling"):
@@ -1287,8 +1380,10 @@ def create_model(name, ggf=None, vbf=None, vhh=None, **kwargs):
             elif s in all_samples:
                 samples.append(all_samples[s])
             else:
-                raise Exception("sample '{}' is neither an instance of {}, nor does it correspond "
-                    "to a known sample".format(s, sample_cls))
+                raise Exception(
+                    "sample '{}' is neither an instance of {}, nor does it correspond "
+                    "to a known sample".format(s, sample_cls),
+                )
         return samples
 
     # create the return the model
@@ -1640,5 +1735,8 @@ get_vhh_xsec = create_vhh_xsec_func(model_default_vhh.vhh_formula)
 # default combined cross section getter using the formulas of the *model_default* and
 # *model_default_vhh* models (analyses investigating only a subset of channels, e.g. ggf + vbf
 # should not rely on this function but rather use HHModel.create_hh_xsec_func)
-get_hh_xsec = create_hh_xsec_func(model_default.ggf_formula, model_default.vbf_formula,
-    model_default_vhh.vhh_formula)
+get_hh_xsec = create_hh_xsec_func(
+    model_default.ggf_formula,
+    model_default.vbf_formula,
+    model_default_vhh.vhh_formula,
+)

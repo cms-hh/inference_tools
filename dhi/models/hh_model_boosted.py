@@ -136,8 +136,10 @@ def create_model(name, ggf=None, vbf=None, vhh=None, boosted_ggf=None, boosted_v
             elif s in all_samples:
                 samples.append(all_samples[s])
             else:
-                raise Exception("sample '{}' is neither an instance of {}, nor does it correspond "
-                    "to a known sample".format(s, sample_cls))
+                raise Exception(
+                    "sample '{}' is neither an instance of {}, nor does it correspond "
+                    "to a known sample".format(s, sample_cls),
+                )
         return samples
 
     # create the return the model
