@@ -74,7 +74,8 @@ class DatacardRenamer(object):
         self.rules = rules
         self.skip_shapes = skip_shapes
         self.logger = logger or logging.getLogger(
-            "{}_{}".format(self.__class__.__name__, hex(id(self))))
+            "{}_{}".format(self.__class__.__name__, hex(id(self))),
+        )
 
         # datacard and shape builder objects if required
         self._dc = None
@@ -118,18 +119,22 @@ class DatacardRenamer(object):
         for rule in rules:
             # rules must have length 2
             if len(rule) != 2:
-                raise ValueError("translation rule {} invalid, must have length 2".format(rule))
+                raise ValueError(
+                    "translation rule {} invalid, must have length 2".format(rule),
+                )
             old_name, new_name = rule
 
             # old names must be unique
             if old_names.count(old_name) > 1:
-                raise ValueError("old process name {} not unique in translationion rules".format(
-                    old_name))
+                raise ValueError(
+                    "old process name {} not unique in translationion rules".format(old_name),
+                )
 
             # new name must not be in old names
             if new_name in old_names:
-                raise ValueError("new process name {} must not be in old process names".format(
-                    new_name))
+                raise ValueError(
+                    "new process name {} must not be in old process names".format(new_name),
+                )
 
         # sort such that the longest name is first to prevent replacing only parts of names
         rules.sort(key=lambda rule: -len(rule[0]))
@@ -187,8 +192,10 @@ class DatacardRenamer(object):
                     if syst_effect and has_shape(bin_name, process_name, syst_name):
                         key = (bin_name, process_name)
                         if syst_name in shape_syst_names[key]:
-                            self.logger.warning("shape systematic {} appears more than once for "
-                                "bin {} and process {}".format(syst_name, *key))
+                            self.logger.warning(
+                                "shape systematic {} appears more than once for "
+                                "bin {} and process {}".format(syst_name, *key),
+                            )
                         else:
                             shape_syst_names[key].append(syst_name)
 
@@ -203,8 +210,9 @@ class DatacardRenamer(object):
 
         cache = self._tobj_input_cache if mode == "READ" else self._tobj_output_cache
         if obj_name not in cache[tfile]:
-            self.logger.debug("loading object {} from file {}".format(
-                obj_name, tfile.GetPath().rstrip("/")))
+            self.logger.debug(
+                "loading object {} from file {}".format(obj_name, tfile.GetPath().rstrip("/")),
+            )
             cache[tfile][obj_name] = tfile.Get(obj_name)
 
         return cache[tfile][obj_name]
@@ -237,8 +245,11 @@ class DatacardRenamer(object):
                         self._tfile_cache.write_tobj(f, tobj)
 
         except BaseException as e:
-            self.logger.error("an exception of type {} occurred while renaming the datacard".format(
-                e.__class__.__name__))
+            self.logger.error(
+                "an exception of type {} occurred while renaming the datacard".format(
+                    e.__class__.__name__,
+                ),
+            )
             raise
 
         finally:
@@ -407,8 +418,11 @@ def read_datacard_blocks(datacard):
         if not line.startswith("bin "):
             continue
         next_lines = lines[rate_offset + 1:rate_offset + 4]
-        if next_lines[0].startswith("process ") and next_lines[1].startswith("process ") and \
-                next_lines[2].startswith("rate "):
+        if (
+            next_lines[0].startswith("process ") and
+            next_lines[1].startswith("process ") and
+            next_lines[2].startswith("rate ")
+        ):
             blocks["rates"].extend([line] + next_lines)
             del lines[rate_offset:rate_offset + 4]
             break
@@ -448,7 +462,7 @@ def read_datacard_structured(datacard):
     data["processes"] = []  # {name: string, id: int}
     data["rates"] = OrderedDict()  # {bin: {process: float}
     data["observations"] = OrderedDict()  # {bin: float}
-    data["shapes"] = []  # {index: int, bin: string, bin_pattern: string process: string, process_pattern: string, path: string, nom_pattern: string, syst_pattern: string}
+    data["shapes"] = []  # {index: int, bin: string, bin_pattern: string process: string, process_pattern: string, path: string, nom_pattern: string, syst_pattern: string}  # noqa
     data["parameters"] = []  # {name: string, type: string, columnar: bool, spec: ...}
 
     # read the content
@@ -462,9 +476,10 @@ def read_datacard_structured(datacard):
 
     # check if all lists have the same lengths
     if not (len(bin_names) == len(process_names) == len(process_ids) == len(rates)):
-        raise Exception("the number of bin names ({}), process names ({}), process ids "
-            "({}) and rates ({}) does not match".format(len(bin_names), len(process_names),
-            len(process_ids), len(rates)))
+        raise Exception(
+            "the number of bin names ({}), process names ({}), process ids ({}) and rates ({}) does "
+            "not match".format(len(bin_names), len(process_names), len(process_ids), len(rates)),
+        )
 
     # store data
     for bin_name, process_name, process_id, rate in zip(bin_names, process_names, process_ids,
@@ -532,8 +547,10 @@ def read_datacard_structured(datacard):
         else:
             # when it is columnar, store effects per bin and process pair
             if len(param_spec) != len(bin_names):
-                raise Exception("numbef of columns of parameter {} ({}) does not match number of "
-                    "bin-process pairs ({})".format(param_name, len(param_spec), len(bin_names)))
+                raise Exception(
+                    "numbef of columns of parameter {} ({}) does not match number of "
+                    "bin-process pairs ({})".format(param_name, len(param_spec), len(bin_names)),
+                )
             _param_spec = OrderedDict()
             for bin_name, process_name, spec in zip(bin_names, process_names, param_spec):
                 _param_spec.setdefault(bin_name, OrderedDict())[process_name] = spec
@@ -548,8 +565,13 @@ def read_datacard_structured(datacard):
 
 
 @contextlib.contextmanager
-def manipulate_datacard(datacard, target_datacard=None, read_only=False, read_structured=False,
-        writer="pretty"):
+def manipulate_datacard(
+    datacard,
+    target_datacard=None,
+    read_only=False,
+    read_structured=False,
+    writer="pretty",
+):
     """
     Context manager that opens a *datacard* and yields its contents as a dictionary of specific
     content blocks as returned by :py:func:`read_datacard_blocks`. Each block is a list of lines
@@ -897,8 +919,9 @@ def update_shape_name(towner, old_name, new_name):
     combine.
     """
     if not towner:
-        raise Exception("owner object is null pointer, cannot rename shape {} to {}".format(
-            old_name, new_name))
+        raise Exception(
+            "owner object is null pointer, cannot rename shape {} to {}".format(old_name, new_name),
+        )
 
     elif towner.InheritsFrom("TDirectoryFile"):
         # strategy: get the object, make a copy with the new name, delete all cycles of the old
@@ -909,7 +932,7 @@ def update_shape_name(towner, old_name, new_name):
             raise Exception(
                 "when renamening shapes in a TDirectoryFile, the old name ({}) and new name ({}) "
                 "must have to same amount of '/' characters for the object to remain at the same "
-                "depth".format(old_name, new_name)
+                "depth".format(old_name, new_name),
             )
 
         if "/" in old_name:
@@ -984,8 +1007,9 @@ def update_shape_name(towner, old_name, new_name):
         return tdata or tpdf
 
     else:
-        raise NotImplementedError("cannot extract shape from {} object for updating".format(
-            towner.ClassName()))
+        raise NotImplementedError(
+            "cannot extract shape from {} object for updating".format(towner.ClassName()),
+        )
 
 
 def expand_variables(s, process=None, channel=None, systematic=None, mass=None):
@@ -1062,16 +1086,16 @@ def expand_file_lines(paths, skip_comments=True):
         # first try to interpret it as a file
         is_pattern = isinstance(path, six.string_types) and (path.startswith("^") or "*" in path)
         _path = real_path(path) if isinstance(path, six.string_types) and not is_pattern else ""
-        if not os.path.isfile(_path):
-            # not a file, use as is
-            lines.append(path)
-        else:
+        if os.path.isfile(_path):
             # read the file line by line, accounting for empty lines and comments
             with open(_path, "r") as f:
                 for line in f.readlines():
                     line = line.strip()
                     if line and (not skip_comments or not line.startswith(("#", "//"))):
                         lines.append(line)
+        else:
+            # not a file, use as is
+            lines.append(path)
     return lines
 
 
@@ -1079,7 +1103,8 @@ def prepare_prefit_var(var, pdf, epsilon=0.001):
     """
     Prepares a RooRealVar *var* for the extraction of its prefit values using the corresponding
     *pdf* object. Internally, this is done using a made-up fit with precision *epsilon* following a
-    recipe in the CombineHarvester (see https://github.com/cms-analysis/CombineHarvester/blob/f1029e160701140ce3a1c1f44a991315fd272886/CombineTools/python/combine/utils.py#L87-L95).
+    recipe in the CombineHarvester (see
+    https://github.com/cms-analysis/CombineHarvester/blob/f1029e160701140ce3a1c1f44a991315fd272886/CombineTools/python/combine/utils.py#L87-L95).  # noqa
     *var* is returned.
     """
     ROOT = import_ROOT()
@@ -1097,8 +1122,12 @@ def prepare_prefit_var(var, pdf, epsilon=0.001):
     return var
 
 
-def get_workspace_parameters(workspace, workspace_name="w", config_name="ModelConfig",
-        only_names=False):
+def get_workspace_parameters(
+    workspace,
+    workspace_name="w",
+    config_name="ModelConfig",
+    only_names=False,
+):
     """
     Takes a workspace stored in a ROOT file *workspace* with the name *workspace_name* and gathers
     information on all non-constant parameters. The return value is an ordered dictionary that maps

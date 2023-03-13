@@ -90,24 +90,23 @@ def import_file(path, attr=None):
 
     return pkg
 
-def test_timming_options_base(path, test_timming) :
-    return "/usr/bin/time -ao {} -f \"TIME='Elapsed %e User %U Sys %S Mem %M' time \" ".format(path.replace(".root","_timming.log")) if test_timming else " "
 
 def _load_hooks():
     global _hook_data
 
     if _hook_data is no_value:
+        _hook_data = None
         if os.getenv("DHI_HOOK_FILE", ""):
             path = expand_path("$DHI_HOOK_FILE")
             # when the path is relative, always resolve it w.r.t. DHI_BASE
             if path and not path.startswith(os.sep):
                 path = expand_path(os.path.join("$DHI_BASE", path))
             if not path or not os.path.isfile(path):
-                raise Exception("DHI_HOOK_FILE refers to '{}' but it does not exist; either unset the "
-                    "variable or set it to the path of an existing file".format(path))
+                raise Exception(
+                    "DHI_HOOK_FILE refers to '{}' but it does not exist; either unset the "
+                    "variable or set it to the path of an existing file".format(path),
+                )
             _hook_data = (path, import_file(path))
-        else:
-            _hook_data = None
 
     return _hook_data
 
@@ -293,7 +292,7 @@ def get_neighbor_coordinates(shape, i, j):
     # check inputs
     if len(shape) != 2:
         raise ValueError("shape must have length 2, got {}".format(shape))
-    if any(l <= 0 for l in shape):
+    if any(s <= 0 for s in shape):
         raise ValueError("shape must contain only positive numbers, got {}".format(shape))
     if not (0 <= i < shape[0]):
         raise ValueError("i must be within interval [0, shape[0])")
@@ -596,9 +595,12 @@ def unique_recarray(a, cols=None, sort=True, test_metric=None):
             # call test_fn except when both values are nan
             both_nan = np.isnan(removed_metric) and np.isnan(kept_metric)
             if not both_nan and not test_fn(kept_metric, removed_metric):
-                raise Exception("duplicate entries identified by columns {} with '{}' values of {} "
+                raise Exception(
+                    "duplicate entries identified by columns {} with '{}' values of {} "
                     "(kept) and {} (removed at row {}) differ".format(
-                        cols, metric, kept_metric, removed_metric, i))
+                        cols, metric, kept_metric, removed_metric, i,
+                    ),
+                )
 
     return b
 
@@ -622,14 +624,18 @@ def dict_to_recarray(dicts):
     for i, d in enumerate(dicts):
         # check if keys are identical to first dict
         if set(d.keys()) != set(first_keys):
-            raise Exception("keys of dictionary {} ({}) do not match those of first dictionary "
-                "({})".format(i, ",".join(d.keys()), ",".join(first_keys)))
+            raise Exception(
+                "keys of dictionary {} ({}) do not match those of first dictionary ({})".format(
+                    i, ",".join(d.keys()), ",".join(first_keys),
+                ),
+            )
 
         # check if all values (lists) have the same length
         value_lengths = set(map(len, d.values()))
         if len(value_lengths) != 1:
             raise Exception("dictionary {} found to map to lists with unequal lengths: {}".format(
-                d, value_lengths))
+                d, value_lengths,
+            ))
 
         # construct the recarray
         records = [tuple(v[i] for v in d.values()) for i in range(list(value_lengths)[0])]
@@ -692,7 +698,7 @@ class TFileCache(object):
         super(TFileCache, self).__init__()
 
         self.logger = logger or logging.getLogger(
-            "{}_{}".format(self.__class__.__name__, hex(id(self)))
+            "{}_{}".format(self.__class__.__name__, hex(id(self))),
         )
 
         # cache of files opened for reading
@@ -759,7 +765,8 @@ class TFileCache(object):
                     tfile = ROOT.TFile(tmp_path, mode)
 
                     self.logger.debug("opened tfile {} with mode {} in temporary location {}".format(
-                        abs_path, mode, tmp_path))
+                        abs_path, mode, tmp_path,
+                    ))
                 else:
                     # open the file
                     tfile = ROOT.TFile(abs_path, mode)
@@ -787,8 +794,7 @@ class TFileCache(object):
                     data["write_objects"].append((tobj, towner, name))
                     break
             else:
-                raise Exception("cannot write object {} into unknown TFile {}".format(
-                    tobj, path))
+                raise Exception("cannot write object {} into unknown TFile {}".format(tobj, path))
 
         else:
             abs_path = real_path(path)
@@ -808,13 +814,15 @@ class TFileCache(object):
                     break
             else:
                 raise Exception("cannot delete object {} from unknown TFile {}".format(
-                    abs_key, path))
+                    abs_key, path,
+                ))
 
         else:
             abs_path = real_path(path)
             if abs_path not in self._w_cache:
                 raise Exception("cannot delete object {} from unopened file {}".format(
-                    abs_key, path))
+                    abs_key, path,
+                ))
 
             self._w_cache[abs_path]["delete_objects"].append(abs_key)
 
@@ -824,8 +832,9 @@ class TFileCache(object):
             for abs_path, data in self._r_cache.items():
                 if data["tfile"] and data["tfile"].IsOpen():
                     data["tfile"].Close()
-            self.logger.debug("closed {} cached file(s) opened for reading".format(
-                len(self._r_cache)))
+            self.logger.debug(
+                "closed {} cached file(s) opened for reading".format(len(self._r_cache)),
+            )
 
         if self._w_cache:
             # close files opened for reading, write objects and move to actual location
@@ -841,8 +850,9 @@ class TFileCache(object):
 
                 # issue a warning when the file was closed externally
                 if not data["tfile"].IsOpen():
-                    self.logger.warning("could not write tfile {}, already closed".format(
-                        data["tfile"]))
+                    self.logger.warning(
+                        "could not write tfile {}, already closed".format(data["tfile"]),
+                    )
                 else:
                     # write objects
                     if not skip_write and data["write_objects"]:
@@ -860,7 +870,9 @@ class TFileCache(object):
                         self.logger.debug("deleting {} objects".format(len(data["delete_objects"])))
                         for abs_key in data["delete_objects"]:
                             data["tfile"].Delete(abs_key)
-                            self.logger.debug("deleted {} from tfile at {}".format(abs_key, abs_path))
+                            self.logger.debug(
+                                "deleted {} from tfile at {}".format(abs_key, abs_path),
+                            )
 
                     # close the file
                     data["tfile"].Close()
@@ -868,11 +880,13 @@ class TFileCache(object):
                 # move back to original place when it was temporary and something changed
                 if data["tmp_path"] and (not skip_write or not skip_delete):
                     shutil.move(data["tmp_path"], abs_path)
-                    self.logger.debug("moving back temporary file {} to {}".format(
-                        data["tmp_path"], abs_path))
+                    self.logger.debug(
+                        "moving back temporary file {} to {}".format(data["tmp_path"], abs_path),
+                    )
 
-            self.logger.debug("closed {} cached file(s) opened for writing".format(
-                len(self._w_cache)))
+            self.logger.debug(
+                "closed {} cached file(s) opened for writing".format(len(self._w_cache)),
+            )
             ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = {};".format(ignore_level_orig))
 
         # clear
@@ -929,8 +943,17 @@ class ROOTColorGetter(object):
 
 class InterExtrapolator(object):
 
-    def __init__(self, x_values, y_values, z_values, kind2d="linear", kind1d="linear",
-            epsilon_x=1e-3, epsilon_y=1e-3, warn_treshold=0.15):
+    def __init__(
+        self,
+        x_values,
+        y_values,
+        z_values,
+        kind2d="linear",
+        kind1d="linear",
+        epsilon_x=1e-3,
+        epsilon_y=1e-3,
+        warn_treshold=0.15,
+    ):
         super(InterExtrapolator, self).__init__()
 
         # nan check
@@ -980,16 +1003,24 @@ class InterExtrapolator(object):
     def get_row_interp(self, y):
         if y not in self.interps1d_y:
             xs, _, zs = self.get_row(y)
-            self.interps1d_y[y] = scipy.interpolate.interp1d(xs, zs, kind=self.kind1d,
-                fill_value="extrapolate")
+            self.interps1d_y[y] = scipy.interpolate.interp1d(
+                xs,
+                zs,
+                kind=self.kind1d,
+                fill_value="extrapolate",
+            )
 
         return self.interps1d_y[y]
 
     def get_col_interp(self, x):
         if x not in self.interps1d_x:
             _, ys, zs = self.get_col(x)
-            self.interps1d_x[x] = scipy.interpolate.interp1d(ys, zs, kind=self.kind1d,
-                fill_value="extrapolate")
+            self.interps1d_x[x] = scipy.interpolate.interp1d(
+                ys,
+                zs,
+                kind=self.kind1d,
+                fill_value="extrapolate",
+            )
 
         return self.interps1d_x[x]
 
@@ -1006,8 +1037,11 @@ class InterExtrapolator(object):
         # check if the asymmetry is below a threshold
         asym = (z_row - z_col) / (z_row + z_col + 1e-5)
         if asym > self.warn_treshold:
-            warn("{}: asymmetry between 1D interpolations from row ({:.3f}) and column ({:.3f}) at "
-                "point ({}, {}) is {:.3f}, larger than {}".format(self.__class__.__name__, z_row,
-                z_col, x, y, asym, self.warn_treshold))
+            warn(
+                "{}: asymmetry between 1D interpolations from row ({:.3f}) and column ({:.3f}) at "
+                "point ({}, {}) is {:.3f}, larger than {}".format(
+                    self.__class__.__name__, z_row, z_col, x, y, asym, self.warn_treshold,
+                ),
+            )
 
         return 0.5 * (z_row + z_col)
