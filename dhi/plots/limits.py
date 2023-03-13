@@ -833,9 +833,6 @@ def plot_limit_points(
             x_min_value = min(x_min_value, min(d["theory"]))
             x_max_value = max(x_max_value, max(d["theory"]))
 
-    if summary :
-        scale_xmax = 15
-        x_max_value = x_max_value*scale_xmax
 
     # sort data
     if sort_by == "expected":
@@ -1031,7 +1028,7 @@ def plot_limit_points(
         draw_objs.extend([tl, tr])
 
         # extra labels
-        if d.get("label") or summary :
+        if d.get("label"):
             extra_label = hh_references.get(d["name"], d["name"]) if summary else d["label"]
             rlabel = to_root_latex(extra_label)
             rlabel_x = r.get_x(10, pad, anchor="right")
