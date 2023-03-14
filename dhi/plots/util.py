@@ -13,6 +13,7 @@ import json
 import functools
 import itertools
 import contextlib
+import ctypes
 from collections import OrderedDict
 
 import six
@@ -484,11 +485,12 @@ def get_graph_points(g, errors=False):
         else:
             errors = False
 
-    x, y = ROOT.Double(), ROOT.Double()
+    x = ctypes.c_double()
+    y = ctypes.c_double()
     for i in range(g.GetN()):
         g.GetPoint(i, x, y)
-        x_values.append(float(x))
-        y_values.append(float(y))
+        x_values.append(x.value)
+        y_values.append(y.value)
         if asym_errors:
             x_errors_up.append(g.GetErrorXhigh(i))
             x_errors_down.append(g.GetErrorXlow(i))

@@ -5,6 +5,7 @@ Tasks related to tests of the physics model(s).
 """
 
 import math
+import ctypes
 from collections import OrderedDict, defaultdict
 
 import luigi
@@ -381,8 +382,6 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
     def run(self):
         import numpy as np
 
-        ROOT = import_ROOT()
-
         # prepare the output
         output = self.output()
         list(output.values())[0][0].parent.touch()
@@ -404,9 +403,9 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
                 itg_errors = []
                 for x in x_values:
                     h = self.create_morphed_shape(hists_and_scale_fns, **{scan_parameter: x})
-                    err = ROOT.Double()
+                    err = ctypes.c_double()
                     itg = h.IntegralAndError(1, h.GetNbinsX(), err)
-                    itg_errors.append((err / itg) if itg else 0.0)
+                    itg_errors.append((err.value / itg) if itg else 0.0)
                 # create and store a graph
                 graphs[model_name] = create_tgraph(n_points, x_values, itg_errors)
 

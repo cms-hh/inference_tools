@@ -6,6 +6,7 @@ Script to extract and plot shapes from a ROOT file create by combine's FitDiagno
 """
 
 import os
+import ctypes
 from collections import OrderedDict
 import json
 from shutil import copyfile
@@ -857,8 +858,8 @@ def process_data_histo(
         bin_width = 1.0
         if divideByBinWidth:
             bin_width = histtotal.GetXaxis().GetBinWidth(ii + 1)
-        xp = ROOT.Double()
-        yp = ROOT.Double()
+        xp = ctypes.c_double()
+        yp = ctypes.c_double()
         dataTGraph.GetPoint(ii, xp, yp)
 
         # do noot draw erroor bars on empty bins
@@ -876,7 +877,7 @@ def process_data_histo(
         dataTGraph1.SetPointEXlow(ii + lastbin, template.GetBinWidth(ii + 1) / 2.0)
         dataTGraph1.SetPointEXhigh(ii + lastbin, template.GetBinWidth(ii + 1) / 2.0)
 
-        data_cat += yp
+        data_cat += yp.value
     del dataTGraph
     dataTGraph1.SetMarkerColor(1)
     dataTGraph1.SetMarkerStyle(20)
@@ -956,12 +957,12 @@ def process_total_histo(
     hist.GetYaxis().SetLabelSize(0.050)
     #return allbins
 
-    error_hist =  ROOT.Double()
+    error_hist =  ctypes.c_double()
     integral_histo = total_hist.IntegralAndError(0, total_hist.GetNbinsX()+1, error_hist, "")
     return {
         "allbins"   : allbins,
         "yield_cat" : integral_histo,
-        "yield_cat_err" : error_hist
+        "yield_cat_err" : error_hist.value,
     }
 
 
@@ -1088,7 +1089,7 @@ def stack_histo(
     if not hist.GetSumw2N():
         hist.Sumw2()
 
-    error_hist =  ROOT.Double()
+    error_hist =  ctypes.c_double()
     integral_histo = hist.IntegralAndError(0, hist.GetNbinsX()+1, error_hist, "")
 
     return {
@@ -1098,7 +1099,7 @@ def stack_histo(
         - 0.5,  # if lastbin > 0 else 0
         "labelPos": float(float(allbins) / 2.0),
         "yield_cat" : integral_histo,
-        "yield_cat_err" : error_hist
+        "yield_cat_err" : error_hist.value
     }
 
 
@@ -1140,8 +1141,8 @@ def err_data(dataTGraph1, template, dataTGraph, histtotal, folder, fin, divideBy
         if histtotal.GetBinContent(ii + 1) == 0:
             continue
         dividend = histtotal.GetBinContent(ii + 1) * bin_width
-        xp = ROOT.Double()
-        yp = ROOT.Double()
+        xp = ctypes.c_double()
+        yp = ctypes.c_double()
         dataTGraph.GetPoint(ii, xp, yp)
         if yp > 0:
             if dividend > 0:
