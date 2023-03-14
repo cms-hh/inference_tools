@@ -58,7 +58,7 @@ setup() {
 
     #
     # CMSSW & combine setup
-    # see https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/
+    # see https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit
     #
 
     local combine_version="5"
@@ -336,7 +336,14 @@ interactive_setup() {
     query DHI_STORE "Default local output store" "${DHI_DATA}/store" "\$DHI_DATA/store"
     query DHI_STORE_JOBS "Default local store for job files (should not be on /eos when submitting via lxplus!)" "${DHI_STORE}" "\$DHI_STORE"
     query DHI_STORE_BUNDLES "Output store for software bundles when submitting jobs" "${DHI_STORE}" "\$DHI_STORE"
-    query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "/eos/user/${DHI_USER:0:1}/${DHI_USER}/dhi/store"
+    local eos_user_home="/eos/user/${DHI_USER:0:1}/${DHI_USER}"
+    local eos_user_store="${eos_user_home}/dhi/store"
+    local eos_user_store_repr=""
+    if [ "${DHI_STORE:0:${#eos_user_home}}" = "${eos_user_home}" ]; then
+        eos_user_store="${DHI_STORE}"
+        eos_user_store_repr="\$DHI_STORE"
+    fi
+    query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "${eos_user_store}" "${eos_user_store_repr}"
     query DHI_SOFTWARE "Directory for installing software" "${DHI_DATA}/software" "\$DHI_DATA/software"
     query DHI_DATACARDS_RUN2 "Location of the datacards_run2 repository (optional)" "" "''"
     query DHI_HOOK_FILE "Location of a file with custom hooks (optional)" "" "''"

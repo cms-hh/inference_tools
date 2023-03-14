@@ -74,7 +74,8 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
 
     file_types = PlotTask.file_types
     campaign = PlotTask.campaign
-    paper = PlotTask.paper
+    cms_postfix = PlotTask.cms_postfix
+    style = PlotTask.style
     view_cmd = PlotTask.view_cmd
 
     exclude_params_req = {"view_cmd"}
