@@ -1,0 +1,16 @@
+{
+    "SMEFT (C_{uH}=1,C_{H,kin}=0):#kappa_{t}=2/3#bullet C2+1": {
+        "color": 1,
+        "poi1": "C2",
+        "poi2": "kt",
+        "eq": "2./3.*x+1",
+        "style": "3"
+    }, 
+    "SMEFT (C_{uH}=0,C_{H,kin}=1):#kappa_{t}=C2+1": {
+        "color": 1,
+        "poi1": "C2",
+        "poi2": "kt",
+        "eq": "x + 1",
+        "style": 2
+    }
+}
