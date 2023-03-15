@@ -13,9 +13,8 @@ Authors:
 from collections import OrderedDict
 
 # we need a wildcard import to have everything accessible through this module
-from hh_model import *  # noqa
 # specific imports for linting
-from hh_model import (
+from dhi.models.hh_model import (
     GGFSample as DefaultGGFSample, VBFSample as DefaultVBFSample, VHHSample,
     GGFFormula as DefaultGGFFormula, VBFFormula as DefaultVBFFormula, HHModel as DefaultHHModel,
     ggf_samples, vbf_samples, vhh_samples, _create_add_sample_func, model_default_vhh,
