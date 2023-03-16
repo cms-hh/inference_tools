@@ -9,17 +9,23 @@ test:
   when: manual
   tags:
     - cvmfs
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
   script:
     - yum install -y sshpass
     - mkdir examplecards
     - cd examplecards
     - sshpass -v -p ${KRB_PASS} scp -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch:/afs/cern.ch/user/m/mrieger/public/hh/inference/examplecards/cards.tgz .
     - tar -xzf cards.tgz
-    - ls
     - cd ..
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/examplecards"
     - source setup.sh
-    - law run dhi.tasks.test.TestPlots --version test_ci --print-status 1
+    - law run test.TestPlots --version ci --only-upper-limits-at-point --campaign "CI ${CI_ENVIRONMENT_SLUG}" --file-types png --workers 2
+    - law run test.TestPlots --version ci --only-upper-limits-at-point --campaign "CI ${CI_ENVIRONMENT_SLUG}" --file-types png --fetch-output 0,a,artifacts
+  artifacts:
+    paths:
+      - artifacts/*.png
+    expire_in: 1 month
 
 build_docs_image:
   when: manual
