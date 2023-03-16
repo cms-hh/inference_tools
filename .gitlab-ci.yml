@@ -19,9 +19,11 @@ test:
     - tar -xzf cards.tgz
     - cd ..
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/examplecards"
+    - export DHI_INSTALL_CORES="10"
     - source setup.sh
-    - law run test.TestPlots --version ci --only-upper-limits-at-point --campaign "CI ${CI_ENVIRONMENT_SLUG}" --file-types png --workers 2
-    - law run test.TestPlots --version ci --only-upper-limits-at-point --campaign "CI ${CI_ENVIRONMENT_SLUG}" --file-types png --fetch-output 0,a,artifacts
+    - export test_cmd="law run test.TestPlots --version ci --only-upper-limits-at-point --campaign \"CI ${CI_ENVIRONMENT_SLUG}\" --file-types png"
+    - eval "${test_cmd}"
+    - eval "${test_cmd} --fetch-output 0,a,artifacts"
   artifacts:
     paths:
       - artifacts/*.png
