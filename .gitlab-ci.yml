@@ -10,6 +10,7 @@ test:
   tags:
     - cvmfs
   script:
+    - yum install -y sshpass
     - mkdir examplecards
     - cd examplecards
     - sshpass -v -p ${KRB_PASS} scp -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch:/afs/cern.ch/user/m/mrieger/public/hh/inference/examplecards/cards.tgz .
