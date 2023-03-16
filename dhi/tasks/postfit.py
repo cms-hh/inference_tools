@@ -36,7 +36,13 @@ class SAVEFLAGS(str, enum.Enum):
         return list(map(lambda x: x.value, cls))
 
 
-class FitDiagnostics(POITask, CombineCommandTask, SnapshotUser, law.LocalWorkflow, HTCondorWorkflow):
+class FitDiagnostics(
+    POITask,
+    CombineCommandTask,
+    SnapshotUser,
+    law.LocalWorkflow,
+    HTCondorWorkflow,
+):
 
     pois = law.CSVParameter(
         default=("r",),
@@ -286,8 +292,11 @@ class PlotPostfitSOverB(PostfitPlotBase):
                 (p, v) for p, v in self.parameter_values_dict.items()
                 if p != self.pseudo_scan_parameter
             )
-            reqs["limit"] = UpperLimits.req(self, scan_parameters=(scan_parameter,),
-                parameter_values=parameter_values)
+            reqs["limit"] = UpperLimits.req(
+                self,
+                scan_parameters=(scan_parameter,),
+                parameter_values=parameter_values,
+            )
 
         return reqs
 
@@ -359,7 +368,8 @@ class PlotPostfitSOverB(PostfitPlotBase):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             prefit=self.prefit,
             unblinded=self.unblinded,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
+            style=self.style if self.style != law.NO_STR else None,
         )
 
 
@@ -493,9 +503,11 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
                 y_log=self.y_log,
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
-                paper=self.paper,
                 show_derivatives=self.show_derivatives,
+                cms_postfix=self.cms_postfix,
+                style=self.style if self.style != law.NO_STR else None,
             )
+
 
 class PlotDistributionsAndTables(POIPlotTask):
     verbose = luigi.BoolParameter(
