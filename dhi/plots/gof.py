@@ -9,8 +9,8 @@ import math
 import numpy as np
 import scipy.stats
 
-from dhi.config import campaign_labels, colors, br_hh_names, cms_postfix
-from dhi.util import import_ROOT, to_root_latex, create_tgraph, make_list
+from dhi.config import campaign_labels, colors, br_hh_names
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, make_list, make_tuple
 from dhi.plots.util import use_style, create_model_parameters, get_y_range
 
 
@@ -30,7 +30,8 @@ def plot_gof_distribution(
     y_max=None,
     model_parameters=None,
     campaign=None,
-    paper=False,
+    cms_postfix=None,
+    style=None,
 ):
     """
     Creates a plot showing the goodness-of-fit value *data* between simulated events and real data
@@ -40,13 +41,22 @@ def plot_gof_distribution(
     The toy histogram is drawn with *n_bins* bins. *x_min*, *x_max*, *y_min* and *y_max* define the
     axis ranges and default to the range of the given values. *model_parameters* can be a dictionary
     of key-value pairs of model parameters. *campaign* should refer to the name of a campaign label
-    defined in *dhi.config.campaign_labels*. When *paper* is *True*, certain plot configurations are
-    adjusted for use in publications.
+    defined in *dhi.config.campaign_labels*. *cms_postfix* is shown as the postfix behind the CMS
+    label.
+
+    Supported values for *style*:
+
+        - "paper"
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/gof.html#testing-a-datacard
     """
     import plotlib.root as r
     ROOT = import_ROOT()
+
+    # style-based adjustments
+    style = make_tuple(style)
+    if "paper" in style:
+        cms_postfix = None
 
     # remove nans and outliers
     toys = remove_nans(list(toys))
@@ -88,14 +98,20 @@ def plot_gof_distribution(
 
     # vertical data line
     line_data = ROOT.TLine(data, y_min, data, y_max_line)
-    r.setup_line(line_data, props={"NDC": False, "LineWidth": 3, "LineStyle": 2},
-        color=colors.blue_signal)
+    r.setup_line(
+        line_data,
+        props={"NDC": False, "LineWidth": 3, "LineStyle": 2},
+        color=colors.blue_signal,
+    )
     draw_objs.append(line_data)
     legend_entries.append((line_data, "Data", "L"))
 
     # integration graph
     g_int = create_integration_graph(h_toys, data)
-    r.setup_graph(g_int, props={"FillStyle": 3345, "FillColor": colors.blue_signal, "LineWidth": 0})
+    r.setup_graph(
+        g_int,
+        props={"FillStyle": 3345, "FillColor": colors.blue_signal, "LineWidth": 0},
+    )
     draw_objs.insert(-1, (g_int, "SAME,02"))
 
     # calculate p-value and uncertainty due to limited number of toys
@@ -113,21 +129,28 @@ def plot_gof_distribution(
     legend = r.routines.create_legend(pad=pad, width=250, n=len(legend_entries))
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
-    legend_box = r.routines.create_legend_box(legend, pad, "tr",
-        props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+    legend_box = r.routines.create_legend_box(
+        legend,
+        pad,
+        "tr",
+        props={"LineWidth": 0, "FillColor": colors.white_trans_70},
+    )
     draw_objs.insert(-1, legend_box)
 
     # cms label
     cms_layout = "outside_horizontal"
-    _cms_postfix = "" if paper else cms_postfix
-    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    cms_labels = r.routines.create_cms_labels(
+        pad=pad,
+        postfix=cms_postfix or "",
+        layout=cms_layout,
+    )
     draw_objs.extend(cms_labels)
 
     # model parameter labels
     if model_parameters:
         param_kwargs = {}
         if cms_layout.startswith("inside"):
-            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            y_offset = 100 if cms_layout == "inside_vertical" and cms_postfix else 80
             param_kwargs = {"y_offset": y_offset}
         draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
@@ -161,7 +184,8 @@ def plot_gofs(
     label_size=None,
     model_parameters=None,
     campaign=None,
-    paper=False,
+    cms_postfix=None,
+    style=None,
 ):
     """
     Creates a plot showing the results of multiple goodness-of-fit tests and saves it at *paths*.
@@ -174,13 +198,21 @@ def plot_gofs(
     *right_margin*, *entry_height* and *label_size* can be set to a size in pixels to overwrite
     internal defaults. *model_parameters* can be a dictionary of key-value pairs of model
     parameters. *campaign* should refer to the name of a campaign label defined in
-    *dhi.config.campaign_labels*. When *paper* is *True*, certain plot configurations are adjusted
-    for use in publications.
+    *dhi.config.campaign_labels*. *cms_postfix* is shown as the postfix behind the CMS label.
+
+    Supported values for *style*:
+
+        - "paper"
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/gof.html#testing-multiple-datacards
     """
     import plotlib.root as r
     ROOT = import_ROOT()
+
+    # style-based adjustments
+    style = make_tuple(style)
+    if "paper" in style:
+        cms_postfix = None
 
     # check inputs
     n = len(data)
@@ -217,8 +249,11 @@ def plot_gofs(
 
     # setup the default style and create canvas and pad
     r.setup_style()
-    canvas, (pad,) = r.routines.create_canvas(width=pad_width, height=pad_height,
-        pad_props=pad_margins)
+    canvas, (pad,) = r.routines.create_canvas(
+        width=pad_width,
+        height=pad_height,
+        pad_props=pad_margins,
+    )
     pad.cd()
     draw_objs = []
     legend_entries = []
@@ -230,11 +265,19 @@ def plot_gofs(
         x_max = 3.
 
     # dummy histogram to control axes
-    h_dummy = ROOT.TH1F("dummy", ";Normalized test statistic (t - #mu_{toys}) / #sigma_{toys};",
-        1, x_min, x_max)
+    h_dummy = ROOT.TH1F(
+        "dummy",
+        ";Normalized test statistic (t - #mu_{toys}) / #sigma_{toys};",
+        1,
+        x_min,
+        x_max,
+    )
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
-    r.setup_x_axis(h_dummy.GetXaxis(), pad=pad, props={"TitleOffset": 1.2,
-        "LabelOffset": r.pixel_to_coord(canvas, y=4)})
+    r.setup_x_axis(
+        h_dummy.GetXaxis(),
+        pad=pad,
+        props={"TitleOffset": 1.2, "LabelOffset": r.pixel_to_coord(canvas, y=4)},
+    )
     h_dummy.GetYaxis().SetBinLabel(1, "")
     draw_objs.append((h_dummy, "HIST"))
     y_label_tmpl = "#splitline{%s}{#scale[0.75]{%s}}"
@@ -278,8 +321,10 @@ def plot_gofs(
 
         # integration graph
         g_int = create_integration_graph(h_toys, (d["data"] - mean) / stddev, y_offset=y_offset)
-        r.setup_graph(g_int, props={"FillStyle": 3345, "FillColor": colors.blue_signal,
-            "LineWidth": 0})
+        r.setup_graph(
+            g_int,
+            props={"FillStyle": 3345, "FillColor": colors.blue_signal, "LineWidth": 0},
+        )
         draw_objs.insert(-1, (g_int, "SAME,02"))
 
         # data lines as graphs
@@ -326,15 +371,18 @@ def plot_gofs(
 
     # cms label
     cms_layout = "outside_horizontal"
-    _cms_postfix = "" if paper else cms_postfix
-    cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
+    cms_labels = r.routines.create_cms_labels(
+        pad=pad,
+        postfix=cms_postfix or "",
+        layout=cms_layout,
+    )
     draw_objs.extend(cms_labels)
 
     # model parameter labels
     if model_parameters:
         param_kwargs = {}
         if cms_layout.startswith("inside"):
-            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            y_offset = 100 if cms_layout == "inside_vertical" and cms_postfix else 80
             param_kwargs = {"y_offset": y_offset}
         draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 

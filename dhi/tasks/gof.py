@@ -28,7 +28,7 @@ class GoodnessOfFitBase(POITask, SnapshotUser):
     toys_per_branch = luigi.IntParameter(
         default=1,
         description="the number of toys to generate per branch task; the number of tasks in this "
-        "workflow is the number of total toys divided by this number; default: 1"
+        "workflow is the number of total toys divided by this number; default: 1",
     )
     algorithm = luigi.ChoiceParameter(
         default="saturated",
@@ -79,9 +79,11 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
 
         # print a warning when the saturated algorithm is use without frequentist toys
         if self.algorithm == "saturated" and not self.frequentist_toys:
-            self.logger.warning("it is recommended for goodness-of-fit tests with the "
+            self.logger.warning(
+                "it is recommended for goodness-of-fit tests with the "
                 "'saturated' algorithm to use frequentiest toys, so please consider adding "
-                "--frequentist-toys to the {} task".format(self.__class__.__name__))
+                "--frequentist-toys to the {} task".format(self.__class__.__name__),
+            )
 
     def create_branch_map(self):
         # the branch map refers to indices of toys in that branch, with 0 meaning the test on data
@@ -110,7 +112,9 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
         if self.branch == 0:
             parts.append("b0_data")
         else:
-            parts.append("b{}_toy{}To{}".format(self.branch, self.branch_data[0], self.branch_data[-1]))
+            parts.append("b{}_toy{}To{}".format(
+                self.branch, self.branch_data[0], self.branch_data[-1],
+            ))
 
         name = self.join_postfix(["gof", self.get_output_postfix(), parts])
         return self.local_target(name + ".root")
@@ -182,8 +186,9 @@ class MergeGoodnessOfFit(GoodnessOfFitBase):
         # load values
         for branch, inp in self.input()["collection"].targets.items():
             if not inp.exists():
-                self.logger.warning("input of branch {} at {} does not exist".format(
-                    branch, inp.path))
+                self.logger.warning(
+                    "input of branch {} at {} does not exist".format(branch, inp.path),
+                )
                 continue
 
             values = inp.load(formatter="uproot")["limit"].array("limit")
@@ -243,7 +248,8 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
             y_max=self.get_axis_limit("y_max"),
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
+            style=self.style if self.style != law.NO_STR else None,
         )
 
 
@@ -277,15 +283,21 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
         if len(self.toys) == 1:
             self.toys *= n_seqs
         elif len(self.toys) != n_seqs:
-            raise ValueError("{!r}: number of toy values must either be one or match the amount "
+            raise ValueError(
+                "{!r}: number of toy values must either be one or match the amount "
                 "of datacard sequences in --multi-datacards ({}), but got {}".format(
-                    self, n_seqs, len(self.toys)))
+                    self, n_seqs, len(self.toys),
+                ),
+            )
         if len(self.toys_per_branch) == 1:
             self.toys_per_branch *= n_seqs
         elif len(self.toys_per_branch) != n_seqs:
-            raise ValueError("{!r}: number of toys_per_branch values must either be one or match "
+            raise ValueError(
+                "{!r}: number of toys_per_branch values must either be one or match "
                 "the amount of datacard sequences in --multi-datacards ({}), but got {}".format(
-                    self, n_seqs, len(self.toys_per_branch)))
+                    self, n_seqs, len(self.toys_per_branch),
+                ),
+            )
 
     @property
     def toys_postfix(self):
@@ -354,5 +366,6 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
             label_size=None if self.label_size == law.NO_INT else self.label_size,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
+            style=self.style if self.style != law.NO_STR else None,
         )

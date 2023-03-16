@@ -11,7 +11,7 @@ test:
     - cvmfs
   script:
     - source setup.sh
-    - law run test.TestPlots --version test_ci --print-status 1
+    - law run dhi.tasks.test.TestPlots --version test_ci --print-status 1
 
 build_docs_image:
   when: manual
