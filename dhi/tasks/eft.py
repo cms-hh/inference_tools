@@ -328,7 +328,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
         )
 
 
-class PlotMultiEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
+class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
 
     datacard_names = MultiDatacardTask.datacard_names
     force_equal_sequence_lengths = True
@@ -419,4 +419,4 @@ class PlotMultiEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
         )
 
 
-PlotMultiEFTBenchmarkLimits.exclude_params_index -= {"datacard_names"}
+PlotMultipleEFTBenchmarkLimits.exclude_params_index -= {"datacard_names"}
