@@ -693,6 +693,8 @@ class MultiDatacardTask(DatacardTask):
         brace_expand=True,
     )
 
+    force_equal_sequence_lengths = False
+    compare_sequence_length = False
     datacards = None
     datacards_store_dir = law.NO_STR
 
@@ -726,20 +728,28 @@ class MultiDatacardTask(DatacardTask):
     def __init__(self, *args, **kwargs):
         super(MultiDatacardTask, self).__init__(*args, **kwargs)
 
-        # the lengths of names and order indices must match multi_datacards when given
+        # if enabled, check that all sequences have the same size
         n = self.n_datacard_entries
+        if self.force_equal_sequence_lengths:
+            m = len(self.multi_datacards[0])
+            for i, datacards in enumerate(self.multi_datacards):
+                if len(datacards) != m:
+                    raise Exception(
+                        "datacard sequence at index {} contains {} datacards whereas {} are "
+                        "expected".format(i, len(datacards), m),
+                    )
+            if self.compare_sequence_length:
+                n = m
+
+        # the lengths of names and order indices must match multi_datacards when given
         if self.datacard_names and len(self.datacard_names) != n:
-            raise Exception(
-                "found {} entries in datacard_names whereas {} is expected".format(
-                    len(self.datacard_names), n,
-                ),
-            )
+            raise Exception("found {} entries in datacard_names whereas {} are expected".format(
+                len(self.datacard_names), n,
+            ))
         if self.datacard_order and len(self.datacard_order) != n:
-            raise Exception(
-                "found {} entries in datacard_order whereas {} is expected".format(
-                    len(self.datacard_order), n,
-                ),
-            )
+            raise Exception("found {} entries in datacard_order whereas {} are expected".format(
+                len(self.datacard_order), n,
+            ))
 
     @property
     def n_datacard_entries(self):
