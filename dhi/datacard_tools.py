@@ -1136,13 +1136,11 @@ def get_workspace_parameters(
     *only_names* is *True*, only the parameter names are returned in a list.
     """
     ROOT = import_ROOT()
-    from HiggsAnalysis.CombinedLimit.RooAddPdfFixer import FixAll
 
     # read the workspace
     workspace = real_path(workspace)
     f = ROOT.TFile.Open(workspace)
     w = f.Get(workspace_name)
-    FixAll(w)
 
     # get all model parameters
     config = w.genobj(config_name)

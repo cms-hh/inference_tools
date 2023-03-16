@@ -335,13 +335,19 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
         elif self.method == "hesse":
             # load all parameter fits from the mdf result
-            fit_results = self.load_hesse_fits(inputs[0]["multidimfit"], poi,
-                self.get_selected_parameters(params))
+            fit_results = self.load_hesse_fits(
+                inputs[0]["multidimfit"],
+                poi,
+                self.get_selected_parameters(params),
+            )
 
         elif self.method == "robust":
             # load all parameter fits from the robustHesse result
-            fit_results = self.load_robust_fits(inputs[0]["robusthesse"], poi,
-                self.get_selected_parameters(params))
+            fit_results = self.load_robust_fits(
+                inputs[0]["robusthesse"],
+                poi,
+                self.get_selected_parameters(params),
+            )
 
         else:
             raise NotImplementedError
@@ -381,7 +387,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
                 poi: [
                     d[poi][1] - d[poi][0],
                     d[poi][2] - d[poi][1],
-                ]
+                ],
             }
             # maximum impact on that POI
             d["impact_" + poi] = max(map(abs, d["impacts"][poi]))
@@ -399,7 +405,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         converged = values[param].size == 3
         if converged:
             return values
-        elif keep_failures:
+        if keep_failures:
             return {
                 poi: np.array([np.nan, np.nan, np.nan]),
                 param: np.array([np.nan, np.nan, np.nan]),
@@ -533,8 +539,10 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
 
         # complain when parameters_per_page is set for non pdf file types
         if self.parameters_per_page > 0 and self.page < 0 and "pdf" not in self.file_types:
-            self.logger.warning("parameters_per_page is only supported for file_type 'pdf', but "
-                "got {}".format(self.file_types))
+            self.logger.warning(
+                "parameters_per_page is only supported for file_type 'pdf', but "
+                "got {}".format(self.file_types),
+            )
             self.parameters_per_page = -1
 
         # show a warning when unblinded, not in paper mode and not hiding the best fit value
@@ -592,7 +600,8 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
             right_margin=None if self.right_margin == law.NO_INT else self.right_margin,
             entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
+            style=self.style if self.style != law.NO_STR else None,
         )
 
 
@@ -682,5 +691,6 @@ class PlotMultiplePullsAndImpacts(PlotPullsAndImpacts, POIMultiTask, MultiDataca
             right_margin=None if self.right_margin == law.NO_INT else self.right_margin,
             entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
+            style=self.style if self.style != law.NO_STR else None,
         )
