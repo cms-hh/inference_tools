@@ -13,24 +13,31 @@ import six
 
 from dhi.tasks.base import AnalysisTask, PlotTask, view_output_plots
 from dhi.tasks.limits import (
-    PlotUpperLimits, PlotMultipleUpperLimits, PlotMultipleUpperLimitsByModel,
+    PlotUpperLimits,
+    PlotMultipleUpperLimits,
+    PlotMultipleUpperLimitsByModel,
     PlotUpperLimitsAtPoint,
 )
-from dhi.tasks.likelihoods import (
-    PlotLikelihoodScan, PlotMultipleLikelihoodScans, PlotMultipleLikelihoodScansByModel,
-)
-from dhi.tasks.significances import PlotSignificanceScan, PlotMultipleSignificanceScans
-from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
-from dhi.tasks.exclusion import PlotExclusionAndBestFit, PlotExclusionAndBestFit2D
-from dhi.tasks.postfit import PlotPostfitSOverB, PlotNuisanceLikelihoodScans
-from dhi.tasks.gof import PlotGoodnessOfFit, PlotMultipleGoodnessOfFits
-from dhi.tasks.eft import PlotEFTBenchmarkLimits
-from dhi.tasks.studies.model_selection import (
-    PlotMorphingScales, PlotMorphedDiscriminant, PlotStatErrorScan,
-)
+# from dhi.tasks.likelihoods import (
+#     PlotLikelihoodScan,
+#     PlotMultipleLikelihoodScans,
+#     PlotMultipleLikelihoodScansByModel,
+# )
+# from dhi.tasks.significances import PlotSignificanceScan, PlotMultipleSignificanceScans
+# from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
+# from dhi.tasks.exclusion import PlotExclusionAndBestFit, PlotExclusionAndBestFit2D
+# from dhi.tasks.postfit import PlotPostfitSOverB, PlotNuisanceLikelihoodScans
+# from dhi.tasks.gof import PlotGoodnessOfFit, PlotMultipleGoodnessOfFits
+# from dhi.tasks.eft import PlotEFTBenchmarkLimits, PlotMultipleEFTBenchmarkLimits
+# from dhi.tasks.studies.model_selection import (
+#     PlotMorphingScales,
+#     PlotMorphedDiscriminant,
+#     PlotStatErrorScan,
+# )
 
 
 class TestRegister(law.task.base.Register):
+
     def __new__(metacls, classname, bases, classdict):
         # convert test names into "--no-<name>" and "--only-<name>" task parameters
         for test_name in classdict.get("test_names", []):
@@ -66,6 +73,8 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         "nuisance_likelihood_scans",
         "goodness_of_fit",
         "eft_benchmark_limits",
+        "multiple_eft_benchmark_limits",
+        "upper_limits_c2",
         "multiple_goodness_of_fits",
         "morphing_scales",
         "morphed_discriminant",
@@ -82,248 +91,286 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
 
     def check_enabled(self, test_name):
         assert test_name in self.test_names
+
         if any(getattr(self, "only_" + n) for n in self.test_names):
             return getattr(self, "only_" + test_name)
-        else:
-            return not getattr(self, "no_" + test_name)
+
+        return not getattr(self, "no_" + test_name)
 
     def requires(self):
         reqs = OrderedDict()
 
-        cards = tuple(os.environ["DHI_EXAMPLE_CARDS"].split(","))
-        multi_cards = tuple((c,) for c in cards) + (cards,)
-        multi_cards_names = tuple(map("Cards {}".format, range(1, len(cards) + 1))) + ("All",)
+        # helper
+        get_cards = lambda name: tuple(os.environ["DHI_EXAMPLE_{}".format(name)].split(","))
+
+        # prepare variables
+        sm_cards = get_cards("CARDS")
+        sm_cards_multi = (get_cards("CARDS_1"), get_cards("CARDS_2"))
+        sm_cards_multi_names = ("Cards 1", "Cards 2")
+
+        # eft_c2_cards = get_cards("CARDS_EFT_C2")
+        # eft_c2_cards_multi = (get_cards("CARDS_EFT_C2_1"), get_cards("CARDS_EFT_C2_2"))
+        # eft_c2_cards_multi_names = ("Cards 1", "Cards 2")
+
+        # eft_bm_cards = get_cards("CARDS_EFT_BM")
+        # eft_bm_cards_multi = (get_cards("CARDS_EFT_BM_1"), get_cards("CARDS_EFT_BM_2"))
+        # eft_bm_cards_multi_names = ("Cards 1", "Cards 2")
+
+        # res_cards = get_cards("CARDS_RES")
+        # res_cards_multi = (get_cards("CARDS_RES_1"), get_cards("CARDS_RES_2"))
+        # res_cards_multi_names = ("Cards 1", "Cards 2")
+
         test_models = tuple(map("model_default{}".format, ["", "@noBRscaling", "@noHscaling"]))
-        eft_cards_bm = tuple(os.environ["DHI_EXAMPLE_CARDS_EFT_BM"].split(","))
+        # c2_model = "hh_model_C2klkt.model_default"
 
         if self.check_enabled("upper_limits"):
             reqs["upper_limits"] = PlotUpperLimits.req(
                 self,
-                datacards=cards,
+                datacards=sm_cards,
                 pois=("r",),
                 scan_parameters=(("kl", -5.0, 5.0),),
                 show_parameters=(("kt", "CV"),),
+                xsec="fb",
+                y_log=True,
             )
 
         if self.check_enabled("multiple_upper_limits"):
             reqs["multiple_upper_limits"] = PlotMultipleUpperLimits.req(
                 self,
-                multi_datacards=multi_cards,
-                datacard_names=multi_cards_names,
+                multi_datacards=sm_cards_multi,
+                datacard_names=sm_cards_multi_names,
                 pois=("r",),
                 scan_parameters=(("kl", -5.0, 5.0),),
                 show_parameters=(("kt", "CV"),),
+                xsec="fb",
+                y_log=True,
             )
 
         if self.check_enabled("multiple_upper_limits_by_model"):
             reqs["multiple_upper_limits_by_model"] = PlotMultipleUpperLimitsByModel.req(
                 self,
-                datacards=cards,
+                datacards=sm_cards,
                 hh_models=test_models,
                 pois=("r",),
                 scan_parameters=(("kl", -5.0, 5.0),),
                 show_parameters=(("kt", "CV"),),
+                xsec="fb",
+                y_log=True,
             )
 
         if self.check_enabled("upper_limits_at_point"):
             reqs["upper_limits_at_point"] = PlotUpperLimitsAtPoint.req(
                 self,
-                multi_datacards=multi_cards,
-                datacard_names=multi_cards_names,
+                multi_datacards=sm_cards_multi,
+                datacard_names=sm_cards_multi_names,
                 pois=("r",),
                 parameter_values=(("kl", 1), ("kt", 1)),
                 show_parameters=(("kl", "kt", "CV"),),
-            )
-
-        if self.check_enabled("likelihood_scan"):
-            reqs["likelihood_scan"] = PlotLikelihoodScan.req(
-                self,
-                datacards=cards,
-                pois=("kl",),
-                scan_parameters=(("kl", -5.0, 5.0),),
-                show_parameters=(("kt", "CV"),),
-            )
-
-        if self.check_enabled("likelihood_scan_2d"):
-            reqs["likelihood_scan_2d"] = PlotLikelihoodScan.req(
-                self,
-                datacards=cards,
-                pois=("kl", "kt"),
-                scan_parameters=(
-                    ("kl", -5.0, 5.0),
-                    ("kt", -5.0, 5.0),
-                ),
-            )
-
-        if self.check_enabled("multiple_likelihood_scans"):
-            reqs["multiple_likelihood_scans"] = PlotMultipleLikelihoodScans.req(
-                self,
-                multi_datacards=multi_cards,
-                datacard_names=multi_cards_names,
-                pois=("kl",),
-                scan_parameters=(("kl", -5.0, 5.0),),
-                show_parameters=(("kt", "CV"),),
-            )
-
-        if self.check_enabled("multiple_likelihood_scans_2d"):
-            reqs["multiple_likelihood_scans_2d"] = PlotMultipleLikelihoodScans.req(
-                self,
-                multi_datacards=multi_cards,
-                datacard_names=multi_cards_names,
-                pois=("kl", "kt"),
-                scan_parameters=(
-                    ("kl", -5.0, 5.0),
-                    ("kt", -5.0, 5.0),
-                ),
-            )
-
-        if self.check_enabled("multiple_likelihood_scans_by_model"):
-            reqs["multiple_likelihood_scans_by_model"] = PlotMultipleLikelihoodScansByModel.req(
-                self,
-                datacards=cards,
-                hh_models=test_models,
-                pois=("kl",),
-                scan_parameters=(("kl", -5.0, 5.0),),
-                show_parameters=(("kt", "CV"),),
-            )
-
-        if self.check_enabled("multiple_likelihood_scans_by_model_2d"):
-            reqs["multiple_likelihood_scans_by_model_2d"] = PlotMultipleLikelihoodScansByModel.req(
-                self,
-                datacards=cards,
-                hh_models=test_models,
-                pois=("kl", "kt"),
-                scan_parameters=(
-                    ("kl", -5.0, 5.0),
-                    ("kt", -5.0, 5.0),
-                ),
-            )
-
-        if self.check_enabled("significance_scan"):
-            reqs["significance_scan"] = PlotSignificanceScan.req(
-                self,
-                datacards=cards,
-                pois=("r",),
-                scan_parameters=(("kl", -5.0, 5.0),),
-                show_parameters=(("kt", "CV"),),
-            )
-
-        if self.check_enabled("multiple_significance_scans"):
-            reqs["multiple_significance_scans"] = PlotMultipleSignificanceScans.req(
-                self,
-                multi_datacards=multi_cards,
-                datacard_names=multi_cards_names,
-                pois=("r",),
-                scan_parameters=(("kl", -5.0, 5.0),),
-                show_parameters=(("kt", "CV"),),
-            )
-
-        if self.check_enabled("pulls_and_impacts"):
-            reqs["pulls_and_impacts"] = PlotPullsAndImpacts.req(
-                self,
-                datacards=cards,
-                pois=("r",),
-            )
-            reqs["pulls_and_impacts"].requires().requires().end_branch = 10
-
-        if self.check_enabled("exclusion_and_bestfit"):
-            reqs["exclusion_and_bestfit"] = PlotExclusionAndBestFit.req(
-                self,
-                multi_datacards=multi_cards,
-                datacard_names=multi_cards_names,
-                pois=("r",),
-                scan_parameters=(("kl", -30.0, 30.0, 61),),
-                show_parameters=(("kt", "CV"),),
-            )
-
-        if self.check_enabled("exclusion_and_bestfit_2d"):
-            reqs["exclusion_and_bestfit_2d"] = PlotExclusionAndBestFit2D.req(
-                self,
-                datacards=cards,
-                pois=("r",),
-                scan_parameters=(("kl", -30.0, 30.0, 61), ("kt", -6.0, 9.0, 31)),
-                show_parameters=(("CV",),),
-            )
-
-        if self.check_enabled("postfit_s_over_b"):
-            reqs["postfit_s_over_b"] = PlotPostfitSOverB.req(
-                self,
-                datacards=cards,
-                pois=("r",),
-                show_parameters=(("kl", "kt"),),
-            )
-
-        if self.check_enabled("nuisance_likelihood_scans"):
-            reqs["nuisance_likelihood_scans"] = PlotNuisanceLikelihoodScans.req(
-                self,
-                datacards=cards,
-                pois=("r",),
-                parameters_per_page=6,
-                y_log=True,
-                show_parameters=(("kl", "kt"),),
-            )
-
-        if self.check_enabled("goodness_of_fit"):
-            reqs["goodness_of_fit"] = PlotGoodnessOfFit.req(
-                self,
-                datacards=cards,
-                pois=("r",),
-                toys=300,
-                toys_per_task=15,
-                algorithm="saturated",
-                frequentist_toys=True,
-                show_parameters=(("kl", "kt"),),
-            )
-
-        if self.check_enabled("multiple_goodness_of_fits"):
-            reqs["multiple_goodness_of_fits"] = PlotMultipleGoodnessOfFits.req(
-                self,
-                multi_datacards=multi_cards,
-                datacard_names=multi_cards_names,
-                pois=("r",),
-                toys=(300,),
-                toys_per_task=(15,),
-                algorithm="saturated",
-                frequentist_toys=True,
-                show_parameters=(("kl", "kt"),),
-            )
-
-        if self.check_enabled("eft_benchmark_limits"):
-            reqs["eft_benchmark_limits"] = PlotEFTBenchmarkLimits.req(
-                self,
-                multi_datacards=(eft_cards_bm,),
                 xsec="fb",
+                x_log=True,
             )
 
-        if self.check_enabled("morphing_scales"):
-            reqs["morphing_scales"] = PlotMorphingScales.req(
-                self,
-                hh_model="HHModelPinv.model_default",
-                signal="ggf",
-                scan_parameters=(("kl", -10.0, 10.0),),
-                parameter_values=(("kt", 1),),
-            )
+        # if self.check_enabled("likelihood_scan"):
+        #     reqs["likelihood_scan"] = PlotLikelihoodScan.req(
+        #         self,
+        #         datacards=cards,
+        #         pois=("kl",),
+        #         scan_parameters=(("kl", -5.0, 5.0),),
+        #         show_parameters=(("kt", "CV"),),
+        #     )
 
-        if self.check_enabled("morphed_discriminant"):
-            reqs["morphed_discriminant"] = PlotMorphedDiscriminant.req(
-                self,
-                datacards=cards[:1],
-                hh_models=test_models,
-                signal="ggf",
-                bins=("ch1",),
-                parameter_values=(("kl", 1), ("kt", 1)),
-            )
+        # if self.check_enabled("likelihood_scan_2d"):
+        #     reqs["likelihood_scan_2d"] = PlotLikelihoodScan.req(
+        #         self,
+        #         datacards=cards,
+        #         pois=("kl", "kt"),
+        #         scan_parameters=(
+        #             ("kl", -5.0, 5.0),
+        #             ("kt", -5.0, 5.0),
+        #         ),
+        #     )
 
-        if self.check_enabled("stat_error_scan"):
-            reqs["stat_error_scan"] = PlotStatErrorScan.req(
-                self,
-                datacards=cards[:1],
-                hh_models=test_models,
-                signal="ggf",
-                bins=("ch1",),
-                scan_parameters=(("kl", -20, 20, 81),),
-                parameter_values=(("kt", 1),),
-            )
+        # if self.check_enabled("multiple_likelihood_scans"):
+        #     reqs["multiple_likelihood_scans"] = PlotMultipleLikelihoodScans.req(
+        #         self,
+        #         multi_datacards=multi_cards,
+        #         datacard_names=multi_cards_names,
+        #         pois=("kl",),
+        #         scan_parameters=(("kl", -5.0, 5.0),),
+        #         show_parameters=(("kt", "CV"),),
+        #     )
+
+        # if self.check_enabled("multiple_likelihood_scans_2d"):
+        #     reqs["multiple_likelihood_scans_2d"] = PlotMultipleLikelihoodScans.req(
+        #         self,
+        #         multi_datacards=multi_cards,
+        #         datacard_names=multi_cards_names,
+        #         pois=("kl", "kt"),
+        #         scan_parameters=(
+        #             ("kl", -5.0, 5.0),
+        #             ("kt", -5.0, 5.0),
+        #         ),
+        #     )
+
+        # if self.check_enabled("multiple_likelihood_scans_by_model"):
+        #     reqs["multiple_likelihood_scans_by_model"] = PlotMultipleLikelihoodScansByModel.req(
+        #         self,
+        #         datacards=cards,
+        #         hh_models=test_models,
+        #         pois=("kl",),
+        #         scan_parameters=(("kl", -5.0, 5.0),),
+        #         show_parameters=(("kt", "CV"),),
+        #     )
+
+        # if self.check_enabled("multiple_likelihood_scans_by_model_2d"):
+        #     reqs["multiple_likelihood_scans_by_model_2d"] = PlotMultipleLikelihoodScansByModel.req(
+        #         self,
+        #         datacards=cards,
+        #         hh_models=test_models,
+        #         pois=("kl", "kt"),
+        #         scan_parameters=(
+        #             ("kl", -5.0, 5.0),
+        #             ("kt", -5.0, 5.0),
+        #         ),
+        #     )
+
+        # if self.check_enabled("significance_scan"):
+        #     reqs["significance_scan"] = PlotSignificanceScan.req(
+        #         self,
+        #         datacards=cards,
+        #         pois=("r",),
+        #         scan_parameters=(("kl", -5.0, 5.0),),
+        #         show_parameters=(("kt", "CV"),),
+        #     )
+
+        # if self.check_enabled("multiple_significance_scans"):
+        #     reqs["multiple_significance_scans"] = PlotMultipleSignificanceScans.req(
+        #         self,
+        #         multi_datacards=multi_cards,
+        #         datacard_names=multi_cards_names,
+        #         pois=("r",),
+        #         scan_parameters=(("kl", -5.0, 5.0),),
+        #         show_parameters=(("kt", "CV"),),
+        #     )
+
+        # if self.check_enabled("pulls_and_impacts"):
+        #     reqs["pulls_and_impacts"] = PlotPullsAndImpacts.req(
+        #         self,
+        #         datacards=cards,
+        #         pois=("r",),
+        #     )
+        #     reqs["pulls_and_impacts"].requires().requires().end_branch = 10
+
+        # if self.check_enabled("exclusion_and_bestfit"):
+        #     reqs["exclusion_and_bestfit"] = PlotExclusionAndBestFit.req(
+        #         self,
+        #         multi_datacards=multi_cards,
+        #         datacard_names=multi_cards_names,
+        #         pois=("r",),
+        #         scan_parameters=(("kl", -30.0, 30.0, 61),),
+        #         show_parameters=(("kt", "CV"),),
+        #     )
+
+        # if self.check_enabled("exclusion_and_bestfit_2d"):
+        #     reqs["exclusion_and_bestfit_2d"] = PlotExclusionAndBestFit2D.req(
+        #         self,
+        #         datacards=cards,
+        #         pois=("r",),
+        #         scan_parameters=(("kl", -30.0, 30.0, 61), ("kt", -6.0, 9.0, 31)),
+        #         show_parameters=(("CV",),),
+        #     )
+
+        # if self.check_enabled("postfit_s_over_b"):
+        #     reqs["postfit_s_over_b"] = PlotPostfitSOverB.req(
+        #         self,
+        #         datacards=cards,
+        #         pois=("r",),
+        #         show_parameters=(("kl", "kt"),),
+        #     )
+
+        # if self.check_enabled("nuisance_likelihood_scans"):
+        #     reqs["nuisance_likelihood_scans"] = PlotNuisanceLikelihoodScans.req(
+        #         self,
+        #         datacards=cards,
+        #         pois=("r",),
+        #         parameters_per_page=6,
+        #         y_log=True,
+        #         show_parameters=(("kl", "kt"),),
+        #     )
+
+        # if self.check_enabled("goodness_of_fit"):
+        #     reqs["goodness_of_fit"] = PlotGoodnessOfFit.req(
+        #         self,
+        #         datacards=cards,
+        #         pois=("r",),
+        #         toys=300,
+        #         toys_per_task=15,
+        #         algorithm="saturated",
+        #         frequentist_toys=True,
+        #         show_parameters=(("kl", "kt"),),
+        #     )
+
+        # if self.check_enabled("multiple_goodness_of_fits"):
+        #     reqs["multiple_goodness_of_fits"] = PlotMultipleGoodnessOfFits.req(
+        #         self,
+        #         multi_datacards=multi_cards,
+        #         datacard_names=multi_cards_names,
+        #         pois=("r",),
+        #         toys=(300,),
+        #         toys_per_task=(15,),
+        #         algorithm="saturated",
+        #         frequentist_toys=True,
+        #         show_parameters=(("kl", "kt"),),
+        #     )
+
+        # if self.check_enabled("eft_benchmark_limits"):
+        #     reqs["eft_benchmark_limits"] = PlotEFTBenchmarkLimits.req(
+        #         self,
+        #         multi_datacards=(eft_cards_bm,),
+        #         xsec="fb",
+        #     )
+
+        # if self.check_enabled("multiple_eft_benchmark_limits"):
+        #     reqs["multiple_eft_benchmark_limits"] = PlotMultipleEFTBenchmarkLimits.req(
+        #         self,
+        #         # TODO
+        #     )
+
+        # if self.check_enabled("upper_limits_c2"):
+        #     reqs["upper_limits_c2"] = PlotUpperLimits.req(
+        #         self,
+        #         # TODO
+        #     )
+
+        # if self.check_enabled("morphing_scales"):
+        #     reqs["morphing_scales"] = PlotMorphingScales.req(
+        #         self,
+        #         hh_model="HHModelPinv.model_default",
+        #         signal="ggf",
+        #         scan_parameters=(("kl", -10.0, 10.0),),
+        #         parameter_values=(("kt", 1),),
+        #     )
+
+        # if self.check_enabled("morphed_discriminant"):
+        #     reqs["morphed_discriminant"] = PlotMorphedDiscriminant.req(
+        #         self,
+        #         datacards=cards[:1],
+        #         hh_models=test_models,
+        #         signal="ggf",
+        #         bins=("ch1",),
+        #         parameter_values=(("kl", 1), ("kt", 1)),
+        #     )
+
+        # if self.check_enabled("stat_error_scan"):
+        #     reqs["stat_error_scan"] = PlotStatErrorScan.req(
+        #         self,
+        #         datacards=cards[:1],
+        #         hh_models=test_models,
+        #         signal="ggf",
+        #         bins=("ch1",),
+        #         scan_parameters=(("kl", -20, 20, 81),),
+        #         parameter_values=(("kt", 1),),
+        #     )
 
         return reqs
 

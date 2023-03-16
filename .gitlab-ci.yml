@@ -10,6 +10,13 @@ test:
   tags:
     - cvmfs
   script:
+    - mkdir examplecards
+    - cd examplecards
+    - sshpass -v -p ${KRB_PASS} scp -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch:/afs/cern.ch/user/m/mrieger/public/hh/inference/examplecards/cards.tgz .
+    - tar -xzf cards.tgz
+    - ls
+    - cd ..
+    - export DHI_EXAMPLE_CARDS_BASE="${PWD}/examplecards"
     - source setup.sh
     - law run dhi.tasks.test.TestPlots --version test_ci --print-status 1
 
