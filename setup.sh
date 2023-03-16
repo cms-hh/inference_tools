@@ -132,11 +132,11 @@ setup() {
         mkdir -p "${DHI_SOFTWARE}"
 
         # python packages
-        dhi_pip_install 'six==1.16.0' || return "$?"
+        dhi_pip_install 'six~=1.16' || return "$?"
         dhi_pip_install 'luigi==2.8.13' || return "$?"
-        dhi_pip_install 'scinum==1.4.4' || return "$?"
-        dhi_pip_install 'tabulate==0.8.7' || return "$?"
-        dhi_pip_install 'PyYAML==5.4.1' || return "$?"
+        dhi_pip_install 'scinum~=1.4' || return "$?"
+        dhi_pip_install 'tabulate~=0.8' || return "$?"
+        dhi_pip_install 'PyYAML~=5.4' || return "$?"
         dhi_pip_install 'flake8>=3.0,<4.0' || return "$?"
         dhi_pip_install 'flake8-commas>=2.1' || return "$?"
         dhi_pip_install 'flake8-quotes<=3.2' || return "$?"
