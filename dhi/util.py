@@ -166,6 +166,16 @@ def real_path(path):
     return os.path.realpath(expand_path(path))
 
 
+def common_leading_substring(a, b):
+    """
+    Returns the common leading substring between two strings *a* and *b*.
+    """
+    for i in range(1, min(len(a), len(b)) + 1):
+        if a[:i] != b[:i]:
+            return a[:i - 1]
+    return a[:i]
+
+
 def prepare_output(path, is_dir=False):
     """
     Creates output directories for an output file about to be written to *path*. When *is_dir* is

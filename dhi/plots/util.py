@@ -67,8 +67,15 @@ def create_random_name():
     return str(uuid.uuid4())
 
 
-def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_offset=40,
-        dy=24, props=None):
+def create_model_parameters(
+    model_parameters,
+    pad,
+    grouped=False,
+    x_offset=25,
+    y_offset=40,
+    dy=24,
+    props=None,
+):
     """
     Creates a list of ``ROOT.TLatex`` objects for *model_parameters*, properly positioned for *pad*
     with options to change the offsets *x_offset* and *y_offset*, the vertical distance between
@@ -102,8 +109,13 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
             for name in make_list(names)
         ]
         label = "{} = {}".format(" = ".join(labels), try_int(value))
-        label = r.routines.create_top_left_label(label, pad=pad, props=props, x_offset=x_offset,
-            y_offset=y_offset + i * dy)
+        label = r.routines.create_top_left_label(
+            label,
+            pad=pad,
+            props=props,
+            x_offset=x_offset,
+            y_offset=y_offset + i * dy,
+        )
         parameter_labels.append(label)
 
     return parameter_labels
@@ -183,8 +195,16 @@ def make_parameter_label_map(parameter_names, labels=None):
     return labels
 
 
-def get_y_range(y_min_value, y_max_value, y_min=None, y_max=None, log=False, y_min_log=1e-3,
-        top_margin=0.38, visible_margin=0.4):
+def get_y_range(
+    y_min_value,
+    y_max_value,
+    y_min=None,
+    y_max=None,
+    log=False,
+    y_min_log=1e-3,
+    top_margin=0.38,
+    visible_margin=0.4,
+):
     if log:
         if y_min is None:
             y_min = (0.75 * y_min_value) if y_min_value > 0 else y_min_log
@@ -258,8 +278,16 @@ def frame_histogram(hist, x_width, y_width, mode="edge", frame_value=None, conto
 
 
 # helper to fill each bin in a 2D histogram from potentially sparse points via interpolation
-def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=None, replace_nan=None,
-        interpolation="root"):
+def fill_hist_from_points(
+    h,
+    x_values,
+    y_values,
+    z_values,
+    z_min=None,
+    z_max=None,
+    replace_nan=None,
+    interpolation="root",
+):
     ROOT = import_ROOT()
 
     # remove or replace nans in z_values
@@ -282,8 +310,13 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
             g.SetPoint(i, x, y, z)
         interp = lambda x, y: g.Interpolate(x, y)
     elif interpolation in ("linear", "cubic", "quintic"):
-        interp = InterExtrapolator(x_values, y_values, z_values, kind2d=interpolation,
-            kind1d=interpolation)
+        interp = InterExtrapolator(
+            x_values,
+            y_values,
+            z_values,
+            kind2d=interpolation,
+            kind1d=interpolation,
+        )
     elif interpolation == "rbf":
         # parse arguments in order
         spec = [("function", str), ("smooth", float), ("epsilon", float)]
@@ -293,7 +326,8 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
                 rbf_args[name] = _type(val)
             except:
                 print("WARNING: cannot parse value {} for rbf argument {} to {}".format(
-                    val, name, _type))
+                    val, name, _type,
+                ))
         interp = scipy.interpolate.Rbf(x_values, y_values, z_values, **rbf_args)
 
     # helper for limiting z values
@@ -327,8 +361,6 @@ def find_poly_bin_center(poly_bin, n=1000):
     for _ in range(n):
         if poly_bin.IsInside(x, y):
             return x, y
-
-        # vary
         raise NotImplementedError("center determination of complex poly bins not implemented yet")
 
     raise Exception("could not determine poly bin center after {} iterations".format(n))
@@ -354,10 +386,12 @@ def infer_binning_from_grid(x_values, y_values):
     y_bins = (y_max - y_min) / y_width
     if round(x_bins, 3) != int(x_bins):
         raise Exception("x axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
-            x_min, x_max, x_width))
+            x_min, x_max, x_width,
+        ))
     if round(y_bins, 3) != int(y_bins):
         raise Exception("y axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
-            y_min, y_max, y_width))
+            y_min, y_max, y_width,
+        ))
     x_bins = int(x_bins)
     y_bins = int(y_bins)
 
@@ -365,7 +399,15 @@ def infer_binning_from_grid(x_values, y_values):
 
 
 # helper to extract contours
-def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_points=10, **kwargs):
+def get_contours(
+    x_values,
+    y_values,
+    z_values,
+    levels,
+    frame_kwargs=None,
+    min_points=10,
+    **kwargs  # noqa
+):
     ROOT = import_ROOT()
 
     if frame_kwargs is None:
@@ -502,10 +544,11 @@ def get_graph_points(g, errors=False):
 
     if asym_errors:
         return x_values, y_values, x_errors_down, x_errors_up, y_errors_down, y_errors_up
-    elif errors:
+
+    if errors:
         return x_values, y_values, x_errors, y_errors
-    else:
-        return x_values, y_values
+
+    return x_values, y_values
 
 
 def repeat_graph(g, n):
@@ -519,8 +562,16 @@ def repeat_graph(g, n):
     return g_repeated
 
 
-def invert_graph(g, x_min=None, x_max=None, y_min=None, y_max=None, x_axis=None, y_axis=None,
-        offset=0.):
+def invert_graph(
+    g,
+    x_min=None,
+    x_max=None,
+    y_min=None,
+    y_max=None,
+    x_axis=None,
+    y_axis=None,
+    offset=0.0,
+):
     # get all graph values
     x_values, y_values = get_graph_points(g)
 
@@ -614,8 +665,20 @@ def temporary_canvas(*args, **kwargs):
             c.Close()
 
 
-def locate_contour_labels(graphs, label_width, label_height, pad_width, pad_height, x_min, x_max,
-        y_min, y_max, other_positions=None, min_points=10, label_offset=None):
+def locate_contour_labels(
+    graphs,
+    label_width,
+    label_height,
+    pad_width,
+    pad_height,
+    x_min,
+    x_max,
+    y_min,
+    y_max,
+    other_positions=None,
+    min_points=10,
+    label_offset=None,
+):
     positions = []
     other_positions = other_positions or []
 
