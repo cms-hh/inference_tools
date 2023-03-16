@@ -72,6 +72,8 @@ setup() {
     [ "${DHI_REINSTALL_COMBINE}" = "1" ] && rm -f "${flag_file_combine}"
     if [ ! -f "${flag_file_combine}" ]; then
         mkdir -p "${DHI_SOFTWARE}"
+
+        # raw CMSSW setup
         (
             echo "installing combine at ${DHI_SOFTWARE}/${CMSSW_VERSION}"
             cd "${DHI_SOFTWARE}"
@@ -79,11 +81,17 @@ setup() {
             scramv1 project CMSSW "${CMSSW_VERSION}" && \
             cd "${CMSSW_VERSION}/src" && \
             eval "$( scramv1 runtime -sh )" && \
-            scram b && \
+            scram b
+        ) || return "$?"
+
+        # add combine
+        (
+            cd "${DHI_SOFTWARE}/${CMSSW_VERSION}/src"
+            eval "$( scramv1 runtime -sh )" && \
             git clone --branch v9.0.0 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
             cd HiggsAnalysis/CombinedLimit && \
             chmod ug+x test/diffNuisances.py && \
-            scram b -j ${DHI_INSTALL_CORES}
+            ( [ "${DHI_COMBINE_PYTHON_ONLY}" = "1" ] && scram b python || scram b -j ${DHI_INSTALL_CORES} )
         ) || return "$?"
 
         date "+%s" > "${flag_file_combine}"

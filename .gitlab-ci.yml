@@ -2,7 +2,7 @@ lint:
   tags:
     - cvmfs
   script:
-    - source setup.sh
+    - DHI_COMBINE_PYTHON_ONLY=1 source setup.sh
     - flake8 dhi --exclude dhi/tasks/postfit.py,dhi/scripts/postfit_plots.py
 
 test:
