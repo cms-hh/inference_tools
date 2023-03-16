@@ -1,6 +1,8 @@
 lint:
   tags:
     - cvmfs
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
   script:
     - DHI_COMBINE_PYTHON_ONLY=1 source setup.sh
     - ./lint.sh
@@ -21,12 +23,13 @@ test:
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/examplecards"
     - export DHI_INSTALL_CORES="10"
     - source setup.sh
-    - export test_cmd="law run test.TestPlots --version ci --only-upper-limits-at-point --campaign \"CI ${CI_ENVIRONMENT_SLUG}\" --file-types png"
+    - export test_cmd="law run test.TestPlots --version ci --only-upper-limits-at-point --campaign \"CI ${CI_COMMIT_REF_NAME}\" --file-types png"
     - eval "${test_cmd}"
-    - eval "${test_cmd} --fetch-output 0,a,artifacts"
+    - eval "${test_cmd} --fetch-output 0,a,plots"
   artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     paths:
-      - artifacts/*.png
+      - plots/*.png
     expire_in: 1 month
 
 build_docs_image:
