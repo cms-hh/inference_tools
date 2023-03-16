@@ -66,7 +66,7 @@ def plot_likelihood_scans_1d(
     following content:
 
         - "values": A mapping to lists of values or a record array with keys "<poi1_name>" and
-                    "dnll2".
+          "dnll2".
         - "poi_min": A float describing the best fit value of the POI. When not set, the minimum is
           estimated from the interpolated curve.
         - "name": A name of the data to be shown in the legend.

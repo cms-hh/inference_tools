@@ -241,3 +241,27 @@ chi2_levels = {
 
 # default postfix after "CMS" labels in plots
 cms_postfix = os.getenv("DHI_CMS_POSTFIX", "Work in progress")
+
+# shorthands for EFT benchmark labels and groups
+bm_labels = DotDict()
+bm_labels["JHEP04BM1"] = ("1", "JHEP04")
+bm_labels["JHEP04BM2"] = ("2", "JHEP04")
+bm_labels["JHEP04BM3"] = ("3", "JHEP04")
+bm_labels["JHEP04BM4"] = ("4", "JHEP04")
+bm_labels["JHEP04BM5"] = ("5", "JHEP04")
+bm_labels["JHEP04BM6"] = ("6", "JHEP04")
+bm_labels["JHEP04BM7"] = ("7", "JHEP04")
+bm_labels["JHEP04BM8"] = ("8", "JHEP04")
+bm_labels["JHEP04BM9"] = ("9", "JHEP04")
+bm_labels["JHEP04BM10"] = ("10", "JHEP04")
+bm_labels["JHEP04BM11"] = ("11", "JHEP04")
+bm_labels["JHEP04BM12"] = ("12", "JHEP04")
+bm_labels["JHEP04BM8a"] = ("8a", "JHEP04")
+bm_labels["JHEP03BM1"] = ("1", "JHEP03")
+bm_labels["JHEP03BM2"] = ("2", "JHEP03")
+bm_labels["JHEP03BM3"] = ("3", "JHEP03")
+bm_labels["JHEP03BM4"] = ("4", "JHEP03")
+bm_labels["JHEP03BM5"] = ("5", "JHEP03")
+bm_labels["JHEP03BM6"] = ("6", "JHEP03")
+bm_labels["JHEP03BM7"] = ("7", "JHEP03")
+bm_labels["SM"] = ("SM", "")

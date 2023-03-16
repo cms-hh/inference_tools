@@ -8,19 +8,18 @@ import copy
 import enum
 
 import json
-from shutil import copyfile
 import os
 import law
 import luigi
 
 from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
-from dhi.scripts.postfit_plots import create_postfit_plots_binned, load_and_save_plot_dict_locally, loop_eras, get_full_path
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
 from dhi.tasks.limits import UpperLimits
 from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
 from dhi.config import poi_data
 from dhi.util import real_path
+
 
 class SAVEFLAGS(str, enum.Enum):
 
@@ -544,6 +543,8 @@ class PlotDistributionsAndTables(POIPlotTask):
     @view_output_plots
     @law.decorator.safe_output
     def run(self):
+        from dhi.scripts.postfit_plots import create_postfit_plots_binned, load_and_save_plot_dict_locally, loop_eras, get_full_path
+
         # prepare the output
         outputs = self.output()
         outputs[0].parent.touch()

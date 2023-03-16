@@ -6,57 +6,43 @@ Tasks related to EFT benchmarks and scans.
 
 import os
 import re
+from functools import reduce
 from collections import OrderedDict, defaultdict
 
 import law
 import luigi
-import json
-import glob
 
-from dhi.tasks.base import HTCondorWorkflow, PlotTask, view_output_plots
+from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import (
     MultiDatacardTask,
+    POITask,
+    POIPlotTask,
     CombineCommandTask,
     CreateWorkspace,
 )
 from dhi.tasks.limits import UpperLimits
-from dhi.eft_tools import sort_eft_benchmark_names, sort_eft_scan_names, extract_eft_scan_parameter
+from dhi.eft_tools import sort_eft_benchmark_names
 from dhi.config import br_hh
+from dhi.util import common_leading_substring
 
 
-class EFTBase(MultiDatacardTask):
+class EFTBase(POITask, MultiDatacardTask):
 
     datacard_pattern = law.CSVParameter(
-        default=(r"datacard_(.+)\.txt",),
+        default=(),
         description="one or multiple comma-separated regular expressions for selecting datacards "
         "from each of the sequences passed in --multi-datacards, and for extracting information "
         "with a single regex group; when set on the command line, single quotes should be used; "
-        r"default: ('datacard_(.+)\.txt',)",
-    )
-    frozen_parameters = law.CSVParameter(
-        default=(),
-        unique=True,
-        sort=True,
-        description="comma-separated names of parameters to be frozen in addition to non-POI and "
-        "scan parameters",
-    )
-    frozen_groups = law.CSVParameter(
-        default=(),
-        unique=True,
-        sort=True,
-        description="comma-separated names of groups of parameters to be frozen",
-    )
-    unblinded = luigi.BoolParameter(
-        default=False,
-        description="unblinded computation and plotting of results; default: False",
+        "when empty, a common pattern is extracted per datacard sequence; default: empty",
     )
     datacard_pattern_matches = law.CSVParameter(
         default=(),
         significant=False,
-        description="internal parameter, do not use"
+        description="internal parameter, do not use manually",
     )
 
     exclude_params_index = {"datacard_names", "datacard_order", "datacard_pattern_matches"}
+    exclude_params_repr = {"datacard_pattern", "datacard_pattern_matches"}
 
     hh_model = law.NO_STR
     datacard_names = None
@@ -67,22 +53,39 @@ class EFTBase(MultiDatacardTask):
 
     @classmethod
     def modify_param_values(cls, params):
+        params = POITask.modify_param_values.__func__.__get__(cls)(params)
         params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
 
         # re-group multi datacards by basenames, filter with datacard_pattern and store matches
-        if "multi_datacards" in params and "datacard_pattern" in params \
-                and not params.get("datacard_pattern_matches"):
-            # when there is one pattern and multiple datacards or vice versa, expand the former
+        if (
+            "multi_datacards" in params and
+            "datacard_pattern" in params and
+            not params.get("datacard_pattern_matches")
+        ):
             patterns = params["datacard_pattern"]
             multi_datacards = params["multi_datacards"]
+
+            # infer a common pattern automatically per sequence
+            if not patterns:
+                # find the common leading substring of datacard bases and built a pattern from that
+                patterns = []
+                for datacards in multi_datacards:
+                    basenames = [os.path.basename(datacard) for datacard in datacards]
+                    common_basename = reduce(common_leading_substring, basenames)
+                    patterns.append(common_basename + r"(.+)\.txt")
+
+            # when there is one pattern and multiple datacards or vice versa, expand the former
             if len(patterns) == 1 and len(multi_datacards) > 1:
                 patterns *= len(params["multi_datacards"])
             elif len(patterns) > 1 and len(multi_datacards) == 1:
                 multi_datacards *= len(patterns)
             elif len(patterns) != len(multi_datacards):
-                raise ValueError("the number of patterns in --datacard-pattern ({}) does not "
+                raise ValueError(
+                    "the number of patterns in --datacard-pattern ({}) does not "
                     "match the number of datacard sequences in --multi-datacards ({})".format(
-                        len(patterns), len(params["multi_datacards"])))
+                        len(patterns), len(params["multi_datacards"]),
+                    ),
+                )
 
             # assign datacards to groups, based on the matched group
             groups = defaultdict(set)
@@ -95,21 +98,15 @@ class EFTBase(MultiDatacardTask):
                         groups[m.group(1)].add(datacard)
                         n_matches += 1
                 if not n_matches:
-                    raise Exception("the datacard pattern '{}' did not match any of the selected "
-                        "datacards\n  {}".format(pattern, "\n  ".join(datacards)))
+                    raise Exception(
+                        "the datacard pattern '{}' did not match any of the selected "
+                        "datacards\n  {}".format(pattern, "\n  ".join(datacards)),
+                    )
 
             # sort cards, assign back to multi_datacards and store the pattern matches
             params["multi_datacards"] = tuple(tuple(sorted(cards)) for cards in groups.values())
             params["datacard_pattern_matches"] = tuple(groups.keys())
             params["datacard_pattern"] = tuple(patterns)
-
-        # sort frozen parameters
-        if "frozen_parameters" in params:
-            params["frozen_parameters"] = tuple(sorted(params["frozen_parameters"]))
-
-        # sort frozen groups
-        if "frozen_groups" in params:
-            params["frozen_groups"] = tuple(sorted(params["frozen_groups"]))
 
         return params
 
@@ -124,34 +121,6 @@ class EFTBase(MultiDatacardTask):
         parts["poi"] = "poi_{}".format(self.poi)
         return parts
 
-    def get_output_postfix(self, join=True):
-        parts = []
-
-        # add the unblinded flag
-        if self.unblinded:
-            parts.append(["unblinded"])
-
-        # add the poi
-        parts.append(["poi", self.poi])
-
-        # add frozen paramaters
-        if self.frozen_parameters:
-            parts.append(["fzp"] + list(self.frozen_parameters))
-
-        # add frozen groups
-        if self.frozen_groups:
-            parts.append(["fzg"] + list(self.frozen_groups))
-
-        return self.join_postfix(parts) if join else parts
-
-    @property
-    def joined_frozen_parameters(self):
-        return ",".join(self.frozen_parameters) or '""'
-
-    @property
-    def joined_frozen_groups(self):
-        return ",".join(self.frozen_groups) or '""'
-
 
 class EFTBenchmarkBase(EFTBase):
 
@@ -161,58 +130,6 @@ class EFTBenchmarkBase(EFTBase):
         # sort EFT datacards according to benchmark names
         names = sort_eft_benchmark_names(self.eft_datacards.keys())
         self.benchmark_datacards = OrderedDict((name, self.eft_datacards[name]) for name in names)
-
-
-# the EFTScanBase is currently not needed as we have a didicated model
-# so expect the commented lines to be removed soon
-# class EFTScanBase(EFTBase):
-
-#     scan_range = law.CSVParameter(
-#         default=(-100., 100.),
-#         cls=luigi.FloatParameter,
-#         min_len=2,
-#         max_len=2,
-#         sort=True,
-#         description="the range of the scan parameter extracted from the datacards in the format "
-#         "'min,max'; when empty, the full range is used; no default",
-#     )
-
-#     def __init__(self, *args, **kwargs):
-#         super(EFTScanBase, self).__init__(*args, **kwargs)
-
-#         # get the name of the parameter to scan
-#         scan_parameters = set(map(extract_eft_scan_parameter, self.eft_datacards.keys()))
-#         if len(scan_parameters) != 1:
-#             raise Exception("datacards belong to more than one EFT scan parameter: {}".format(
-#                 ",".join(scan_parameters)))
-#         self.scan_parameter = list(scan_parameters)[0]
-
-#         # sort EFT datacards according to scan parameter values
-#         values = sort_eft_scan_names(self.scan_parameter, self.eft_datacards.keys())
-
-#         # apply the requested scan range
-#         scan_min = max(self.scan_range[0], min(v for _, v in values))
-#         scan_max = min(self.scan_range[1], max(v for _, v in values))
-#         self.scan_range = (scan_min, scan_max)
-
-#         # store a mapping of scan value to datacards
-#         self.scan_datacards = OrderedDict(
-#             (v, self.eft_datacards[name])
-#             for name, v in values
-#             if scan_min <= v <= scan_max
-#         )
-
-#     def get_output_postfix(self, join=True):
-#         parts = super(EFTScanBase, self).get_output_postfix(join=False)
-
-#         # insert the scan parameter value when this is a workflow branch, and the range otherwise
-#         if isinstance(self, law.BaseWorkflow) and self.is_branch():
-#             scan_part = [self.scan_parameter, self.branch_data]
-#         else:
-#             scan_part = ["scan", self.scan_parameter] + list(self.scan_range)
-#         parts.insert(2 if self.unblinded else 1, scan_part)
-
-#         return self.join_postfix(parts) if join else parts
 
 
 class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
@@ -226,8 +143,11 @@ class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
         if not self.pilot:
             # require the requirements of all branch tasks when not in pilot mode
             reqs["workspace"] = {
-                b: CreateWorkspace.req(self, datacards=self.benchmark_datacards[data],
-                    hh_model=law.NO_STR)
+                b: CreateWorkspace.req(
+                    self,
+                    datacards=self.benchmark_datacards[data],
+                    hh_model=law.NO_STR,
+                )
                 for b, data in self.branch_map.items()
             }
 
@@ -237,9 +157,10 @@ class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
     def blinded_args(self):
         if self.unblinded:
             return "--seed {self.branch}".format(self=self)
-        else:
-            return "--seed {self.branch} --toys {self.toys} --run expected --noFitAsimov".format(
-                self=self)
+
+        return "--seed {self.branch} --toys {self.toys} --run expected --noFitAsimov".format(
+            self=self,
+        )
 
     def build_command(self):
         return (
@@ -271,8 +192,12 @@ class EFTBenchmarkLimits(EFTBenchmarkBase, EFTLimitBase):
         return list(self.benchmark_datacards.keys())
 
     def requires(self):
-        return CreateWorkspace.req(self, datacards=self.benchmark_datacards[self.branch_data],
-            hh_model=law.NO_STR, branch=0)
+        return CreateWorkspace.req(
+            self,
+            datacards=self.benchmark_datacards[self.branch_data],
+            hh_model=law.NO_STR,
+            branch=0,
+        )
 
     def output(self):
         parts = self.get_output_postfix(join=False)
@@ -316,7 +241,7 @@ class MergeEFTBenchmarkLimits(EFTBenchmarkBase):
         self.output().dump(data=data, formatter="numpy")
 
 
-class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
+class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
 
     xsec = luigi.ChoiceParameter(
         default="fb",
@@ -333,11 +258,6 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
         default=False,
         description="apply log scaling to the y-axis; default: False",
     )
-    plot_type = luigi.ChoiceParameter(
-        default="shape_BM_all",
-        choices=["shape_BM_all", "shape_BM_JHEP04", "shape_BM_JHEP03"],
-        description="Which bm points to plot, all + SM, jhep03/04 ones + SM ?",
-    )
     x_min = None
     x_max = None
     z_min = None
@@ -350,14 +270,15 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
     def output(self):
         # additional postfix
         parts = []
-        parts.append(self.xsec)
-        if self.br and self.br != law.NO_STR:
-            parts.append(self.br)
+        if self.xsec in ["pb", "fb"]:
+            parts.append(self.xsec)
+            if self.br != law.NO_STR:
+                parts.append(self.br)
         if self.y_log:
             parts.append("log")
 
-        names = self.create_plot_names(["eftbenchmarks", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]  + [self.local_target(name.replace(".pdf", ".json")) for name in names]
+        names = self.create_plot_names(["benchmarks", self.get_output_postfix(), parts])
+        return [self.local_target(name) for name in names]
 
     @law.decorator.log
     @law.decorator.notify
@@ -369,16 +290,18 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
         outputs[0].parent.touch()
 
         # load limit values
-        limit_values = self.input().load(formatter="numpy")["data"]
+        bm_names = list(self.benchmark_datacards.keys())
+        limit_values = dict(zip(bm_names, self.input().load(formatter="numpy")["data"]))
 
         # prepare conversion scale
         scale = br_hh.get(self.br, 1.) * {"fb": 1., "pb": 0.001}[self.xsec]
 
         # fill data entries as expected by the plot function
         data = []
-        for name, record in zip(self.benchmark_datacards.keys(), limit_values):
+        for bm_name in bm_names:
+            record = limit_values[bm_name]
             entry = {
-                "name": name,
+                "name": bm_name,
                 "expected": [v * scale for v in record.tolist()[:5]],
             }
             if self.unblinded:
@@ -386,27 +309,12 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
             data.append(entry)
 
             # some printing
-            self.publish_message("BM {} -> {}".format(name, record["limit"]))
-        # output as ordered dict, to be read as ordered dictionary from the next tast
-        # fill data entries as expected by the output dict
-        to_output = OrderedDict()
-        with open(outputs[1].path, 'w') as fp:
-            for record in data :
-                to_output.update({record["name"] :
-                    OrderedDict([
-                    ("limit", record["expected"][0]),
-                    ("limit_p1", record["expected"][1]),
-                    ("limit_m1", record["expected"][2]),
-                    ("limit_p2", record["expected"][3]),
-                    ("limit_m2", record["expected"][4]),
-                    ("observed", record["observed"] if self.unblinded else record["expected"][0])
-                     ])})
-            json.dump(to_output, fp, indent=4)
+            self.publish_message("BM {} -> {}".format(bm_name, record["limit"]))
 
         # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_benchmark_limits",
-            paths=outputs[0].path, #[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs],
             data=data,
             poi=self.poi,
             y_min=self.get_axis_limit("y_min"),
@@ -415,112 +323,100 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, PlotTask):
             xsec_unit=self.xsec,
             hh_process=self.br if self.br in br_hh else None,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
-            paper=self.paper,
-            type_plot=self.plot_type
+            cms_postfix=self.cms_postfix,
+            style=self.style if self.style != law.NO_STR else None,
         )
 
-class PlotMultiEFTBenchmarkLimits(PlotTask):
-    multi_datacards = law.MultiCSVParameter(
-        description="multiple path sequnces to input datacards separated by a colon; supported "
-        "formats are '[bin=]path', '[bin=]paths@store_directory for the last datacard in the "
-        "sequence, and '@store_directory' for easier configuration; supports globbing and brace "
-        "expansion",
-        brace_expand=True,
-    )
 
-    xsec = luigi.ChoiceParameter(
-        default="pb",
-        choices=["pb", "fb"],
-        description="convert limits to cross sections in this unit; choices: pb,fb; default: fb",
-    )
-    br = luigi.ChoiceParameter(
-        default=law.NO_STR,
-        choices=[law.NO_STR, ""] + list(br_hh.keys()),
-        description="name of a branching ratio defined in dhi.config.br_hh to scale the cross "
-        "section when xsec is used; choices: '',{}; no default".format(",".join(br_hh.keys())),
-    )
-    y_log = luigi.BoolParameter(
-        default=False,
-        description="apply log scaling to the y-axis; default: False",
-    )
-    datacard_labels = law.CSVParameter(
-        default=(r"bm",),
-        description="one or multiple comma-separated regular expressions for selecting datacards "
-        "from each of the sequences passed in --multi-datacards, and for extracting information "
-        "with a single regex group; when set on the command line, single quotes should be used; "
-        r"default: ('bm',)",
-    )
-    unblinded = luigi.BoolParameter(
-        default=False,
-        description="unblinded computation and plotting of results; default: False",
-    )
+class PlotMultiEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
 
-    plot_type = luigi.ChoiceParameter(
-        default="shape_BM_all",
-        choices=["shape_BM_all", "shape_BM_JHEP04", "shape_BM_JHEP03"],
-        description="Which bm points to plot, all + SM, jhep03/04 ones + SM ?",
-    )
+    datacard_names = MultiDatacardTask.datacard_names
+    force_equal_sequence_lengths = True
+    compare_sequence_length = True
 
     def requires(self):
-        for mm, datacards in enumerate(self.multi_datacards) :
-           cards = []
-           for c in sorted(set(glob.glob(datacards[0]))):
-               cards.append(tuple([c]))
-           yield PlotEFTBenchmarkLimits(multi_datacards=tuple(cards), unblinded=self.unblinded, xsec=self.xsec, plot_type=self.plot_type, version = self.version, br=self.br)
+        return [
+            MergeEFTBenchmarkLimits.req(
+                self,
+                multi_datacards=tuple((datacards[i],) for datacards in self.multi_datacards),
+            )
+            for i in range(len(self.multi_datacards[0]))
+        ]
 
     def output(self):
         # additional postfix
         parts = []
-        parts.append(self.xsec)
-        if self.br and self.br != law.NO_STR:
-            parts.append(self.br)
+        if self.xsec in ["pb", "fb"]:
+            parts.append(self.xsec)
+            if self.br != law.NO_STR:
+                parts.append(self.br)
         if self.y_log:
             parts.append("log")
 
-        names = self.create_plot_names(["multi_benchmarks", parts])
-        if self.unblinded:
-            parts.append(["unblinded"])
-        names2 = self.create_plot_names(["multi_benchmarks", parts])
-        return [self.local_target(name) for name in names] + [self.local_target(name) for name in names2]
+        names = self.create_plot_names(["multi_benchmarks", self.get_output_postfix(), parts])
+        outputs = [self.local_target(name) for name in names]
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
     def run(self):
+        # prepare the output
         outputs = self.output()
         outputs[0].parent.touch()
-        data_all = {}
-        for ll, label in enumerate(self.datacard_labels) :
-             with open(self.input()[ll][1].path, 'r') as fp:
-                 tempdata = json.load(fp, object_pairs_hook=OrderedDict)
-                 limits = []
-                 data_keys_sorted = tempdata.keys()
-                 for dd in data_keys_sorted:
-                     if self.unblinded:
-                         limits.append({
-                             "expected": [tempdata[str(dd)]["limit"], tempdata[str(dd)]["limit_p1"],tempdata[str(dd)]["limit_m1"],tempdata[str(dd)]["limit_m2"],tempdata[str(dd)]["limit_p2"]],
-                             "observed": tempdata[str(dd)]["observed"],
-                             "name": dd
-                         })
-                     else:
-                         limits.append({
-                             "expected": [tempdata[str(dd)]["limit"], tempdata[str(dd)]["limit_p1"],tempdata[str(dd)]["limit_m1"],tempdata[str(dd)]["limit_m2"],tempdata[str(dd)]["limit_p2"]],
-                             "name": dd
-                         })
-                 data_all[label]=limits
 
+        # load limit values
+        bm_names = list(self.benchmark_datacards.keys())
+        limit_values = [
+            dict(zip(bm_names, list(inp.load(formatter="numpy")["data"])))
+            for inp in self.input()
+        ]
+
+        # prepare conversion scale
+        scale = br_hh.get(self.br, 1.) * {"fb": 1., "pb": 0.001}[self.xsec]
+
+        # fill data entries as expected by the plot function
+        data = []
+        for bm_name in bm_names:
+            entry = {
+                "name": bm_name,
+                "expected": [
+                    [v * scale for v in records[bm_name].tolist()[:5]]
+                    for records in limit_values
+                ],
+            }
+            if self.unblinded:
+                entry["observed"] = [
+                    float(records[bm_name][5]) * scale
+                    for records in limit_values
+                ]
+            data.append(entry)
+
+        # datacard names
+        names = (
+            list(self.datacard_names)
+            if self.datacard_names
+            else ["datacards {}".format(i + 1) for i in range(len(limit_values))]
+        )
+
+        # call the plot function
         self.call_plot_func(
             "dhi.plots.limits.plot_multi_benchmark_limits",
-            paths=outputs[0].path,
-            data=data_all,
-            poi = "r_gghh",
+            paths=[outp.path for outp in outputs],
+            data=data,
+            names=names,
+            poi=self.poi,
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
             xsec_unit=self.xsec,
             hh_process=self.br if self.br in br_hh else None,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
-            paper=self.paper,
-            type_plot=self.plot_type
+            cms_postfix=self.cms_postfix,
+            style=self.style if self.style != law.NO_STR else None,
         )
+
+
+PlotMultiEFTBenchmarkLimits.exclude_params_index -= {"datacard_names"}

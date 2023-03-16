@@ -949,7 +949,7 @@ class PlotUpperLimitsAtPoint(
     )
     extra_labels = law.CSVParameter(
         default=tuple(),
-        description="comma-separated labels to be shown per entry; default: empty"
+        description="comma-separated labels to be shown per entry; default: empty",
     )
     external_limits = law.CSVParameter(
         default=tuple(),
