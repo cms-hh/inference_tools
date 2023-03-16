@@ -1,8 +1,19 @@
-stages:
-  - docs
+lint:
+  tags:
+    - cvmfs
+  script:
+    - source setup.sh
+    - flake8 dhi --exclude dhi/tasks/postfit.py,dhi/scripts/postfit_plots.py
 
-build_image:
-  stage: docs
+test:
+  when: manual
+  tags:
+    - cvmfs
+  script:
+    - source setup.sh
+    - law run test.TestPlots --version test_ci --print-status 1
+
+build_docs_image:
   when: manual
   tags:
     - docker-image-build
@@ -13,7 +24,6 @@ build_image:
     NO_CACHE: "true"
 
 deploy_docs:
-  stage: docs
   when: manual
   tags:
     - docker
@@ -35,7 +45,6 @@ deploy_docs:
     - sshpass -v -p ${KRB_PASS} ssh -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch "cd ${FULL_PAGE_ROOT}; tar -xzf site.tgz; rm site.tgz"
 
 delete_docs:
-  stage: docs
   when: manual
   tags:
     - docker

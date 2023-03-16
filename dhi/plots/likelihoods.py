@@ -872,17 +872,17 @@ def plot_likelihood_scan_2d(
         with open(eft_lines, "r") as f:
             lines = json.load(f)
             for line in lines:
-                if line['poi1'] != poi1 or line['poi2'] != poi2:
+                if line["poi1"] != poi1 or line["poi2"] != poi2:
                     continue
                 # creata a function object
-                line_func = ROOT.TF1(line['label'], line['eq'], x_min, x_max)
+                line_func = ROOT.TF1(line["label"], line["eq"], x_min, x_max)
                 r.setup_func(
                     line_func,
-                    props={"LineWidth": 3, "LineStyle": int(line['style'])},
-                    color=int(line['color']),
+                    props={"LineWidth": 3, "LineStyle": int(line["style"])},
+                    color=int(line["color"]),
                 )
                 draw_objs.append((line_func, "SAME"))
-                legend_entries.append((line_func, line['label'], "L"))
+                legend_entries.append((line_func, line["label"], "L"))
 
     # fill hep data
     if hep_data:
