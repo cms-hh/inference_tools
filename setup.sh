@@ -23,12 +23,6 @@ setup() {
     export DHI_SETUP_NAME="${setup_name}"
     export DHI_STORE_REPO="${DHI_BASE}/data/store"
 
-    export DHI_EXAMPLE_CARDS_GGF="$( echo /afs/cern.ch/user/m/mfackeld/public/datacards/dnn_score_max/*_dnn_node_HH_2B2VTo2L2Nu_GluGlu_NLO/datacard.txt | sed 's/ /,/g' )"
-    export DHI_EXAMPLE_CARDS_VBF="$( echo /afs/cern.ch/user/m/mfackeld/public/datacards/dnn_score_max/*_dnn_node_HH_2B2VTo2L2Nu_VBF_NLO/datacard.txt | sed 's/ /,/g' )"
-    [ -z "${DHI_EXAMPLE_CARDS}" ] && export DHI_EXAMPLE_CARDS="${DHI_EXAMPLE_CARDS_GGF},${DHI_EXAMPLE_CARDS_VBF}"
-    [ -z "${DHI_EXAMPLE_CARDS_EFT_BM}" ] && export DHI_EXAMPLE_CARDS_EFT_BM="$( echo /eos/user/m/mrieger/dhi/example_cards/eft_benchmarks/datacard_*.txt | sed 's/ /,/g' )"
-    [ -z "${DHI_EXAMPLE_CARDS_EFT_C2}" ] && export DHI_EXAMPLE_CARDS_EFT_C2="$( echo /eos/user/m/mrieger/dhi/example_cards/eft_c2_scan/datacard_c2_*.txt | sed 's/ /,/g' )"
-
     export DHI_SLACK_TOKEN="${DHI_SLACK_TOKEN:-}"
     export DHI_SLACK_CHANNEL="${DHI_SLACK_CHANNEL:-}"
     export DHI_TELEGRAM_TOKEN="${DHI_TELEGRAM_TOKEN:-}"
@@ -43,6 +37,31 @@ setup() {
     [ -z "${LANGUAGE}" ] && export LANGUAGE="en_US.UTF-8"
     [ -z "${LANG}" ] && export LANG="en_US.UTF-8"
     [ -z "${LC_ALL}" ] && export LC_ALL="en_US.UTF-8"
+
+
+    #
+    # example cards
+    #
+
+    [ -z "$DHI_EXAMPLE_CARDS_BASE" ] && export DHI_EXAMPLE_CARDS_BASE="/afs/cern.ch/user/m/mrieger/public/hh/inference/examplecards"
+
+    expand_cards() {
+        local pattern="$1"
+        eval "echo ${DHI_EXAMPLE_CARDS_BASE}/${pattern}" | sed 's/ /,/g'
+    }
+
+    export DHI_EXAMPLE_CARDS="$( expand_cards 'sm/datacard*.txt' )"
+    export DHI_EXAMPLE_CARDS_1="$( expand_cards 'sm/datacard1.txt' )"
+    export DHI_EXAMPLE_CARDS_2="$( expand_cards 'sm/datacard2.txt' )"
+    export DHI_EXAMPLE_CARDS_EFT_C2="$( expand_cards 'eft_c2/datacard*.txt' )"
+    export DHI_EXAMPLE_CARDS_EFT_C2_1="$( expand_cards 'eft_c2/datacard1.txt' )"
+    export DHI_EXAMPLE_CARDS_EFT_C2_2="$( expand_cards 'eft_c2/datacard2.txt' )"
+    export DHI_EXAMPLE_CARDS_EFT_BM="$( expand_cards 'eft_bm/datacard1_*.txt' )"
+    export DHI_EXAMPLE_CARDS_EFT_BM_1="$( expand_cards 'eft_bm/datacard1_*.txt' )"
+    export DHI_EXAMPLE_CARDS_EFT_BM_2="$( expand_cards 'eft_bm/datacard2_*.txt' )"
+    export DHI_EXAMPLE_CARDS_RES="$( expand_cards 'res/datacard1_*.txt' )"
+    export DHI_EXAMPLE_CARDS_RES_1="$( expand_cards 'res/datacard1_*.txt' )"
+    export DHI_EXAMPLE_CARDS_RES_2="$( expand_cards 'res/datacard2_*.txt' )"
 
 
     #
