@@ -4,6 +4,14 @@ stages:
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
+
+  SETUP_CACHE_POLICY:
+    value: "push"
+    options:
+      - "push"
+      - "pull-push"
+    description: "Cache policy of the 'setup' job."
+
   PLOTS:
     value: "limits"
     options:
@@ -75,7 +83,7 @@ setup:
     - source setup.sh
   cache:
     key: "$CI_COMMIT_REF_SLUG"
-    policy: push
+    policy: "$SETUP_CACHE_POLICY"
     paths:
       - data/
 
