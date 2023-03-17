@@ -1,4 +1,27 @@
+stages:
+  - build
+  - test
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  PLOT_GROUPS:
+    value: "limits"
+    options:
+      - "limits"
+      - "likelihoods"
+      - "significances"
+      - "pulls"
+      - "exclusions"
+      - "postfit"
+      - "gof"
+      - "eft_bm"
+      - "eft_c2"
+      - "studies"
+      - "all"
+    description: "The plot or plot group to test (see test.TestPlots for more info)."
+
 lint:
+  stage: build
   tags:
     - cvmfs
   variables:
@@ -9,26 +32,12 @@ lint:
     - ./lint.sh
 
 test:
+  stage: build
   when: manual
   tags:
     - cvmfs
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
-    PLOT_GROUPS:
-      value: "limits"
-      options:
-        - "limits"
-        - "likelihoods"
-        - "significances"
-        - "pulls"
-        - "exclusions"
-        - "postfit"
-        - "gof"
-        - "eft_bm"
-        - "eft_c2"
-        - "studies"
-        - "all"
-      description: "The plot or plot group to test (see test.TestPlots for more info)."
   script:
     - yum install -y sshpass
     - mkdir -p data/examplecards
@@ -58,6 +67,7 @@ test:
     expire_in: 1 month
 
 build_docs_image:
+  stage: build
   when: manual
   tags:
     - docker-image-build
@@ -68,6 +78,7 @@ build_docs_image:
     NO_CACHE: "true"
 
 deploy_docs:
+  stage: build
   when: manual
   tags:
     - docker
@@ -89,6 +100,7 @@ deploy_docs:
     - sshpass -v -p ${KRB_PASS} ssh -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch "cd ${FULL_PAGE_ROOT}; tar -xzf site.tgz; rm site.tgz"
 
 delete_docs:
+  stage: build
   when: manual
   tags:
     - docker
