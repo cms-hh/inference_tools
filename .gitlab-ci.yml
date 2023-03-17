@@ -31,7 +31,7 @@ lint:
     - source setup.sh
     - ./lint.sh
 
-test:
+setup:
   stage: build
   when: manual
   tags:
@@ -47,7 +47,24 @@ test:
     - cd ../..
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
     - source setup.sh
-    - export test_cmd="law run test.TestPlots --version ci --only-upper-limits-at-point --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf"
+  cache:
+    key: "$CI_COMMIT_REF_SLUG"
+    policy: push
+    paths:
+      - data/
+
+test:
+  stage: test
+  when: manual
+  needs: ["setup"]
+  tags:
+    - cvmfs
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  script:
+    - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
+    - source setup.sh
+    - export test_cmd="law run test.TestPlots --version ci --plots ${PLOT_GROUPS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf"
     - eval "${test_cmd}"
     - eval "${test_cmd} --fetch-output 0,a,plots"
     - mkdir png
@@ -56,7 +73,7 @@ test:
     - mv plots/*.pdf pdf
   cache:
     key: "$CI_COMMIT_REF_SLUG"
-    policy: push
+    policy: pull
     paths:
       - data/
   artifacts:
