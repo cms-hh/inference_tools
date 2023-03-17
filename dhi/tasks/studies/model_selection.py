@@ -437,8 +437,6 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
     @law.decorator.safe_output
     @law.decorator.log
     def run(self):
-        import numpy as np
-
         # prepare the output
         output = self.output()
         list(output.values())[0][0].parent.touch()
@@ -452,8 +450,7 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
             # prepare uncertainty graphs
             graphs = OrderedDict()
             x_min, x_max = poi_data[scan_parameter].range
-            n_points = int(2 * (x_max - x_min) + 1)
-            x_values = np.linspace(x_min, x_max, n_points).tolist()
+            x_values = [x[0] for x in self.get_scan_linspace()]
 
             for model_name, hists_and_scale_fns in data.items():
                 # create a morphed shape per point and store the relative integral error
@@ -464,7 +461,7 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
                     itg = h.IntegralAndError(1, h.GetNbinsX(), err)
                     itg_errors.append((err.value / itg) if itg else 0.0)
                 # create and store a graph
-                graphs[model_name] = create_tgraph(n_points, x_values, itg_errors)
+                graphs[model_name] = create_tgraph(len(x_values), x_values, itg_errors)
 
             # plot
             self.create_plot([out.path for out in output[bin_name]], bin_name, graphs)
@@ -480,7 +477,7 @@ class PlotStatErrorScan(PlotMorphedDiscriminant, ParameterScanTask):
         # prepare histograms and ranges
         labels = [m.replace("_", " ").split("model ", 1)[-1] for m in graphs]
         graphs = list(graphs.values())
-        x_min, x_max = poi_data[scan_parameter].range
+        x_min, x_max = self.scan_parameters[0][1:3]
         y_max_value = max(ROOT.TMath.MaxElement(g.GetN(), g.GetY()) for g in graphs)
         y_max = 1.35 * y_max_value
 

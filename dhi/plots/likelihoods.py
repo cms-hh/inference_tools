@@ -1175,6 +1175,7 @@ def plot_likelihood_scans_2d(
             warn("2D likelihood evaluation failed for entry '{}'".format(d["name"]))
 
         # plot 1 and 2 sigma contours
+        g1, g2 = None, None
         for g1 in cont1:
             r.setup_graph(g1, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors[col]})
             draw_objs.append((g1, "SAME,C"))
@@ -1182,7 +1183,8 @@ def plot_likelihood_scans_2d(
             r.setup_graph(g2, props={"LineWidth": 2, "LineStyle": 2, "LineColor": colors[col]})
             draw_objs.append((g2, "SAME,C"))
         name = to_root_latex(br_hh_names.get(d["name"], d["name"]))
-        legend_entries.append((g1, name, "L"))
+        if g1:
+            legend_entries.append((g1, name, "L"))
 
         # best fit point
         if scan:
@@ -1192,16 +1194,20 @@ def plot_likelihood_scans_2d(
 
     # append legend entries to show styles
     g_fit_style = g_fit.Clone()
-    g1_style = g1.Clone()
-    g2_style = g2.Clone()
     r.apply_properties(g_fit_style, {"MarkerColor": colors.black})
-    r.apply_properties(g1_style, {"LineColor": colors.black})
-    r.apply_properties(g2_style, {"LineColor": colors.black})
-    legend_entries.extend([
-        (g_fit_style, "Best fit value", "P"),
-        (g1_style, "#pm 1 #sigma", "L"),
-        (g2_style, "#pm 2 #sigma", "L"),
-    ])
+    legend_entries.append((g_fit_style, "Best fit value", "P"))
+    if g1:
+        g1_style = g1.Clone()
+        r.apply_properties(g1_style, {"LineColor": colors.black})
+        legend_entries.append((g1_style, "#pm 1 #sigma", "L"))
+    else:
+        warn("no primary contour found, no line will be visible")
+    if g2:
+        g2_style = g2.Clone()
+        r.apply_properties(g2_style, {"LineColor": colors.black})
+        legend_entries.append((g2_style, "#pm 2 #sigma", "L"))
+    else:
+        warn("no secondary contour found, no line will be visible")
 
     # prepend empty values
     n_empty = 3 - (len(legend_entries) % 3)

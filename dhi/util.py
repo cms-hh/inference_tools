@@ -875,11 +875,16 @@ class TFileCache(object):
                             tobj.Write(*args)
 
                     # delete objects
+                    # (this does not reduce the file size though, see
+                    # https://root-forum.cern.ch/t/delete-object-from-tfile/17658/2)
                     if not skip_delete and data["delete_objects"]:
-                        data["tfile"].cd()
                         self.logger.debug("deleting {} objects".format(len(data["delete_objects"])))
                         for abs_key in data["delete_objects"]:
-                            data["tfile"].Delete(abs_key)
+                            tdir = data["tfile"]
+                            parts = abs_key.split("/")
+                            for part in parts[:-1]:
+                                tdir = tdir.Get(part)
+                            tdir.Delete(parts[-1])
                             self.logger.debug(
                                 "deleted {} from tfile at {}".format(abs_key, abs_path),
                             )
