@@ -1725,7 +1725,6 @@ def plot_benchmark_limits(
     )
     pad.cd()
     draw_objs = []
-    legend_entries = []
 
     # dummy histogram to control axes
     x_title = "Benchmark scenario"
@@ -1742,6 +1741,9 @@ def plot_benchmark_limits(
         props={"Ndivisions": n, "TitleOffset": 1.7 if groups else 1.1},
     )
     draw_objs.append((h_dummy, "HIST"))
+
+    # reserve legend entries
+    legend_entries = 4 * [(h_dummy, " ", "L")]
 
     # benchmark labels
     for i, d in enumerate(data):
@@ -1771,7 +1773,7 @@ def plot_benchmark_limits(
         props={"LineWidth": 2, "LineStyle": 1},
     )
     draw_objs.append((g_2sigma, "SAME,2"))
-    legend_entries.append((g_2sigma, r"95% expected", "LF"))
+    legend_entries[3] = (g_2sigma, r"95% expected", "LF")
 
     # 1 sigma band
     g_1sigma = create_graph(sigma=1)
@@ -1782,30 +1784,30 @@ def plot_benchmark_limits(
         props={"LineWidth": 2, "LineStyle": 1},
     )
     draw_objs.append((g_1sigma, "SAME,2"))
-    legend_entries.insert(0, (g_1sigma, r"68% expected", "LF"))
+    legend_entries[2] = (g_1sigma, r"68% expected", "LF")
 
     # prepare graphs
     g_exp = create_graph(sigma=0)
     r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 2})
     draw_objs.append((g_exp, "SAME,EZ"))
-    legend_entries.insert(0, (g_exp, "Median expected", "L"))
+    legend_entries[0] = (g_exp, "Median expected", "L")
 
     # observed values
     if has_obs:
         g_obs = create_graph(key="observed")
         r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1})
         draw_objs.append((g_obs, "SAME,EZ"))
-        legend_entries.insert(0, (g_obs, "Observed", "L"))
+        legend_entries[1] = (g_obs, "Observed", "L")
 
     # texts over and lines between groups
     group_names = list(groups)
     for i, group_name in enumerate(group_names):
-        x = sum(len(groups[group_names[j]]) for j in range(i + 1))
-
         # label
+        x = sum(len(groups[group_names[j]]) for j in range(i + 1))
+        y_offset = 0.1
         label = ROOT.TLatex(
             x - 0.5 * (1 + len(groups[group_name])),
-            y_min - 0.1 * (y_max - y_min),
+            (y_min * (y_min / y_max)**y_offset) if y_log else (y_min - y_offset * (y_max - y_min)),
             to_root_latex(group_name),
         )
         r.setup_latex(label, props={"NDC": False, "TextAlign": 21, "TextSize": 20})
@@ -1821,12 +1823,12 @@ def plot_benchmark_limits(
             draw_objs.append(line)
 
     # legend
-    n_cols = 2 if has_obs else 1
     legend = r.routines.create_legend(
         pad=pad,
-        width=220 * n_cols,
-        n=3,
-        props={"NColumns": n_cols},
+        width=440,
+        y2=-20,
+        n=2,
+        props={"NColumns": 2},
     )
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
@@ -2032,7 +2034,7 @@ def plot_multi_benchmark_limits(
             props={"LineWidth": 2, "LineStyle": 2},
         )
         draw_objs.append((g_exp, "SAME,EZ"))
-        legend_entries.insert(0, (g_exp, to_root_latex(br_hh_names.get(name, name)), "L"))
+        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)), "L"))
 
         # observed values
         if has_obs:
@@ -2045,14 +2047,16 @@ def plot_multi_benchmark_limits(
             draw_objs.append((g_obs, "SAME,EZ"))
 
     # add additional legend entries to distinguish expected and observed lines
+    for _ in range(3 - len(legend_entries) % 3):
+        legend_entries.append((h_dummy, " ", "L"))
+    g_exp_dummy = g_exp.Clone()
+    r.apply_properties(g_exp_dummy, {"LineColor": colors.black})
+    legend_entries.append((g_exp_dummy, "Median expected", "L"))
     if has_obs:
         g_obs_dummy = g_obs.Clone()
         r.apply_properties(g_obs_dummy, {"LineColor": colors.black})
         legend_entries.append((g_obs_dummy, "Observed", "L"))
-    g_exp_dummy = g_exp.Clone()
-    r.apply_properties(g_exp_dummy, {"LineColor": colors.black})
-    legend_entries.append((g_exp_dummy, "Median expected", "L"))
-    for _ in range(1 if has_obs else 2):
+    else:
         legend_entries.append((h_dummy, " ", "L"))
 
     # texts over and lines between groups
@@ -2079,12 +2083,12 @@ def plot_multi_benchmark_limits(
             draw_objs.append(line)
 
     # legend
-    legend_cols = min(int(math.ceil(len(legend_entries) / 3.)), 5)
-    legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
+    legend_cols = int(math.ceil(len(legend_entries) / 3.0))
     legend = r.routines.create_legend(
         pad=pad,
         width=legend_cols * 180,
-        n=legend_rows,
+        y2=-20,
+        n=3,
         props={"NColumns": legend_cols, "TextSize": 18},
     )
     r.fill_legend(legend, legend_entries)
