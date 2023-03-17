@@ -47,7 +47,7 @@ class TestRegister(law.task.base.Register):
         return law.task.base.Register.__new__(metacls, classname, bases, classdict)
 
 
-class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
+class TestPlotsDefs(six.with_metaclass(TestRegister, AnalysisTask)):
 
     task_namespace = "test"
 
@@ -89,6 +89,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
     view_cmd = PlotTask.view_cmd
 
     exclude_params_req = {"view_cmd"}
+    exclude_index = True
 
     def check_enabled(self, test_name):
         assert test_name in self.test_names
@@ -132,6 +133,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("r",),
                 scan_parameters=(("kl", -30.0, 30.0, 7),),
                 show_parameters=(("kt", "CV"),),
+                unblinded=True,
                 xsec="fb",
                 y_log=True,
             )
@@ -144,6 +146,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("r",),
                 scan_parameters=(("kl", -30.0, 30.0, 7),),
                 show_parameters=(("kt", "CV"),),
+                unblinded=(True,),
                 xsec="fb",
                 y_log=True,
             )
@@ -156,6 +159,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("r",),
                 scan_parameters=(("kl", -30.0, 30.0, 7),),
                 show_parameters=(("kt", "CV"),),
+                unblinded=(True,),
                 xsec="fb",
                 y_log=True,
             )
@@ -168,6 +172,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("r",),
                 parameter_values=(("kl", 1), ("kt", 1)),
                 show_parameters=(("kl", "kt", "CV"),),
+                unblinded=(True,),
                 xsec="fb",
                 x_log=True,
             )
@@ -179,6 +184,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("kl",),
                 scan_parameters=(("kl", -30.0, 30.0, 7),),
                 show_parameters=(("kt", "CV"),),
+                unblinded=True,
                 y_log=True,
             )
 
@@ -192,6 +198,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                     ("kt", -10.0, 10.0, 6),
                 ),
                 show_parameters=(("CV",),),
+                unblinded=True,
             )
 
         if self.check_enabled("multiple_likelihood_scans"):
@@ -202,6 +209,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("kl",),
                 scan_parameters=(("kl", -30.0, 30.0, 7),),
                 show_parameters=(("kt", "CV"),),
+                unblinded=(True,),
             )
 
         if self.check_enabled("multiple_likelihood_scans_2d"):
@@ -214,6 +222,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                     ("kl", -30.0, 30.0, 7),
                     ("kt", -10.0, 10.0, 6),
                 ),
+                unblinded=(True,),
             )
 
         if self.check_enabled("multiple_likelihood_scans_by_model"):
@@ -224,6 +233,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("kl",),
                 scan_parameters=(("kl", -30.0, 30.0, 7),),
                 show_parameters=(("kt", "CV"),),
+                unblinded=(True,),
             )
 
         if self.check_enabled("multiple_likelihood_scans_by_model_2d"):
@@ -236,6 +246,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                     ("kl", -30.0, 30.0, 7),
                     ("kt", -10.0, 10.0, 6),
                 ),
+                unblinded=(True,),
             )
 
         if self.check_enabled("significance_scan"):
@@ -262,6 +273,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 self,
                 datacards=sm_cards,
                 pois=("r",),
+                unblinded=True,
             )
 
         if self.check_enabled("exclusion_and_bestfit"):
@@ -272,6 +284,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("r",),
                 scan_parameters=(("kl", -30.0, 30.0, 7),),
                 show_parameters=(("kt", "CV"),),
+                unblinded=(True,),
             )
 
         if self.check_enabled("exclusion_and_bestfit_2d"):
@@ -281,6 +294,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("r",),
                 scan_parameters=(("kl", -30.0, 30.0, 7), ("kt", -10.0, 10.0, 6)),
                 show_parameters=(("CV",),),
+                unblinded=True,
             )
 
         if self.check_enabled("postfit_s_over_b"):
@@ -352,6 +366,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("r",),
                 scan_parameters=(("C2", -4.0, 4.0, 9),),
                 show_parameters=(("kl", "kt", "CV"),),
+                unblinded=True,
                 xsec="fb",
                 y_log=True,
             )
@@ -367,6 +382,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                     ("C2", -4.0, 4.0, 9),
                 ),
                 show_parameters=(("CV", "kt"),),
+                unblinded=True,
             )
 
         if self.check_enabled("morphing_scales"):
@@ -399,6 +415,103 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
             )
 
         return reqs
+
+    def output(self):
+        return self.input()
+
+    @view_output_plots
+    def run(self):
+        pass
+
+
+class TestPlots(AnalysisTask):
+
+    task_namespace = "test"
+
+    # plot group names
+    plot_groups = {
+        "limits": [
+            "upper_limits",
+            "multiple_upper_limits",
+            "multiple_upper_limits_by_model",
+            "upper_limits_at_point",
+        ],
+        "likelihoods": [
+            "likelihood_scan",
+            "likelihood_scan_2d",
+            "multiple_likelihood_scans",
+            "multiple_likelihood_scans_2d",
+            "multiple_likelihood_scans_by_model",
+            "multiple_likelihood_scans_by_model_2d",
+        ],
+        "significances": [
+            "significance_scan",
+            "multiple_significance_scans",
+        ],
+        "pulls": [
+            "pulls_and_impacts",
+        ],
+        "exclusions": [
+            "exclusion_and_bestfit",
+            "exclusion_and_bestfit_2d",
+        ],
+        "postfit": [
+            "postfit_s_over_b",
+            "nuisance_likelihood_scans",
+        ],
+        "gof": [
+            "goodness_of_fit",
+            "multiple_goodness_of_fits",
+        ],
+        "eft_bm": [
+            "eft_benchmark_limits",
+            "multiple_eft_benchmark_limits",
+        ],
+        "eft_c2": [
+            "upper_limits_c2",
+            "likelihood_scan_c2_2d",
+        ],
+        "studies": [
+            "morphing_scales",
+            "morphed_discriminant",
+            "stat_error_scan",
+        ],
+    }
+
+    plots = law.CSVParameter(
+        default=("limits",),
+        description="comma-separated list of test to run; default: 'limits'",
+    )
+
+    file_types = TestPlotsDefs.file_types
+    campaign = TestPlotsDefs.campaign
+    cms_postfix = TestPlotsDefs.cms_postfix
+    style = TestPlotsDefs.style
+    view_cmd = TestPlotsDefs.view_cmd
+
+    exclude_params_req = {"view_cmd"}
+
+    def requires(self):
+        # determine the full list of plots to enable
+        plots = []
+        for name in self.plots:
+            if name == "all" or name in self.plot_groups:
+                plots.extend(self.plot_groups[name])
+                continue
+
+            for group_name, plot_names in self.plot_groups.items():
+                if name in plot_names:
+                    plots.append(name)
+                    break
+
+        # remove duplicates
+        plots = sorted(set(plots), key=plots.index)
+
+        # define requirements
+        return TestPlotsDefs.req(
+            self,
+            **{"only_{}".format(name): True for name in plots}  # noqa
+        )
 
     def output(self):
         return self.input()

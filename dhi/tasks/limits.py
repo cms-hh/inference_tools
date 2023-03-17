@@ -501,8 +501,11 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
         thy_values = None
         xsec_unit = None
         if self.poi in self.r_pois:
-            thy_linspace = np.linspace(limit_values[self.scan_parameter].min(),
-                limit_values[self.scan_parameter].max(), num=100)
+            thy_linspace = np.linspace(
+                limit_values[self.scan_parameter].min(),
+                limit_values[self.scan_parameter].max(),
+                num=100,
+            )
             if self.xsec in ["pb", "fb"]:
                 limit_values = self.convert_to_xsecs(
                     self.poi,

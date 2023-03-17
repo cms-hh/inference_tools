@@ -14,6 +14,21 @@ test:
     - cvmfs
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
+    PLOT_GROUPS:
+      value: "limits"
+        options:
+          - "limits"
+          - "likelihoods"
+          - "significances"
+          - "pulls"
+          - "exclusions"
+          - "postfit"
+          - "gof"
+          - "eft_bm"
+          - "eft_c2"
+          - "studies"
+          - "all"
+      description: "The plot or plot group to test (see test.TestPlots for more info)."
   script:
     - yum install -y sshpass
     - mkdir -p data/examplecards
