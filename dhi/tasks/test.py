@@ -494,9 +494,14 @@ class TestPlots(AnalysisTask):
     def requires(self):
         # determine the full list of plots to enable
         plots = []
+
         for name in self.plots:
-            if name == "all" or name in self.plot_groups:
-                plots.extend(self.plot_groups[name])
+            if name == "all":
+                plots += sum(self.plot_groups.values(), [])
+                break
+
+            if name in self.plot_groups:
+                plots += self.plot_groups[name]
                 continue
 
             for group_name, plot_names in self.plot_groups.items():

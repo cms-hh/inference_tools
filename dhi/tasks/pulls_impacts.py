@@ -545,9 +545,9 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
             )
             self.parameters_per_page = -1
 
-        # show a warning when unblinded, not in paper mode and not hiding the best fit value
-        if self.unblinded and not self.paper and self.show_best_fit:
-            self.logger.warning("running unblinded but not hiding the best fit value")
+        # show a warning when unblinded and not hiding the best fit value
+        if self.unblinded and self.show_best_fit:
+            self.logger.warning("running unblinded without hiding the best fit value")
 
     def requires(self):
         return MergePullsAndImpacts.req(self)
