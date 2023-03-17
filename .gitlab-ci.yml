@@ -18,7 +18,7 @@ test:
     - yum install -y sshpass
     - mkdir -p data/examplecards
     - cd data/examplecards
-    - sshpass -v -p ${KRB_PASS} scp -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch:/afs/cern.ch/user/m/mrieger/public/hh/inference/examplecards/v2.tgz .
+    - sshpass -v -p ${KRB_PASS} scp -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch:/afs/cern.ch/user/m/mrieger/public/hh/inference/examplecards/v2.tgz cards.tgz
     - tar -xzf cards.tgz
     - cd ../..
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
