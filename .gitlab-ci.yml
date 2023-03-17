@@ -5,13 +5,6 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-  SETUP_CACHE_POLICY:
-    value: "push"
-    options:
-      - "push"
-      - "pull-push"
-    description: "Cache policy of the 'setup' job."
-
   PLOTS:
     value: "limits"
     options:
@@ -64,6 +57,11 @@ lint:
     - export DHI_COMBINE_PYTHON_ONLY="1"
     - source setup.sh
     - ./lint.sh
+  cache:
+    key: "lint__${CI_COMMIT_REF_SLUG}"
+    policy: pull-push
+    paths:
+      - data/
 
 setup:
   stage: build
@@ -82,8 +80,8 @@ setup:
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
     - source setup.sh
   cache:
-    key: "$CI_COMMIT_REF_SLUG"
-    policy: "$SETUP_CACHE_POLICY"
+    key: "test__${CI_COMMIT_REF_SLUG}"
+    policy: push
     paths:
       - data/
 
@@ -106,7 +104,7 @@ test:
     - mv plots/*.png png
     - mv plots/*.pdf pdf
   cache:
-    key: "$CI_COMMIT_REF_SLUG"
+    key: "test__${CI_COMMIT_REF_SLUG}"
     policy: pull
     paths:
       - data/
