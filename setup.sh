@@ -43,7 +43,7 @@ setup() {
     # example cards
     #
 
-    [ -z "$DHI_EXAMPLE_CARDS_BASE" ] && export DHI_EXAMPLE_CARDS_BASE="/afs/cern.ch/user/m/mrieger/public/hh/inference/examplecards"
+    [ -z "$DHI_EXAMPLE_CARDS_BASE" ] && export DHI_EXAMPLE_CARDS_BASE="/afs/cern.ch/user/m/mrieger/public/hh/inference/examplecards/v2"
 
     expand_cards() {
         local pattern="$1"
@@ -53,15 +53,19 @@ setup() {
     export DHI_EXAMPLE_CARDS="$( expand_cards 'sm/datacard*.txt' )"
     export DHI_EXAMPLE_CARDS_1="$( expand_cards 'sm/datacard1.txt' )"
     export DHI_EXAMPLE_CARDS_2="$( expand_cards 'sm/datacard2.txt' )"
+    export DHI_EXAMPLE_CARDS_3="$( expand_cards 'sm/datacard3.txt' )"
     export DHI_EXAMPLE_CARDS_EFT_C2="$( expand_cards 'eft_c2/datacard*.txt' )"
     export DHI_EXAMPLE_CARDS_EFT_C2_1="$( expand_cards 'eft_c2/datacard1.txt' )"
     export DHI_EXAMPLE_CARDS_EFT_C2_2="$( expand_cards 'eft_c2/datacard2.txt' )"
+    export DHI_EXAMPLE_CARDS_EFT_C2_3="$( expand_cards 'eft_c2/datacard3.txt' )"
     export DHI_EXAMPLE_CARDS_EFT_BM="$( expand_cards 'eft_bm/datacard1_*.txt' )"
     export DHI_EXAMPLE_CARDS_EFT_BM_1="$( expand_cards 'eft_bm/datacard1_*.txt' )"
     export DHI_EXAMPLE_CARDS_EFT_BM_2="$( expand_cards 'eft_bm/datacard2_*.txt' )"
+    export DHI_EXAMPLE_CARDS_EFT_BM_3="$( expand_cards 'eft_bm/datacard3_*.txt' )"
     export DHI_EXAMPLE_CARDS_RES="$( expand_cards 'res/datacard1_*.txt' )"
     export DHI_EXAMPLE_CARDS_RES_1="$( expand_cards 'res/datacard1_*.txt' )"
     export DHI_EXAMPLE_CARDS_RES_2="$( expand_cards 'res/datacard2_*.txt' )"
+    export DHI_EXAMPLE_CARDS_RES_3="$( expand_cards 'res/datacard3_*.txt' )"
 
 
     #
