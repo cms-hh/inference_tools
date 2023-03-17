@@ -357,7 +357,8 @@ def plot_exclusion_and_bestfit_2d(
     nll_values=None,
     show_best_fit_error=False,
     recompute_best_fit=False,
-    scan_minima=None,
+    scan_min1=None,
+    scan_min2=None,
     show_sm_point=True,
     interpolation_method="root",
     x_min=None,
@@ -388,12 +389,13 @@ def plot_exclusion_and_bestfit_2d(
     which are drawn as well when *show_best_fit_error* is *True*. When set, it should be a mapping
     to lists of values or a record array with keys "<scan_parameter1>", "<scan_parameter2>" and
     "dnll2". By default, the position of the best value is directly extracted from the likelihood
-    values. However, when *scan_minima* is a 2-tuple of positions per scan parameter, this best fit
-    value is used instead, e.g. to use combine's internally interpolated value. The standard model
-    point at (1, 1) as drawn as well unless *show_sm_point* is *False*. *interpolation_method* can
-    either be "root" (TGraph2D), "linear" or "cubic" (scipy.interpolate.interp2d), or "rbf"
-    (scipy.interpolate.Rbf). In case a tuple is passed, the method should be the first element,
-    followed by optional configuration options.
+    values. However, when *scan_min1* (*scan_min2*) is set, this best fit value is used instead,
+    e.g. to use combine's internally interpolated value.
+
+    The standard model point is drawn as well unless *show_sm_point* is *False*.
+    *interpolation_method* can either be "root" (TGraph2D), "linear" or "cubic"
+    (scipy.interpolate.interp2d), or "rbf" (scipy.interpolate.Rbf). In case a tuple is passed, the
+    method should be the first element, followed by optional configuration options.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the range of the x- and y-axis, respectively, and
     default to the scan parameter ranges found in *expected_limits*. *model_parameters* can be a
@@ -443,8 +445,6 @@ def plot_exclusion_and_bestfit_2d(
         assert scan_parameter1 in nll_values
         assert scan_parameter2 in nll_values
         assert "dnll2" in nll_values
-    if scan_minima:
-        assert len(scan_minima) == 2
 
     # store content flags
     has_unc1 = "limit_p1" in expected_limits and "limit_m1" in expected_limits
@@ -639,7 +639,7 @@ def plot_exclusion_and_bestfit_2d(
             (scan_parameter2, nll_values[scan_parameter2]),
             remove_nans=True,
             shift_negative_values=True,
-            min_is_external=bool(scan_minima),
+            min_is_external=scan_min1 is None or scan_min2 is None,
         )
 
         # scan
@@ -647,8 +647,8 @@ def plot_exclusion_and_bestfit_2d(
             nll_scan_values1,
             nll_scan_values2,
             dnll2,
-            poi1_min=scan_minima[0] if scan_minima and show_best_fit_error else None,
-            poi2_min=scan_minima[1] if scan_minima and show_best_fit_error else None,
+            poi1_min=scan_min1 if show_best_fit_error else None,
+            poi2_min=scan_min2 if show_best_fit_error else None,
         )
 
         if scan:

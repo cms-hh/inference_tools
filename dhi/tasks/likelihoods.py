@@ -199,7 +199,10 @@ class MergeLikelihoodScan(LikelihoodBase):
 
             # save the best fit values
             if np.nan in poi_mins:
-                poi_mins = [f[p].array()[0] for p in self.pois]
+                poi_mins = np.array(
+                    tuple(f[p].array()[0] for p in self.scan_parameter_names),
+                    dtype=[(p, float) for p in self.scan_parameter_names],
+                )
 
             # compute the dnll2 value
             dnll2 = dnll * 2.
@@ -215,7 +218,7 @@ class MergeLikelihoodScan(LikelihoodBase):
             data.append(scan_values + (nll0, nll, dnll, dnll2, fit_nll))
 
         data = np.array(data, dtype=dtype)
-        self.output().dump(data=data, poi_mins=np.array(poi_mins), formatter="numpy")
+        self.output().dump(data=data, poi_mins=poi_mins, formatter="numpy")
 
 
 class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
@@ -356,7 +359,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             # prepare data
             data = [{
                 "values": values,
-                "poi_min": None if self.recompute_best_fit else poi_mins[0],
+                "poi_min": None if self.recompute_best_fit else poi_mins[self.pois[0]],
                 "name": "",
             }]
 
@@ -395,8 +398,8 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 poi2=self.pois[1],
                 values=values,
                 hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
-                poi1_min=None if self.recompute_best_fit else poi_mins[0],
-                poi2_min=None if self.recompute_best_fit else poi_mins[1],
+                poi1_min=None if self.recompute_best_fit else poi_mins[self.pois[0]],
+                poi2_min=None if self.recompute_best_fit else poi_mins[self.pois[1]],
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
                 show_significances=self.show_significances,
@@ -442,11 +445,13 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         values = []
         all_poi_mins = []
         for inp in inputs:
-            data = inp.load(formatter="numpy")
+            data = inp.load(allow_pickle=True, formatter="numpy")
             values.append(data["data"])
             all_poi_mins.append([
-                (None if np.isnan(data["poi_mins"][i]) else float(data["poi_mins"][i]))
-                for i in range(len(scan_parameter_names))
+                (None if np.isnan(v) else v)
+                for v in (
+                    float(data["poi_mins"][p]) for p in scan_parameter_names
+                )
             ])
 
         # nll0 values must be identical per input (otherwise there might be an issue with the model)
@@ -479,7 +484,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         # pick the most appropriate poi mins
         poi_mins = cls._select_poi_mins(all_poi_mins, scan_parameter_combinations)
 
-        return values, poi_mins
+        return values, dict(zip(scan_parameter_names, poi_mins))
 
     @classmethod
     def _select_poi_mins(cls, poi_mins, scan_parameter_combinations):
@@ -584,12 +589,12 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
             values, poi_mins = self.load_scan_data(inps)
 
             if self.recompute_best_fit:
-                poi_mins = [None] * len(poi_mins)
+                poi_mins = {p: None for p in poi_mins}
 
             # store a data entry
             data.append(dict([
                 ("values", values),
-                ("poi_min", poi_mins[0]) if self.n_pois == 1 else ("poi_mins", poi_mins),
+                ("poi_min", [poi_mins[p] for p in self.pois]),
                 ("name", "Cards {}".format(i + 1)),
             ]))
 
@@ -724,7 +729,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
             values, poi_mins = self.load_scan_data(inps)
 
             if self.recompute_best_fit:
-                poi_mins = [None] * len(poi_mins)
+                poi_mins = {p: None for p in poi_mins}
 
             # prepare the name
             name = hh_model.rsplit(".", 1)[-1].replace("_", " ")
@@ -734,7 +739,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
             # store a data entry
             data.append(dict([
                 ("values", values),
-                ("poi_min", poi_mins[0]) if self.n_pois == 1 else ("poi_mins", poi_mins),
+                ("poi_min", [poi_mins[p] for p in self.pois]),
                 ("name", name),
             ]))
 

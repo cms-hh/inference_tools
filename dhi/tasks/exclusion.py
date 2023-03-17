@@ -107,8 +107,9 @@ class PlotExclusionAndBestFit(
                     self.scan_parameter_names,
                     self.get_scan_parameter_combinations(),
                 )
-                if not self.recompute_best_fit and not np.isnan(_scan_min[0]):
-                    scan_min = float(_scan_min[0])
+                _scan_min = _scan_min[self.scan_parameter_names[0]]
+                if not self.recompute_best_fit and not np.isnan(_scan_min):
+                    scan_min = float(_scan_min)
 
             # store data
             entry = dict(
@@ -162,6 +163,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
     show_best_fit_error = copy.copy(PlotLikelihoodScan.show_best_fit_error)
     show_best_fit_error._default = False
     recompute_best_fit = PlotLikelihoodScan.recompute_best_fit
+    interpolation_method = PlotLikelihoodScan.interpolation_method
     xsec_contours = law.CSVParameter(
         default=("auto",),
         significant=False,
@@ -185,12 +187,6 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
         choices=[law.NO_STR, ""] + list(br_hh.keys()),
         description="name of a branching ratio defined in dhi.config.br_hh to scale the cross "
         "section when --xsec is set; choices: '',{}; no default".format(",".join(br_hh.keys())),
-    )
-    interpolation = luigi.Parameter(
-        default="root",
-        significant=False,
-        description="the interpolation method for filling up a limited (!) number of missing "
-        "points that are not processed yet; choices: 'root','linear','cubic','rdf'; default: root",
     )
 
     z_min = None
@@ -297,14 +293,16 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
                 xsec_levels = [float(l) for l in self.xsec_contours]
 
         # load likelihood scan data
-        nll_values, scan_mins = None, None
+        nll_values, scan_min1, scan_min2 = None, None, None
         if "likelihoods" in inputs:
             nll_values, scan_mins = PlotLikelihoodScan._load_scan_data(
                 inputs["likelihoods"],
                 self.scan_parameter_names,
                 self.get_scan_parameter_combinations(),
             )
-            scan_mins = [(None if np.isnan(v) else float(v)) for v in scan_mins]
+            nan_to_none = lambda v: None if np.isnan(float(v)) else float(v)
+            scan_min1 = nan_to_none(scan_mins[self.scan_parameter_names[0]])
+            scan_min2 = nan_to_none(scan_mins[self.scan_parameter_names[1]])
 
         # call the plot function
         self.call_plot_func(
@@ -319,9 +317,10 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
             xsec_levels=xsec_levels,
             xsec_unit=self.xsec,
             nll_values=nll_values,
-            interpolation_method=self.interpolation,
+            interpolation_method=self.interpolation_method,
             show_best_fit_error=self.show_best_fit_error,
-            scan_minima=None if self.recompute_best_fit else scan_mins,
+            scan_min1=None if self.recompute_best_fit else scan_min1,
+            scan_min2=None if self.recompute_best_fit else scan_min2,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),

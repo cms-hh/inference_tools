@@ -293,8 +293,8 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
         bm_names = list(self.benchmark_datacards.keys())
         limit_values = dict(zip(bm_names, self.input().load(formatter="numpy")["data"]))
 
-        # prepare conversion scale
-        scale = br_hh.get(self.br, 1.) * {"fb": 1., "pb": 0.001}[self.xsec]
+        # prepare conversion scale, default is expected to be pb!
+        scale = br_hh.get(self.br, 1.0) * {"fb": 1000.0, "pb": 1.0}[self.xsec]
 
         # fill data entries as expected by the plot function
         data = []

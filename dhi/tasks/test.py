@@ -179,7 +179,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 pois=("kl",),
                 scan_parameters=(("kl", -30.0, 30.0, 7),),
                 show_parameters=(("kt", "CV"),),
-                y_log=False,
+                y_log=True,
             )
 
         if self.check_enabled("likelihood_scan_2d"):
