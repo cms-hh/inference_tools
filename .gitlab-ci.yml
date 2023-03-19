@@ -39,6 +39,8 @@ variables:
 
 lint:
   stage: build
+  rules:
+    - if: $SPECIFIC_PLOT == "none"
   tags:
     - cvmfs
   variables:
@@ -78,7 +80,6 @@ setup:
 .test:
   stage: test
   needs: ["setup"]
-  when: manual
   tags:
     - cvmfs
   variables:
