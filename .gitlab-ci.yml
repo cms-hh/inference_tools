@@ -35,6 +35,16 @@ variables:
       - "morphing_scales"
       - "morphed_discriminant"
       - "stat_error_scan"
+      - "limits"
+      - "likelihoods"
+      - "significances"
+      - "pulls"
+      - "exclusions"
+      - "postfit"
+      - "gof"
+      - "eft_bm"
+      - "eft_c2"
+      - "studies"
     description: "A specific plot to produce (see test.TestPlots for more info)."
 
 lint:
@@ -124,7 +134,7 @@ test_all:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: never
     - if: $SPECIFIC_PLOT == "none"
-      when: always
+      when: on_success
     - if: $SPECIFIC_PLOT != "none"
       when: never
   parallel:
