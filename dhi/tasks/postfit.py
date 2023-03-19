@@ -479,7 +479,7 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # get input targets
         inputs = self.input()
@@ -501,7 +501,7 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
 
             # call the plot function
             self.call_plot_func(
-                paths=[outp.path for outp in outputs],
+                paths=[outp.path for outp in outputs["plots"]],
                 poi=self.pois[0],
                 workspace=w,
                 dataset=dataset,

@@ -1292,7 +1292,7 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load limit scan data
         limits = []

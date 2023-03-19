@@ -298,7 +298,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load limit values
         bm_names = list(self.benchmark_datacards.keys())
@@ -385,7 +385,7 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load limit values
         bm_names = list(self.benchmark_datacards.keys())
