@@ -955,7 +955,7 @@ def plot_likelihood_scan_2d(
     if show_box:
         legend_entries.insert(0, (box_legend_entry, make_bf_label(box_num1, box_num2), "F"))
     if show_best_fit and scan:
-        label = "Observed" if "paper" in style else make_bf_label(scan.num1_min, scan.num2_min)
+        label = "Observed" if style == "paper" else make_bf_label(scan.num1_min, scan.num2_min)
         legend_entries.insert(0, (g_fit, label, "PLE" if show_best_fit_error else "P"))
     if style == "contours*":
         for graphs, level in zip(contours, style.significance_labels):

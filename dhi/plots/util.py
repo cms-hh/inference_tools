@@ -74,6 +74,7 @@ class Style(DotDict):
         # takes a string or tuple of strings and returns a new style object
         inst = cls(*args, **kwargs)
         inst.styles = make_tuple(style)
+        return inst
 
     def __init__(self, *args, **kwargs):
         super(Style, self).__init__(*args, **kwargs)
