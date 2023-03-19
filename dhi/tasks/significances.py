@@ -213,9 +213,18 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
         if self.y_log:
             parts.append("log")
 
+        outputs = {}
+
         prefix = "significance" if self.convert == law.NO_STR else self.convert
         names = self.create_plot_names([prefix, self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -242,7 +251,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
 
         # call the plot function
         self.call_plot_func(
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             scan_parameter=scan_parameter,
             expected_values=exp_values,
             observed_values=obs_values,
@@ -257,6 +266,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
             show_points=self.show_points,
             cms_postfix=self.cms_postfix,
             style=self.style if self.style != law.NO_STR else None,
+            dump_target=outputs.get("plot_data"),
         )
 
     def load_scan_data(self, inputs):
@@ -315,9 +325,18 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
         if self.y_log:
             parts.append("log")
 
+        outputs = {}
+
         prefix = "significance" if self.convert == law.NO_STR else self.convert
         names = self.create_plot_names(["multi{}s".format(prefix), self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -346,7 +365,7 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
 
         # call the plot function
         self.call_plot_func(
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             scan_parameter=self.scan_parameter_names[0],
             values=values,
             names=names,
@@ -361,4 +380,5 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
             show_points=self.show_points,
             cms_postfix=self.cms_postfix,
             style=self.style if self.style != law.NO_STR else None,
+            dump_target=outputs.get("plot_data"),
         )

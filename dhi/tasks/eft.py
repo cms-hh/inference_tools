@@ -279,8 +279,17 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
         if self.y_log:
             parts.append("log")
 
+        outputs = {}
+
         names = self.create_plot_names(["benchmarks", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -315,7 +324,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
 
         # call the plot function
         self.call_plot_func(
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             data=data,
             poi=self.poi,
             y_min=self.get_axis_limit("y_min"),
@@ -326,6 +335,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
             style=self.style if self.style != law.NO_STR else None,
+            dump_target=outputs.get("plot_data"),
         )
 
 
@@ -356,8 +366,15 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
         if self.y_log:
             parts.append("log")
 
+        outputs = {}
+
         names = self.create_plot_names(["multi_benchmarks", self.get_output_postfix(), parts])
-        outputs = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
 
         return outputs
 
@@ -406,7 +423,7 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
 
         # call the plot function
         self.call_plot_func(
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             data=data,
             names=names,
             poi=self.poi,
@@ -418,6 +435,7 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
             style=self.style if self.style != law.NO_STR else None,
+            dump_target=outputs.get("plot_data"),
         )
 
 

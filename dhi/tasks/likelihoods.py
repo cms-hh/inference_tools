@@ -352,6 +352,11 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
             outputs["hep_data"] = self.local_target("{}.yaml".format(name))
 
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
         return outputs
 
     @law.decorator.log
@@ -400,6 +405,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 show_points=self.show_points,
                 cms_postfix=self.cms_postfix,
                 style=self.style if self.style != law.NO_STR else None,
+                dump_target=outputs.get("plot_data"),
             )
         else:  # 2
             self.call_plot_func(
@@ -429,6 +435,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 eft_lines=self.eft_lines if self.eft_lines != law.NO_STR else None,
                 cms_postfix=self.cms_postfix,
                 style=self.style if self.style != law.NO_STR else None,
+                dump_target=outputs.get("plot_data"),
             )
 
     def load_scan_data(self, inputs, recompute_dnll2=True, merge_scans=True):
@@ -587,6 +594,11 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
             outputs["hep_data"] = self.local_target("{}.yaml".format(name))
 
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
         return outputs
 
     @law.decorator.log
@@ -653,6 +665,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 show_points=self.show_points,
                 cms_postfix=self.cms_postfix,
                 style=self.style if self.style != law.NO_STR else None,
+                dump_target=outputs.get("plot_data"),
             )
         else:  # 2
             self.call_plot_func(
@@ -672,6 +685,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 cms_postfix=self.cms_postfix,
                 style=self.style if self.style != law.NO_STR else None,
+                dump_target=outputs.get("plot_data"),
             )
 
 
@@ -729,6 +743,11 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
             outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
 
         return outputs
 
@@ -797,6 +816,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
                 show_points=self.show_points,
                 cms_postfix=self.cms_postfix,
                 style=self.style if self.style != law.NO_STR else None,
+                dump_target=outputs.get("plot_data"),
             )
         else:  # 2
             self.call_plot_func(
@@ -816,4 +836,5 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 cms_postfix=self.cms_postfix,
                 style=self.style if self.style != law.NO_STR else None,
+                dump_target=outputs.get("plot_data"),
             )

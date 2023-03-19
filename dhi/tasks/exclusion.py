@@ -80,8 +80,17 @@ class PlotExclusionAndBestFit(
         return self.join_postfix(parts) if join else parts
 
     def output(self):
+        outputs = {}
+
         names = self.create_plot_names(["exclusionbestfit", self.get_output_postfix()])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()])
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -138,7 +147,7 @@ class PlotExclusionAndBestFit(
 
         # call the plot function
         self.call_plot_func(
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             data=data,
             poi=self.pois[0],
             scan_parameter=self.scan_parameter_names[0],
@@ -155,6 +164,7 @@ class PlotExclusionAndBestFit(
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
             style=self.style if self.style != law.NO_STR else None,
+            dump_target=outputs.get("plot_data"),
         )
 
 
@@ -236,8 +246,17 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
         return self.join_postfix(parts) if join else parts
 
     def output(self):
+        outputs = {}
+
         names = self.create_plot_names(["exclusionbestfit2d", self.get_output_postfix()])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()])
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -309,7 +328,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
 
         # call the plot function
         self.call_plot_func(
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             poi=self.pois[0],
             scan_parameter1=self.scan_parameter_names[0],
             scan_parameter2=self.scan_parameter_names[1],
@@ -331,4 +350,5 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
             style=self.style if self.style != law.NO_STR else None,
+            dump_target=outputs.get("plot_data"),
         )

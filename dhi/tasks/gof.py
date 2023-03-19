@@ -221,8 +221,17 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
         return MergeGoodnessOfFit.req(self)
 
     def output(self):
+        outputs = {}
+
         names = self.create_plot_names(["gofs", self.get_output_postfix(), self.toys_postfix])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix(), self.toys_postfix])
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -238,7 +247,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
 
         # call the plot function
         self.call_plot_func(
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             data=gof_data["data"],
             toys=gof_data["toys"],
             algorithm=self.algorithm,
@@ -251,6 +260,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
             style=self.style if self.style != law.NO_STR else None,
+            dump_target=outputs.get("plot_data"),
         )
 
 
@@ -322,8 +332,17 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
         ]
 
     def output(self):
+        outputs = {}
+
         names = self.create_plot_names(["multigofs", self.get_output_postfix(), self.toys_postfix])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix(), self.toys_postfix])
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -355,7 +374,7 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
 
         # call the plot function
         self.call_plot_func(
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             data=data,
             algorithm=self.algorithm,
             n_bins=self.n_bins,
@@ -370,4 +389,5 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
             style=self.style if self.style != law.NO_STR else None,
+            dump_target=outputs.get("plot_data"),
         )

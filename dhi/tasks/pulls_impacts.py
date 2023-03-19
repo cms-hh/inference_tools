@@ -566,8 +566,17 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
         if self.page >= 0:
             parts.append("page{}".format(self.page))
 
+        outputs = {}
+
         names = self.create_plot_names(["pulls_impacts", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -583,7 +592,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
 
         # call the plot function
         self.call_plot_func(
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             data=data,
             parameters_per_page=self.parameters_per_page,
             selected_page=self.page,
@@ -603,6 +612,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
             style=self.style if self.style != law.NO_STR else None,
+            dump_target=outputs.get("plot_data"),
         )
 
 
@@ -675,7 +685,7 @@ class PlotMultiplePullsAndImpacts(PlotPullsAndImpacts, POIMultiTask, MultiDataca
 
         # abuse and call the plot function
         self.call_plot_func(
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             data=data,
             parameters_per_page=len(self.datacard_names),
             selected_page=self.page,
@@ -695,4 +705,5 @@ class PlotMultiplePullsAndImpacts(PlotPullsAndImpacts, POIMultiTask, MultiDataca
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
             style=self.style if self.style != law.NO_STR else None,
+            dump_target=outputs.get("plot_data"),
         )

@@ -322,6 +322,11 @@ class PlotPostfitSOverB(PostfitPlotBase):
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
             outputs["hep_data"] = self.local_target("{}.yaml".format(name))
 
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
         return outputs
 
     @law.decorator.log
@@ -371,6 +376,7 @@ class PlotPostfitSOverB(PostfitPlotBase):
             unblinded=self.unblinded,
             cms_postfix=self.cms_postfix,
             style=self.style if self.style != law.NO_STR else None,
+            dump_target=outputs.get("plot_data"),
         )
 
 
@@ -454,8 +460,17 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
         if self.sort_max:
             parts.append("sorted")
 
+        outputs = {}
+
         names = self.create_plot_names(parts)
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -508,6 +523,7 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
                 show_derivatives=self.show_derivatives,
                 cms_postfix=self.cms_postfix,
                 style=self.style if self.style != law.NO_STR else None,
+                dump_target=outputs.get("plot_data"),
             )
 
 
