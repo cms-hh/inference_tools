@@ -57,7 +57,11 @@ lint:
 
 setup:
   stage: build
-  when: manual
+  rules:
+    - if: $SPECIFIC_PLOT == "none"
+      when: manual
+    - if: $SPECIFIC_PLOT != "none"
+      when: always
   tags:
     - cvmfs
   variables:
@@ -110,8 +114,8 @@ setup:
 test_all:
   extends: .test
   rules:
-    - if: $SPECIFIC_PLOT == "none"
-      allow_failure: true
+    - if: $SPECIFIC_PLOT != "none"
+      when: never
   parallel:
     matrix:
       - PLOTS:
@@ -129,8 +133,10 @@ test_all:
 test_specific:
   extends: .test
   rules:
+    - if: $SPECIFIC_PLOT == "none"
+      when: never
     - if: $SPECIFIC_PLOT != "none"
-      allow_failure: true
+      when: always
   variables:
     PLOTS: $SPECIFIC_PLOT
 
