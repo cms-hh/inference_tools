@@ -40,7 +40,10 @@ variables:
 lint:
   stage: build
   rules:
-    - if: $SPECIFIC_PLOT == "none"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - if: $SPECIFIC_PLOT != "none"
+      when: never
   tags:
     - cvmfs
   variables:
@@ -58,6 +61,8 @@ lint:
 setup:
   stage: build
   rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
     - if: $SPECIFIC_PLOT == "none"
       when: manual
     - if: $SPECIFIC_PLOT != "none"
@@ -114,6 +119,8 @@ setup:
 test_all:
   extends: .test
   rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
     - if: $SPECIFIC_PLOT != "none"
       when: never
   parallel:
@@ -133,6 +140,8 @@ test_all:
 test_specific:
   extends: .test
   rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
     - if: $SPECIFIC_PLOT == "none"
       when: never
     - if: $SPECIFIC_PLOT != "none"
