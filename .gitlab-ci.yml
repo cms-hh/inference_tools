@@ -89,7 +89,7 @@ lint:
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
     - source setup.sh
     - export TEST_CMD="law run test.TestPlots --version "ci_${CI_COMMIT_SHORT_SHA}" --plots ${TEST_PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf"
-    - echo "running command '${test_cmd}'"
+    - echo "running command '${TEST_CMD}'"
     - eval "${TEST_CMD}"
     - eval "${TEST_CMD} --fetch-output 0,a,plots"
     - mkdir png
@@ -117,16 +117,16 @@ test_all:
   parallel:
     matrix:
       - TEST_PLOTS:
-        - "limits"
-        - "likelihoods"
-        - "significances"
-        - "pulls"
-        - "exclusions"
-        - "postfit"
-        - "gof"
-        - "eft_bm"
-        - "eft_c2"
-        - "studies"
+        - "all_limits"
+        - "all_likelihoods"
+        - "all_significances"
+        - "all_pulls"
+        - "all_exclusions"
+        - "all_postfit"
+        - "all_gof"
+        - "all_eft_bm"
+        - "all_eft_c2"
+        - "all_studies"
 
 test_specific:
   extends: .test
