@@ -8,6 +8,7 @@ variables:
     value: "none"
     options:
       - "none"
+      - "all"
       - "upper_limits"
       - "multiple_upper_limits"
       - "multiple_upper_limits_by_model"
@@ -111,8 +112,8 @@ test_all:
   extends: .test
   when: manual
   rules:
-    - if: $SPECIFIC_PLOT != "none"
-      when: never
+    - if: $SPECIFIC_PLOT == "all"
+      when: always
   parallel:
     matrix:
       - PLOTS:
@@ -131,8 +132,8 @@ test_specific:
   extends: .test
   when: manual
   rules:
-    - if: $SPECIFIC_PLOT == "none"
-      when: never
+    - if: $SPECIFIC_PLOT != "none" && $SPECIFIC_PLOT != "all"
+      when: always
   variables:
     PLOTS: $SPECIFIC_PLOT
 
