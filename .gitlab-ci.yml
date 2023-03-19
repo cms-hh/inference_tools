@@ -1,6 +1,5 @@
 stages:
   - build
-  - test
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
@@ -49,17 +48,12 @@ variables:
 
 lint:
   stage: build
+  when: on_success
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: never
-    - if: $SPECIFIC_PLOT == "none"
-      when: always
-    - if: $SPECIFIC_PLOT != "none"
-      when: never
   tags:
     - cvmfs
-  variables:
-    GIT_SUBMODULE_STRATEGY: recursive
   script:
     - export DHI_COMBINE_PYTHON_ONLY="1"
     - source setup.sh
@@ -70,19 +64,11 @@ lint:
     paths:
       - data/
 
-setup:
+compile:
   stage: build
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: never
-    - if: $SPECIFIC_PLOT == "none"
-      when: manual
-    - if: $SPECIFIC_PLOT != "none"
-      when: always
+  when: manual
   tags:
     - cvmfs
-  variables:
-    GIT_SUBMODULE_STRATEGY: recursive
   script:
     - yum install -y sshpass
     - mkdir -p data/examplecards
@@ -94,17 +80,14 @@ setup:
     - source setup.sh
   cache:
     key: "test__${CI_COMMIT_REF_SLUG}"
-    policy: pull-push
+    policy: push
     paths:
       - data/
 
 .test:
-  stage: test
-  needs: ["setup"]
+  stage: build
   tags:
     - cvmfs
-  variables:
-    GIT_SUBMODULE_STRATEGY: recursive
   script:
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
     - source setup.sh
@@ -130,11 +113,8 @@ setup:
 
 test_all:
   extends: .test
+  when: manual
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: never
-    - if: $SPECIFIC_PLOT == "none"
-      when: on_success
     - if: $SPECIFIC_PLOT != "none"
       when: never
   parallel:
@@ -153,13 +133,10 @@ test_all:
 
 test_specific:
   extends: .test
+  when: manual
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: never
     - if: $SPECIFIC_PLOT == "none"
       when: never
-    - if: $SPECIFIC_PLOT != "none"
-      when: always
   variables:
     PLOTS: $SPECIFIC_PLOT
 
