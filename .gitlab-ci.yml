@@ -47,20 +47,6 @@ variables:
       - "studies"
     description: "A specific plot to produce (see test.TestPlots for more info)."
 
-lint:
-  stage: build
-  tags:
-    - cvmfs
-  script:
-    - export DHI_COMBINE_PYTHON_ONLY="1"
-    - source setup.sh
-    - ./lint.sh
-  cache:
-    key: "lint__${CI_COMMIT_REF_SLUG}"
-    policy: pull-push
-    paths:
-      - data/
-
 compile:
   stage: build
   when: manual
@@ -76,8 +62,21 @@ compile:
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
     - source setup.sh
   cache:
-    key: "test__${CI_COMMIT_REF_SLUG}"
+    key: "${CI_COMMIT_REF_SLUG}"
     policy: push
+    paths:
+      - data/
+
+lint:
+  stage: build
+  tags:
+    - cvmfs
+  script:
+    - source setup.sh
+    - ./lint.sh
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    policy: pull
     paths:
       - data/
 
@@ -97,7 +96,7 @@ compile:
     - mv plots/*.png png
     - mv plots/*.pdf pdf
   cache:
-    key: "test__${CI_COMMIT_REF_SLUG}"
+    key: "${CI_COMMIT_REF_SLUG}"
     policy: pull
     paths:
       - data/
