@@ -134,6 +134,8 @@ def plot_likelihood_scans_1d(
         assert "dnll2" in values
         # check poi minimum
         d.setdefault("poi_min", None)
+        if not isinstance(d["poi_min"], (list, tuple)):
+            d["poi_min"] = [d["poi_min"]]
         # default name
         d.setdefault("name", str(i + 1))
         # origin (for printouts)
@@ -166,7 +168,7 @@ def plot_likelihood_scans_1d(
         evaluate_likelihood_scan_1d(
             d["values"][poi],
             d["values"]["dnll2"],
-            poi_min=d["poi_min"],
+            poi_min=d["poi_min"][0],
             origin=d["origin"],
         )
         for d in data
