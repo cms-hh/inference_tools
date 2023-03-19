@@ -483,6 +483,11 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
             outputs["hep_data"] = self.local_target("{}.yaml".format(name))
 
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
         return outputs
 
     @law.decorator.log
@@ -582,6 +587,7 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
             show_points=self.show_points,
             cms_postfix=self.cms_postfix,
             style=self.style if self.style != law.NO_STR else None,
+            dump_target=outputs.get("plot_data"),
         )
 
     def load_scan_data(self, inputs):

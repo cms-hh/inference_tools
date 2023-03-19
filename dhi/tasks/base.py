@@ -704,6 +704,11 @@ class PlotTask(AnalysisTask):
         description="save plot and meta data in a yaml file, compatible with the HEPData 'data' "
         "file syntax; default: False",
     )
+    save_plot_data = luigi.BoolParameter(
+        default=False,
+        description="save arguments that are passed to the plot function also in a pkl file; "
+        "default: False",
+    )
 
     default_plot_function = None
 
@@ -760,11 +765,13 @@ class PlotTask(AnalysisTask):
 
         return func
 
-    def call_plot_func(self, func_id=None, **kwargs):
+    def call_plot_func(self, func_id=None, dump_target=None, **kwargs):
         plot_kwargs = self.update_plot_kwargs(kwargs)
 
         # dump here
-        # TODO
+        if dump_target:
+            print("saved plot data in pkl file (loadable with encoding='latin1')")
+            dump_target.dump(plot_kwargs, formatter="pickle")
 
         self.get_plot_func(func_id=func_id)(**plot_kwargs)
 
