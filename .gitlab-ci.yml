@@ -78,6 +78,7 @@ setup:
 .test:
   stage: test
   needs: ["setup"]
+  when: manual
   tags:
     - cvmfs
   variables:
