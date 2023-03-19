@@ -4,7 +4,7 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-  SPECIFIC_PLOT:
+  PLOTS:
     value: "none"
     options:
       - "none"
@@ -88,10 +88,10 @@ compile:
   script:
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
     - source setup.sh
-    - export test_cmd="law run test.TestPlots --version ci --plots ${PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf"
+    - export TEST_CMD="law run test.TestPlots --version ci --plots ${TEST_PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf"
     - echo "running command '${test_cmd}'"
-    - eval "${test_cmd}"
-    - eval "${test_cmd} --fetch-output 0,a,plots"
+    - eval "${TEST_CMD}"
+    - eval "${TEST_CMD} --fetch-output 0,a,plots"
     - mkdir png
     - mkdir pdf
     - mv plots/*.png png
@@ -112,11 +112,11 @@ test_all:
   extends: .test
   when: manual
   rules:
-    - if: $SPECIFIC_PLOT == "all"
+    - if: $PLOTS == "all"
       when: always
   parallel:
     matrix:
-      - PLOTS:
+      - TEST_PLOTS:
         - "limits"
         - "likelihoods"
         - "significances"
@@ -132,10 +132,10 @@ test_specific:
   extends: .test
   when: manual
   rules:
-    - if: $SPECIFIC_PLOT != "none" && $SPECIFIC_PLOT != "all"
+    - if: $PLOTS != "none" && $PLOTS != "all"
       when: always
   variables:
-    PLOTS: $SPECIFIC_PLOT
+    TEST_PLOTS: $PLOTS
 
 build_docs_image:
   stage: build
