@@ -264,6 +264,8 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
     z_max = None
     save_hep_data = None
 
+    default_plot_function = "dhi.plots.limits.plot_benchmark_limits"
+
     def requires(self):
         return MergeEFTBenchmarkLimits.req(self)
 
@@ -313,7 +315,6 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.limits.plot_benchmark_limits",
             paths=[outp.path for outp in outputs],
             data=data,
             poi=self.poi,
@@ -333,6 +334,8 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
     datacard_names = MultiDatacardTask.datacard_names
     force_equal_sequence_lengths = True
     compare_sequence_length = True
+
+    default_plot_function = "dhi.plots.limits.plot_multi_benchmark_limits"
 
     def requires(self):
         return [
@@ -403,7 +406,6 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.limits.plot_multi_benchmark_limits",
             paths=[outp.path for outp in outputs],
             data=data,
             names=names,

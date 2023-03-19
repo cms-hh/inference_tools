@@ -215,6 +215,8 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
 
     sort_pois = False
 
+    default_plot_function = "dhi.plots.gof.plot_gof_distribution"
+
     def requires(self):
         return MergeGoodnessOfFit.req(self)
 
@@ -236,7 +238,6 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.gof.plot_gof_distribution",
             paths=[outp.path for outp in outputs],
             data=gof_data["data"],
             toys=gof_data["toys"],
@@ -274,6 +275,8 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
     y_max = None
 
     compare_multi_sequence = "multi_datacards"
+
+    default_plot_function = "dhi.plots.gof.plot_gofs"
 
     def __init__(self, *args, **kwargs):
         super(PlotMultipleGoodnessOfFits, self).__init__(*args, **kwargs)
@@ -352,7 +355,6 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.gof.plot_gofs",
             paths=[outp.path for outp in outputs],
             data=data,
             algorithm=self.algorithm,

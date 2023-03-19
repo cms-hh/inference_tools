@@ -262,6 +262,8 @@ class PlotPostfitSOverB(PostfitPlotBase):
 
     force_n_pois = 1
 
+    default_plot_function = "dhi.plots.postfit_shapes.plot_s_over_b"
+
     def __init__(self, *args, **kwargs):
         super(PlotPostfitSOverB, self).__init__(*args, **kwargs)
 
@@ -344,7 +346,6 @@ class PlotPostfitSOverB(PostfitPlotBase):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.postfit_shapes.plot_s_over_b",
             paths=[outp.path for outp in outputs["plots"]],
             poi=self.pois[0],
             fit_diagnostics_path=fit_diagnostics_path,
@@ -427,6 +428,8 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
 
     force_n_pois = 1
 
+    default_plot_function = "dhi.plots.likelihoods.plot_nuisance_likelihood_scans"
+
     def __init__(self, *args, **kwargs):
         super(PlotNuisanceLikelihoodScans, self).__init__(*args, **kwargs)
 
@@ -483,7 +486,6 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
 
             # call the plot function
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_nuisance_likelihood_scans",
                 paths=[outp.path for outp in outputs],
                 poi=self.pois[0],
                 workspace=w,

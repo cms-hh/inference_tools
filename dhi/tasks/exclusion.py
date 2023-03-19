@@ -48,6 +48,8 @@ class PlotExclusionAndBestFit(
     allow_multiple_scan_ranges = True
     compare_multi_sequence = "multi_datacards"
 
+    default_plot_function = "dhi.plots.exclusion.plot_exclusion_and_bestfit_1d"
+
     def requires(self):
         def merge_tasks(cls, **kwargs):
             return [
@@ -136,7 +138,6 @@ class PlotExclusionAndBestFit(
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.exclusion.plot_exclusion_and_bestfit_1d",
             paths=[outp.path for outp in outputs],
             data=data,
             poi=self.pois[0],
@@ -198,6 +199,8 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
     force_scan_parameters_unequal_pois = True
     sort_scan_parameters = False
     allow_multiple_scan_ranges = True
+
+    default_plot_function = "dhi.plots.exclusion.plot_exclusion_and_bestfit_2d"
 
     def __init__(self, *args, **kwargs):
         super(PlotExclusionAndBestFit2D, self).__init__(*args, **kwargs)
@@ -306,7 +309,6 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.exclusion.plot_exclusion_and_bestfit_2d",
             paths=[outp.path for outp in outputs],
             poi=self.pois[0],
             scan_parameter1=self.scan_parameter_names[0],

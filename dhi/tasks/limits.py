@@ -418,6 +418,8 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
     force_n_scan_parameters = 1
     allow_multiple_scan_ranges = True
 
+    default_plot_function = "dhi.plots.limits.plot_limit_scan"
+
     def __init__(self, *args, **kwargs):
         super(PlotUpperLimits, self).__init__(*args, **kwargs)
 
@@ -560,7 +562,6 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.limits.plot_limit_scan",
             paths=[outp.path for outp in outputs["plots"]],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
@@ -604,6 +605,8 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
 class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
 
     compare_multi_sequence = "multi_datacards"
+
+    default_plot_function = "dhi.plots.limits.plot_limit_scans"
 
     @classmethod
     def modify_param_values(cls, params):
@@ -735,7 +738,6 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.limits.plot_limit_scans",
             paths=[outp.path for outp in outputs["plots"]],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
@@ -764,6 +766,8 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
 
     allow_empty_hh_model = True
     compare_multi_sequence = "hh_models"
+
+    default_plot_function = "dhi.plots.limits.plot_limit_scans"
 
     def requires(self):
         return [
@@ -897,7 +901,6 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.limits.plot_limit_scans",
             paths=[outp.path for outp in outputs["plots"]],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
@@ -967,6 +970,8 @@ class PlotUpperLimitsAtPoint(
 
     force_n_pois = 1
     compare_multi_sequence = "multi_datacards"
+
+    default_plot_function = "dhi.plots.limits.plot_limit_points"
 
     def __init__(self, *args, **kwargs):
         # cached external limit values
@@ -1183,7 +1188,6 @@ class PlotUpperLimitsAtPoint(
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.limits.plot_limit_points",
             paths=[outp.path for outp in outputs["plots"]],
             poi=self.poi,
             data=data,
@@ -1231,6 +1235,8 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
     sort_scan_parameters = False
     allow_multiple_scan_ranges = True
 
+    default_plot_function = "dhi.plots.limits.plot_limit_scan_2d"
+
     def requires(self):
         return [
             MergeUpperLimits.req(self, scan_parameters=scan_parameters)
@@ -1275,7 +1281,6 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.limits.plot_limit_scan_2d",
             paths=[outp.path for outp in outputs],
             poi=self.pois[0],
             scan_parameter1=self.scan_parameter_names[0],

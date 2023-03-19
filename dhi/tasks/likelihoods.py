@@ -307,6 +307,18 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
     sort_scan_parameters = False
     allow_multiple_scan_ranges = True
 
+    default_plot_function = [
+        "dhi.plots.likelihoods.plot_likelihood_scans_1d",
+        "dhi.plots.likelihoods.plot_likelihood_scan_2d",
+    ]
+
+    @property
+    def plot_function_id(self):
+        if self.plot_function not in (None, law.NO_STR):
+            return self.plot_function
+
+        return self.default_plot_function[self.n_pois - 1]
+
     def requires(self):
         return [
             MergeLikelihoodScan.req(self, scan_parameters=scan_parameters)
@@ -367,7 +379,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             theory_value = poi_data.get(self.pois[0], {}).get("sm_value")
 
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scans_1d",
                 paths=[outp.path for outp in outputs["plots"]],
                 poi=self.pois[0],
                 data=data,
@@ -392,7 +403,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             )
         else:  # 2
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scan_2d",
                 paths=[outp.path for outp in outputs["plots"]],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
@@ -525,6 +535,11 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
 
     compare_multi_sequence = "multi_datacards"
 
+    default_plot_function = [
+        "dhi.plots.likelihoods.plot_likelihood_scans_1d",
+        "dhi.plots.likelihoods.plot_likelihood_scans_2d",
+    ]
+
     @classmethod
     def modify_param_values(cls, params):
         params = PlotLikelihoodScan.modify_param_values.__func__.__get__(cls)(params)
@@ -616,7 +631,6 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
             theory_value = poi_data.get(self.pois[0], {}).get("sm_value")
 
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scans_1d",
                 paths=[outp.path for outp in outputs["plots"]],
                 poi=self.pois[0],
                 data=data,
@@ -642,7 +656,6 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
             )
         else:  # 2
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scans_2d",
                 paths=[outp.path for outp in outputs["plots"]],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
@@ -670,6 +683,11 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
     z_log = None
 
     compare_multi_sequence = "hh_models"
+
+    default_plot_function = [
+        "dhi.plots.likelihoods.plot_likelihood_scans_1d",
+        "dhi.plots.likelihoods.plot_likelihood_scans_2d",
+    ]
 
     def requires(self):
         return [
@@ -758,7 +776,6 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
             theory_value = poi_data.get(self.pois[0], {}).get("sm_value")
 
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scans_1d",
                 paths=[outp.path for outp in outputs["plots"]],
                 poi=self.pois[0],
                 data=data,
@@ -783,7 +800,6 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
             )
         else:  # 2
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scans_2d",
                 paths=[outp.path for outp in outputs["plots"]],
                 poi1=self.pois[0],
                 poi2=self.pois[1],

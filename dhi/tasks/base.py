@@ -632,15 +632,21 @@ class CommandTask(AnalysisTask):
 
 class PlotTask(AnalysisTask):
 
-    file_types = law.CSVParameter(
-        default=("pdf",),
-        description="comma-separated types of the output plot files; default: pdf",
+    plot_function = luigi.Parameter(
+        default=law.NO_STR,
+        significant=False,
+        description="a custom plot function to use; when empty, the default plot function is used "
+        "instead; nod default",
     )
     plot_postfix = luigi.Parameter(
         default=law.NO_STR,
         significant=False,
         description="an arbitrary postfix that is added with to underscores to all paths of "
         "produced plots; no default",
+    )
+    file_types = law.CSVParameter(
+        default=("pdf",),
+        description="comma-separated types of the output plot files; default: pdf",
     )
     view_cmd = luigi.Parameter(
         default=law.NO_STR,
@@ -699,6 +705,8 @@ class PlotTask(AnalysisTask):
         "file syntax; default: False",
     )
 
+    default_plot_function = None
+
     def get_axis_limit(self, value):
         if isinstance(value, six.string_types):
             value = getattr(self, value)
@@ -718,7 +726,23 @@ class PlotTask(AnalysisTask):
 
         return ["{}.{}".format(self.join_postfix(parts), ext) for ext in self.file_types]
 
-    def get_plot_func(self, func_id):
+    @property
+    def plot_function_id(self):
+        if self.plot_function not in (None, law.NO_STR):
+            return self.plot_function
+
+        return self.default_plot_function
+
+    def get_plot_func(self, func_id=None):
+        # get the func_id
+        if func_id is None:
+            func_id = self.plot_function_id
+        if func_id is None:
+            raise ValueError(
+                "cannot determine plot function, func_id is not set and no plot_function_id is "
+                "defined on instance level",
+            )
+
         if "." not in func_id:
             raise ValueError("invalid func_id format: {}".format(func_id))
         module_id, name = func_id.rsplit(".", 1)
@@ -736,8 +760,13 @@ class PlotTask(AnalysisTask):
 
         return func
 
-    def call_plot_func(self, func_id, **kwargs):
-        self.get_plot_func(func_id)(**(self.update_plot_kwargs(kwargs)))
+    def call_plot_func(self, func_id=None, **kwargs):
+        plot_kwargs = self.update_plot_kwargs(kwargs)
+
+        # dump here
+        # TODO
+
+        self.get_plot_func(func_id=func_id)(**plot_kwargs)
 
     def update_plot_kwargs(self, kwargs):
         return kwargs

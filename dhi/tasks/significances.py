@@ -190,6 +190,8 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
     sort_pois = False
     allow_multiple_scan_ranges = True
 
+    default_plot_function = "dhi.plots.significances.plot_significance_scan_1d"
+
     def requires(self):
         def merge_tasks(**kwargs):
             return [
@@ -240,7 +242,6 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.significances.plot_significance_scan_1d",
             paths=[outp.path for outp in outputs],
             scan_parameter=scan_parameter,
             expected_values=exp_values,
@@ -285,6 +286,8 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
     unblinded = None
 
     compare_multi_sequence = "multi_datacards"
+
+    default_plot_function = "dhi.plots.significances.plot_significance_scans_1d"
 
     @classmethod
     def modify_param_values(cls, params):
@@ -343,7 +346,6 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.significances.plot_significance_scans_1d",
             paths=[outp.path for outp in outputs],
             scan_parameter=self.scan_parameter_names[0],
             values=values,

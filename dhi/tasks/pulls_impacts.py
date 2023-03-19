@@ -534,6 +534,8 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
     z_max = None
     save_hep_data = None
 
+    default_plot_function = "dhi.plots.pulls_impacts.plot_pulls_impacts"
+
     def __init__(self, *args, **kwargs):
         super(PlotPullsAndImpacts, self).__init__(*args, **kwargs)
 
@@ -581,7 +583,6 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.pulls_impacts.plot_pulls_impacts",
             paths=[outp.path for outp in outputs],
             data=data,
             parameters_per_page=self.parameters_per_page,
@@ -614,6 +615,8 @@ class PlotMultiplePullsAndImpacts(PlotPullsAndImpacts, POIMultiTask, MultiDataca
     parameters_per_page = False
 
     compare_multi_sequence = "multi_datacards"
+
+    default_plot_function = "dhi.plots.pulls_impacts.plot_pulls_impacts"
 
     @classmethod
     def modify_param_values(cls, params):
@@ -672,7 +675,6 @@ class PlotMultiplePullsAndImpacts(PlotPullsAndImpacts, POIMultiTask, MultiDataca
 
         # abuse and call the plot function
         self.call_plot_func(
-            "dhi.plots.pulls_impacts.plot_pulls_impacts",
             paths=[outp.path for outp in outputs],
             data=data,
             parameters_per_page=len(self.datacard_names),
