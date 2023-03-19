@@ -82,6 +82,7 @@ lint:
 
 .test:
   stage: build
+  timeout: 2h
   tags:
     - cvmfs
   script:
