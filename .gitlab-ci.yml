@@ -5,47 +5,47 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-  PLOTS:
-    value: "limits"
-    options:
-      - "limits"
-      - "likelihoods"
-      - "significances"
-      - "pulls"
-      - "exclusions"
-      - "postfit"
-      - "gof"
-      - "eft_bm"
-      - "eft_c2"
-      - "studies"
-      - "upper_limits"
-      - "multiple_upper_limits"
-      - "multiple_upper_limits_by_model"
-      - "upper_limits_at_point"
-      - "likelihood_scan"
-      - "likelihood_scan_2d"
-      - "multiple_likelihood_scans"
-      - "multiple_likelihood_scans_2d"
-      - "multiple_likelihood_scans_by_model"
-      - "multiple_likelihood_scans_by_model_2d"
-      - "significance_scan"
-      - "multiple_significance_scans"
-      - "pulls_and_impacts"
-      - "exclusion_and_bestfit"
-      - "exclusion_and_bestfit_2d"
-      - "postfit_s_over_b"
-      - "nuisance_likelihood_scans"
-      - "goodness_of_fit"
-      - "eft_benchmark_limits"
-      - "multiple_eft_benchmark_limits"
-      - "upper_limits_c2"
-      - "likelihood_scan_c2_2d"
-      - "multiple_goodness_of_fits"
-      - "morphing_scales"
-      - "morphed_discriminant"
-      - "stat_error_scan"
-      - "all"
-    description: "The plot or plot group to test (see test.TestPlots for more info)."
+  #PLOTS:
+  #  value: "limits"
+  #  options:
+  #    - "limits"
+  #    - "likelihoods"
+  #    - "significances"
+  #    - "pulls"
+  #    - "exclusions"
+  #    - "postfit"
+  #    - "gof"
+  #    - "eft_bm"
+  #    - "eft_c2"
+  #    - "studies"
+  #    - "upper_limits"
+  #    - "multiple_upper_limits"
+  #    - "multiple_upper_limits_by_model"
+  #    - "upper_limits_at_point"
+  #    - "likelihood_scan"
+  #    - "likelihood_scan_2d"
+  #    - "multiple_likelihood_scans"
+  #    - "multiple_likelihood_scans_2d"
+  #    - "multiple_likelihood_scans_by_model"
+  #    - "multiple_likelihood_scans_by_model_2d"
+  #    - "significance_scan"
+  #    - "multiple_significance_scans"
+  #    - "pulls_and_impacts"
+  #    - "exclusion_and_bestfit"
+  #    - "exclusion_and_bestfit_2d"
+  #    - "postfit_s_over_b"
+  #    - "nuisance_likelihood_scans"
+  #    - "goodness_of_fit"
+  #    - "eft_benchmark_limits"
+  #    - "multiple_eft_benchmark_limits"
+  #    - "upper_limits_c2"
+  #    - "likelihood_scan_c2_2d"
+  #    - "multiple_goodness_of_fits"
+  #    - "morphing_scales"
+  #    - "morphed_discriminant"
+  #    - "stat_error_scan"
+  #    - "all"
+  #  description: "The plot or plot group to test (see test.TestPlots for more info)."
 
 lint:
   stage: build
@@ -85,7 +85,7 @@ setup:
     paths:
       - data/
 
-test:
+.test:
   stage: test
   needs: ["setup"]
   tags:
@@ -114,6 +114,14 @@ test:
       - png/*.png
       - pdf/*.pdf
     expire_in: 1 month
+
+test:
+  extends: .test
+  #rules:
+  #  - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  parallel:
+    matrix:
+      - PLOTS: ["gof", "studies"]
 
 build_docs_image:
   stage: build
