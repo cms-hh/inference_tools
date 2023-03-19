@@ -39,48 +39,77 @@ from dhi.tasks.studies.model_selection import (
 class TestRegister(law.task.base.Register):
 
     def __new__(metacls, classname, bases, classdict):
-        # convert test names into "--no-<name>" and "--only-<name>" task parameters
-        for test_name in classdict.get("test_names", []):
-            classdict["no_" + test_name] = luigi.BoolParameter(default=False)
-            classdict["only_" + test_name] = luigi.BoolParameter(default=False)
+        # convert test names task parameters
+        for group_name, test_names in classdict.get("test_groups", {}).items():
+            classdict["test_all_" + group_name] = luigi.BoolParameter(default=False)
+            for name in test_names:
+                classdict["test_" + name] = luigi.BoolParameter(default=False)
+
+        # test_all parameter
+        classdict["test_all"] = luigi.BoolParameter(default=False)
 
         return law.task.base.Register.__new__(metacls, classname, bases, classdict)
 
 
-class TestPlotsDefs(six.with_metaclass(TestRegister, AnalysisTask)):
+class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
 
     task_namespace = "test"
 
-    # test names that will be translated to task parameters
-    # "--no-<name>" and "--only-<name>" by the meta class
-    test_names = [
-        "upper_limits",
-        "multiple_upper_limits",
-        "multiple_upper_limits_by_model",
-        "upper_limits_at_point",
-        "likelihood_scan",
-        "likelihood_scan_2d",
-        "multiple_likelihood_scans",
-        "multiple_likelihood_scans_2d",
-        "multiple_likelihood_scans_by_model",
-        "multiple_likelihood_scans_by_model_2d",
-        "significance_scan",
-        "multiple_significance_scans",
-        "pulls_and_impacts",
-        "exclusion_and_bestfit",
-        "exclusion_and_bestfit_2d",
-        "postfit_s_over_b",
-        "nuisance_likelihood_scans",
-        "goodness_of_fit",
-        "eft_benchmark_limits",
-        "multiple_eft_benchmark_limits",
-        "upper_limits_c2",
-        "likelihood_scan_c2_2d",
-        "multiple_goodness_of_fits",
-        "morphing_scales",
-        "morphed_discriminant",
-        "stat_error_scan",
-    ]
+    # grouped test names that will be translated to task parameters
+    # "--test-all-<group_name>" and "--test-<test_name>" by the meta class
+    test_groups = {
+        "limits": [
+            "upper_limits",
+            "multiple_upper_limits",
+            "multiple_upper_limits_by_model",
+            "upper_limits_at_point",
+        ],
+        "likelihoods": [
+            "likelihood_scan",
+            "likelihood_scan_2d",
+            "multiple_likelihood_scans",
+            "multiple_likelihood_scans_2d",
+            "multiple_likelihood_scans_by_model",
+            "multiple_likelihood_scans_by_model_2d",
+        ],
+        "significances": [
+            "significance_scan",
+            "multiple_significance_scans",
+        ],
+        "pulls": [
+            "pulls_and_impacts",
+        ],
+        "exclusions": [
+            "exclusion_and_bestfit",
+            "exclusion_and_bestfit_2d",
+        ],
+        "postfit": [
+            "postfit_s_over_b",
+            "nuisance_likelihood_scans",
+        ],
+        "gof": [
+            "goodness_of_fit",
+            "multiple_goodness_of_fits",
+        ],
+        "eft_bm": [
+            "eft_benchmark_limits",
+            "multiple_eft_benchmark_limits",
+        ],
+        "eft_c2": [
+            "upper_limits_c2",
+            "likelihood_scan_c2_2d",
+        ],
+        "studies": [
+            "morphing_scales",
+            "morphed_discriminant",
+            "stat_error_scan",
+        ],
+    }
+
+    plots = law.CSVParameter(
+        default=(),
+        description="comma-separated list of test to run; empty default",
+    )
 
     file_types = PlotTask.file_types
     campaign = PlotTask.campaign
@@ -89,15 +118,26 @@ class TestPlotsDefs(six.with_metaclass(TestRegister, AnalysisTask)):
     view_cmd = PlotTask.view_cmd
 
     exclude_params_req = {"view_cmd"}
-    exclude_index = True
+
+    def __init__(self, *args, **kwargs):
+        super(TestPlots, self).__init__(*args, **kwargs)
+
+        # define a list of enabled tests
+        self.enabled_tests = []
+        for group_name, test_names in self.test_groups.items():
+            for test_name in test_names:
+                if (
+                    "all" in self.plots or
+                    "all_" + group_name in self.plots or
+                    test_name in self.plots or
+                    self.test_all or
+                    getattr(self, "test_all_" + group_name) or
+                    getattr(self, "test_" + test_name)
+                ):
+                    self.enabled_tests.append(test_name)
 
     def check_enabled(self, test_name):
-        assert test_name in self.test_names
-
-        if any(getattr(self, "only_" + n) for n in self.test_names):
-            return getattr(self, "only_" + test_name)
-
-        return not getattr(self, "no_" + test_name)
+        return test_name in self.enabled_tests
 
     def requires(self):
         reqs = OrderedDict()
@@ -415,108 +455,6 @@ class TestPlotsDefs(six.with_metaclass(TestRegister, AnalysisTask)):
             )
 
         return reqs
-
-    def output(self):
-        return self.input()
-
-    @view_output_plots
-    def run(self):
-        pass
-
-
-class TestPlots(AnalysisTask):
-
-    task_namespace = "test"
-
-    # plot group names
-    plot_groups = {
-        "limits": [
-            "upper_limits",
-            "multiple_upper_limits",
-            "multiple_upper_limits_by_model",
-            "upper_limits_at_point",
-        ],
-        "likelihoods": [
-            "likelihood_scan",
-            "likelihood_scan_2d",
-            "multiple_likelihood_scans",
-            "multiple_likelihood_scans_2d",
-            "multiple_likelihood_scans_by_model",
-            "multiple_likelihood_scans_by_model_2d",
-        ],
-        "significances": [
-            "significance_scan",
-            "multiple_significance_scans",
-        ],
-        "pulls": [
-            "pulls_and_impacts",
-        ],
-        "exclusions": [
-            "exclusion_and_bestfit",
-            "exclusion_and_bestfit_2d",
-        ],
-        "postfit": [
-            "postfit_s_over_b",
-            "nuisance_likelihood_scans",
-        ],
-        "gof": [
-            "goodness_of_fit",
-            "multiple_goodness_of_fits",
-        ],
-        "eft_bm": [
-            "eft_benchmark_limits",
-            "multiple_eft_benchmark_limits",
-        ],
-        "eft_c2": [
-            "upper_limits_c2",
-            "likelihood_scan_c2_2d",
-        ],
-        "studies": [
-            "morphing_scales",
-            "morphed_discriminant",
-            "stat_error_scan",
-        ],
-    }
-
-    plots = law.CSVParameter(
-        default=("limits",),
-        description="comma-separated list of test to run; default: 'limits'",
-    )
-
-    file_types = TestPlotsDefs.file_types
-    campaign = TestPlotsDefs.campaign
-    cms_postfix = TestPlotsDefs.cms_postfix
-    style = TestPlotsDefs.style
-    view_cmd = TestPlotsDefs.view_cmd
-
-    exclude_params_req = {"view_cmd"}
-
-    def requires(self):
-        # determine the full list of plots to enable
-        plots = []
-
-        for name in self.plots:
-            if name == "all":
-                plots += sum(self.plot_groups.values(), [])
-                break
-
-            if name in self.plot_groups:
-                plots += self.plot_groups[name]
-                continue
-
-            for group_name, plot_names in self.plot_groups.items():
-                if name in plot_names:
-                    plots.append(name)
-                    break
-
-        # remove duplicates
-        plots = sorted(set(plots), key=plots.index)
-
-        # define requirements
-        return TestPlotsDefs.req(
-            self,
-            **{"only_{}".format(name): True for name in plots}  # noqa
-        )
 
     def output(self):
         return self.input()
