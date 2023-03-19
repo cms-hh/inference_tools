@@ -108,7 +108,7 @@ setup:
 test_all:
   extends: .test
   rules:
-    - if: $SPECIFIC_PLOT != "none"
+    - if: $SPECIFIC_PLOT == "none"
       allow_failure: true
   parallel:
     matrix:
