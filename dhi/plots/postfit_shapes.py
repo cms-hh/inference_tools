@@ -17,9 +17,9 @@ from scinum import Number
 from dhi.config import poi_data, campaign_labels, colors
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors, make_list, warn,
-    multi_match, round_digits, make_tuple,
+    multi_match, round_digits,
 )
-from dhi.plots.util import use_style, create_model_parameters, determine_limit_digits
+from dhi.plots.util import use_style, create_model_parameters, determine_limit_digits, Style
 import dhi.hepdata_tools as hdt
 
 
@@ -104,8 +104,8 @@ def plot_s_over_b(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    if style == "paper":
         cms_postfix = None
 
     # input checks

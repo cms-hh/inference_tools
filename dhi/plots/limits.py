@@ -26,6 +26,7 @@ from dhi.util import (
 from dhi.plots.util import (
     use_style, create_model_parameters, create_hh_xsbr_label, determine_limit_digits,
     get_graph_points, get_y_range, get_contours, fill_hist_from_points, infer_binning_from_grid,
+    Style,
 )
 import dhi.hepdata_tools as hdt
 
@@ -94,8 +95,8 @@ def plot_limit_scan(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    if style == "paper":
         cms_postfix = None
 
     # input checks
@@ -436,14 +437,13 @@ def plot_limit_scan(
     legend = r.routines.create_legend(pad=pad, width=440, n=3, props={"NColumns": 2})
     r.fill_legend(legend, legend_entries_l + legend_entries_r)
     draw_objs.append(legend)
-    if "paper" not in style:
-        legend_box = r.routines.create_legend_box(
-            legend,
-            pad,
-            "trl",
-            props={"LineWidth": 0, "FillColor": colors.white_trans_70},
-        )
-        draw_objs.insert(-1, legend_box)
+    legend_box = r.routines.create_legend_box(
+        legend,
+        pad,
+        "trl",
+        props={"LineWidth": 0, "FillColor": colors.white_trans_70},
+    )
+    draw_objs.insert(-1, legend_box)
 
     # cms label
     cms_layout = "outside_horizontal"
@@ -542,8 +542,8 @@ def plot_limit_scans(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    if style == "paper":
         cms_postfix = None
 
     # convert record arrays to dicts mapping to arrays
@@ -961,8 +961,8 @@ def plot_limit_points(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    if style == "paper":
         cms_postfix = None
 
     # check inputs and get extrema
@@ -1374,8 +1374,8 @@ def plot_limit_scan_2d(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    if style == "paper":
         cms_postfix = None
 
     def check_values(values):
@@ -1675,8 +1675,8 @@ def plot_benchmark_limits(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    if style == "paper":
         cms_postfix = None
 
     # check inputs and get extrema
@@ -1929,8 +1929,8 @@ def plot_multi_benchmark_limits(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    if style == "paper":
         cms_postfix = None
 
     # check inputs and get extrema

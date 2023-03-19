@@ -15,9 +15,9 @@ from dhi.plots.likelihoods import (
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, invert_graph, get_contours, get_text_extent,
-    locate_contour_labels,
+    locate_contour_labels, Style,
 )
-from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, make_list, warn, make_tuple
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, make_list, warn
 
 
 colors = colors.root
@@ -90,8 +90,8 @@ def plot_exclusion_and_bestfit_1d(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    if style == "paper":
         cms_postfix = None
 
     # check minimal fields per data entry
@@ -414,9 +414,14 @@ def plot_exclusion_and_bestfit_2d(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    style.color_68 = colors.grey
+    style.color_95 = colors.light_grey
+    if style == "paper":
         cms_postfix = None
+    if style == "brazil":
+        style.color_68 = colors.brazil_green
+        style.color_95 = colors.brazil_yellow
 
     # convert record arrays to dicts
     def rec2dict(arr):
@@ -498,15 +503,10 @@ def plot_exclusion_and_bestfit_2d(
             interpolation=interpolation_method,
         )[0]
 
-    # style graphs and add to draw objects, from outer to inner graphs (-2, -1, +1, +2),
-    # followed by nominal or observed
-    color_68 = colors.brazil_green if "brazil" in style else colors.grey
-    color_95 = colors.brazil_yellow if "brazil" in style else colors.light_grey
-
     # +2 sigma exclusion
     if has_unc2:
         for i, g in enumerate(contours["limit_p2"]):
-            r.setup_graph(g, props={"LineStyle": 2, "FillColor": color_95})
+            r.setup_graph(g, props={"LineStyle": 2, "FillColor": style.color_95})
             draw_objs.append((g, "SAME,F"))
             if i == 0:
                 legend_entries[5] = (g, "95% expected", "LF")
@@ -514,12 +514,12 @@ def plot_exclusion_and_bestfit_2d(
     # -1 and +1 sigma exclusion
     if has_unc1:
         for i, g in enumerate(contours["limit_p1"]):
-            r.setup_graph(g, props={"LineStyle": 2, "FillColor": color_68})
+            r.setup_graph(g, props={"LineStyle": 2, "FillColor": style.color_68})
             draw_objs.append((g, "SAME,F"))
             if i == 0:
                 legend_entries[4] = (g, "68% expected", "LF")
 
-        p1_col = color_95 if has_unc2 else colors.white
+        p1_col = style.color_95 if has_unc2 else colors.white
         for g in contours["limit_m1"]:
             r.setup_graph(g, props={"FillColor": p1_col})
             draw_objs.append((g, "SAME,F"))

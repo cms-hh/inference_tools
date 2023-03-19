@@ -131,19 +131,60 @@ def call_hook(name, *args, **kwargs):
 
 class DotDict(OrderedDict):
     """
-    Dictionary providing item access via attributes.
+    Subclass of *OrderedDict* that provides read access for items via attributes by implementing
+    ``__getattr__``. In case a item is accessed via attribute and it does not exist, an
+    *AttriuteError* is raised rather than a *KeyError*. Example:
+
+    .. code-block:: python
+
+       d = DotDict()
+       d["foo"] = 1
+
+       print(d["foo"])
+       # => 1
+
+       print(d.foo)
+       # => 1
+
+       print(d["bar"])
+       # => KeyError
+
+       print(d.bar)
+       # => AttributeError
     """
 
-    FORWARD_UPSTREAM = ["_OrderedDict__root"]
+    # forward certain attributes to the super class in python 2
+    FORWARD_SUPER = ("_OrderedDict__root", "_OrderedDict__map")
 
     def __getattr__(self, attr):
-        if attr in self.FORWARD_UPSTREAM:
+        if six.PY2 and attr in self.FORWARD_SUPER:
             return super(DotDict, self).__getattr__(attr)
 
-        return self[attr]
+        try:
+            return self[attr]
+        except KeyError:
+            raise AttributeError(
+                "'{}' object has no attribute '{}'".format(self.__class__.__name__, attr),
+            )
+
+    def __setattr__(self, attr, value):
+        if six.PY2 and attr in self.FORWARD_SUPER:
+            return super(DotDict, self).__setattr__(attr, value)
+
+        self[attr] = value
 
     def copy(self):
-        return self.__class__(super(DotDict, self).copy())
+        """"""
+        return self.__class__(self)
+
+    @classmethod
+    def wrap(cls, *args, **kwargs):
+        """
+        Takes a dictionary *d* and recursively replaces it and all other nested dictionary types
+        with :py:class:`DotDict`'s for deep attribute-style access.
+        """
+        wrap = lambda d: cls((k, wrap(v)) for k, v in d.items()) if isinstance(d, dict) else d
+        return wrap(OrderedDict(*args, **kwargs))
 
 
 def expand_path(path):

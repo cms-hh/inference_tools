@@ -19,9 +19,13 @@ from collections import OrderedDict
 import six
 import numpy as np
 import scipy.interpolate
+import law
 
 from dhi.config import poi_data, br_hh_names
-from dhi.util import import_ROOT, import_file, try_int, to_root_latex, make_list, InterExtrapolator
+from dhi.util import (
+    import_ROOT, import_file, try_int, to_root_latex, make_list, make_tuple, InterExtrapolator,
+    DotDict,
+)
 
 
 _styles = {}
@@ -61,6 +65,35 @@ def use_style(style_name):
 
         return wrapper
     return decorator
+
+
+class Style(DotDict):
+
+    @classmethod
+    def new(cls, style, *args, **kwargs):
+        # takes a string or tuple of strings and returns a new style object
+        inst = cls(*args, **kwargs)
+        inst.styles = make_tuple(style)
+
+    def __init__(self, *args, **kwargs):
+        super(Style, self).__init__(*args, **kwargs)
+
+        self.styles = ()
+
+    def __eq__(self, other):
+        if isinstance(other, (str, list, tuple)):
+            return self.matches(other)
+
+        super(Style, self).__eq__(other)
+
+    def __ne__(self, other):
+        if isinstance(other, (str, list, tuple)):
+            return not self.matches(other)
+
+        super(Style, self).__ne__(other)
+
+    def matches(self, pattern):
+        return any(law.util.multi_match(style, pattern) for style in self.styles)
 
 
 def create_random_name():

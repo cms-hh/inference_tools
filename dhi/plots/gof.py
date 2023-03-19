@@ -10,8 +10,8 @@ import numpy as np
 import scipy.stats
 
 from dhi.config import campaign_labels, colors, br_hh_names
-from dhi.util import import_ROOT, to_root_latex, create_tgraph, make_list, make_tuple
-from dhi.plots.util import use_style, create_model_parameters, get_y_range
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, make_list
+from dhi.plots.util import use_style, create_model_parameters, get_y_range, Style
 
 
 colors = colors.root
@@ -54,8 +54,8 @@ def plot_gof_distribution(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    if style == "paper":
         cms_postfix = None
 
     # remove nans and outliers
@@ -210,8 +210,8 @@ def plot_gofs(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    if style == "paper":
         cms_postfix = None
 
     # check inputs

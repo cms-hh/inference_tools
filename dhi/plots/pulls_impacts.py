@@ -14,9 +14,9 @@ import numpy as np
 
 from dhi.config import poi_data, campaign_labels, colors
 from dhi.util import (
-    import_ROOT, multi_match, to_root_latex, linspace, colored, make_list, make_tuple,
+    import_ROOT, multi_match, to_root_latex, linspace, colored, make_list,
 )
-from dhi.plots.util import use_style, make_parameter_label_map
+from dhi.plots.util import use_style, make_parameter_label_map, Style
 
 
 colors = colors.root
@@ -94,9 +94,12 @@ def plot_pulls_impacts(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    style.campaign_y_offset = 105
+    if style == "paper":
         cms_postfix = None
+    if not cms_postfix:
+        style.campaign_y_offset = 90
 
     pull_range = int(pull_range)
     auto_impact_range = impact_range <= 0
@@ -422,7 +425,7 @@ def plot_pulls_impacts(
                 campaign_label,
                 pad=pad,
                 x_offset=22,
-                y_offset=90 if "paper" in style else 105,
+                y_offset=style.campaign_y_offset,
             )
             draw_objs.append(campaign_label)
 

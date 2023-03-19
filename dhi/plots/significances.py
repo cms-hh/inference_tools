@@ -15,11 +15,11 @@ from dhi.config import (
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, make_list, unique_recarray, dict_to_recarray,
-    try_int, make_tuple,
+    try_int,
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, get_y_range, infer_binning_from_grid, get_contours,
-    fill_hist_from_points, get_text_extent, locate_contour_labels,
+    fill_hist_from_points, get_text_extent, locate_contour_labels, Style,
 )
 
 
@@ -68,8 +68,8 @@ def plot_significance_scan_1d(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    if style == "paper":
         cms_postfix = None
 
     # helper to check and convert record arrays to dict mappings to arrays
@@ -272,8 +272,8 @@ def plot_significance_scans_1d(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    if style == "paper":
         cms_postfix = None
 
     # convert record arrays to dicts mapping to arrays
@@ -469,8 +469,8 @@ def plot_significance_scan_2d(
     ROOT = import_ROOT()
 
     # style-based adjustments
-    style = make_tuple(style)
-    if "paper" in style:
+    style = Style.new(style)
+    if style == "paper":
         cms_postfix = None
 
     # check values
