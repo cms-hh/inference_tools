@@ -1023,7 +1023,10 @@ def plot_limit_points(
         else:
             x_min = 0.75 * x_min_value
     if x_max is None:
-        x_max = x_max_value * 1.33
+        x_max = x_max_value * 1.33 
+        if  style.matches("summary") :
+            x_max = (x_max_value * 10.0) if x_log else (x_max_value * 2.5) 
+        
 
     # some constants for plotting
     pad_width = pad_width or 800  # pixels
