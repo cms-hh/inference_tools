@@ -8,7 +8,7 @@ import math
 
 import numpy as np
 
-from dhi.config import poi_data, campaign_labels, colors, br_hh_names
+from dhi.config import poi_data, campaign_labels, colors, br_hh_names, hh_references
 from dhi.plots.limits import evaluate_limit_scan_1d, _print_excluded_ranges
 from dhi.plots.likelihoods import (
     _preprocess_values, evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d,
@@ -83,6 +83,8 @@ def plot_exclusion_and_bestfit_1d(
     Supported values for *style*:
 
         - "paper"
+        - "summary": Add references for data entries whose name refers to a known entry in
+          hh_references.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/exclusion.html#comparison-of-exclusion-performance  # noqa
     """
@@ -276,18 +278,21 @@ def plot_exclusion_and_bestfit_1d(
     h_dummy.GetYaxis().SetBinLabel(1, "")
     label_tmpl = "%s"
     label_tmpl_scan = "#splitline{%s}{#scale[0.75]{%s = %s}}"
-    # TODO: add summary via style tuple
-    # label_tmpl_summary = "#splitline{%s}{#splitline{#scale[0.75]{%s = %s}}{#scale[0.65]{%s}}}"
+    label_tmpl_summary = "#splitline{%s}{#splitline{#scale[0.75]{%s = %s}}{#scale[0.65]{%s}}}"
     for i, (d, scan) in enumerate(zip(data, scans)):
         # name labels
         label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
         if scan:
-            # TODO: use hh_references in summary style
-            label = label_tmpl_scan % (
+            tmpl = label_tmpl_scan
+            args = (
                 label,
                 scan_label,
                 scan.num_min.str("%.2f", style="root", force_asymmetric=True, styles={"space": ""}),
             )
+            if style.matches("summary") and d["name"] in hh_references:
+                tmpl = label_tmpl_summary
+                args += (to_root_latex(hh_references[d["name"]]),)
+            label = tmpl % args
         else:
             label = label_tmpl % (label,)
 

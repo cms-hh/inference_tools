@@ -954,6 +954,8 @@ def plot_limit_points(
     Supported values for *style*:
 
         - "paper"
+        - "summary": Add references to the right for limits whose name refers to a known entry in
+          hh_references.
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-at-a-certain-point-of-parameters  # noqa
     """
@@ -1006,6 +1008,12 @@ def plot_limit_points(
     hep_data = None
     if hep_data_path:
         hep_data = hdt.create_hist_data()
+
+    # add references in summary style
+    if style.matches("summary"):
+        for d in data:
+            if d["name"] in hh_references:
+                d["label"] = hh_references[d["name"]]
 
     # set default ranges
     if x_min is None:
@@ -1214,7 +1222,7 @@ def plot_limit_points(
 
         # extra labels
         if d.get("label"):
-            rlabel = to_root_latex(hh_references.get(d["name"], d["label"]))
+            rlabel = to_root_latex(d["label"])
             rlabel_x = r.get_x(10, pad, anchor="right")
             rlabel = ROOT.TLatex(rlabel_x, label_y, rlabel)
             r.setup_latex(rlabel, props={"NDC": True, "TextAlign": 32, "TextSize": 14})
