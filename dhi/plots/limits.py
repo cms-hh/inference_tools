@@ -134,7 +134,7 @@ def plot_limit_scan(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "95% CL limit on {} {}".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
+    y_title = "95% CL upper limit on {} {}".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
         to_root_latex("({})".format(xsec_unit)) if xsec_unit else "/ #sigma_{Theory}")
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
@@ -523,7 +523,7 @@ def plot_limit_scans(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter].label)
-    y_title = "95% CL limit on {} {}".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
+    y_title = "95% CL upper limit on {} {}".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
         to_root_latex("({})".format(xsec_unit)) if xsec_unit else "/ #sigma_{Theory}")
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
@@ -887,7 +887,7 @@ def plot_limit_points(
     draw_objs = []
 
     # dummy histogram to control axes
-    x_title = "95% CL limit on {} {}".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
+    x_title = "95% CL upper limit on {} {}".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
         to_root_latex("({})".format(xsec_unit)) if xsec_unit else "/ #sigma_{Theory}")
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Maximum": y_max})
@@ -1250,7 +1250,7 @@ def plot_limit_scan_2d(
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter1].label)
     y_title = to_root_latex(poi_data[scan_parameter2].label)
-    z_title = "95% CL limit on {} / #sigma_{{Theory}}".format(
+    z_title = "95% CL upper limit on {} / #sigma_{{Theory}}".format(
         to_root_latex(create_hh_xsbr_label(poi)))
     h_dummy = ROOT.TH2F("h_dummy", ";{};{};{}".format(x_title, y_title, z_title),
         1, x_min, x_max, 1, y_min, y_max)
@@ -1453,7 +1453,7 @@ def plot_benchmark_limits(
 
     # dummy histogram to control axes
     x_title = "Benchmark scenario"
-    y_title = "95% CL limit on {} ({})".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
+    y_title = "95% CL upper limit on {} ({})".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
         to_root_latex(xsec_unit))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), n, -0.5, n - 0.5)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": 1.2*y_max})
@@ -1640,7 +1640,7 @@ def plot_multi_benchmark_limits(
     legend_entries = []
     # dummy histogram to control axes
     x_title = "Benchmark scenario"
-    y_title = "95% CL limit on {} ({})".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
+    y_title = "95% CL upper limit on {} ({})".format(to_root_latex(create_hh_xsbr_label(poi, hh_process)),
                                                to_root_latex(xsec_unit))
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), n, -0.5, n - 0.5)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0, "Minimum": y_min, "Maximum": y_max})
