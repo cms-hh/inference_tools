@@ -1668,6 +1668,7 @@ def plot_benchmark_limits(
     Supported values for *style*:
 
         - "paper"
+        - "multilep"
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/eft.html#benchmark-limits
     """
@@ -1676,9 +1677,23 @@ def plot_benchmark_limits(
 
     # style-based adjustments
     style = Style.new(style)
+    style.sepLineStyle = 1
+    style.sepLineColor = colors.black
+    style.sepLineWidth = 2
+    style.expLineColor = colors.black
+    style.expLineStyle = 2
+    style.expLineWidth = 2
+    style.bar_width = bar_width
     if style.matches("paper"):
         cms_postfix = None
-
+    if style.matches("multilep"):
+        style.sepLineColor = colors.red
+        style.sepLineStyle = 9
+        style.sepLineWidth = 5
+        style.expLineColor = colors.blue
+        style.expLineStyle = 2
+        style.expLineWidth = 5
+        style.bar_width = 1
     # check inputs and get extrema
     n = len(data)
     has_obs = False
@@ -1756,8 +1771,8 @@ def plot_benchmark_limits(
             if key not in d:
                 y[i] = -1.e5
                 continue
-            x[i] = i - 0.5 * bar_width
-            x_err_u[i] = bar_width
+            x[i] = i - 0.5 * style.bar_width
+            x_err_u[i] = style.bar_width
             y[i] = d[key][0]
             if sigma:
                 y_err_d[i] = y[i] - d[key][sigma * 2]
@@ -1788,7 +1803,7 @@ def plot_benchmark_limits(
 
     # prepare graphs
     g_exp = create_graph(sigma=0)
-    r.setup_graph(g_exp, props={"LineWidth": 2, "LineStyle": 2})
+    r.setup_graph(g_exp, props={"LineWidth": style.expLineWidth, "LineStyle": style.expLineStyle, "LineColor": style.expLineColor})
     draw_objs.append((g_exp, "SAME,EZ"))
     legend_entries[0] = (g_exp, "Median expected", "L")
 
@@ -1818,7 +1833,7 @@ def plot_benchmark_limits(
             line = ROOT.TLine(x - 0.5, y_min, x - 0.5, y_max_value)
             r.setup_line(
                 line,
-                props={"LineColor": colors.black, "LineStyle": 1, "NDC": False},
+                props={"LineColor": style.sepLineColor, "LineStyle": style.sepLineStyle, "NDC": False},
             )
             draw_objs.append(line)
 
