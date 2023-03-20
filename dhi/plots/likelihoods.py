@@ -110,7 +110,7 @@ def plot_likelihood_scans_1d(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # input checks and transformations
@@ -538,9 +538,9 @@ def plot_likelihood_scan_2d(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
-    if style == "contours*":
+    if style.matches("contours*"):
         show_significances = (1, 2)
         style.significance_labels = ["68% CL", "95% CL"]
 
@@ -551,7 +551,7 @@ def plot_likelihood_scan_2d(
 
     # activate a different style of contours_hcomb
     style_changed = False
-    if style == "contours_hcomb":
+    if style.matches("contours_hcomb"):
         s = r.styles.copy(r.styles.current_style_name, "contours_hcomb")
         s.pad.TopMargin = 0.075
         s.pad.BottomMargin = 0.16
@@ -618,7 +618,7 @@ def plot_likelihood_scan_2d(
         contour_levels_dnll2.append(dnll2)
 
     # refine colors and styles
-    if style == "contours*":
+    if style.matches("contours*"):
         contour_colors = n_contours * [colors.black]
         contour_styles = ([1, 7, 2, 9] + max(n_contours - 4, 0) * [8])[:n_contours]
     else:
@@ -658,7 +658,7 @@ def plot_likelihood_scan_2d(
 
     # start plotting
     r.setup_style()
-    pad_props = {} if style == "contours*" else {"RightMargin": 0.17, "Logz": True}
+    pad_props = {} if style.matches("contours*") else {"RightMargin": 0.17, "Logz": True}
     canvas, (pad,) = r.routines.create_canvas(pad_props=pad_props)
     pad.cd()
     draw_objs = []
@@ -742,7 +742,7 @@ def plot_likelihood_scan_2d(
     legend_entries = []
 
     # setup actual histograms
-    if style != "contours*":
+    if not style.matches("contours*"):
         for i, h in enumerate(hists):
             r.setup_hist(h, props={"Contour": 100, "Minimum": z_min, "Maximum": z_max})
             if i == 0:
@@ -771,7 +771,7 @@ def plot_likelihood_scan_2d(
                 draw_objs.append((g, "SAME,C"))
 
             # stop here when only drawing contours
-            if style == "contours*":
+            if style.matches("contours*"):
                 continue
 
             # get the approximate label width
@@ -840,7 +840,7 @@ def plot_likelihood_scan_2d(
         draw_objs.append((g_sm, "P"))
         legend_entries.append((g_sm, "SM Higgs", "P"))
         # yellow overlay for hcomb style
-        if style == "contours_hcomb":
+        if style.matches("contours_hcomb"):
             g_sm2 = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
             r.setup_graph(
                 g_sm2,
@@ -862,7 +862,7 @@ def plot_likelihood_scan_2d(
         props = {"MarkerStyle": 43, "MarkerSize": 2}
         if show_best_fit_error:
             props = {}
-        elif style == "contours*":
+        elif style.matches("contours*"):
             props = {"MarkerStyle": 34, "MarkerSize": 2}
         r.setup_graph(g_fit, props=props, color=colors.black)
         draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
@@ -957,7 +957,7 @@ def plot_likelihood_scan_2d(
     if show_best_fit and scan:
         label = "Observed" if style == "paper" else make_bf_label(scan.num1_min, scan.num2_min)
         legend_entries.insert(0, (g_fit, label, "PLE" if show_best_fit_error else "P"))
-    if style == "contours*":
+    if style.matches("contours*"):
         for graphs, level in zip(contours, style.significance_labels):
             for g in graphs:
                 legend_entries.append((g, level, "L"))
@@ -965,7 +965,7 @@ def plot_likelihood_scan_2d(
         legend_kwargs = {"pad": pad, "width": 340, "n": len(legend_entries)}
         if eft_lines:
             legend_kwargs["width"] = 550
-        if style == "contours*":
+        if style.matches("contours*"):
             legend_kwargs["n"] = 2
             legend_kwargs["props"] = {"NColumns": 2}
             legend_kwargs["width"] = 400 if style == "contours_hcomb" else 260
@@ -974,14 +974,14 @@ def plot_likelihood_scan_2d(
         draw_objs.append(legend)
 
         # draw the overlay SM point again for hcomb style (depends highly on the legend position)
-        if show_sm_point and style == "contours_hcomb":
+        if show_sm_point and style.matches("contours_hcomb"):
             g_sm2_legend = g_sm2.Clone()
             g_sm2_legend.SetPoint(1, 1.525, 1.685)
             draw_objs.append((g_sm2_legend, "P"))
 
     # cms label
     cms_layout = "outside_horizontal"
-    cms_props = {"text_size": 44} if style == "contours_hcomb" else {}
+    cms_props = {"text_size": 44} if style.matches("contours_hcomb") else {}
     cms_labels = r.routines.create_cms_labels(
         pad=pad,
         postfix=cms_postfix or "",
@@ -993,7 +993,7 @@ def plot_likelihood_scan_2d(
     # model parameter labels
     if model_parameters:
         param_kwargs = {}
-        param_kwargs["props"] = {"TextSize": 30} if style == "contours_hcomb" else {}
+        param_kwargs["props"] = {"TextSize": 30} if style.matches("contours_hcomb") else {}
         if cms_layout.startswith("inside"):
             y_offset = 100 if cms_layout == "inside_vertical" and cms_postfix else 80
             param_kwargs = {"y_offset": y_offset}
@@ -1001,7 +1001,7 @@ def plot_likelihood_scan_2d(
 
     # campaign label
     if campaign:
-        props = {"TextSize": 40} if style == "contours_hcomb" else {}
+        props = {"TextSize": 40} if style.matches("contours_hcomb") else {}
         campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
         campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad, props=props)
         draw_objs.append(campaign_label)
@@ -1079,7 +1079,7 @@ def plot_likelihood_scans_2d(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # validate data entries
@@ -1331,7 +1331,7 @@ def plot_nuisance_likelihood_scans(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # get the best fit value and prefit data from the diagnostics file

@@ -69,7 +69,7 @@ def plot_significance_scan_1d(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # helper to check and convert record arrays to dict mappings to arrays
@@ -273,7 +273,7 @@ def plot_significance_scans_1d(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # convert record arrays to dicts mapping to arrays
@@ -470,7 +470,7 @@ def plot_significance_scan_2d(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # check values

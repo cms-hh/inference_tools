@@ -105,7 +105,7 @@ def plot_s_over_b(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # input checks

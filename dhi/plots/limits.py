@@ -96,7 +96,7 @@ def plot_limit_scan(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # input checks
@@ -543,7 +543,7 @@ def plot_limit_scans(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # convert record arrays to dicts mapping to arrays
@@ -962,7 +962,7 @@ def plot_limit_points(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # check inputs and get extrema
@@ -1375,7 +1375,7 @@ def plot_limit_scan_2d(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     def check_values(values):
@@ -1676,7 +1676,7 @@ def plot_benchmark_limits(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # check inputs and get extrema
@@ -1930,7 +1930,7 @@ def plot_multi_benchmark_limits(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # check inputs and get extrema

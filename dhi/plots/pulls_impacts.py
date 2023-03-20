@@ -96,7 +96,7 @@ def plot_pulls_impacts(
     # style-based adjustments
     style = Style.new(style)
     style.campaign_y_offset = 105
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
     if not cms_postfix:
         style.campaign_y_offset = 90

@@ -91,7 +91,7 @@ def plot_exclusion_and_bestfit_1d(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # check minimal fields per data entry
@@ -417,9 +417,9 @@ def plot_exclusion_and_bestfit_2d(
     style = Style.new(style)
     style.color_68 = colors.grey
     style.color_95 = colors.light_grey
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
-    if style == "brazil":
+    if style.matches("brazil"):
         style.color_68 = colors.brazil_green
         style.color_95 = colors.brazil_yellow
 

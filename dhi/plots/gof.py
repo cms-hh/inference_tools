@@ -55,7 +55,7 @@ def plot_gof_distribution(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # remove nans and outliers
@@ -211,7 +211,7 @@ def plot_gofs(
 
     # style-based adjustments
     style = Style.new(style)
-    if style == "paper":
+    if style.matches("paper"):
         cms_postfix = None
 
     # check inputs
