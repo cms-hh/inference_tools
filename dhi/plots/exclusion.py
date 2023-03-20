@@ -318,6 +318,7 @@ def plot_exclusion_and_bestfit_2d(
     model_parameters=None,
     campaign=None,
     paper=False,
+    summary=False,
     style="default",
 ):
     """
@@ -610,7 +611,12 @@ def plot_exclusion_and_bestfit_2d(
 
     # cms label
     cms_layout = "outside_horizontal"
-    _cms_postfix = "" if paper else cms_postfix
+    _cms_postfix = cms_postfix
+    if paper:
+        _cms_postfix = ""
+    if summary:
+        _cms_postfix = "Preliminary"
+
     cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix, layout=cms_layout)
     draw_objs.extend(cms_labels)
 

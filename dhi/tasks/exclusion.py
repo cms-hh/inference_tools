@@ -303,5 +303,6 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             paper=self.paper,
+            summary=self.summary,
             style=self.style,
         )
