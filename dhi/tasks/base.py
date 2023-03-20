@@ -675,7 +675,7 @@ class PlotTask(AnalysisTask):
         return None if value == -1000.0 else value
 
     def create_plot_names(self, parts):
-        plot_file_types = ["pdf", "png", "root", "log"]
+        plot_file_types = ["pdf", "png", "root", "log", "C"]
         if any(t not in plot_file_types for t in self.file_types):
             raise Exception("plot names only allowed for file types {}, got {}".format(
                 ",".join(plot_file_types), ",".join(self.file_types)))
@@ -685,7 +685,6 @@ class PlotTask(AnalysisTask):
         if self.plot_postfix and self.plot_postfix != law.NO_STR:
             parts.append((self.plot_postfix,))
 
-        assert set(self.file_types) <= set(("pdf", "png", "log")), "Only supported file formats are 'pdf' and 'png'!"
         return ["{}.{}".format(self.join_postfix(parts), ext) for ext in self.file_types]
 
     def get_plot_func(self, func_id):
