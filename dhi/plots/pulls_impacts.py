@@ -12,11 +12,11 @@ import array
 import six
 import numpy as np
 
-from dhi.config import poi_data, campaign_labels, colors, cms_postfix
+from dhi.config import poi_data, campaign_labels, colors
 from dhi.util import (
     import_ROOT, multi_match, to_root_latex, linspace, colored, make_list,
 )
-from dhi.plots.util import use_style, make_parameter_label_map
+from dhi.plots.util import use_style, make_parameter_label_map, Style
 
 
 colors = colors.root
@@ -43,7 +43,8 @@ def plot_pulls_impacts(
     entry_height=None,
     label_size=None,
     campaign=None,
-    paper=False,
+    cms_postfix=None,
+    style=None,
 ):
     r"""
     Creates a plot containing both pulls and impacts and saves it at *paths*. *data* should either
@@ -80,13 +81,25 @@ def plot_pulls_impacts(
 
     *pad_width*, *left_margin*, *right_margin*, *entry_height* and *label_size* can be set to a size
     in pixels to overwrite internal defaults. *campaign* should refer to the name of a campaign
-    label defined in dhi.config.campaign_labels. When *paper* is *True*, certain plot configurations
-    are adjusted for use in publications.
+    label defined in dhi.config.campaign_labels. *cms_postfix* is shown as the postfix behind the
+    CMS label.
+
+    Supported values for *style*:
+
+        - "paper"
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/pullsandimpacts.html
     """
     import plotlib.root as r
     ROOT = import_ROOT()
+
+    # style-based adjustments
+    style = Style.new(style)
+    style.campaign_y_offset = 105
+    if style.matches("paper"):
+        cms_postfix = None
+    if not cms_postfix:
+        style.campaign_y_offset = 90
 
     pull_range = int(pull_range)
     auto_impact_range = impact_range <= 0
@@ -101,14 +114,16 @@ def plot_pulls_impacts(
     if poi is None:
         if len(data["POIs"]) != 1:
             raise Exception("when poi is None, data must contain exactly one POI, found {}".format(
-                len(data["POIs"])))
+                len(data["POIs"]),
+            ))
         poi = str(data["POIs"][0]["name"])
         print("selected POI '{}' from data".format(poi))
     else:
         all_pois = [d["name"] for d in data["POIs"]]
         if poi not in all_pois:
             raise Exception("requested POI '{}' not found in data, available POIs are {}".format(
-                poi, ",".join(all_pois)))
+                poi, ",".join(all_pois),
+            ))
 
     # create Parameter objects
     params = [Parameter(d, poi) for d in data["params"]]
@@ -186,7 +201,10 @@ def plot_pulls_impacts(
         # define the impact_range and derive the x_ratio
         if auto_impact_range:
             # get the maximum absolute impact on this page
-            max_impact = max(max(abs(v) if np.isfinite(v) else 0.0 for v in p.impact) for p in _params)
+            max_impact = max(
+                max(abs(v) if np.isfinite(v) else 0.0 for v in p.impact)
+                for p in _params
+            )
             # determine possible ratios and pick the one that is slightly larger (using a threshold)
             ratios = sum(([round(f * 10**x, 4) for f in range(1, 6)] for x in range(-4, 4)), [])
             for ratio in ratios:
@@ -198,8 +216,8 @@ def plot_pulls_impacts(
                 impact_range = 1.
                 print("{}: could not determine an automatic impact range for maximum impact {} and "
                     "pull_range {}, using 1 instead".format(
-                        colored("WARNING", "red"), max_impact, pull_range
-                    )
+                        colored("WARNING", "red"), max_impact, pull_range,
+                    ),
                 )
         else:
             # warn when there is a mismatch between pull and impact ranges
@@ -211,15 +229,18 @@ def plot_pulls_impacts(
                 print("{}: the upper impact_range of {} does not seem to match the lower "
                     "pull_range of {}, which will lead to a mismatch between numbers and ticks of "
                     "the top x-axis or longish decimal numbers".format(
-                        colored("WARNING", "red"), impact_range, pull_range
-                    )
+                        colored("WARNING", "red"), impact_range, pull_range,
+                    ),
                 )
         x_ratio = float(impact_range) / pull_range
 
         # setup the default style and create canvas and pad
         r.setup_style()
-        canvas, (pad,) = r.routines.create_canvas(width=pad_width, height=pad_height,
-            pad_props=pad_margins)
+        canvas, (pad,) = r.routines.create_canvas(
+            width=pad_width,
+            height=pad_height,
+            pad_props=pad_margins,
+        )
         pad.cd()
         draw_objs = []
 
@@ -229,16 +250,28 @@ def plot_pulls_impacts(
         r.setup_hist(h_dummy, props={"LineWidth": 0, "Maximum": y_max}, pad=pad)
         x_axis = h_dummy.GetXaxis()
         n_div = (800 if pull_range <= 3 else 400) + 2 * pull_range
-        r.setup_x_axis(x_axis, pad, props={"Ndivisions": -n_div, "TitleOffset": 1.3,
-            "LabelOffset": r.pixel_to_coord(canvas, y=4)})
+        r.setup_x_axis(
+            x_axis,
+            pad,
+            props={
+                "Ndivisions": -n_div, "TitleOffset": 1.3,
+                "LabelOffset": r.pixel_to_coord(canvas, y=4),
+            },
+        )
         draw_objs.append((h_dummy, "HIST"))
 
         # draw a second axis at the top denoting impact values
         x2_axis = ROOT.TGaxis(x_min, y_max, x_max, y_max, x_min * x_ratio, x_max * x_ratio,
             n_div, "SN")
         x2_title = "Impact #Delta" + to_root_latex(poi_data[poi].label)
-        r.setup_x_axis(x2_axis, pad, props={"Title": x2_title, "TickLength": 0.,
-            "LabelOffset": r.pixel_to_coord(canvas, y=-24), "TitleOffset": -1.2})
+        r.setup_x_axis(
+            x2_axis,
+            pad,
+            props={
+                "Title": x2_title, "TickLength": 0., "LabelOffset": r.pixel_to_coord(canvas, y=-24),
+                "TitleOffset": -1.2,
+            },
+        )
         draw_objs.append(x2_axis)
 
         # y axis labels and ticks
@@ -250,8 +283,13 @@ def plot_pulls_impacts(
             if param.invalid:
                 label = "#bf{{{}}}".format(label)
             label = ROOT.TLatex(x_min - (x_max - x_min) * 0.01, n - i - 0.5, label)
-            r.setup_latex(label, props={"NDC": False, "TextAlign": 32, "TextSize": label_size,
-                "TextColor": param.label_color})
+            r.setup_latex(
+                label,
+                props={
+                    "NDC": False, "TextAlign": 32, "TextSize": label_size,
+                    "TextColor": param.label_color,
+                },
+            )
             draw_objs.append(label)
 
             # left and right ticks
@@ -339,8 +377,13 @@ def plot_pulls_impacts(
         legend.AddEntry(g_impact_lo, "Impact -1 #sigma", "F")
         legend.AddEntry(g_pull, "Pull", "LP")
         draw_objs.append(legend)
-        legend_box = r.routines.create_legend_box(legend, pad, "tlr", y1_padding=-10,
-            props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+        legend_box = r.routines.create_legend_box(
+            legend,
+            pad,
+            "tlr",
+            y1_padding=-10,
+            props={"LineWidth": 0, "FillColor": colors.white_trans_70},
+        )
         draw_objs.insert(-1, legend_box)
 
         # best fit value label
@@ -352,15 +395,23 @@ def plot_pulls_impacts(
                     break
         if best_fit_value:
             fit_label = "{} = {:.2f}^{{ +{:.2f}}}_{{ -{:.2f}}}".format(
-                to_root_latex(poi_data[poi].label), *best_fit_value)
-            fit_label = r.routines.create_top_left_label(fit_label, pad=pad, y_offset=80,
-                x=0.5 * (r.get_x(0, pad, "right") + r.get_x(0, pad)), props={"TextAlign": 21})
+                to_root_latex(poi_data[poi].label), *best_fit_value  # noqa
+            )
+            fit_label = r.routines.create_top_left_label(
+                fit_label,
+                pad=pad,
+                y_offset=80,
+                x=0.5 * (r.get_x(0, pad, "right") + r.get_x(0, pad)),
+                props={"TextAlign": 21},
+            )
             draw_objs.append(fit_label)
 
         # cms label
-        _cms_postfix = "" if paper else cms_postfix
-        cms_labels = r.routines.create_cms_labels(pad=pad, postfix=_cms_postfix,
-            layout="inside_vertical")
+        cms_labels = r.routines.create_cms_labels(
+            pad=pad,
+            postfix=cms_postfix or "",
+            layout="inside_vertical",
+        )
         draw_objs.extend(cms_labels)
 
         # campaign label
@@ -370,8 +421,12 @@ def plot_pulls_impacts(
             # together with the campaign
             if param.tag is not None:
                 campaign_label += ", {}".format(to_root_latex(labels.get(param.name, param.name)))
-            campaign_label = r.routines.create_top_left_label(campaign_label, pad=pad, x_offset=22,
-                y_offset=90 if paper else 105)
+            campaign_label = r.routines.create_top_left_label(
+                campaign_label,
+                pad=pad,
+                x_offset=22,
+                y_offset=style.campaign_y_offset,
+            )
             draw_objs.append(campaign_label)
 
         # draw objects
@@ -429,8 +484,7 @@ class Parameter(object):
             # normalize
             if abs_pull >= 0:
                 return abs_pull / (self.prefit[2] - self.prefit[1])
-            else:
-                return abs_pull / (self.prefit[1] - self.prefit[0])
+            return abs_pull / (self.prefit[1] - self.prefit[0])
 
         # store pulls as [low, central, high] preserving signs for normal parameters
         # and a copy of (reordered) postfit values for unconstrained ones

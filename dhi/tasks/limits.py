@@ -22,7 +22,7 @@ from dhi.tasks.combine import (
     CreateWorkspace,
 )
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
-from dhi.util import unique_recarray, real_path, test_timming_options_base
+from dhi.util import unique_recarray, real_path
 from dhi.config import br_hh, poi_data
 
 
@@ -51,11 +51,14 @@ class UpperLimitsBase(POITask, SnapshotUser):
                 stop = float(p[2])
                 points = int(p[3])
                 if start >= stop and (start, stop) != (0, 0):
-                    raise Exception("the limit grid stopping point ({}) should be larger than its "
-                        "starting point ({})".format(stop, start))
+                    raise Exception(
+                        "the limit grid stopping point ({}) should be larger than its "
+                        "starting point ({})".format(stop, start),
+                    )
                 if points <= 0:
                     raise Exception("the number of limit grid points ({}) must be positive".format(
-                        points))
+                        points,
+                    ))
                 from_grid.append((name, start, stop, points))
 
             params["from_grid"] = tuple(from_grid)
@@ -72,12 +75,14 @@ class UpperLimitsBase(POITask, SnapshotUser):
             grid_param_names = [grid[0] for grid in self.from_grid]
             if len(set(grid_param_names)) != 1:
                 raise Exception("names of grid parameters must be identical, got {}".format(
-                    grid_param_names))
+                    grid_param_names,
+                ))
 
             self.grid_param_name = grid_param_names[0]
             if self.grid_param_name != self.pois[0]:
                 raise Exception("grid parameter name must match POI ({}), got {}".format(
-                    self.pois[0], self.grid_param_name))
+                    self.pois[0], self.grid_param_name,
+                ))
 
     def get_output_postfix(self, join=True):
         parts = super(UpperLimitsBase, self).get_output_postfix(join=False)
@@ -123,12 +128,6 @@ class UpperLimitsScanBase(UpperLimitsBase, POIScanTask):
 
 
 class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
-    test_timming = luigi.BoolParameter(
-        default=False,
-        significant=False,
-        description="when set, a log file along with the result workpace with timming and memory usage "
-        "; default: False",
-    )
 
     run_command_in_tmp = True
 
@@ -142,8 +141,11 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
 
         # the number of points will be used as guidance to compute the actual number of points
         approx_points = self.from_grid[0][3]
-        from_grid = self.call_hook("define_limit_grid", scan_parameter_values=scan_parameter_values,
-            approx_points=approx_points)
+        from_grid = self.call_hook(
+            "define_limit_grid",
+            scan_parameter_values=scan_parameter_values,
+            approx_points=approx_points,
+        )
 
         return from_grid or self.from_grid
 
@@ -221,11 +223,8 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
                 " --noFitAsimov"
             ).format(self=self)
 
-        test_timming_options = test_timming_options_base(self.output().path, self.test_timming)
-
         # build the command
         cmd = (
-            "{test_timming_options} "
             "combine -M AsymptoticLimits {workspace}"
             " {self.custom_args}"
             " --verbose 1"
@@ -248,7 +247,6 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
             grid_args=grid_args,
             blinded_args=blinded_args,
             snapshot_args=snapshot_args,
-            test_timming_options=test_timming_options,
         )
 
         return cmd
@@ -269,7 +267,10 @@ class MergeUpperLimits(UpperLimitsScanBase):
         import numpy as np
 
         records = []
-        dtype = [(p, np.float32) for p in self.scan_parameter_names] + [
+        dtype = [
+            (p, np.float32)
+            for p in self.scan_parameter_names
+        ] + [
             ("limit", np.float32),
             ("limit_p1", np.float32),
             ("limit_m1", np.float32),
@@ -283,7 +284,8 @@ class MergeUpperLimits(UpperLimitsScanBase):
         for branch, inp in self.input()["collection"].targets.items():
             if not inp.exists():
                 self.logger.warning("input of branch {} at {} does not exist".format(
-                    branch, inp.path))
+                    branch, inp.path,
+                ))
                 continue
 
             scan_values = scan_task.branch_map[branch]
@@ -312,13 +314,17 @@ class UpperLimitsGrid(UpperLimits):
         return self.local_target(name)
 
     def build_command(self):
-        # the command for grid points is almost identical, just apply two transformations
+        # the command for grid points is almost identical, just apply three transformations
         cmd = super(UpperLimitsGrid, self).build_command()
 
         # 1. remove the scan parameter (== the POI) from --setParameters
         cmd = re.sub(r"^(.+--setParameters)\s+[^,]+,(.+)$", r"\1 \2", cmd)
 
-        # 2. add the grid point value as --singlePoint
+        # 2. remove "--run expected"
+        # TODO: this used to work and should be re-evaluated once there is a combine update
+        cmd = cmd.replace(" --run expected", "")
+
+        # 3. add the grid point value as --singlePoint
         repl = "--singlePoint {self.branch_data[0]}".format(self=self)
         cmd = re.sub(r"^(.+--redefineSignalPOIs\s+[^\s+]\s+)(.+)$", r"\1{} \2".format(repl), cmd)
 
@@ -361,7 +367,8 @@ class MergeUpperLimitsGrid(UpperLimitsScanBase):
                     continue
                 if not target.exists():
                     self.logger.warning("input of range {}, branch {} at {} does not exist".format(
-                        i, branch, target.path))
+                        i, branch, target.path,
+                    ))
                     continue
                 input_paths.append(target.path)
                 inputs.append(target)
@@ -411,6 +418,8 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
     force_n_scan_parameters = 1
     allow_multiple_scan_ranges = True
 
+    default_plot_function = "dhi.plots.limits.plot_limit_scan"
+
     def __init__(self, *args, **kwargs):
         super(PlotUpperLimits, self).__init__(*args, **kwargs)
 
@@ -424,16 +433,22 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
         # show a hint when xsec and br related nuisances can be frozen
         if self.xsec != law.NO_STR:
             if self.br != law.NO_STR:
-                hint = "when calculating limits on 'XS x BR', nuisances related to both signal " \
-                    "cross sections and branch ratios should be frozen (nuisance group " \
+                hint = (
+                    "when calculating limits on 'XS x BR', nuisances related to both signal "
+                    "cross sections and branch ratios should be frozen (nuisance group "
                     "'signal_norm_xsbr' in the combination)"
+                )
             else:
-                hint = "when calculating limits on 'XS', nuisances related to signal cross " \
+                hint = (
+                    "when calculating limits on 'XS', nuisances related to signal cross "
                     "sections should be frozen (nuisance group 'signal_norm_xs' in the combination)"
+                )
             self.logger.info("hint: " + hint)
         elif self.br != law.NO_STR:
-            self.logger.warning("when calculating limits on POI {} without conversion into a cross "
-                "section with --xs, adding --br has no effect".format(self.poi))
+            self.logger.warning(
+                "when calculating limits on POI {} without conversion into a cross "
+                "section with --xs, adding --br has no effect".format(self.poi),
+            )
 
     def requires(self):
         return [
@@ -460,12 +475,18 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
         # ranges
         if self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
-                self.get_output_postfix()))
+                self.get_output_postfix(),
+            ))
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
             outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
 
         return outputs
 
@@ -487,8 +508,11 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
         thy_values = None
         xsec_unit = None
         if self.poi in self.r_pois:
-            thy_linspace = np.linspace(limit_values[self.scan_parameter].min(),
-                limit_values[self.scan_parameter].max(), num=100)
+            thy_linspace = np.linspace(
+                limit_values[self.scan_parameter].min(),
+                limit_values[self.scan_parameter].max(),
+                num=100,
+            )
             if self.xsec in ["pb", "fb"]:
                 limit_values = self.convert_to_xsecs(
                     self.poi,
@@ -543,7 +567,6 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.limits.plot_limit_scan",
             paths=[outp.path for outp in outputs["plots"]],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
@@ -562,8 +585,9 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
-            paper=self.paper,
-            summary=self.summary
+            cms_postfix=self.cms_postfix,
+            style=self.style,
+            dump_target=outputs.get("plot_data"),
         )
 
     def load_scan_data(self, inputs):
@@ -588,6 +612,8 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
 
     compare_multi_sequence = "multi_datacards"
 
+    default_plot_function = "dhi.plots.limits.plot_limit_scans"
+
     @classmethod
     def modify_param_values(cls, params):
         params = PlotUpperLimits.modify_param_values.__func__.__get__(cls)(params)
@@ -597,8 +623,12 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
     def requires(self):
         return [
             [
-                MergeUpperLimits.req(self, datacards=datacards, scan_parameters=scan_parameters,
-                    **kwargs)
+                MergeUpperLimits.req(
+                    self,
+                    datacards=datacards,
+                    scan_parameters=scan_parameters,
+                    **kwargs  # noqa
+                )
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
             for datacards, kwargs in zip(self.multi_datacards, self.get_multi_task_kwargs())
@@ -623,12 +653,18 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
         # ranges
         if self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
-                self.get_output_postfix()))
+                self.get_output_postfix(),
+            ))
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
             outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
 
         return outputs
 
@@ -653,8 +689,11 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
 
             # rescale from limit on r to limit on xsec when requested, depending on the poi
             if self.poi in self.r_pois:
-                thy_linspace = np.linspace(_limit_values[self.scan_parameter].min(),
-                    _limit_values[self.scan_parameter].max(), num=100)
+                thy_linspace = np.linspace(
+                    _limit_values[self.scan_parameter].min(),
+                    _limit_values[self.scan_parameter].max(),
+                    num=100,
+                )
                 if self.xsec in ["pb", "fb"]:
                     xsec_unit = self.xsec
                     _limit_values = self.convert_to_xsecs(
@@ -702,13 +741,14 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
             {
                 self.scan_parameter: _limit_values[self.scan_parameter],
                 "limit": _limit_values["observed"],
-            } if mkwargs["unblinded"] else None
+            }
+            if mkwargs["unblinded"]
+            else None
             for _limit_values, mkwargs in zip(limit_values, self.get_multi_task_kwargs())
         ]
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.limits.plot_limit_scans",
             paths=[outp.path for outp in outputs["plots"]],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
@@ -728,8 +768,9 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
-            paper=self.paper,
-            summary=self.summary
+            cms_postfix=self.cms_postfix,
+            style=self.style,
+            dump_target=outputs.get("plot_data"),
         )
 
 
@@ -738,11 +779,17 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
     allow_empty_hh_model = True
     compare_multi_sequence = "hh_models"
 
+    default_plot_function = "dhi.plots.limits.plot_limit_scans"
+
     def requires(self):
         return [
             [
-                MergeUpperLimits.req(self, hh_model=hh_model, scan_parameters=scan_parameters,
-                    **kwargs)
+                MergeUpperLimits.req(
+                    self,
+                    hh_model=hh_model,
+                    scan_parameters=scan_parameters,
+                    **kwargs  # noqa
+                )
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
             for hh_model, kwargs in zip(self.hh_models, self.get_multi_task_kwargs())
@@ -767,12 +814,18 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
         # ranges
         if self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
-                self.get_output_postfix()))
+                self.get_output_postfix(),
+            ))
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
             outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
 
         return outputs
 
@@ -797,8 +850,11 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
 
             # rescale from limit on r to limit on xsec when requested, depending on the poi
             if self.poi in self.r_pois:
-                thy_linspace = np.linspace(_limit_values[self.scan_parameter].min(),
-                    _limit_values[self.scan_parameter].max(), num=100)
+                thy_linspace = np.linspace(
+                    _limit_values[self.scan_parameter].min(),
+                    _limit_values[self.scan_parameter].max(),
+                    num=100,
+                )
                 if self.xsec in ["pb", "fb"]:
                     xsec_unit = self.xsec
                     _limit_values = self._convert_to_xsecs(
@@ -854,13 +910,14 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
             {
                 self.scan_parameter: _limit_values[self.scan_parameter],
                 "limit": _limit_values["observed"],
-            } if mkwargs["unblinded"] else None
+            }
+            if mkwargs["unblinded"]
+            else None
             for _limit_values, mkwargs in zip(limit_values, self.get_multi_task_kwargs())
         ]
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.limits.plot_limit_scans",
             paths=[outp.path for outp in outputs["plots"]],
             poi=self.poi,
             scan_parameter=self.scan_parameter,
@@ -880,13 +937,19 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
-            paper=self.paper,
-            summary=self.summary
+            cms_postfix=self.cms_postfix,
+            style=self.style,
+            dump_target=outputs.get("plot_data"),
         )
 
 
-class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDatacardTask,
-        BoxPlotTask):
+class PlotUpperLimitsAtPoint(
+    UpperLimitsBase,
+    POIPlotTask,
+    POIMultiTask,
+    MultiDatacardTask,
+    BoxPlotTask,
+):
 
     xsec = PlotUpperLimits.xsec
     br = PlotUpperLimits.br
@@ -916,7 +979,7 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
     )
     extra_labels = law.CSVParameter(
         default=tuple(),
-        description="comma-separated labels to be shown per entry; default: empty"
+        description="comma-separated labels to be shown per entry; default: empty",
     )
     external_limits = law.CSVParameter(
         default=tuple(),
@@ -931,6 +994,8 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
 
     force_n_pois = 1
     compare_multi_sequence = "multi_datacards"
+
+    default_plot_function = "dhi.plots.limits.plot_limit_points"
 
     def __init__(self, *args, **kwargs):
         # cached external limit values
@@ -950,22 +1015,29 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
         # show a hint when xsec and br related nuisances can be frozen
         if self.xsec != law.NO_STR:
             if self.br != law.NO_STR:
-                hint = "when calculating limits on 'XS x BR', nuisances related to both signal " \
-                    "cross sections and branch ratios should be frozen (nuisance group " \
+                hint = (
+                    "when calculating limits on 'XS x BR', nuisances related to both signal "
+                    "cross sections and branch ratios should be frozen (nuisance group "
                     "'signal_norm_xsbr' in the combination)"
+                )
             else:
-                hint = "when calculating limits on 'XS', nuisances related to signal cross " \
+                hint = (
+                    "when calculating limits on 'XS', nuisances related to signal cross "
                     "sections should be frozen (nuisance group 'signal_norm_xs' in the combination)"
+                )
             self.logger.info("hint: " + hint)
         elif self.br != law.NO_STR:
-            self.logger.warning("when calculating limits on POI {} without conversion into a cross "
-                "section with --xs, adding --br has no effect".format(self.poi))
+            self.logger.warning(
+                "when calculating limits on POI {} without conversion into a cross "
+                "section with --xs, adding --br has no effect".format(self.poi),
+            )
 
         # check the length of extra labels
         n = self.n_datacard_entries
         if self.extra_labels and len(self.extra_labels) != n:
             raise Exception("found {} entries in extra_labels whereas {} is expected".format(
-                len(self.extra_labels), n))
+                len(self.extra_labels), n,
+            ))
 
     @property
     def n_datacard_entries(self):
@@ -1012,8 +1084,13 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
         )
 
         return [
-            UpperLimits.req(self, datacards=datacards, scan_parameters=(scan_parameter,),
-                parameter_values=parameter_values, **kwargs)
+            UpperLimits.req(
+                self,
+                datacards=datacards,
+                scan_parameters=(scan_parameter,),
+                parameter_values=parameter_values,
+                **kwargs  # noqa
+            )
             for datacards, kwargs in zip(self.multi_datacards, self.get_multi_task_kwargs())
         ]
 
@@ -1039,6 +1116,11 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
             outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
 
         return outputs
 
@@ -1135,7 +1217,6 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.limits.plot_limit_points",
             paths=[outp.path for outp in outputs["plots"]],
             poi=self.poi,
             data=data,
@@ -1155,8 +1236,9 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
             h_lines=self.h_lines,
             h_dotted_lines=self.h_dotted_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
-            paper=self.paper,
-            summary=self.summary
+            cms_postfix=self.cms_postfix,
+            style=self.style,
+            dump_target=outputs.get("plot_data"),
         )
 
 
@@ -1184,6 +1266,8 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
     sort_scan_parameters = False
     allow_multiple_scan_ranges = True
 
+    default_plot_function = "dhi.plots.limits.plot_limit_scan_2d"
+
     def requires(self):
         return [
             MergeUpperLimits.req(self, scan_parameters=scan_parameters)
@@ -1196,8 +1280,17 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
         if self.z_log:
             parts.append("log")
 
+        outputs = {}
+
         names = self.create_plot_names(["limits2d", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -1206,7 +1299,7 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load limit scan data
         limits = []
@@ -1228,8 +1321,7 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.limits.plot_limit_scan_2d",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             poi=self.pois[0],
             scan_parameter1=self.scan_parameter_names[0],
             scan_parameter2=self.scan_parameter_names[1],
@@ -1246,6 +1338,7 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             h_lines=self.h_lines,
             v_lines=self.v_lines,
-            paper=self.paper,
-            summary=self.summary
+            cms_postfix=self.cms_postfix,
+            style=self.style,
+            dump_target=outputs.get("plot_data"),
         )

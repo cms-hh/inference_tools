@@ -32,7 +32,8 @@ from dhi.datacard_tools import (
 from dhi.util import TFileCache, import_ROOT, create_console_logger, patch_object, multi_match
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def remove_unused_shapes(datacard, rules, directory=None, mass="125", inplace_shapes=False):
@@ -121,12 +122,20 @@ def remove_unused_shapes(datacard, rules, directory=None, mass="125", inplace_sh
                 continue
 
             # keep them
-            syst_shape_name_up = expand_variables(shape_data["syst_pattern"],
-                channel=shape_data["bin"], process=shape_data["process"],
-                systematic=syst_data["name"] + "Up", mass=mass)
-            syst_shape_name_down = expand_variables(shape_data["syst_pattern"],
-                channel=shape_data["bin"], process=shape_data["process"],
-                systematic=syst_data["name"] + "Down", mass=mass)
+            syst_shape_name_up = expand_variables(
+                shape_data["syst_pattern"],
+                channel=shape_data["bin"],
+                process=shape_data["process"],
+                systematic=syst_data["name"] + "Up",
+                mass=mass,
+            )
+            syst_shape_name_down = expand_variables(
+                shape_data["syst_pattern"],
+                channel=shape_data["bin"],
+                process=shape_data["process"],
+                systematic=syst_data["name"] + "Down",
+                mass=mass,
+            )
             keep_shapes[shape_file].add(syst_shape_name_up)
             keep_shapes[shape_file].add(syst_shape_name_down)
 
@@ -150,8 +159,9 @@ def remove_unused_shapes(datacard, rules, directory=None, mass="125", inplace_sh
                         keys.add(abs_key)
 
             keep &= keys
-            logger.info("keeping {} of {} shapes in file {}".format(
-                len(keep), len(keys), shape_file))
+            logger.info(
+                "keeping {} of {} shapes in file {}".format(len(keep), len(keys), shape_file),
+            )
 
             # remove all keys that are not kept
             for key in keys:
@@ -164,24 +174,57 @@ if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
-        "update (see --directory)")
-    parser.add_argument("rules", nargs="*", metavar="BIN,PROCESS", default=["*,*"], help="names of "
-        "bins and processes for which unused shapes are removed; both names support patterns where "
-        "a leading '!' negates their meaning; each argument can also be a file containing "
-        "'BIN,PROCESS' values line by line; defaults to '*,*', removing unused shapes in all bins "
-        "and processes")
-    parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
-        "datacard and shape files are stored; when not set, the input files are changed in-place")
-    parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
-    parser.add_argument("--inplace-shapes", "-i", action="store_true", help="change shape files "
-        "in-place rather than in a temporary file first")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+    parser.add_argument(
+        "input",
+        metavar="DATACARD",
+        help="the datacard to read and possibly update (see --directory)",
+    )
+    parser.add_argument(
+        "rules",
+        nargs="*",
+        metavar="BIN,PROCESS",
+        default=["*,*"],
+        help="names of bins and processes for which unused shapes are removed; both names support "
+        "patterns where a leading '!' negates their meaning; each argument can also be a file "
+        "containing 'BIN,PROCESS' values line by line; defaults to '*,*', removing unused shapes "
+        "in all bins and processes",
+    )
+    parser.add_argument(
+        "--directory",
+        "-d",
+        nargs="?",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
+    )
+    parser.add_argument(
+        "--mass",
+        "-m",
+        default="125",
+        help="mass hypothesis; default: 125",
+    )
+    parser.add_argument(
+        "--inplace-shapes",
+        "-i",
+        action="store_true",
+        help="change shape files in-place rather than in a temporary file first",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger
@@ -189,5 +232,10 @@ if __name__ == "__main__":
 
     # run the renaming
     with patch_object(logger, "name", args.log_name):
-        remove_unused_shapes(args.input, args.rules, directory=args.directory, mass=args.mass,
-            inplace_shapes=args.inplace_shapes)
+        remove_unused_shapes(
+            args.input,
+            args.rules,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
+            mass=args.mass,
+            inplace_shapes=args.inplace_shapes,
+        )

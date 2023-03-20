@@ -144,8 +144,9 @@ class MergeSignificanceScan(SignificanceBase):
         scan_task = self.requires()
         for branch, inp in self.input()["collection"].targets.items():
             if not inp.exists():
-                self.logger.warning("input of branch {} at {} does not exist".format(
-                    branch, inp.path))
+                self.logger.warning(
+                    "input of branch {} at {} does not exist".format(branch, inp.path),
+                )
                 continue
 
             scan_values = scan_task.branch_map[branch]
@@ -154,8 +155,9 @@ class MergeSignificanceScan(SignificanceBase):
                 sig = sig[0]
                 pval = scipy.stats.norm.sf(sig)
             else:
-                self.logger.warning("significance calculation failed for scan values {}".format(
-                    scan_values))
+                self.logger.warning(
+                    "significance calculation failed for scan values {}".format(scan_values),
+                )
                 sig, pval = np.nan, np.nan
             records.append(scan_values + (sig, pval))
 
@@ -188,6 +190,8 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
     sort_pois = False
     allow_multiple_scan_ranges = True
 
+    default_plot_function = "dhi.plots.significances.plot_significance_scan_1d"
+
     def requires(self):
         def merge_tasks(**kwargs):
             return [
@@ -209,9 +213,18 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
         if self.y_log:
             parts.append("log")
 
+        outputs = {}
+
         prefix = "significance" if self.convert == law.NO_STR else self.convert
         names = self.create_plot_names([prefix, self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -220,7 +233,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load significances
         inputs = self.input()
@@ -233,13 +246,12 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
             if v in exp_values[scan_parameter]:
                 record = exp_values[exp_values[scan_parameter] == v][0]
                 self.publish_message(
-                    "{} = {} -> {:.4f} sigma".format(scan_parameter, v, record["significance"])
+                    "{} = {} -> {:.4f} sigma".format(scan_parameter, v, record["significance"]),
                 )
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.significances.plot_significance_scan_1d",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             scan_parameter=scan_parameter,
             expected_values=exp_values,
             observed_values=obs_values,
@@ -252,7 +264,9 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
+            style=self.style,
+            dump_target=outputs.get("plot_data"),
         )
 
     def load_scan_data(self, inputs):
@@ -268,8 +282,11 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
 
         # concatenate values and safely remove duplicates
         test_fn = lambda kept, removed: kept < 1e-7 or abs((kept - removed) / kept) < 0.001
-        values = unique_recarray(values, cols=scan_parameter_names,
-            test_metric=("significance", test_fn))
+        values = unique_recarray(
+            values,
+            cols=scan_parameter_names,
+            test_metric=("significance", test_fn),
+        )
 
         return values
 
@@ -280,6 +297,8 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
 
     compare_multi_sequence = "multi_datacards"
 
+    default_plot_function = "dhi.plots.significances.plot_significance_scans_1d"
+
     @classmethod
     def modify_param_values(cls, params):
         params = PlotSignificanceScan.modify_param_values.__func__.__get__(cls)(params)
@@ -289,8 +308,12 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
     def requires(self):
         return [
             [
-                MergeSignificanceScan.req(self, datacards=datacards, scan_parameters=scan_parameters,
-                    **kwargs)
+                MergeSignificanceScan.req(
+                    self,
+                    datacards=datacards,
+                    scan_parameters=scan_parameters,
+                    **kwargs  # noqa
+                )
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
             for datacards, kwargs in zip(self.multi_datacards, self.get_multi_task_kwargs())
@@ -302,9 +325,18 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
         if self.y_log:
             parts.append("log")
 
+        outputs = {}
+
         prefix = "significance" if self.convert == law.NO_STR else self.convert
         names = self.create_plot_names(["multi{}s".format(prefix), self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -313,7 +345,7 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load significances
         values = []
@@ -333,8 +365,7 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.significances.plot_significance_scans_1d",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             scan_parameter=self.scan_parameter_names[0],
             values=values,
             names=names,
@@ -347,5 +378,7 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
+            style=self.style,
+            dump_target=outputs.get("plot_data"),
         )

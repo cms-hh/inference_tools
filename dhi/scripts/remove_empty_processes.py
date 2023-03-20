@@ -32,11 +32,18 @@ from dhi.util import TFileCache, create_console_logger, patch_object, multi_matc
 from dhi.scripts import remove_bin_process_pairs
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
-def remove_empty_processes(datacard, rules, skip_signal=False, directory=None, skip_shapes=False,
-        mass="125"):
+def remove_empty_processes(
+    datacard,
+    rules,
+    skip_signal=False,
+    directory=None,
+    skip_shapes=False,
+    mass="125",
+):
     """
     Reads a *datacard* and removes processes from certain bins depending on whether their rate is
     below a threshold value which can be configured through *rules*. A rule can be a 3-tuple
@@ -129,61 +136,108 @@ def remove_empty_processes(datacard, rules, skip_signal=False, directory=None, s
 
                 if rate is not None:
                     logger.debug("extracted rate {} for process {} in bin {} from shape".format(
-                        rate, proc_name, bin_name))
+                        rate, proc_name, bin_name,
+                    ))
                 else:
-                    logger.error("no nominal shape {} found in file {} for process {} in "
-                        "bin {}".format(shape_name, shape_data["path"], proc_name, bin_name))
+                    logger.error(
+                        "no nominal shape {} found in file {} for process {} in bin {}".format(
+                            shape_name, shape_data["path"], proc_name, bin_name,
+                        ),
+                    )
                 break
             else:
                 # no shape line found, get the rate directly from the datacard
                 rate = content["rates"][bin_name][proc_name]
                 logger.debug("extracted rate for process {} in bin {} from datacard: {}".format(
-                    proc_name, bin_name, rate))
+                    proc_name, bin_name, rate,
+                ))
 
                 # special case
                 if rate == -1:
                     rate = None
                     logger.warning("skipped process {} in bin {} as rate is -1 datacard".format(
-                        proc_name, bin_name))
+                        proc_name, bin_name,
+                    ))
 
             # check the rate
             if rate is not None and rate < threshold:
                 remove_pairs.append((bin_name, proc_name))
                 logger.debug("rate {} of process {} in bin {} below threshold {}".format(
-                    rate, proc_name, bin_name, threshold))
+                    rate, proc_name, bin_name, threshold,
+                ))
 
     logger.info("found {} bin-process pair(s) to remove".format(len(remove_pairs)))
     if remove_pairs:
         # just call remove_bin_process_pairs with our own logger
         with patch_object(remove_bin_process_pairs, "logger", logger):
-            remove_bin_process_pairs.remove_bin_process_pairs(datacard, remove_pairs,
-                directory=directory, skip_shapes=skip_shapes)
+            remove_bin_process_pairs.remove_bin_process_pairs(
+                datacard,
+                remove_pairs,
+                directory=directory,
+                skip_shapes=skip_shapes,
+            )
 
 
 if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
-        "update (see --directory)")
-    parser.add_argument("rules", nargs="+", metavar="BIN,PROCESS,THRESHOLD", help="names of bins, "
-        "processes and a threshold value below which processes are removed in the format "
-        "'bin_name,process_name,threshold_value'; both names support patterns where a leading '!' "
-        "negates their meaning; each argument can also be a file containing "
-        "'BIN,PROCESS,THRESHOLD' values line by line")
-    parser.add_argument("--skip-signal", "-s", action="store_true", help="skip signal processes, "
-        "independent of whether they are matched by a process pattern")
-    parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
-        "datacard and shape files are stored; when not set, the input files are changed in-place")
-    parser.add_argument("--no-shapes", "-n", action="store_true", help="do not change process "
-        "names in shape files")
-    parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+    parser.add_argument(
+        "input",
+        metavar="DATACARD",
+        help="the datacard to read and possibly update (see --directory)",
+    )
+    parser.add_argument(
+        "rules",
+        nargs="+",
+        metavar="BIN,PROCESS,THRESHOLD",
+        help="names of bins, processes and a threshold value below which processes are removed in "
+        "the format 'bin_name,process_name,threshold_value'; both names support patterns where a "
+        "leading '!' negates their meaning; each argument can also be a file containing "
+        "'BIN,PROCESS,THRESHOLD' values line by line",
+    )
+    parser.add_argument(
+        "--skip-signal",
+        "-s",
+        action="store_true",
+        help="skip signal processes, independent of whether they are matched by a process pattern",
+    )
+    parser.add_argument(
+        "--directory",
+        "-d",
+        nargs="?",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
+    )
+    parser.add_argument(
+        "--no-shapes",
+        "-n",
+        action="store_true",
+        help="do not change process names in shape files",
+    )
+    parser.add_argument(
+        "--mass",
+        "-m",
+        default="125",
+        help="mass hypothesis; default: 125",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger
@@ -191,5 +245,11 @@ if __name__ == "__main__":
 
     # run the renaming
     with patch_object(logger, "name", args.log_name):
-        remove_empty_processes(args.input, args.rules, skip_signal=args.skip_signal,
-            directory=args.directory, skip_shapes=args.no_shapes, mass=args.mass)
+        remove_empty_processes(
+            args.input,
+            args.rules,
+            skip_signal=args.skip_signal,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
+            skip_shapes=args.no_shapes,
+            mass=args.mass,
+        )
