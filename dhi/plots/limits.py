@@ -1668,7 +1668,7 @@ def plot_benchmark_limits(
     Supported values for *style*:
 
         - "paper"
-        - "multilep"
+        - "multilepton"
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/eft.html#benchmark-limits
     """
@@ -1686,7 +1686,7 @@ def plot_benchmark_limits(
     style.bar_width = bar_width
     if style.matches("paper"):
         cms_postfix = None
-    if style.matches("multilep"):
+    if style.matches("multilepton"):
         style.sep_line_color = colors.red
         style.sep_line_style = 9
         style.sep_line_width = 5
