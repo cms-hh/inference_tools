@@ -1677,23 +1677,24 @@ def plot_benchmark_limits(
 
     # style-based adjustments
     style = Style.new(style)
-    style.sepLineStyle = 1
-    style.sepLineColor = colors.black
-    style.sepLineWidth = 2
-    style.expLineColor = colors.black
-    style.expLineStyle = 2
-    style.expLineWidth = 2
+    style.sep_line_style = 1
+    style.sep_line_color = colors.black
+    style.sep_line_width = 2
+    style.exp_line_color = colors.black
+    style.exp_line_style = 2
+    style.exp_line_width = 2
     style.bar_width = bar_width
     if style.matches("paper"):
         cms_postfix = None
     if style.matches("multilep"):
-        style.sepLineColor = colors.red
-        style.sepLineStyle = 9
-        style.sepLineWidth = 5
-        style.expLineColor = colors.blue
-        style.expLineStyle = 2
-        style.expLineWidth = 5
+        style.sep_line_color = colors.red
+        style.sep_line_style = 9
+        style.sep_line_width = 5
+        style.exp_line_color = colors.blue
+        style.exp_line_style = 2
+        style.exp_line_width = 5
         style.bar_width = 1
+
     # check inputs and get extrema
     n = len(data)
     has_obs = False
@@ -1803,7 +1804,13 @@ def plot_benchmark_limits(
 
     # prepare graphs
     g_exp = create_graph(sigma=0)
-    r.setup_graph(g_exp, props={"LineWidth": style.expLineWidth, "LineStyle": style.expLineStyle, "LineColor": style.expLineColor})
+    r.setup_graph(
+        g_exp,
+        props={
+            "LineWidth": style.exp_line_width, "LineStyle": style.exp_line_style,
+            "LineColor": style.exp_line_color,
+        },
+    )
     draw_objs.append((g_exp, "SAME,EZ"))
     legend_entries[0] = (g_exp, "Median expected", "L")
 
@@ -1833,7 +1840,10 @@ def plot_benchmark_limits(
             line = ROOT.TLine(x - 0.5, y_min, x - 0.5, y_max_value)
             r.setup_line(
                 line,
-                props={"LineColor": style.sepLineColor, "LineStyle": style.sepLineStyle, "NDC": False},
+                props={
+                    "LineColor": style.sep_line_color, "LineStyle": style.sep_line_style,
+                    "NDC": False,
+                },
             )
             draw_objs.append(line)
 
