@@ -84,7 +84,7 @@ setup() {
     # see https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit
     #
 
-    local combine_version="5"
+    local combine_version="6"
     local flag_file_combine="${DHI_SOFTWARE}/.combine_good"
 
     source "/cvmfs/cms.cern.ch/cmsset_default.sh" "" || return "$?"
@@ -154,7 +154,7 @@ setup() {
     [ "$?" != "0" ] && ulimit -S -s unlimited
 
     # local stack
-    local sw_version="4"
+    local sw_version="5"
     local flag_file_sw="${DHI_SOFTWARE}/.sw_good"
     [ "${DHI_REINSTALL_SOFTWARE}" = "1" ] && rm -f "${flag_file_sw}"
     if [ ! -f "${flag_file_sw}" ]; then
