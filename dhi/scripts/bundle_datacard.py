@@ -22,7 +22,8 @@ from dhi.datacard_tools import bundle_datacard
 from dhi.util import create_console_logger, patch_object
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 if __name__ == "__main__":

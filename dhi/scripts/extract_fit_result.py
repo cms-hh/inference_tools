@@ -28,7 +28,8 @@ from dhi.util import (
 )
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def extract_fit_result(input_file, obj_name, output_file, keep_patterns=None, skip_patterns=None):

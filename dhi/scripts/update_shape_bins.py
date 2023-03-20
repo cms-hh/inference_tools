@@ -39,7 +39,8 @@ from dhi.datacard_tools import (
 from dhi.util import TFileCache, create_console_logger, patch_object, multi_match
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def update_shape_bins(datacard, rules, batch_processes=False, directory=None, mass="125"):
@@ -293,8 +294,9 @@ if __name__ == "__main__":
         "--directory",
         "-d",
         nargs="?",
-        help="directory in which the updated datacard and shape files are stored; when not set, "
-        "the input files are changed in-place",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
     )
     parser.add_argument(
         "--mass",
@@ -324,6 +326,6 @@ if __name__ == "__main__":
             args.input,
             args.rules,
             batch_processes=args.batch_processes,
-            directory=args.directory,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
             mass=args.mass,
         )

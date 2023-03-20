@@ -33,7 +33,8 @@ from dhi.util import (
 )
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def merge_parameters(
@@ -262,8 +263,10 @@ def merge_parameters(
                     for shape_line in shape_lines:
                         if shape_line.is_fake or not shape_line.syst_pattern:
                             continue
-                        if multi_match(bin_name, shape_line.bin) and \
-                                multi_match(process_name, shape_line.process):
+                        if (
+                            multi_match(bin_name, shape_line.bin) and
+                            multi_match(process_name, shape_line.process)
+                        ):
                             break
                     else:
                         raise Exception(
@@ -616,8 +619,9 @@ if __name__ == "__main__":
         "--directory",
         "-d",
         nargs="?",
-        help="directory in which the updated datacard and shape files are stored; when not set, "
-        "the input files are changed in-place",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
     )
     parser.add_argument(
         "--no-shapes",
@@ -705,7 +709,7 @@ if __name__ == "__main__":
             args.input,
             args.merged,
             args.names,
-            directory=args.directory,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
             skip_shapes=args.no_shapes,
             unique=args.unique,
             flip_parameters=flip_parameters,

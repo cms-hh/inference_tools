@@ -30,7 +30,8 @@ from dhi.datacard_tools import (
 from dhi.util import real_path, multi_match, create_console_logger, patch_object
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=False):
@@ -315,8 +316,9 @@ if __name__ == "__main__":
         "--directory",
         "-d",
         nargs="?",
-        help="directory in which the updated datacard and shape files are stored; when not set, "
-        "the input files are changed in-place",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
     )
     parser.add_argument(
         "--no-shapes",
@@ -345,6 +347,6 @@ if __name__ == "__main__":
         remove_bin_process_pairs(
             args.input,
             args.names,
-            directory=args.directory,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
             skip_shapes=args.no_shapes,
         )

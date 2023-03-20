@@ -26,7 +26,7 @@ custom function. Example usage:
 
 # remove shape bins in all datacard bins using an exteral function
 # (note the quotes)
-> remove_shape_bins.py datacard.txt '*,my_module.func_name" -d output_directory
+> remove_shape_bins.py datacard.txt '*,my_module.func_name' -d output_directory
 
 Note: The use of an output directory is recommended to keep input files
       unchanged.
@@ -45,7 +45,8 @@ from dhi.datacard_tools import (
 from dhi.util import TFileCache, create_console_logger, patch_object, multi_match, make_unique
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def remove_shape_bins(datacard, rules, directory=None, mass="125"):
@@ -528,8 +529,9 @@ if __name__ == "__main__":
         "--directory",
         "-d",
         nargs="?",
-        help="directory in which the updated datacard and shape files are stored; when not set, "
-        "the input files are changed in-place",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
     )
     parser.add_argument(
         "--mass",
@@ -555,4 +557,9 @@ if __name__ == "__main__":
 
     # run the renaming
     with patch_object(logger, "name", args.log_name):
-        remove_shape_bins(args.input, args.rules, directory=args.directory, mass=args.mass)
+        remove_shape_bins(
+            args.input,
+            args.rules,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
+            mass=args.mass,
+        )

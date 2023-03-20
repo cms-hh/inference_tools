@@ -16,7 +16,8 @@ import json
 from dhi.util import import_ROOT, TFileCache, real_path, create_console_logger, patch_object
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def inject_fit_result(input_file, workspace_file, workspace_name):

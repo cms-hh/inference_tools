@@ -17,7 +17,8 @@ from dhi.datacard_tools import bundle_datacard, read_datacard_blocks, write_data
 from dhi.util import real_path, create_console_logger, patch_object
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def prettify_datacard(datacard, directory=None, skip_shapes=False, skip_preamble=False):
@@ -73,8 +74,9 @@ if __name__ == "__main__":
         "--directory",
         "-d",
         nargs="?",
-        help="directory in which the updated datacard and shape files are stored; when not set, "
-        "the input files are changed in-place",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
     )
     parser.add_argument(
         "--no-shapes",
@@ -107,7 +109,7 @@ if __name__ == "__main__":
     with patch_object(logger, "name", args.log_name):
         prettify_datacard(
             args.input,
-            directory=args.directory,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
             skip_shapes=args.no_shapes,
             skip_preamble=args.no_preamble,
         )

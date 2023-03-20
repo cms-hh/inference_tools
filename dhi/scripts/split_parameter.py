@@ -29,11 +29,19 @@ from dhi.datacard_tools import (
 from dhi.util import real_path, multi_match, create_console_logger, patch_object
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
-def split_parameter(datacard, param_name, specs, ensure_unique=False, ensure_all=False,
-        directory=None, skip_shapes=False):
+def split_parameter(
+    datacard,
+    param_name,
+    specs,
+    ensure_unique=False,
+    ensure_all=False,
+    directory=None,
+    skip_shapes=False,
+):
     """
     Reads a *datacard* and splits a "lnN" or "lnU" parameter *param_name* into multiple new
     parameters of the same type configured by *specs*. A spec is a 3-tuple or a string in the format
@@ -243,8 +251,9 @@ if __name__ == "__main__":
         "--directory",
         "-d",
         nargs="?",
-        help="directory in which the updated datacard and shape files are stored; when not set, "
-        "the input files are changed in-place",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
     )
     parser.add_argument(
         "--no-shapes",
@@ -276,6 +285,6 @@ if __name__ == "__main__":
             args.specs,
             ensure_unique=args.ensure_unique,
             ensure_all=args.ensure_all,
-            directory=args.directory,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
             skip_shapes=args.no_shapes,
         )

@@ -32,11 +32,18 @@ from dhi.util import TFileCache, create_console_logger, patch_object, multi_matc
 from dhi.scripts import remove_bin_process_pairs
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
-def remove_empty_processes(datacard, rules, skip_signal=False, directory=None, skip_shapes=False,
-        mass="125"):
+def remove_empty_processes(
+    datacard,
+    rules,
+    skip_signal=False,
+    directory=None,
+    skip_shapes=False,
+    mass="125",
+):
     """
     Reads a *datacard* and removes processes from certain bins depending on whether their rate is
     below a threshold value which can be configured through *rules*. A rule can be a 3-tuple
@@ -204,8 +211,9 @@ if __name__ == "__main__":
         "--directory",
         "-d",
         nargs="?",
-        help="directory in which the updated datacard and shape files are stored; when not set, "
-        "the input files are changed in-place",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
     )
     parser.add_argument(
         "--no-shapes",
@@ -241,7 +249,7 @@ if __name__ == "__main__":
             args.input,
             args.rules,
             skip_signal=args.skip_signal,
-            directory=args.directory,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
             skip_shapes=args.no_shapes,
             mass=args.mass,
         )

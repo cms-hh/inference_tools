@@ -25,7 +25,8 @@ from dhi.datacard_tools import read_datacard_structured
 from dhi.util import real_path, create_console_logger, patch_object
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def extract_datacard_content(datacard, output_file=None):

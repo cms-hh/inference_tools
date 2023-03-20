@@ -40,7 +40,8 @@ from dhi.plots.util import use_style
 from dhi.config import colors, cms_postfix
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def plot_datacard_shapes(
@@ -455,10 +456,21 @@ def create_shape_plot(
 
         h_dummy2 = ROOT.TH1F("dummy2", ";{};Change / %".format(x_title), 1, x_min, x_max)
         r.setup_hist(h_dummy2, pad=pad2, props={"LineWidth": 0})
-        r.setup_x_axis(h_dummy2.GetXaxis(), pad=pad2, props=x_props)
-        r.setup_x_axis(h_dummy2.GetXaxis(), pad=pad2, props={"TitleOffset": 1.23})
-        r.setup_y_axis(h_dummy2.GetYaxis(), pad=pad2, props={"Ndivisions": 6, "CenterTitle": True,
-            "LabelSize": 20, "TitleOffset": 1.6})
+        r.setup_x_axis(
+            h_dummy2.GetXaxis(),
+            pad=pad2,
+            props=x_props,
+        )
+        r.setup_x_axis(
+            h_dummy2.GetXaxis(),
+            pad=pad2,
+            props={"TitleOffset": 1.23},
+        )
+        r.setup_y_axis(
+            h_dummy2.GetYaxis(),
+            pad=pad2,
+            props={"Ndivisions": 6, "CenterTitle": True, "LabelSize": 20, "TitleOffset": 1.6},
+        )
         draw_objs2.append((h_dummy2, "HIST"))
 
     # add top histograms
@@ -535,8 +547,12 @@ def create_shape_plot(
     legend = r.routines.create_legend(pad=pad1, width=250, n=len(legend_entries))
     r.fill_legend(legend, legend_entries)
     draw_objs1.append(legend)
-    legend_box = r.routines.create_legend_box(legend, pad1, "tr",
-        props={"LineWidth": 0, "FillColor": colors.root.white_trans_70})
+    legend_box = r.routines.create_legend_box(
+        legend,
+        pad1,
+        "tr",
+        props={"LineWidth": 0, "FillColor": colors.root.white_trans_70},
+    )
     draw_objs1.insert(-1, legend_box)
 
     # cms label

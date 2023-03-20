@@ -28,7 +28,8 @@ from dhi.datacard_tools import bundle_datacard, manipulate_datacard, expand_file
 from dhi.util import create_console_logger, patch_object, multi_match
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def scale_parameters(datacard, factor, patterns, directory=None, skip_shapes=False):
@@ -184,8 +185,9 @@ if __name__ == "__main__":
         "--directory",
         "-d",
         nargs="?",
-        help="directory in which the updated datacard and shape files are stored; when not set, "
-        "the input files are changed in-place",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
     )
     parser.add_argument(
         "--no-shapes",
@@ -211,4 +213,9 @@ if __name__ == "__main__":
 
     # run the scaling
     with patch_object(logger, "name", args.log_name):
-        scale_parameters(args.input, args.factor, args.names, directory=args.directory)
+        scale_parameters(
+            args.input,
+            args.factor,
+            args.names,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
+        )
