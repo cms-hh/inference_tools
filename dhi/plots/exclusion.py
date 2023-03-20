@@ -39,6 +39,7 @@ def plot_exclusion_and_bestfit_1d(
     label_size=None,
     model_parameters=None,
     h_lines=None,
+    h_dotted_lines=None,
     campaign=None,
     paper=False,
     summary=False
@@ -223,6 +224,12 @@ def plot_exclusion_and_bestfit_1d(
         for i in h_lines:
             line_obs = ROOT.TLine(x_min, float(i), x_max, float(i))
             r.setup_line(line_obs, props={"NDC": False}, color=12)
+            draw_objs.append(line_obs)
+
+    if h_dotted_lines:
+        for i in h_dotted_lines:
+            line_obs = ROOT.TLine(x_min, float(i), x_max, float(i))
+            r.setup_line(line_obs, props={"NDC": False, "LineStyle": 3}, color=12)
             draw_objs.append(line_obs)
 
     # y axis labels and ticks

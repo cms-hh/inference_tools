@@ -29,6 +29,12 @@ class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIP
         significant=False,
         description="comma-separated vertical positions of horizontal lines; no default",
     )
+    h_dotted_lines = law.CSVParameter(
+        cls=luigi.IntParameter,
+        default=tuple(),
+        significant=False,
+        description="comma-separated vertical positions of horizontal lines in dashed; default: empty",
+    )
 
     y_min = None
     y_max = None
@@ -136,6 +142,7 @@ class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIP
             label_size=None if self.label_size == law.NO_INT else self.label_size,
             model_parameters=self.get_shown_parameters(),
             h_lines=self.h_lines,
+            h_dotted_lines=self.h_dotted_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             paper=self.paper,
             summary=self.summary

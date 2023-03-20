@@ -908,6 +908,12 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
         significant=False,
         description="comma-separated vertical positions of horizontal lines; default: empty",
     )
+    h_dotted_lines = law.CSVParameter(
+        cls=luigi.IntParameter,
+        default=tuple(),
+        significant=False,
+        description="comma-separated vertical positions of horizontal lines in dashed; default: empty",
+    )
     extra_labels = law.CSVParameter(
         default=tuple(),
         description="comma-separated labels to be shown per entry; default: empty"
@@ -1147,6 +1153,7 @@ class PlotUpperLimitsAtPoint(UpperLimitsBase, POIPlotTask, POIMultiTask, MultiDa
             label_size=None if self.label_size == law.NO_INT else self.label_size,
             model_parameters=self.get_shown_parameters(),
             h_lines=self.h_lines,
+            h_dotted_lines=self.h_dotted_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             paper=self.paper,
             summary=self.summary

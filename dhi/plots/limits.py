@@ -741,6 +741,7 @@ def plot_limit_points(
     label_size=None,
     model_parameters=None,
     h_lines=None,
+    h_dotted_lines=None,
     campaign=None,
     digits=None,
     paper=False,
@@ -983,6 +984,12 @@ def plot_limit_points(
         for i in h_lines:
             line_obs = ROOT.TLine(x_min, float(i), x_max, float(i))
             r.setup_line(line_obs, props={"NDC": False}, color=12)
+            draw_objs.append(line_obs)
+
+    if h_dotted_lines:
+        for i in h_dotted_lines:
+            line_obs = ROOT.TLine(x_min, float(i), x_max, float(i))
+            r.setup_line(line_obs, props={"NDC": False, "LineStyle": 3}, color=12)
             draw_objs.append(line_obs)
 
     # determine the number of digits for reported limits
