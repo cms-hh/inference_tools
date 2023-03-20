@@ -611,7 +611,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
             entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )
 
@@ -704,6 +704,6 @@ class PlotMultiplePullsAndImpacts(PlotPullsAndImpacts, POIMultiTask, MultiDataca
             entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )

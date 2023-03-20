@@ -163,7 +163,7 @@ class PlotExclusionAndBestFit(
             h_lines=self.h_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )
 
@@ -349,6 +349,6 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )

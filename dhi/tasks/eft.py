@@ -272,10 +272,9 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
     def output(self):
         # additional postfix
         parts = []
-        if self.xsec in ["pb", "fb"]:
-            parts.append(self.xsec)
-            if self.br != law.NO_STR:
-                parts.append(self.br)
+        parts.append(self.xsec)
+        if self.br != law.NO_STR:
+            parts.append(self.br)
         if self.y_log:
             parts.append("log")
 
@@ -334,7 +333,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
             hh_process=self.br if self.br in br_hh else None,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )
 
@@ -359,10 +358,9 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
     def output(self):
         # additional postfix
         parts = []
-        if self.xsec in ["pb", "fb"]:
-            parts.append(self.xsec)
-            if self.br != law.NO_STR:
-                parts.append(self.br)
+        parts.append(self.xsec)
+        if self.br != law.NO_STR:
+            parts.append(self.br)
         if self.y_log:
             parts.append("log")
 
@@ -434,7 +432,7 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
             hh_process=self.br if self.br in br_hh else None,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )
 

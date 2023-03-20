@@ -265,7 +265,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )
 
@@ -379,6 +379,6 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )

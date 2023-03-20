@@ -404,7 +404,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 show_points=self.show_points,
                 cms_postfix=self.cms_postfix,
-                style=self.style if self.style != law.NO_STR else None,
+                style=self.style,
                 dump_target=outputs.get("plot_data"),
             )
         else:  # 2
@@ -434,7 +434,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 eft_lines=self.eft_lines if self.eft_lines != law.NO_STR else None,
                 cms_postfix=self.cms_postfix,
-                style=self.style if self.style != law.NO_STR else None,
+                style=self.style,
                 dump_target=outputs.get("plot_data"),
             )
 
@@ -664,7 +664,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 show_points=self.show_points,
                 cms_postfix=self.cms_postfix,
-                style=self.style if self.style != law.NO_STR else None,
+                style=self.style,
                 dump_target=outputs.get("plot_data"),
             )
         else:  # 2
@@ -684,7 +684,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 cms_postfix=self.cms_postfix,
-                style=self.style if self.style != law.NO_STR else None,
+                style=self.style,
                 dump_target=outputs.get("plot_data"),
             )
 
@@ -815,7 +815,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 show_points=self.show_points,
                 cms_postfix=self.cms_postfix,
-                style=self.style if self.style != law.NO_STR else None,
+                style=self.style,
                 dump_target=outputs.get("plot_data"),
             )
         else:  # 2
@@ -835,6 +835,6 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 cms_postfix=self.cms_postfix,
-                style=self.style if self.style != law.NO_STR else None,
+                style=self.style,
                 dump_target=outputs.get("plot_data"),
             )

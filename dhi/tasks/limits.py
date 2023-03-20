@@ -586,7 +586,7 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )
 
@@ -769,7 +769,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )
 
@@ -938,7 +938,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )
 
@@ -1230,7 +1230,7 @@ class PlotUpperLimitsAtPoint(
             h_lines=self.h_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )
 
@@ -1332,6 +1332,6 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
             h_lines=self.h_lines,
             v_lines=self.v_lines,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )

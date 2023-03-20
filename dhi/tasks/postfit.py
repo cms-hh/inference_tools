@@ -375,7 +375,7 @@ class PlotPostfitSOverB(PostfitPlotBase):
             prefit=self.prefit,
             unblinded=self.unblinded,
             cms_postfix=self.cms_postfix,
-            style=self.style if self.style != law.NO_STR else None,
+            style=self.style,
             dump_target=outputs.get("plot_data"),
         )
 
@@ -522,7 +522,7 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 show_derivatives=self.show_derivatives,
                 cms_postfix=self.cms_postfix,
-                style=self.style if self.style != law.NO_STR else None,
+                style=self.style,
                 dump_target=outputs.get("plot_data"),
             )
 

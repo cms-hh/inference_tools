@@ -718,7 +718,7 @@ class PlotTask(AnalysisTask):
         return None if value == -1000.0 else value
 
     def create_plot_names(self, parts):
-        plot_file_types = ["pdf", "png", "root", "c", "eps", "pkl"]
+        plot_file_types = ["pdf", "png", "root", "c", "eps"]
         if any(t not in plot_file_types for t in self.file_types):
             raise Exception("plot names only allowed for file types {}, got {}".format(
                 ",".join(plot_file_types), ",".join(self.file_types),
