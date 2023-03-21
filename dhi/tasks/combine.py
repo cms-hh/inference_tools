@@ -1487,7 +1487,7 @@ class POIScanTask(POITask, ParameterScanTask):
                     )
 
         # print a warning when a scan range exceeds the valid parameter range
-        if not self.hh_model_empty :
+        if not self.hh_model_empty:
             msg = (
                 "the requested {where} value {value} of the scan range of parameter {p} exceeds "
                 "the {where} value {allowed} of the physics model, please adjust the allowed range "
