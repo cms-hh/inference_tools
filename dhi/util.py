@@ -1101,3 +1101,48 @@ class InterExtrapolator(object):
             )
 
         return 0.5 * (z_row + z_col)
+
+
+class GridDataInterpolator(object):
+
+    def __init__(
+        self,
+        x_values,
+        y_values,
+        z_values,
+        points,
+        kind="linear",
+    ):
+        super(GridDataInterpolator, self).__init__()
+
+        # nan check
+        if np.isnan(z_values).sum() > 0:
+            raise Exception("z_values contain NaN values")
+
+        # store valus
+        self.x_values = np.array(x_values)
+        self.y_values = np.array(y_values)
+        self.z_values = np.array(z_values)
+        self.interp_points = np.array(points)
+        self.kind = kind
+
+        # scipy's grid data requires to directly pass the points where to interpolate
+        grid_points = [list(tpl) for tpl in zip(self.x_values, self.y_values)]
+        interp_values = scipy.interpolate.griddata(
+            np.array(grid_points),
+            self.z_values,
+            self.interp_points,
+            method=self.kind,
+        )
+
+        # caches for points
+        self._interp_values = {
+            tuple(point): value
+            for point, value in zip(self.interp_points, interp_values)
+        }
+
+    def __call__(self, x, y):
+        if (x, y) not in self._interp_values:
+            raise Exception("no interpolation existing at point x={}, y={}".format(x, y))
+
+        return self._interp_values[(x, y)]
