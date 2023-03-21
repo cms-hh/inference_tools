@@ -1,8 +1,144 @@
 stages:
-  - docs
+  - build
 
-build_image:
-  stage: docs
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+  PLOTS:
+    value: "none"
+    options:
+      - "none"
+      - "all"
+      - "upper_limits"
+      - "multiple_upper_limits"
+      - "multiple_upper_limits_by_model"
+      - "upper_limits_at_point"
+      - "likelihood_scan"
+      - "likelihood_scan_2d"
+      - "multiple_likelihood_scans"
+      - "multiple_likelihood_scans_2d"
+      - "multiple_likelihood_scans_by_model"
+      - "multiple_likelihood_scans_by_model_2d"
+      - "significance_scan"
+      - "multiple_significance_scans"
+      - "pulls_and_impacts"
+      - "exclusion_and_bestfit"
+      - "exclusion_and_bestfit_2d"
+      - "postfit_s_over_b"
+      - "nuisance_likelihood_scans"
+      - "goodness_of_fit"
+      - "eft_benchmark_limits"
+      - "multiple_eft_benchmark_limits"
+      - "upper_limits_c2"
+      - "likelihood_scan_c2_2d"
+      - "multiple_goodness_of_fits"
+      - "morphing_scales"
+      - "morphed_discriminant"
+      - "stat_error_scan"
+      - "all_limits"
+      - "all_likelihoods"
+      - "all_significances"
+      - "all_pulls"
+      - "all_exclusions"
+      - "all_postfit"
+      - "all_gof"
+      - "all_eft_bm"
+      - "all_eft_c2"
+      - "all_studies"
+    description: "A specific plot to produce (see test.TestPlots for more info)."
+
+compile:
+  stage: build
+  when: manual
+  tags:
+    - cvmfs
+  script:
+    - yum install -y sshpass
+    - mkdir -p data/examplecards
+    - cd data/examplecards
+    - sshpass -v -p ${KRB_PASS} scp -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch:/afs/cern.ch/user/m/mrieger/public/hh/inference/examplecards/v2.tgz cards.tgz
+    - tar -xzf cards.tgz
+    - cd ../..
+    - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
+    - source setup.sh
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    policy: push
+    paths:
+      - data/
+
+lint:
+  stage: build
+  tags:
+    - cvmfs
+  script:
+    - source setup.sh
+    - ./lint.sh
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    policy: pull
+    paths:
+      - data/
+
+.test:
+  stage: build
+  timeout: 2h
+  tags:
+    - cvmfs
+  script:
+    - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
+    - source setup.sh
+    - export TEST_CMD="law run test.TestPlots --version "ci_${CI_COMMIT_SHORT_SHA}" --plots ${TEST_PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf"
+    - echo "running command '${TEST_CMD}'"
+    - eval "${TEST_CMD}"
+    - eval "${TEST_CMD} --fetch-output 0,a,plots"
+    - mkdir png
+    - mkdir pdf
+    - mv plots/*.png png
+    - mv plots/*.pdf pdf
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    policy: pull
+    paths:
+      - data/
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+    paths:
+      - png/*.png
+      - pdf/*.pdf
+    expire_in: 1 month
+
+test_all:
+  extends: .test
+  when: manual
+  rules:
+    - if: $PLOTS == "all"
+      when: always
+  parallel:
+    matrix:
+      - TEST_PLOTS:
+        - "all_limits"
+        - "all_likelihoods"
+        - "all_significances"
+        - "all_pulls"
+        - "all_exclusions"
+        - "all_postfit"
+        - "all_gof"
+        - "all_eft_bm"
+        - "all_eft_c2"
+        - "all_studies"
+
+test_specific:
+  extends: .test
+  when: manual
+  rules:
+    - if: $PLOTS != "none" && $PLOTS != "all"
+      when: always
+  variables:
+    TEST_PLOTS: $PLOTS
+
+build_docs_image:
+  stage: build
   when: manual
   tags:
     - docker-image-build
@@ -13,7 +149,7 @@ build_image:
     NO_CACHE: "true"
 
 deploy_docs:
-  stage: docs
+  stage: build
   when: manual
   tags:
     - docker
@@ -35,7 +171,7 @@ deploy_docs:
     - sshpass -v -p ${KRB_PASS} ssh -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch "cd ${FULL_PAGE_ROOT}; tar -xzf site.tgz; rm site.tgz"
 
 delete_docs:
-  stage: docs
+  stage: build
   when: manual
   tags:
     - docker

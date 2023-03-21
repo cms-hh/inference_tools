@@ -14,12 +14,12 @@ import six
 import uproot
 from scinum import Number
 
-from dhi.config import poi_data, campaign_labels, colors, cms_postfix
+from dhi.config import poi_data, campaign_labels, colors
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, linspace, try_int, poisson_asym_errors, make_list, warn,
     multi_match, round_digits,
 )
-from dhi.plots.util import use_style, create_model_parameters, determine_limit_digits
+from dhi.plots.util import use_style, create_model_parameters, determine_limit_digits, Style
 import dhi.hepdata_tools as hdt
 
 
@@ -51,7 +51,8 @@ def plot_s_over_b(
     campaign=None,
     prefit=False,
     unblinded=False,
-    paper=False,
+    cms_postfix=None,
+    style=None,
 ):
     """
     Creates a postfit signal-over-background plot combined over all bins in the fit of a *poi* and
@@ -91,13 +92,21 @@ def plot_s_over_b(
     parameters. *campaign* should refer to the name of a campaign label defined in
     *dhi.config.campaign_labels*. When *prefit* is *True*, signal, background and uncertainties are
     shown according to the prefit expectation. When *unblinded* is *True*, some legend labels are
-    changed accordingly. When *paper* is *True*, certain plot configurations are adjusted for use in
-    publications.
+    changed accordingly. *cms_postfix* is shown as the postfix behind the CMS label.
+
+    Supported values for *style*:
+
+        - "paper"
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/postfit.html#combined-postfit-shapes
     """
     import plotlib.root as r
     ROOT = import_ROOT()
+
+    # style-based adjustments
+    style = Style.new(style)
+    if style.matches("paper"):
+        cms_postfix = None
 
     # input checks
     assert signal_scale != 0
@@ -153,7 +162,7 @@ def plot_s_over_b(
             "categories:\n  - {}".format(
                 len(missing_signals),
                 "\n  - ".join("{} ({} bins)".format(c, n) for c, n in missing_signals.items()),
-            )
+            ),
         )
     if len(bad_data_indices) not in [0, len(bin_data)]:
         warn(
@@ -161,7 +170,7 @@ def plot_s_over_b(
             "agreement in the produced plot; categories:\n  - {}".format(
                 len(missing_data),
                 "\n  - ".join("{} ({} bins)".format(c, n) for c, n in missing_data.items()),
-            )
+            ),
         )
 
     # compute prefit log(s/b) where possible
@@ -196,7 +205,9 @@ def plot_s_over_b(
     legend_entries_procs = []
 
     # dummy histograms for both pads to control axes
-    x_title = r"Pre-fit expected $log_{{10}}(S/{})$".format("B" if order_without_sqrt else r"\sqrt{B}")
+    x_title = r"Pre-fit expected $log_{{10}}(S/{})$".format(
+        "B" if order_without_sqrt else r"\sqrt{B}",
+    )
     h_dummy1 = ROOT.TH1F("dummy1", ";;Events", 1, x_min, x_max)
     h_dummy2 = ROOT.TH1F("dummy2", ";{};Data / Bkg.".format(to_root_latex(x_title)), 1, x_min, x_max)
     r.setup_hist(h_dummy1, pad=pad1, props={"LineWidth": 0})
@@ -227,8 +238,12 @@ def plot_s_over_b(
         draw_objs1.append((hist_s1, "SAME,HIST"))
         legend_entries.append((hist_s1, signal_label(signal_scale), "L"))
     if hep_data:
-        hdt.create_independent_variable_from_x_axis(hist_s1.GetXaxis(), label=x_title,
-            parent=hep_data, transform=lambda b, l, h: (round_digits(l, 3), round_digits(h, 3)))
+        hdt.create_independent_variable_from_x_axis(
+            hist_s1.GetXaxis(),
+            label=x_title,
+            parent=hep_data,
+            transform=(lambda b, l, h: (round_digits(l, 3), round_digits(h, 3))),
+        )
 
     # signal histogram at the top
     hist_sb1 = ROOT.TH1F("sb1", "", len(bins) - 1, array.array("f", bins))
@@ -400,8 +415,12 @@ def plot_s_over_b(
     legend = r.routines.create_legend(pad=pad1, width=250, n=len(legend_entries))
     r.fill_legend(legend, legend_entries)
     draw_objs1.append(legend)
-    legend_box = r.routines.create_legend_box(legend, pad1, "tr",
-        props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+    legend_box = r.routines.create_legend_box(
+        legend,
+        pad1,
+        "tr",
+        props={"LineWidth": 0, "FillColor": colors.white_trans_70},
+    )
     draw_objs1.insert(-1, legend_box)
 
     # background stack and dedicated legend
@@ -417,8 +436,13 @@ def plot_s_over_b(
 
         legend_cols = min(int(math.ceil(len(legend_entries_procs) / 4.)), 3)
         legend_rows = int(math.ceil(len(legend_entries_procs) / float(legend_cols)))
-        legend_procs = r.routines.create_legend(pad=pad1, width=legend_cols * 140, n=legend_rows,
-            x2=0.53, props={"NColumns": legend_cols})
+        legend_procs = r.routines.create_legend(
+            pad=pad1,
+            width=legend_cols * 140,
+            n=legend_rows,
+            x2=0.53,
+            props={"NColumns": legend_cols},
+        )
         r.fill_legend(legend_procs, legend_entries_procs[::-1])
         draw_objs1.append(legend_procs)
 
@@ -430,42 +454,69 @@ def plot_s_over_b(
         # add split background hists
         if backgrounds:
             for bg, h in zip(backgrounds, hists_bg1):
-                hdt.create_dependent_variable_from_hist(h, label="Events", parent=hep_data,
-                    qualifiers=qualifiers(str(bg["label"])), rounding_method=-1,
-                    transform=clip_negative_hist)
+                hdt.create_dependent_variable_from_hist(
+                    h,
+                    label="Events",
+                    parent=hep_data,
+                    qualifiers=qualifiers(str(bg["label"])),
+                    rounding_method=-1,
+                    transform=clip_negative_hist,
+                )
 
         # total background
         bg_nums = [
-            Number(max(hist_b1.GetBinContent(b), 0), {"postfit": hist_b_err_up1.GetBinContent(b)},
-                "publication")
+            Number(
+                max(hist_b1.GetBinContent(b), 0),
+                {"postfit": hist_b_err_up1.GetBinContent(b)},
+                default_format="publication",
+            )
             for b in range(1, hist_b1.GetXaxis().GetNbins() + 1)
         ]
-        hdt.create_dependent_variable("Events", parent=hep_data, values=bg_nums,
-            qualifiers=qualifiers("Total background"))
+        hdt.create_dependent_variable(
+            "Events",
+            parent=hep_data,
+            values=bg_nums,
+            qualifiers=qualifiers("Total background"),
+        )
 
         # signal
         signal_label = "Signal"
         if from_limit:
             digits = determine_limit_digits(signal_limit)
             signal_label += " x {{:.{}f}} (95% CL limit)".format(digits).format(signal_limit)
-        hdt.create_dependent_variable_from_hist(hist_s1, label="Events", parent=hep_data,
-            qualifiers=qualifiers(signal_label), transform=clip_negative_hist, rounding_method=-2)
+        hdt.create_dependent_variable_from_hist(
+            hist_s1,
+            label="Events",
+            parent=hep_data,
+            qualifiers=qualifiers(signal_label),
+            transform=clip_negative_hist,
+            rounding_method=-2,
+        )
 
         # data
-        hdt.create_dependent_variable_from_graph(graph_d1, error_label="stat", label="Events",
-            qualifiers=qualifiers("Data" + data_postfix), parent=hep_data, rounding_method=3)
+        hdt.create_dependent_variable_from_graph(
+            graph_d1,
+            error_label="stat",
+            label="Events",
+            qualifiers=qualifiers("Data" + data_postfix),
+            parent=hep_data,
+            rounding_method=3,
+        )
 
     # cms label
     cms_layout = "outside_horizontal"
-    _cms_postfix = "" if paper else cms_postfix
-    cms_labels = r.routines.create_cms_labels(pad=pad1, postfix=_cms_postfix, layout=cms_layout)
+    cms_labels = r.routines.create_cms_labels(
+        pad=pad1,
+        postfix=cms_postfix or "",
+        layout=cms_layout,
+    )
     draw_objs1.extend(cms_labels)
 
     # model parameter labels
     if model_parameters:
         param_kwargs = {}
         if cms_layout.startswith("inside"):
-            y_offset = 100 if cms_layout == "inside_vertical" and _cms_postfix else 80
+            y_offset = 100 if cms_layout == "inside_vertical" and cms_postfix else 80
             param_kwargs = {"y_offset": y_offset}
         draw_objs1.extend(create_model_parameters(model_parameters, pad1, **param_kwargs))
 
@@ -527,7 +578,9 @@ def load_bin_data(fit_diagnostics_path, per_process=False):
         if per_process:
             proc_hists = OrderedDict(
                 (proc_name, (cat_dir_pre.Get(proc_name), cat_dir_post.Get(proc_name)))
-                for proc_name in (proc_key.GetName() for proc_key in cat_dir_post.GetListOfKeys())
+                for proc_name in (
+                    proc_key.GetName() for proc_key in cat_dir_post.GetListOfKeys()
+                )
                 if proc_name not in ["data", "total_covar"]
             )
 
@@ -546,10 +599,12 @@ def load_bin_data(fit_diagnostics_path, per_process=False):
             for proc_name, (h_pre, h_post) in proc_hists.items():
                 if h_pre.GetNbinsX() != n:
                     raise Exception("{} pre-fit bins found for process {}, should be {}".format(
-                        h_pre.GetNbinsX(), proc_name, n))
+                        h_pre.GetNbinsX(), proc_name, n,
+                    ))
                 if h_post.GetNbinsX() != n:
                     raise Exception("{} post-fit bins found for process {}, should be {}".format(
-                        h_post.GetNbinsX(), proc_name, n))
+                        h_post.GetNbinsX(), proc_name, n,
+                    ))
 
         # read bins one by one
         for i in range(n):

@@ -325,8 +325,16 @@ def scale_multi_likelihoods(task, data):
         e_all = scale_thy**2
         e_stat = scale_stat**2 - scale_exp**2
         e_statexp = scale_exp**2 - scale_thy**2
-        s_u = err_avg_u**2 / (err_all_u**2 * e_all + err_stat_u**2 * e_stat + err_statexp_u**2 * e_statexp)
-        s_d = err_avg_d**2 / (err_all_d**2 * e_all + err_stat_d**2 * e_stat + err_statexp_d**2 * e_statexp)
+        s_u = err_avg_u**2 / (
+            err_all_u**2 * e_all +
+            err_stat_u**2 * e_stat +
+            err_statexp_u**2 * e_statexp
+        )
+        s_d = err_avg_d**2 / (
+            err_all_d**2 * e_all +
+            err_stat_d**2 * e_stat +
+            err_statexp_d**2 * e_statexp
+        )
 
         # build the dnll2 curve averages
         dnll2_all = np.copy(values_all["dnll2"])

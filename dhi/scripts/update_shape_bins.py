@@ -39,7 +39,8 @@ from dhi.datacard_tools import (
 from dhi.util import TFileCache, create_console_logger, patch_object, multi_match
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def update_shape_bins(datacard, rules, batch_processes=False, directory=None, mass="125"):
@@ -142,9 +143,12 @@ def update_shape_bins(datacard, rules, batch_processes=False, directory=None, ma
 
                         # reject shapes in workspaces
                         if ":" in sl.nom_pattern:
-                            raise Exception("shape line for bin {} and process {} refers to "
-                                "workspace in nominal pattern {} which is not supported".format(
-                                    bin_name, proc_name, sl.nom_pattern))
+                            raise Exception(
+                                "shape line for bin {} and process {} refers to workspace in "
+                                "nominal pattern {} which is not supported".format(
+                                    bin_name, proc_name, sl.nom_pattern,
+                                ),
+                            )
 
                         # also find all matching shape uncertainties
                         syst_names = []
@@ -171,9 +175,12 @@ def update_shape_bins(datacard, rules, batch_processes=False, directory=None, ma
         rate_proc_names = blocks["rates"][1].split()[1:]
         rate_values = blocks["rates"][3].split()[1:]
         if not (len(rate_bin_names) == len(rate_proc_names) == len(rate_values)):
-            raise Exception("the number of bin names ({}), process names ({}) and rates ({}) "
-                "does not match".format(len(rate_bin_names), len(rate_proc_names),
-                len(rate_values)))
+            raise Exception(
+                "the number of bin names ({}), process names ({}) and rates ({}) does not "
+                "match".format(
+                    len(rate_bin_names), len(rate_proc_names), len(rate_values),
+                ),
+            )
 
         # start a tfile cache for opening and updating shape files
         with TFileCache(logger=logger) as cache:
@@ -190,8 +197,10 @@ def update_shape_bins(datacard, rules, batch_processes=False, directory=None, ma
                         channel=bin_name, mass=mass)
                     nom_shape = tfile.Get(shape_name)
                     if not nom_shape:
-                        logger.warning("nominal shape named {} not found in file {} for bin {} and "
-                            "process {}".format(shape_name, file_path, bin_name, proc_name))
+                        logger.warning(
+                            "nominal shape named {} not found in file {} for bin {} and "
+                            "process {}".format(shape_name, file_path, bin_name, proc_name),
+                        )
                         continue
 
                     # get systematic shapes
@@ -203,9 +212,12 @@ def update_shape_bins(datacard, rules, batch_processes=False, directory=None, ma
                             d_shape = tfile.Get(shape_name + "Down")
                             u_shape = tfile.Get(shape_name + "Up")
                             if not d_shape or not u_shape:
-                                logger.warning("incomplete systematic shape named {}(Up|Down) "
-                                    "in file {} for bin {} and process {}".format(
-                                        shape_name, file_path, bin_name, proc_name))
+                                logger.warning(
+                                    "incomplete systematic shape named {}(Up|Down) in file {} for "
+                                    "bin {} and process {}".format(
+                                        shape_name, file_path, bin_name, proc_name,
+                                    ),
+                                )
                                 continue
                             syst_shapes[syst_name] = (d_shape, u_shape)
 
@@ -222,9 +234,9 @@ def update_shape_bins(datacard, rules, batch_processes=False, directory=None, ma
                 if batch_processes:
                     func(
                         bin_name,
-                        [proc_name for proc_name, _, _ in proc_shapes],
-                        [nom_shape for _, nom_shape, _ in proc_shapes],
-                        [syst_shapes for _, _, syst_shapes in proc_shapes],
+                        [_proc_name for _proc_name, _, _ in proc_shapes],
+                        [_nom_shape for _, _nom_shape, _ in proc_shapes],
+                        [_syst_shapes for _, _, _syst_shapes in proc_shapes],
                     )
                 else:
                     for proc_name, nom_shape, syst_shapes in proc_shapes:
@@ -238,7 +250,8 @@ def update_shape_bins(datacard, rules, batch_processes=False, directory=None, ma
                             continue
                         rate_values[i] = "{:.4f}".format(nom_shape.Integral())
                 logger.debug("updated {} rate(s) in datacard bin {}".format(
-                    len(proc_shapes), bin_name))
+                    len(proc_shapes), bin_name,
+                ))
 
             # write updated rate values back to the content
             blocks["rates"][3] = "rate " + " ".join(rate_values)
@@ -249,26 +262,59 @@ if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
-        "update (see --directory)")
-    parser.add_argument("rules", nargs="+", metavar="BIN,PROCESS,FUNCTION", help="rules for "
-        "updating datacard shape bins; 'BIN' and 'PROCESS' support patterns where a prepended '!' "
-        "negates their meaning; 'FUNCTION' should have the format <MODULE_NAME>.<FUNCTION_NAME> to "
-        "import a function 'FUNCTION_NAME' from the module 'MODULE_NAME'; the function should have "
-        "the signature (bin_name, process_name, nominal_hist, syst_hists); this parameter also "
-        "supports files that contain the rules in the described format line by line")
-    parser.add_argument("--batch-processes", "-b", action="store_true", help="handle all processes "
-        "in a bin by a single call to the passed function; 'process_name', 'nominal_hist' and "
-        "'syst_hists' will be lists of the same length")
-    parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
-        "datacard and shape files are stored; when not set, the input files are changed in-place")
-    parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+    parser.add_argument(
+        "input",
+        metavar="DATACARD",
+        help="the datacard to read and possibly update (see --directory)",
+    )
+    parser.add_argument(
+        "rules",
+        nargs="+",
+        metavar="BIN,PROCESS,FUNCTION",
+        help="rules for updating datacard shape bins; 'BIN' and 'PROCESS' support patterns where a "
+        "prepended '!' negates their meaning; 'FUNCTION' should have the format "
+        "<MODULE_NAME>.<FUNCTION_NAME> to import a function 'FUNCTION_NAME' from the module "
+        "'MODULE_NAME'; the function should have the signature (bin_name, process_name, "
+        "nominal_hist, syst_hists); this parameter also supports files that contain the rules in "
+        "the described format line by line",
+    )
+    parser.add_argument(
+        "--batch-processes",
+        "-b",
+        action="store_true",
+        help="handle all processes in a bin by a single call to the passed function; "
+        "'process_name', 'nominal_hist' and 'syst_hists' will be lists of the same length",
+    )
+    parser.add_argument(
+        "--directory",
+        "-d",
+        nargs="?",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
+    )
+    parser.add_argument(
+        "--mass",
+        "-m",
+        default="125",
+        help="mass hypothesis; default: 125",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger
@@ -276,5 +322,10 @@ if __name__ == "__main__":
 
     # run the renaming
     with patch_object(logger, "name", args.log_name):
-        update_shape_bins(args.input, args.rules, batch_processes=args.batch_processes,
-            directory=args.directory, mass=args.mass)
+        update_shape_bins(
+            args.input,
+            args.rules,
+            batch_processes=args.batch_processes,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
+            mass=args.mass,
+        )

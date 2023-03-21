@@ -15,9 +15,8 @@ from collections import OrderedDict
 import sympy
 
 # we need a wildcard import to have everything accessible through this module
-from hh_model import *  # noqa
 # specific imports for linting
-from hh_model import (
+from dhi.models.hh_model import (
     GGFSample as DefaultGGFSample, GGFFormula as DefaultGGFFormula, VBFSample,
     HHModel as DefaultHHModel, vbf_samples, create_ggf_xsec_str, ggf_k_factor,
     _create_add_sample_func, create_vbf_xsec_func,
@@ -182,7 +181,7 @@ def create_model(name, ggf=None, vbf=None, **kwargs):
         name=name,
         ggf_samples=get_samples(ggf, ggf_samples, GGFSample),
         vbf_samples=get_samples(vbf, vbf_samples, VBFSample),
-        **kwargs
+        **kwargs  # noqa
     )
 
 

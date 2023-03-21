@@ -30,7 +30,8 @@ from dhi.datacard_tools import (
 from dhi.util import create_console_logger, patch_object, multi_match
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass="125"):
@@ -56,8 +57,9 @@ def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass=
         if len(p) == 1:
             p = ("*", "*") + p
         elif len(p) != 3:
-            raise Exception("patterns must have the format '[BIN,PROCESS,]NAME', got '{}'".format(
-                pattern))
+            raise Exception(
+                "patterns must have the format '[BIN,PROCESS,]NAME', got '{}'".format(pattern),
+            )
         _patterns.append(p)
     patterns = _patterns
 
@@ -70,8 +72,10 @@ def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass=
         bin_names = blocks["rates"][0].split()[1:]
         process_names = blocks["rates"][1].split()[1:]
         if len(bin_names) != len(process_names):
-            raise Exception("number of bins ({}) and processes ({}) not matching in datacard "
-                "rates".format(len(bin_names), len(process_names)))
+            raise Exception(
+                "number of bins ({}) and processes ({}) not matching in datacard rates".format(
+                    len(bin_names), len(process_names),
+                ))
 
         # iterate through lines in the "parameters" block
         for i, param_line in enumerate(blocks.get("parameters", [])):
@@ -91,8 +95,10 @@ def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass=
             # get the effects
             effects = param_line[2:]
             if len(effects) != len(bin_names):
-                raise Exception("number of effects of parameter {} ({}) does not match number of "
-                    "bins and processes ({})".format(param_name, len(effects), len(bin_names)))
+                raise Exception(
+                    "number of effects of parameter {} ({}) does not match number of "
+                    "bins and processes ({})".format(param_name, len(effects), len(bin_names)),
+                )
 
             # check patterns for each bin-process combination
             new_effects = list(effects)
@@ -113,8 +119,10 @@ def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass=
                             continue
 
                         f = "{1}/{0}".format(*f.split("/", 1))
-                        logger.debug("flip effect of {} parameter {} in bin {} and process {} "
-                            "to {}".format(param_type, param_name, bin_name, process_name, f))
+                        logger.debug(
+                            "flip effect of {} parameter {} in bin {} and process {} "
+                            "to {}".format(param_type, param_name, bin_name, process_name, f),
+                        )
 
                     elif multi_match(param_type, "shape*"):
                         if f == "-" or skip_shapes or not blocks.get("shapes"):
@@ -145,26 +153,41 @@ def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass=
                                 towner_name, _syst_pattern = syst_pattern.split(":", 1)
                                 towner = renamer.get_tobj(tfile, towner_name, "UPDATE")
                                 if not towner:
-                                    raise Exception("could not find object {} in {} with pattern "
-                                        "{}".format(towner_name, tfile, syst_pattern))
+                                    raise Exception(
+                                        "could not find object {} in {} with pattern {}".format(
+                                            towner_name, tfile, syst_pattern,
+                                        ),
+                                    )
                                 syst_pattern = _syst_pattern
 
                             # expand variables to get shape name
-                            tobj_name = expand_variables(syst_pattern, systematic=param_name,
-                                channel=bin_name, process=process_name, mass=mass)
+                            tobj_name = expand_variables(
+                                syst_pattern,
+                                systematic=param_name,
+                                channel=bin_name,
+                                process=process_name,
+                                mass=mass,
+                            )
 
                             # roll names
                             update_shape_name(towner, tobj_name + "Up", tobj_name + "UpTMP")
                             update_shape_name(towner, tobj_name + "Down", tobj_name + "Up")
                             update_shape_name(towner, tobj_name + "UpTMP", tobj_name + "Down")
-                            logger.debug("flip effect of {} parameter {} in bin {} and process {} "
-                                "in shape file {} (entry '{}{{Up,Down}}')".format(param_type,
-                                param_name, bin_name, process_name, sl.file, tobj_name))
+                            logger.debug(
+                                "flip effect of {} parameter {} in bin {} and process {} in shape "
+                                "file {} (entry '{}{{Up,Down}}')".format(
+                                    param_type, param_name, bin_name, process_name, sl.file,
+                                    tobj_name,
+                                ),
+                            )
                             break
                         else:
-                            logger.warning("cannot find shape line for bin {} and process {} "
-                                "to flip {} parameter {}".format(bin_name, process_name,
-                                param_type, param_name))
+                            logger.warning(
+                                "cannot find shape line for bin {} and process {} to flip {} "
+                                "parameter {}".format(
+                                    bin_name, process_name, param_type, param_name,
+                                ),
+                            )
                             continue
 
                     # store it and stop processing patterns
@@ -181,24 +204,56 @@ if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
-        "update (see --directory)")
-    parser.add_argument("names", nargs="+", metavar="NAME", help="names of parameters whose effect "
-        "should be flipped in the format '[BIN,PROCESS,]PARAMETER'; when a bin and process names "
-        "are given, the effect is only flipped in those; patterns are supported; prepending '!' to "
-        "a pattern negates its meaning; a name can also refer to a file with names in the above "
-        "format line by line")
-    parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
-        "datacard and shape files are stored; when not set, the input files are changed in-place")
-    parser.add_argument("--no-shapes", "-n", action="store_true", help="do not change parameter "
-        "names in shape files")
-    parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+    parser.add_argument(
+        "input",
+        metavar="DATACARD",
+        help="the datacard to read and possibly update (see --directory)",
+    )
+    parser.add_argument(
+        "names",
+        nargs="+",
+        metavar="NAME",
+        help="names of parameters whose effect should be flipped in the format "
+        "'[BIN,PROCESS,]PARAMETER'; when a bin and process names are given, the effect is only "
+        "flipped in those; patterns are supported; prepending '!' to a pattern negates its meaning; "
+        "a name can also refer to a file with names in the above format line by line",
+    )
+    parser.add_argument(
+        "--directory",
+        "-d",
+        nargs="?",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
+    )
+    parser.add_argument(
+        "--no-shapes",
+        "-n",
+        action="store_true",
+        help="do not change parameter names in shape files",
+    )
+    parser.add_argument(
+        "--mass",
+        "-m",
+        default="125",
+        help="mass hypothesis; default: 125",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger
@@ -206,5 +261,10 @@ if __name__ == "__main__":
 
     # run the renaming
     with patch_object(logger, "name", args.log_name):
-        flip_parameters(args.input, args.names, directory=args.directory,
-            skip_shapes=args.no_shapes, mass=args.mass)
+        flip_parameters(
+            args.input,
+            args.names,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
+            skip_shapes=args.no_shapes,
+            mass=args.mass,
+        )

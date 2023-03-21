@@ -239,8 +239,16 @@ chi2_levels = {
     for ndof in range(1, 3 + 1)
 }
 
-# postfix after "CMS" labels in plots, shwon when the --paper flag is not used
+# default postfix after "CMS" labels in plots
 cms_postfix = os.getenv("DHI_CMS_POSTFIX", "Work in progress")
 
-# postfix after "CMS" labels in plots, shwon when the --preliminary flag is not used
-cms_postfix_preliminary = os.getenv("DHI_CMS_POSTFIX_PRELIMINARY", "Preliminary")
+# shorthands for EFT benchmark labels and groups
+bm_labels = DotDict()
+# JHEP04
+for bm in ["1", "2", "3", "4", "5", "6", "7", "8", "8a", "9", "10", "11", "12"]:
+    bm_labels["JHEP04BM{}".format(bm)] = (bm, "JHEP04")
+# JHEP03
+for bm in ["1", "2", "3", "4", "5", "6", "7"]:
+    bm_labels["JHEP03BM{}".format(bm)] = (bm, "JHEP03")
+# others
+bm_labels["SM"] = ("SM", "")

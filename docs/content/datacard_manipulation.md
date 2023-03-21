@@ -8,7 +8,7 @@ The argument to configure this directory is identical across all scripts.
 script_name.py DATACARD [OTHER_ARGUMENTS] --directory/-d DIRECTORY
 ```
 
-Please note that, when no output directory is given, ==the content of datacards and shape files is changed in-place==.
+Please note that ==the content of datacards and shape files is changed in-place== in case the directory is empty (`""`) or `"none"`.
 
 
 ## Adjusting parameters
@@ -63,8 +63,8 @@ optional arguments:
   -h, --help            show this help message and exit
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'remove_parameters'
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
@@ -115,8 +115,8 @@ optional arguments:
   -h, --help            show this help message and exit
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'rename_parameters'
   --no-shapes, -n       do not change parameter names in shape files
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
@@ -172,8 +172,8 @@ optional arguments:
   -h, --help            show this help message and exit
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'add_parameter'
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
@@ -227,8 +227,8 @@ optional arguments:
   -h, --help            show this help message and exit
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'merge_parameters'
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
   --unique, -u          only merge parameters when at most one of them has an
@@ -310,8 +310,8 @@ optional arguments:
                         value is assigned to at least one new parameter
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'split_parameter'
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
@@ -364,8 +364,8 @@ optional arguments:
   -h, --help            show this help message and exit
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'flip_parameters'
   --no-shapes, -n       do not change parameter names in shape files
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
@@ -419,8 +419,9 @@ optional arguments:
   -h, --help            show this help message and exit
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default:
+                        'remove_bin_process_pairs'
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
@@ -433,7 +434,7 @@ optional arguments:
 ### Scale
 
 ```shell hl_lines="1"
->scale_parameters.py --help
+> scale_parameters.py --help
 
 usage: scale_parameters.py [-h] [--directory [DIRECTORY]] [--no-shapes]
                            [--log-level LOG_LEVEL] [--log-name LOG_NAME]
@@ -473,8 +474,8 @@ optional arguments:
   -h, --help            show this help message and exit
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'scale_parameters'
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
@@ -521,8 +522,8 @@ optional arguments:
   -h, --help            show this help message and exit
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'remove_processes'
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
@@ -580,8 +581,8 @@ optional arguments:
                         matched by a process pattern
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'remove_empty_processes'
   --no-shapes, -n       do not change process names in shape files
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
@@ -632,8 +633,8 @@ optional arguments:
   -h, --help            show this help message and exit
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'rename_processes'
   --no-shapes, -n       do not change process names in shape files
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
@@ -680,8 +681,8 @@ optional arguments:
   -h, --help            show this help message and exit
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'remove_bins'
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
   --log-level LOG_LEVEL, -l LOG_LEVEL
@@ -727,7 +728,7 @@ custom function. Example usage:
 
 # remove shape bins in all datacard bins using an exteral function
 # (note the quotes)
-> remove_shape_bins.py datacard.txt '*,my_module.func_name" -d output_directory
+> remove_shape_bins.py datacard.txt '*,my_module.func_name' -d output_directory
 
 Note: The use of an output directory is recommended to keep input files
       unchanged.
@@ -760,8 +761,8 @@ optional arguments:
   -h, --help            show this help message and exit
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'remove_shape_bins'
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
@@ -827,8 +828,8 @@ optional arguments:
                         'syst_hists' will be lists of the same length
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'update_shape_bins'
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --log-level LOG_LEVEL, -l LOG_LEVEL
                         python log level; default: INFO
@@ -1014,8 +1015,8 @@ optional arguments:
   -h, --help            show this help message and exit
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'remove_unused_shapes'
   --mass MASS, -m MASS  mass hypothesis; default: 125
   --inplace-shapes, -i  change shape files in-place rather than in a temporary
                         file first
@@ -1206,8 +1207,8 @@ optional arguments:
   -h, --help            show this help message and exit
   --directory [DIRECTORY], -d [DIRECTORY]
                         directory in which the updated datacard and shape
-                        files are stored; when not set, the input files are
-                        changed in-place
+                        files are stored; when empty or 'none', the input
+                        files are changed in-place; default: 'prettify_datacard'
   --no-shapes, -n       do not copy shape files to the output directory when
                         --directory is set
   --no-preamble         remove any existing preamble
