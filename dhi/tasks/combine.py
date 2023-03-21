@@ -1431,6 +1431,7 @@ class POIScanTask(POITask, ParameterScanTask):
     force_scan_parameters_equal_pois = False
     force_scan_parameters_unequal_pois = False
     allow_parameter_values_in_scan_parameters = False
+    allow_parameter_ranges_in_scan_parameters = False
 
     @classmethod
     def modify_param_values(cls, params):
@@ -1477,12 +1478,53 @@ class POIScanTask(POITask, ParameterScanTask):
                     )
 
         # check if no scan parameter is in custom parameter ranges
-        for p in self.scan_parameter_names:
-            if p in self.parameter_ranges_dict:
-                raise Exception(
-                    "scan parameters are not allowed to be in parameter ranges, "
-                    "but found {}".format(p),
-                )
+        if not self.allow_parameter_ranges_in_scan_parameters:
+            for p in self.scan_parameter_names:
+                if p in self.parameter_ranges_dict:
+                    raise Exception(
+                        "scan parameters are not allowed to be in parameter ranges, "
+                        "but found {}".format(p),
+                    )
+
+        # print a warning when a scan range exceeds the valid parameter range
+        if not self.hh_model_empty :
+            msg = (
+                "the requested {where} value {value} of the scan range of parameter {p} exceeds "
+                "the {where} value {allowed} of the physics model, please adjust the allowed range "
+                "via --parameter-ranges 'name,start,stop' or choose a different scan range"
+            )
+            _, model = self.load_hh_model()
+            for p, ranges in self.scan_parameters_dict.items():
+                for s, e, _ in ranges:
+                    # check parameter ranges first
+                    if p in self.parameter_ranges_dict:
+                        _s, _e = self.parameter_ranges_dict[p][0:2]
+                        if s < _s:
+                            self.logger.warning_once(
+                                "exceeded_start_{}_{}".format(p, s),
+                                msg.format(p=p, where="start", value=s, allowed=_s),
+                            )
+                        if e > _e:
+                            self.logger.warning_once(
+                                "exceeded_stop_{}_{}".format(p, e),
+                                msg.format(p=p, where="stop", value=e, allowed=_e),
+                            )
+                        continue
+
+                    # check model poi ranges
+                    model_ranges = law.util.merge_dicts({}, model.r_pois, model.k_pois)
+                    if p in model_ranges:
+                        _s, _e = model_ranges[p][1:3]
+                        if s < _s:
+                            self.logger.warning_once(
+                                "exceeded_start_{}_{}".format(p, s),
+                                msg.format(p=p, where="start", value=s, allowed=_s),
+                            )
+                        if e > _e:
+                            self.logger.warning_once(
+                                "exceeded_start_{}_{}".format(p, e),
+                                msg.format(p=p, where="stop", value=e, allowed=_e),
+                            )
 
     def _joined_parameter_values_pois(self):
         pois = super(POIScanTask, self)._joined_parameter_values_pois()

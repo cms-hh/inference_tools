@@ -125,6 +125,7 @@ class UpperLimitsScanBase(UpperLimitsBase, POIScanTask):
 
     force_scan_parameters_equal_pois = False
     force_scan_parameters_unequal_pois = True
+    allow_parameter_ranges_in_scan_parameters = True
 
 
 class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):

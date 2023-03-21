@@ -24,6 +24,7 @@ class SignificanceBase(POIScanTask, SnapshotUser):
 
     force_scan_parameters_unequal_pois = True
     allow_parameter_values_in_pois = True
+    allow_parameter_ranges_in_scan_parameters = True
 
     frequentist_toys = luigi.BoolParameter(
         default=False,
