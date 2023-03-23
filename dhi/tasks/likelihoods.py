@@ -464,12 +464,20 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         for inp in inputs:
             data = inp.load(allow_pickle=True, formatter="numpy")
             values.append(data["data"])
-            all_poi_mins.append([
-                (None if np.isnan(v) else v)
-                for v in (
-                    float(data["poi_mins"]) for p in scan_parameter_names 
-                )
-            ])
+            try :
+                all_poi_mins.append([
+                    (None if np.isnan(v) else v)
+                    for v in (
+                        float(data["poi_mins"]) for p in scan_parameter_names 
+                    )
+                ])
+            except:
+                all_poi_mins.append([
+                    (None if np.isnan(v) else v)
+                    for v in (
+                        float(data["poi_mins"][p]) for p in scan_parameter_names 
+                    )
+                ])
 
         # nll0 values must be identical per input (otherwise there might be an issue with the model)
         for v in values:
