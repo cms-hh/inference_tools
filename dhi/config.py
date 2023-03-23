@@ -72,6 +72,7 @@ br_hh["bbzz4l"] = br_hh.bbzzllll
 
 # HH branching names (TODO: find prettier abbreviations)
 br_hh_names = DotDict(
+    vhh4b=r"bb bb (VHH prod.)",
     bbbb=r"bb bb",
     bbbb_low=r"bb bb, #scale[0.75]{resolved} $\club$",
     bbbb_boosted=r"bb bb, #scale[0.75]{merged-jet} $\club$",
@@ -105,9 +106,10 @@ br_hh_names["bbzz4l"] = br_hh_names.bbzzllll
 
 # HH references
 hh_references = DotDict(
+    vhh4b=r"CMS-PAS-HIG-22-006",
     bbbb=r"Not yet",
     bbbb_low=r"PRL 129 (2022) 081802",
-    bbbb_boosted=r"Acc. by PRL (arXiv:2205.06667)",
+    bbbb_boosted=r"Acc. by PRL (2205.06667)",
     bbbb_boosted_ggf=r"CMS-PAS-B2G-21-001",
     bbbb_boosted_vbf=r"CMS-PAS-B2G-21-001",
     bbbb_all=r"Nature 607 (2022) 60",
@@ -117,8 +119,8 @@ hh_references = DotDict(
     bbwwlvlv=r"Not yet",
     bbzz=r"Not yet",
     bbzzqqll=r"Not yet",
-    bbzzllll=r"Acc. by JHEP (arXiv:2206.10657)",
-    bbtt=r"Acc. by PLB (arXiv:2206.09401)",
+    bbzzllll=r"Acc. by JHEP (2206.10657)",
+    bbtt=r"Acc. by PLB (2206.09401)",
     bbgg=r"JHEP 03 (2021) 257",
     ttww=r"Not yet",
     ttzz=r"Not yet",
@@ -127,12 +129,13 @@ hh_references = DotDict(
     zzzz=r"Not yet",
     wwzz=r"Not yet",
     wwgg=r"CMS-PAS-HIG-21-014",
-    multilepton="Acc. by JHEP (arXiv:2206.10268)",
+    multilepton="Acc. by JHEP (2206.10268)",
     comb_nat=r"Nature 607 (2022) 60",
 )
 hh_references["bbzz4l"] = hh_references.bbzzllll
 
 hh_references_cadi = DotDict(
+    vhh4b=r"HIG-22-006",
     bbbb=r"Not yet",
     bbbb_low=r"HIG-20-005",
     bbbb_boosted=r"B2G-21-001",
