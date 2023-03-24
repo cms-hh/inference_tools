@@ -1073,8 +1073,11 @@ class ParameterScanTask(AnalysisTask):
             for values in itertools.product(*self.scan_parameters_dict.values())
         ]
 
-    def htcondor_output_postfix(self):
-        return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
+    def control_output_postfix(self):
+        return "{}__{}".format(
+            super(ParameterScanTask, self).control_output_postfix(),
+            self.get_output_postfix(),
+        )
 
 
 class POITask(DatacardTask, ParameterValuesTask):
@@ -1340,8 +1343,11 @@ class POITask(DatacardTask, ParameterValuesTask):
         # flip flags
         return tuple(map((lambda b: not b), self.unblinded))
 
-    def htcondor_output_postfix(self):
-        return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
+    def control_output_postfix(self):
+        return "{}__{}".format(
+            super(POITask, self).control_output_postfix(),
+            self.control_output_postfix(),
+        )
 
 
 class POIMultiTask(POITask):

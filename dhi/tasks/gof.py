@@ -163,9 +163,11 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
 
         return cmd
 
-    def htcondor_output_postfix(self):
-        postfix = super(GoodnessOfFit, self).htcondor_output_postfix()
-        return "{}__{}".format(postfix, self.toys_postfix)
+    def control_output_postfix(self):
+        return "{}__{}".format(
+            super(GoodnessOfFit, self).control_output_postfix(),
+            self.toys_postfix,
+        )
 
 
 class MergeGoodnessOfFit(GoodnessOfFitBase):
