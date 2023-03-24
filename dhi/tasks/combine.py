@@ -15,6 +15,7 @@ import functools
 from abc import abstractproperty
 from collections import defaultdict, OrderedDict
 
+from backports.functools_lru_cache import lru_cache
 import law
 import luigi
 import six
@@ -482,6 +483,7 @@ class DatacardTask(HHModelTask):
         return _path, bin_name, inject, store_dir
 
     @classmethod
+    @lru_cache(maxsize=None)
     def resolve_datacards(cls, patterns):
         paths = []
         bin_names = []
