@@ -81,10 +81,6 @@ compile:
 
 lint:
   extends: .setup
-  when: always
-  rules:
-    - if: $PLOTS != "none"
-      when: manual
   script:
     - source setup.sh
     - ./lint.sh
