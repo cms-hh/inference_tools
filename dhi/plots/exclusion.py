@@ -244,12 +244,12 @@ def plot_exclusion_and_bestfit_1d(
 
         # evaluate the scan
         if len(dnll2_below_1sigma_intervals) <= 1:
-            scans.append(evaluate_likelihood_scan_1d(
+            scans.append([evaluate_likelihood_scan_1d(
                 poi_values,
                 dnll2_values,
                 poi_min=poi_min,
                 origin="entry '{}'".format(d["name"]),
-            ))
+            )])
         else:
             warn("{} disjoint intervals of dnll2 values below 1 sigma".format(
                 len(dnll2_below_1sigma_intervals),

@@ -47,19 +47,31 @@ variables:
       - "all_studies"
     description: "A specific plot to produce (see test.TestPlots for more info)."
 
-compile:
+.setup:
   stage: build
   when: manual
   tags:
     - cvmfs
-  script:
-    - yum install -y sshpass
-    - mkdir -p data/examplecards
-    - cd data/examplecards
-    - sshpass -v -p ${KRB_PASS} scp -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch:/afs/cern.ch/user/m/mrieger/public/hh/inference/examplecards/v2.tgz cards.tgz
-    - tar -xzf cards.tgz
-    - cd ../..
+  before_script:
+    - >
+      if [ ! -d data/examplecards ]; then
+        yum install -y sshpass && \
+        mkdir -p data/examplecards && \
+        cd data/examplecards && \
+        sshpass -v -p ${KRB_PASS} scp -o "StrictHostKeyChecking=no" ${KRB_USER}@lxplus.cern.ch:/afs/cern.ch/user/m/mrieger/public/hh/inference/examplecards/v2.tgz cards.tgz && \
+        tar -xzf cards.tgz && \
+        cd ../..
+      fi
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    policy: pull-push
+    paths:
+      - data/
+
+compile:
+  extends: .setup
+  script:
     - source setup.sh
   cache:
     key: "${CI_COMMIT_REF_SLUG}"
@@ -68,15 +80,13 @@ compile:
       - data/
 
 lint:
-  stage: build
-  tags:
-    - cvmfs
+  extends: .setup
   script:
     - source setup.sh
     - ./lint.sh
   cache:
     key: "${CI_COMMIT_REF_SLUG}"
-    policy: pull
+    policy: pull-push
     paths:
       - data/
 
