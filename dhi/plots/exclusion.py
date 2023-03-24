@@ -365,7 +365,7 @@ def plot_exclusion_and_bestfit_2d(
     scan_min1=None,
     scan_min2=None,
     show_sm_point=True,
-    interpolation_method="root",
+    interpolation_method="tgraph2d",
     x_min=None,
     x_max=None,
     y_min=None,
@@ -398,9 +398,9 @@ def plot_exclusion_and_bestfit_2d(
     e.g. to use combine's internally interpolated value.
 
     The standard model point is drawn as well unless *show_sm_point* is *False*.
-    *interpolation_method* can either be "root" (TGraph2D), "linear" or "cubic"
-    (scipy.interpolate.interp2d), or "rbf" (scipy.interpolate.Rbf). In case a tuple is passed, the
-    method should be the first element, followed by optional configuration options.
+    *interpolation_method* can either be "tgraph2d" (TGraph2D), "linear" or "cubic"
+    (scipy.interpolate's interp2d or griddata), or "rbf" (scipy.interpolate.Rbf). In case a tuple is
+    passed, the method should be the first element, followed by optional configuration options.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the range of the x- and y-axis, respectively, and
     default to the scan parameter ranges found in *expected_limits*. *model_parameters* can be a
