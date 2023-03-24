@@ -49,7 +49,6 @@ variables:
 
 .setup:
   stage: build
-  when: manual
   tags:
     - cvmfs
   before_script:
@@ -71,6 +70,7 @@ variables:
 
 compile:
   extends: .setup
+  when: manual
   script:
     - source setup.sh
   cache:
@@ -81,6 +81,10 @@ compile:
 
 lint:
   extends: .setup
+  when: always
+  rules:
+    - if: $PLOTS != "none"
+      when: manual
   script:
     - source setup.sh
     - ./lint.sh
