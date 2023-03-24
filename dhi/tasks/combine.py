@@ -22,7 +22,9 @@ import six
 
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, HTCondorWorkflow, ModelParameters
 from dhi.config import poi_data, br_hh
-from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path
+from dhi.util import (
+    linspace, try_int, real_path, expand_path, get_dcr2_path, common_leading_substring,
+)
 from dhi.datacard_tools import bundle_datacard, read_datacard_blocks
 
 
@@ -769,6 +771,86 @@ class MultiDatacardTask(DatacardTask):
         return parts
 
 
+class MultiDatacardPatternTask(MultiDatacardTask):
+
+    datacard_pattern = law.CSVParameter(
+        default=(),
+        description="one or multiple comma-separated regular expressions for selecting datacards "
+        "from each of the sequences passed in --multi-datacards, and for extracting information "
+        "with a single regex group; when set on the command line, single quotes should be used; "
+        "when empty, a common pattern is extracted per datacard sequence; default: empty",
+    )
+    datacard_pattern_matches = law.CSVParameter(
+        default=(),
+        significant=False,
+        description="internal parameter, do not use manually",
+    )
+
+    exclude_params_index = {"datacard_names", "datacard_order", "datacard_pattern_matches"}
+    exclude_params_repr = {"datacard_pattern", "datacard_pattern_matches"}
+
+    datacard_names = None
+    datacard_order = None
+
+    @classmethod
+    def modify_param_values(cls, params):
+        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
+
+        # re-group multi datacards by basenames, filter with datacard_pattern and store matches
+        if (
+            "multi_datacards" in params and
+            "datacard_pattern" in params and
+            not params.get("datacard_pattern_matches")
+        ):
+            patterns = params["datacard_pattern"]
+            multi_datacards = params["multi_datacards"]
+
+            # infer a common pattern automatically per sequence
+            if not patterns:
+                # find the common leading substring of datacard bases and built a pattern from that
+                patterns = []
+                for datacards in multi_datacards:
+                    basenames = [os.path.basename(datacard) for datacard in datacards]
+                    common_basename = functools.reduce(common_leading_substring, basenames)
+                    patterns.append(common_basename + r"(.+)\.txt")
+
+            # when there is one pattern and multiple datacards or vice versa, expand the former
+            if len(patterns) == 1 and len(multi_datacards) > 1:
+                patterns *= len(params["multi_datacards"])
+            elif len(patterns) > 1 and len(multi_datacards) == 1:
+                multi_datacards *= len(patterns)
+            elif len(patterns) != len(multi_datacards):
+                raise ValueError(
+                    "the number of patterns in --datacard-pattern ({}) does not "
+                    "match the number of datacard sequences in --multi-datacards ({})".format(
+                        len(patterns), len(params["multi_datacards"]),
+                    ),
+                )
+
+            # assign datacards to groups, based on the matched group
+            groups = defaultdict(set)
+            for datacards, pattern in zip(multi_datacards, patterns):
+                n_matches = 0
+                for datacard in datacards:
+                    # apply the pattern to the basename
+                    m = re.match(pattern, os.path.basename(datacard))
+                    if m:
+                        groups[m.group(1)].add(datacard)
+                        n_matches += 1
+                if not n_matches:
+                    raise Exception(
+                        "the datacard pattern '{}' did not match any of the selected "
+                        "datacards\n  {}".format(pattern, "\n  ".join(datacards)),
+                    )
+
+            # sort cards, assign back to multi_datacards and store the pattern matches
+            params["multi_datacards"] = tuple(tuple(sorted(cards)) for cards in groups.values())
+            params["datacard_pattern_matches"] = tuple(groups.keys())
+            params["datacard_pattern"] = tuple(patterns)
+
+        return params
+
+
 class ParameterValuesTask(AnalysisTask):
 
     parameter_values = ModelParameters(
@@ -1317,7 +1399,7 @@ class POITask(DatacardTask, ParameterValuesTask):
         # manually frozen parameters
         params += tuple(self.frozen_parameters)
 
-        return ",".join(params) if join else params
+        return (",".join(params) or '""') if join else params
 
     @property
     def joined_frozen_parameters(self):
