@@ -11,7 +11,7 @@ python dhi/scripts/postfit_plots.py \
 There are additional options, like eg  
 
 - `--unblind` will unblind all the plots on the booked list (the default is blinded).
-- In `--overwrite` you can give a dictionary with a list of plots, each plot is define by substituting keywords on `plot_options_dict`.
+- In `--overwrite` you can give a dictionary with a list of plots, each plot is define by substituting keywords on `plot_options_dict`. This dictionary is loaded in ordered mode, so you can use a keyword to substitute a previous entry.
 - by default the command extract prefit, if you want postfit quantities add the option `--doPostFit`.
 
 Please use `--help` to see further options.

@@ -72,11 +72,11 @@ br_hh["bbzz4l"] = br_hh.bbzzllll
 
 # HH branching names (TODO: find prettier abbreviations)
 br_hh_names = DotDict(
-    bbbb=r"4b",
-    bbbb_low=r"4b, low $m_{HH}$",
-    bbbb_boosted=r"4b, high $m_{HH}$",
-    bbbb_boosted_ggf=r"4b #scale[0.75]{high $m_{HH}$, ggF}",
-    bbbb_boosted_vbf=r"4b #scale[0.75]{high $m_{HH}$, VBF}",
+    bbbb=r"bb bb",
+    bbbb_low=r"bb bb, #scale[0.75]{low $m_{HH}$}",
+    bbbb_boosted=r"bb bb, #scale[0.75]{high $m_{HH}$}",
+    bbbb_boosted_ggf=r"bb bb #scale[0.75]{high $m_{HH}$, ggF}",
+    bbbb_boosted_vbf=r"bb bb #scale[0.75]{high $m_{HH}$, VBF}",
     bbbb_all=r"bb bb",
     bbvv=r"bb VV",
     bbww=r"b bWW",
@@ -101,6 +101,34 @@ br_hh_names["bbwwdl"] = br_hh_names.bbwwlvlv
 br_hh_names["bbwwllvv"] = br_hh_names.bbwwlvlv
 br_hh_names["bbwwsl"] = br_hh_names.bbwwqqlv
 br_hh_names["bbzz4l"] = br_hh_names.bbzzllll
+
+# HH references
+hh_references = DotDict(
+    bbbb=r"Not yet",
+    bbbb_low=r"CMS-PAS-HIG-20-005",
+    bbbb_boosted=r"CMS-PAS-B2G-21-001",
+    bbbb_boosted_ggf=r"CMS-PAS-B2G-21-001",
+    bbbb_boosted_vbf=r"CMS-PAS-B2G-21-001",
+    bbbb_all=r"Not yet",
+    bbvv=r"Not yet",
+    bbww=r"Not yet",
+    bbwwqqlv=r"Not yet",
+    bbwwlvlv=r"Not yet",
+    bbzz=r"Not yet",
+    bbzzqqll=r"Not yet",
+    bbzzllll=r"CMS-PAS-HIG-20-004",
+    bbtt=r"CMS-PAS-HIG-20-010",
+    bbgg=r"JHEP 03 (2021) 257",
+    ttww=r"Not yet",
+    ttzz=r"Not yet",
+    tttt=r"Not yet",
+    wwww=r"Not yet",
+    zzzz=r"Not yet",
+    wwzz=r"Not yet",
+    wwgg=r"Not yet",
+    multilepton="CMS-PAS-HIG-21-002",
+)
+hh_references["bbzz4l"] = hh_references.bbzzllll
 
 # campaign labels, extended by combinations with HH branching names
 # lumi values from https://twiki.cern.ch/twiki/bin/view/CMS/TWikiLUM?rev=163
@@ -211,5 +239,16 @@ chi2_levels = {
     for ndof in range(1, 3 + 1)
 }
 
-# postfix after "CMS" labels in plots, shwon when the --paper flag is not used
+# default postfix after "CMS" labels in plots
 cms_postfix = os.getenv("DHI_CMS_POSTFIX", "Work in progress")
+
+# shorthands for EFT benchmark labels and groups
+bm_labels = DotDict()
+# JHEP04
+for bm in ["1", "2", "3", "4", "5", "6", "7", "8", "8a", "9", "10", "11", "12"]:
+    bm_labels["JHEP04BM{}".format(bm)] = (bm, "JHEP04")
+# JHEP03
+for bm in ["1", "2", "3", "4", "5", "6", "7"]:
+    bm_labels["JHEP03BM{}".format(bm)] = (bm, "JHEP03")
+# others
+bm_labels["SM"] = ("SM", "")

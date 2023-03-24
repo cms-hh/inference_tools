@@ -34,18 +34,27 @@ import six
 from dhi.datacard_tools import ShapeLine, manipulate_datacard, expand_variables, expand_file_lines
 from dhi.util import (
     TFileCache, import_ROOT, create_console_logger, patch_object, multi_match, make_unique,
-    real_path, to_root_latex, prepare_output,
+    to_root_latex, prepare_output,
 )
 from dhi.plots.util import use_style
 from dhi.config import colors, cms_postfix
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
-def plot_datacard_shapes(datacard, rules, stack=False, directory=".", file_type="pdf",
-        nom_format="{bin}__{process}.{file_type}",
-        syst_format="{bin}__{process}__{syst}.{file_type}", mass="125", **plot_kwargs):
+def plot_datacard_shapes(
+    datacard,
+    rules,
+    stack=False,
+    directory=".",
+    file_type="pdf",
+    nom_format="{bin}__{process}.{file_type}",
+    syst_format="{bin}__{process}__{syst}.{file_type}",
+    mass="125",
+    **plot_kwargs  # noqa
+):
     """
     Reads a *datacard* and plots its histogram shapes according to certain *rules*. A rule should
     be a tuple consisting of a datacard bin, a datacard process and an optional name of a systematic
@@ -117,7 +126,8 @@ def plot_datacard_shapes(datacard, rules, stack=False, directory=".", file_type=
             for bin_name, rates in content["rates"].items()
         }
         logger.debug("found a total of {} signal and {} background processes".format(
-            len(all_signal_names), len(all_background_names)))
+            len(all_signal_names), len(all_background_names),
+        ))
 
         # expand bin and process patterns in rules
         expanded_rules = []
@@ -221,14 +231,18 @@ def plot_datacard_shapes(datacard, rules, stack=False, directory=".", file_type=
                             break
                     else:
                         logger.warning("no shape line found matching bin {} and process {}".format(
-                            bin_name, proc_name))
+                            bin_name, proc_name,
+                        ))
                         continue
 
                     # reject shapes in workspaces
                     if ":" in sl.nom_pattern:
-                        logger.warning("shape line for bin {} and process {} refers to workspace "
-                            "in nominal pattern {} which is not supported".format(
-                                bin_name, proc_name, sl.nom_pattern))
+                        logger.warning(
+                            "shape line for bin {} and process {} refers to workspace in nominal "
+                            "pattern {} which is not supported".format(
+                                bin_name, proc_name, sl.nom_pattern,
+                            ),
+                        )
                         continue
 
                     # open the file for writing
@@ -240,8 +254,10 @@ def plot_datacard_shapes(datacard, rules, stack=False, directory=".", file_type=
                         channel=bin_name, mass=mass)
                     nom_shape = tfile.Get(shape_name)
                     if not nom_shape:
-                        logger.warning("nominal shape named {} not found in file {} for bin {} and "
-                            "process {}".format(shape_name, file_path, bin_name, proc_name))
+                        logger.warning(
+                            "nominal shape named {} not found in file {} for bin {} and "
+                            "process {}".format(shape_name, file_path, bin_name, proc_name),
+                        )
                         continue
 
                     # get the systematic shapes when param has type shape, otherwise use rate effect
@@ -256,19 +272,29 @@ def plot_datacard_shapes(datacard, rules, stack=False, directory=".", file_type=
                                 d = 2 - u
                         else:  # shape*
                             if sl.syst_pattern:
-                                shape_name = expand_variables(sl.syst_pattern, process=proc_name,
-                                    channel=bin_name, systematic=param["name"], mass=mass)
+                                shape_name = expand_variables(
+                                    sl.syst_pattern,
+                                    process=proc_name,
+                                    channel=bin_name,
+                                    systematic=param["name"],
+                                    mass=mass,
+                                )
                                 u_shape = tfile.Get(shape_name + "Up")
                                 d_shape = tfile.Get(shape_name + "Down")
                                 if u_shape and d_shape:
                                     u, d = u_shape, d_shape
                                 else:
-                                    logger.warning("incomplete systematic shape named {}(Up|Down) "
+                                    logger.warning(
+                                        "incomplete systematic shape named {}(Up|Down) "
                                         "in file {} for bin {} and process {}".format(
-                                            shape_name, file_path, bin_name, proc_name))
+                                            shape_name, file_path, bin_name, proc_name,
+                                        ),
+                                    )
                             else:
-                                logger.warning("shape line for bin {} and process {} does not "
-                                    "contain a systematic pattern".format(bin_name, proc_name))
+                                logger.warning(
+                                    "shape line for bin {} and process {} does not "
+                                    "contain a systematic pattern".format(bin_name, proc_name),
+                                )
 
                     # store the shape info
                     proc_shapes[proc_name] = (nom_shape, d, u)
@@ -278,28 +304,58 @@ def plot_datacard_shapes(datacard, rules, stack=False, directory=".", file_type=
                     continue
 
                 # draw the shape
-                create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, file_type,
-                    nom_format, syst_format, **plot_kwargs)
+                create_shape_plot(
+                    bin_name,
+                    proc_label,
+                    proc_shapes,
+                    param,
+                    directory,
+                    file_type,
+                    nom_format,
+                    syst_format,
+                    **plot_kwargs  # noqa
+                )
 
 
 @use_style("dhi_default")
-def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, file_type, nom_format,
-        syst_format, binning="original", x_title="Datacard shape", y_min=None, y_max=None,
-        y_min2=None, y_max2=None, y_log=False, campaign_label=None):
+def create_shape_plot(
+    bin_name,
+    proc_label,
+    proc_shapes,
+    param,
+    directory,
+    file_type,
+    nom_format,
+    syst_format,
+    binning="original",
+    x_title="Datacard shape",
+    y_min=None,
+    y_max=None,
+    y_min2=None,
+    y_max2=None,
+    y_log=False,
+    campaign_label=None,
+):
     import plotlib.root as r
     ROOT = import_ROOT()
 
     # check if systematic shifts are to be plotted, determine the plot path
     plot_syst = param is not None and any(d is not None for _, d, _ in proc_shapes.values())
     if plot_syst:
-        path = syst_format.format(bin=bin_name, process=proc_label, syst=param["name"],
-            file_type=file_type)
+        path = syst_format.format(
+            bin=bin_name,
+            process=proc_label,
+            syst=param["name"],
+            file_type=file_type,
+        )
     else:
         path = nom_format.format(bin=bin_name, process=proc_label, file_type=file_type)
     path = path.replace("*", "X").replace("?", "Y").replace("!", "N")
     path = os.path.join(directory, path)
-    logger.debug("going to create plot at {} for shapes in bin {} and process {}, stacking {} "
-        "processes".format(path, bin_name, proc_label, len(proc_shapes)))
+    logger.debug(
+        "going to create plot at {} for shapes in bin {} and process {}, stacking {} "
+        "processes".format(path, bin_name, proc_label, len(proc_shapes)),
+    )
 
     # combine histograms
     hist_n, hist_d, hist_u = None, None, None
@@ -400,10 +456,21 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, file_
 
         h_dummy2 = ROOT.TH1F("dummy2", ";{};Change / %".format(x_title), 1, x_min, x_max)
         r.setup_hist(h_dummy2, pad=pad2, props={"LineWidth": 0})
-        r.setup_x_axis(h_dummy2.GetXaxis(), pad=pad2, props=x_props)
-        r.setup_x_axis(h_dummy2.GetXaxis(), pad=pad2, props={"TitleOffset": 1.23})
-        r.setup_y_axis(h_dummy2.GetYaxis(), pad=pad2, props={"Ndivisions": 6, "CenterTitle": True,
-            "LabelSize": 20, "TitleOffset": 1.6})
+        r.setup_x_axis(
+            h_dummy2.GetXaxis(),
+            pad=pad2,
+            props=x_props,
+        )
+        r.setup_x_axis(
+            h_dummy2.GetXaxis(),
+            pad=pad2,
+            props={"TitleOffset": 1.23},
+        )
+        r.setup_y_axis(
+            h_dummy2.GetYaxis(),
+            pad=pad2,
+            props={"Ndivisions": 6, "CenterTitle": True, "LabelSize": 20, "TitleOffset": 1.6},
+        )
         draw_objs2.append((h_dummy2, "HIST"))
 
     # add top histograms
@@ -480,13 +547,20 @@ def create_shape_plot(bin_name, proc_label, proc_shapes, param, directory, file_
     legend = r.routines.create_legend(pad=pad1, width=250, n=len(legend_entries))
     r.fill_legend(legend, legend_entries)
     draw_objs1.append(legend)
-    legend_box = r.routines.create_legend_box(legend, pad1, "tr",
-        props={"LineWidth": 0, "FillColor": colors.root.white_trans_70})
+    legend_box = r.routines.create_legend_box(
+        legend,
+        pad1,
+        "tr",
+        props={"LineWidth": 0, "FillColor": colors.root.white_trans_70},
+    )
     draw_objs1.insert(-1, legend_box)
 
     # cms label
-    cms_labels = r.routines.create_cms_labels(postfix=cms_postfix, layout="outside_horizontal",
-        pad=pad1)
+    cms_labels = r.routines.create_cms_labels(
+        postfix=cms_postfix,
+        layout="outside_horizontal",
+        pad=pad1,
+    )
     draw_objs1.extend(cms_labels)
 
     # campaign label
@@ -512,7 +586,8 @@ def transform_binning(hist, binning):
         clone = hist.__class__(
             hist.GetName() + "__transformed",
             ";".join([hist.GetTitle(), hist.GetXaxis().GetTitle(), hist.GetYaxis().GetTitle()]),
-            *args, **kwargs
+            *args,
+            **kwargs  # noqa
         )
         clone.Sumw2()
         return clone
@@ -549,45 +624,118 @@ if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input", metavar="DATACARD", help="the datacard to read")
-    parser.add_argument("rules", nargs="+", metavar="BIN,PROCESS[,SYSTEMATIC]", help="rules "
-        "defining which shapes to plot; 'BIN', 'PROCESS' and 'SYSTEMATIC' support patterns where a "
-        "prepended '!' negates their meaning; special process names are 'S', 'B', and 'SB' which "
-        "are interpreted as combined signal, background, and signal+background; multiple process "
-        "patterns can be concatenated with '+'; when no 'SYSTEMATIC' is given, only nominal shapes "
-        "are plotted; special systematic names 'S' and 'R' are interpreted as all shape and all "
-        "rate systematics; this parameter also supports files that contain the rules in the "
-        "described format line by line")
-    parser.add_argument("--stack", "-s", action="store_true", help="instead of creating separate "
-        "plots per process machted by a rule, stack distributions and create a single plot")
-    parser.add_argument("--directory", "-d", default=".", help="directory in which produced plots "
-        "are saved; defaults to the current directory")
-    parser.add_argument("--file-type", "-f", default="pdf", help="the file type to produce; "
-        "default: pdf")
-    parser.add_argument("--nom-format", default="{bin}__{process}.{file_type}", help="format for "
-        "created files when creating only nominal shapes; default: {bin}__{process}.{file_type}")
-    parser.add_argument("--syst-format", default="{bin}__{process}__{syst}.{file_type}",
+    parser.add_argument(
+        "input",
+        metavar="DATACARD",
+        help="the datacard to read",
+    )
+    parser.add_argument(
+        "rules",
+        nargs="+",
+        metavar="BIN,PROCESS[,SYSTEMATIC]",
+        help="rules defining which shapes to plot; 'BIN', 'PROCESS' and 'SYSTEMATIC' support "
+        "patterns where a prepended '!' negates their meaning; special process names are 'S', 'B', "
+        "and 'SB' which are interpreted as combined signal, background, and signal+background; "
+        "multiple process patterns can be concatenated with '+'; when no 'SYSTEMATIC' is given, "
+        "only nominal shapes are plotted; special systematic names 'S' and 'R' are interpreted as "
+        "all shape and all rate systematics; this parameter also supports files that contain the "
+        "rules in the described format line by line",
+    )
+    parser.add_argument(
+        "--stack",
+        "-s",
+        action="store_true",
+        help="instead of creating separate plots per process machted by a rule, stack "
+        "distributions and create a single plot",
+    )
+    parser.add_argument(
+        "--directory",
+        "-d",
+        default=".",
+        help="directory in which produced plots are saved; defaults to the current directory",
+    )
+    parser.add_argument(
+        "--file-type",
+        "-f",
+        default="pdf",
+        help="the file type to produce; default: pdf",
+    )
+    parser.add_argument(
+        "--nom-format",
+        default="{bin}__{process}.{file_type}",
+        help="format for created files when creating only nominal shapes; default: "
+        "{bin}__{process}.{file_type}",
+    )
+    parser.add_argument(
+        "--syst-format",
+        default="{bin}__{process}__{syst}.{file_type}",
         help="format for created files when creating systematic shapes; default: "
-        "{bin}__{process}__{syst}.{file_type}")
-    parser.add_argument("--mass", "-m", default="125", help="mass hypothesis; default: 125")
-    parser.add_argument("--binning", "-b", default="original", choices=["original", "numbers",
-        "numbers_width"], help="the binning strategy; 'original': use original bin edges; "
-        "'numbers': equidistant edges using bin numbers; 'numbers_width': same as 'numbers' and "
-        "divide by bin widths")
-    parser.add_argument("--x-title", default="Datacard shape", help="x-axis label; default: "
-        "'Datacard shape'")
-    parser.add_argument("--y-min", type=float, help="min y value of the top pad; no default")
-    parser.add_argument("--y-max", type=float, help="max y value of the top pad; no default")
-    parser.add_argument("--y-min2", type=float, help="min y value of the bottom pad; no default")
-    parser.add_argument("--y-max2", type=float, help="max y value of the bottom pad; no default")
-    parser.add_argument("--y-log", action="store_true", help="transform y-axis to log scale")
-    parser.add_argument("--campaign", help="label to be shown at the top right; no default")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+        "{bin}__{process}__{syst}.{file_type}",
+    )
+    parser.add_argument(
+        "--mass",
+        "-m",
+        default="125",
+        help="mass hypothesis; default: 125",
+    )
+    parser.add_argument(
+        "--binning",
+        "-b",
+        default="original",
+        choices=["original", "numbers", "numbers_width"],
+        help="the binning strategy; 'original': use original bin edges; 'numbers': equidistant "
+        "edges using bin numbers; 'numbers_width': same as 'numbers' and divide by bin widths",
+    )
+    parser.add_argument(
+        "--x-title",
+        default="Datacard shape",
+        help="x-axis label; default: 'Datacard shape'",
+    )
+    parser.add_argument(
+        "--y-min",
+        type=float,
+        help="min y value of the top pad; no default",
+    )
+    parser.add_argument(
+        "--y-max",
+        type=float,
+        help="max y value of the top pad; no default",
+    )
+    parser.add_argument(
+        "--y-min2",
+        type=float,
+        help="min y value of the bottom pad; no default",
+    )
+    parser.add_argument(
+        "--y-max2",
+        type=float,
+        help="max y value of the bottom pad; no default",
+    )
+    parser.add_argument(
+        "--y-log",
+        action="store_true",
+        help="transform y-axis to log scale",
+    )
+    parser.add_argument(
+        "--campaign",
+        help="label to be shown at the top right; no default",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger
@@ -595,8 +743,21 @@ if __name__ == "__main__":
 
     # run the renaming
     with patch_object(logger, "name", args.log_name):
-        plot_datacard_shapes(args.input, args.rules, stack=args.stack, directory=args.directory,
-            file_type=args.file_type, nom_format=args.nom_format, syst_format=args.syst_format,
-            mass=args.mass, binning=args.binning, x_title=args.x_title, y_min=args.y_min,
-            y_max=args.y_max, y_min2=args.y_min2, y_max2=args.y_max2, y_log=args.y_log,
-            campaign_label=args.campaign)
+        plot_datacard_shapes(
+            args.input,
+            args.rules,
+            stack=args.stack,
+            directory=args.directory,
+            file_type=args.file_type,
+            nom_format=args.nom_format,
+            syst_format=args.syst_format,
+            mass=args.mass,
+            binning=args.binning,
+            x_title=args.x_title,
+            y_min=args.y_min,
+            y_max=args.y_max,
+            y_min2=args.y_min2,
+            y_max2=args.y_max2,
+            y_log=args.y_log,
+            campaign_label=args.campaign,
+        )

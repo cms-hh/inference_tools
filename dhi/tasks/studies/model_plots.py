@@ -96,8 +96,9 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
             formulae = model.get_formulae()
             name = self.signal + "_formula"
             if name not in formulae:
-                raise Exception("no formula for signal {} in model {}".format(
-                    self.signal, model.name))
+                raise Exception(
+                    "no formula for signal {} in model {}".format(self.signal, model.name),
+                )
             get_xsec = getattr(module, "create_{}_xsec_func".format(self.signal))(formulae[name])
         allowed_args = inspect.getargspec(get_xsec).args
 
@@ -150,13 +151,20 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
         # prepare ranges
         y_min_value = min([0.] + [ROOT.TMath.MinElement(g.GetN(), g.GetY()) for g in graphs])
         y_max_value = max(ROOT.TMath.MaxElement(g.GetN(), g.GetY()) for g in graphs)
-        y_min, y_max, _ = get_y_range(y_min_value, y_max_value, self.get_axis_limit("y_min"),
-            self.get_axis_limit("y_max"), log=self.y_log, y_min_log=1e-1)
+        y_min, y_max, _ = get_y_range(
+            y_min_value,
+            y_max_value,
+            self.get_axis_limit("y_min"),
+            self.get_axis_limit("y_max"),
+            log=self.y_log,
+            y_min_log=1e-1,
+        )
 
         # dummy histogram to control axes
         x_title = "#kappa"
         y_title = "Signal enhancement #sigma^{{{0}}} / #sigma^{{{0}}}_{{SM}}".format(
-            self.s_labels[self.signal])
+            self.s_labels[self.signal],
+        )
         h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, self.x_min, self.x_max)
         r.setup_hist(h_dummy, pad=pad, props={"Minimum": y_min, "Maximum": y_max, "LineWidth": 0})
         draw_objs.append((h_dummy, "HIST"))
@@ -177,18 +185,25 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
         legend = r.routines.create_legend(pad=pad, width=160, n=len(legend_entries))
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
-        legend_box = r.routines.create_legend_box(legend, pad, "tr",
-            props={"LineWidth": 0, "FillColor": colors.white_trans_70})
+        legend_box = r.routines.create_legend_box(
+            legend,
+            pad,
+            "tr",
+            props={"LineWidth": 0, "FillColor": colors.white_trans_70},
+        )
         draw_objs.insert(-1, legend_box)
 
         # cms label
-        cms_labels = r.routines.create_cms_labels(pad=pad, postfix=cms_postfix,
-            layout="outside_horizontal")
+        cms_labels = r.routines.create_cms_labels(
+            pad=pad,
+            postfix=cms_postfix,
+            layout="outside_horizontal",
+        )
         draw_objs.extend(cms_labels)
 
         # model parameters
         if self.parameter_values_dict:
-            draw_objs.extend(create_model_parameters(self.parameter_values_dict, pad, y_offset=100))
+            draw_objs.extend(create_model_parameters(self.parameter_values_dict, pad))
 
         # draw all objects
         r.routines.draw_objects(draw_objs)
