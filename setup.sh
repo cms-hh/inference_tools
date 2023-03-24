@@ -89,7 +89,8 @@ setup() {
 
     source "/cvmfs/cms.cern.ch/cmsset_default.sh" "" || return "$?"
     export SCRAM_ARCH="slc7_amd64_gcc900"
-    export CMSSW_VERSION="CMSSW_11_3_4"
+    export CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_11_3_4}"
+    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v9.0.0}"
     flag_file_combine="${flag_file_combine}_${SCRAM_ARCH}_${CMSSW_VERSION}"
 
     [ "${DHI_REINSTALL_COMBINE}" = "1" ] && rm -f "${flag_file_combine}"
@@ -111,7 +112,7 @@ setup() {
         (
             cd "${DHI_SOFTWARE}/${CMSSW_VERSION}/src"
             eval "$( scramv1 runtime -sh )" && \
-            git clone --branch v9.0.0 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
+            git clone --branch "${DHI_COMBINE_VERSION}" https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
             cd HiggsAnalysis/CombinedLimit && \
             chmod ug+x test/diffNuisances.py && \
             ( [ "${DHI_COMBINE_PYTHON_ONLY}" = "1" ] && scram b python || scram b -j ${DHI_INSTALL_CORES} )
@@ -376,6 +377,8 @@ interactive_setup() {
     fi
     query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "${eos_user_store}" "${eos_user_store_repr}"
     query DHI_SOFTWARE "Directory for installing software" "${DHI_DATA}/software" "\$DHI_DATA/software"
+    query DHI_CMSSW_VERSION "Version of CMSSW to be used" "CMSSW_11_3_4"
+    query DHI_COMBINE_VERSION "Version of combine to be used (tag name)" "v9.0.0"
     query DHI_DATACARDS_RUN2 "Location of the datacards_run2 repository (optional)" "" "''"
     query DHI_HOOK_FILE "Location of a file with custom hooks (optional)" "" "''"
     query DHI_LOCAL_SCHEDULER "Use a local scheduler for law tasks" "True"
