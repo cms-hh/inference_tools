@@ -180,8 +180,11 @@ class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
             output=self.output().path,
         )
 
-    def htcondor_output_postfix(self):
-        return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
+    def control_output_postfix(self):
+        return "{}__{}".format(
+            super(EFTLimitBase, self).control_output_postfix(),
+            self.get_output_postfix(),
+        )
 
 
 class EFTBenchmarkLimits(EFTBenchmarkBase, EFTLimitBase):
