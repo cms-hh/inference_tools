@@ -119,7 +119,7 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
         name = self.join_postfix(["gof", self.get_output_postfix(), parts])
         return self.local_target(name + ".root")
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         # get the workspace to use and define snapshot args
         if self.use_snapshot:
             workspace = self.input()["snapshot"].path

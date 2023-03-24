@@ -162,7 +162,7 @@ class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
             self=self,
         )
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         return (
             "combine -M AsymptoticLimits {workspace}"
             " {self.custom_args}"
