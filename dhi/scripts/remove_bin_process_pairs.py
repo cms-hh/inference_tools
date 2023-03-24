@@ -30,7 +30,8 @@ from dhi.datacard_tools import (
 from dhi.util import real_path, multi_match, create_console_logger, patch_object
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=False):
@@ -75,9 +76,12 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
 
         # quick check if all lists have the same lengths
         if not (len(bin_names) == len(process_names) == len(process_ids) == len(rates)):
-            raise Exception("the number of bin names ({}), process names ({}), process ids "
-                "({}) and rates ({}) does not match".format(len(bin_names), len(process_names),
-                len(process_ids), len(rates)))
+            raise Exception(
+                "the number of bin names ({}), process names ({}), process ids ({}) and rates ({}) "
+                "does not match".format(
+                    len(bin_names), len(process_names), len(process_ids), len(rates),
+                ),
+            )
 
         # go through bin and process names and compare with patterns
         for i, (bin_name, process_name) in enumerate(zip(bin_names, process_names)):
@@ -91,7 +95,8 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
                     continue
 
                 logger.debug("remove process {} from rates in bin {}".format(
-                    process_name, bin_name))
+                    process_name, bin_name,
+                ))
                 removed_columns.append(i)
                 break
 
@@ -116,16 +121,28 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
         # decrease imax in counts
         if fully_removed_bin_names:
             logger.info("removed all occurrences of bin(s) {}".format(
-                ", ".join(fully_removed_bin_names)))
-            update_datacard_count(blocks, "imax", -len(fully_removed_bin_names), diff=True,
-                logger=logger)
+                ", ".join(fully_removed_bin_names),
+            ))
+            update_datacard_count(
+                blocks,
+                "imax",
+                -len(fully_removed_bin_names),
+                diff=True,
+                logger=logger,
+            )
 
         # decrease jmax in counts
         if fully_removed_process_names:
             logger.info("removed all occurrences of processes(s) {}".format(
-                ", ".join(fully_removed_process_names)))
-            update_datacard_count(blocks, "jmax", -len(fully_removed_process_names), diff=True,
-                logger=logger)
+                ", ".join(fully_removed_process_names),
+            ))
+            update_datacard_count(
+                blocks,
+                "jmax",
+                -len(fully_removed_process_names),
+                diff=True,
+                logger=logger,
+            )
 
         # remove fully removed bins from observations
         if blocks.get("observations") and fully_removed_bin_names:
@@ -172,7 +189,8 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
                         continue
 
                     logger.debug("remove shape line for process {} and bin {}".format(
-                        shape_line.process, shape_line.bin))
+                        shape_line.process, shape_line.bin,
+                    ))
                     to_remove.append((shape_line.i))
                     break
 
@@ -195,12 +213,15 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
 
                     columns = param_line[2:]
                     if max(removed_columns) >= len(columns):
-                        raise Exception("parameter line {} '{} {} ...' has less columns than "
-                            "defined in rates".format(i, param_name, param_type))
+                        raise Exception(
+                            "parameter line {} '{} {} ...' has less columns than "
+                            "defined in rates".format(i, param_name, param_type),
+                        )
 
                     # remove columns and update the line
                     logger.debug("remove {} column(s) from {} parameter {} with {} columns".format(
-                        len(removed_columns), param_type, param_name, len(columns)))
+                        len(removed_columns), param_type, param_name, len(columns),
+                    ))
                     columns = [c for j, c in enumerate(columns) if j not in removed_columns]
                     blocks["parameters"][i] = " ".join([param_name, param_type] + columns)
 
@@ -216,13 +237,16 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
                 if param_type == "rateParam" and len(param_line) >= 4:
                     bin_pattern, proc_pattern = param_line[2:4]
                     for bin_name, proc_name in zip(new_bin_names, new_process_names):
-                        if multi_match(bin_name, bin_pattern) and \
-                                multi_match(proc_name, proc_pattern):
+                        if (
+                            multi_match(bin_name, bin_pattern) and
+                            multi_match(proc_name, proc_pattern)
+                        ):
                             break
                     else:
                         to_remove.append(i)
                         logger.debug("remove '{}' with no matching bin or process left".format(
-                            " ".join(param_line)))
+                            " ".join(param_line),
+                        ))
 
             # change lines in-place
             drop_datacard_lines(blocks, "parameters", to_remove)
@@ -250,13 +274,17 @@ def remove_bin_process_pairs(datacard, patterns, directory=None, skip_shapes=Fal
 
                 if action in ["add", "drop", "split", "merge"]:
                     for bin_name, proc_name in zip(new_bin_names, new_process_names):
-                        if multi_match(bin_name, bin_pattern) and \
-                                multi_match(proc_name, proc_pattern):
+                        if (
+                            multi_match(bin_name, bin_pattern) and
+                            multi_match(proc_name, proc_pattern)
+                        ):
                             break
                     else:
                         to_remove.append(i)
-                        logger.debug("remove nuisance edit action {} in bin {} and process {} with "
-                            "no matching bin or process left".format(action, bin_name, proc_name))
+                        logger.debug(
+                            "remove nuisance edit action {} in bin {} and process {} with "
+                            "no matching bin or process left".format(action, bin_name, proc_name),
+                        )
 
             # change lines in-place
             drop_datacard_lines(blocks, "nuisance_edits", to_remove)
@@ -266,21 +294,49 @@ if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
-        "update (see --directory)")
-    parser.add_argument("names", nargs="+", metavar="BIN_NAME,PROCESS_NAME", help="names of bin "
-        "process pairs to remove in the format 'bin_name,process_name' or files containing these "
-        "pairs line by line; supports patterns; prepending '!' to a pattern negates its meaning")
-    parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
-        "datacard and shape files are stored; when not set, the input files are changed in-place")
-    parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
-        "the output directory when --directory is set")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+    parser.add_argument(
+        "input",
+        metavar="DATACARD",
+        help="the datacard to read and possibly update (see --directory)",
+    )
+    parser.add_argument(
+        "names",
+        nargs="+",
+        metavar="BIN_NAME,PROCESS_NAME",
+        help="names of bin process pairs to remove in the format 'bin_name,process_name' or files "
+        "containing these pairs line by line; supports patterns; prepending '!' to a pattern "
+        "negates its meaning",
+    )
+    parser.add_argument(
+        "--directory",
+        "-d",
+        nargs="?",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
+    )
+    parser.add_argument(
+        "--no-shapes",
+        "-n",
+        action="store_true",
+        help="do not copy shape files to the output directory when --directory is set",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger
@@ -288,5 +344,9 @@ if __name__ == "__main__":
 
     # run the removing
     with patch_object(logger, "name", args.log_name):
-        remove_bin_process_pairs(args.input, args.names, directory=args.directory,
-            skip_shapes=args.no_shapes)
+        remove_bin_process_pairs(
+            args.input,
+            args.names,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
+            skip_shapes=args.no_shapes,
+        )

@@ -199,7 +199,10 @@ class MergeLikelihoodScan(LikelihoodBase):
 
             # save the best fit values
             if np.nan in poi_mins:
-                poi_mins = [f[p].array()[0] for p in self.pois]
+                poi_mins = np.array(
+                    tuple(f[p].array()[0] for p in self.scan_parameter_names),
+                    dtype=[(p, float) for p in self.scan_parameter_names],
+                )
 
             # compute the dnll2 value
             dnll2 = dnll * 2.
@@ -215,7 +218,7 @@ class MergeLikelihoodScan(LikelihoodBase):
             data.append(scan_values + (nll0, nll, dnll, dnll2, fit_nll))
 
         data = np.array(data, dtype=dtype)
-        self.output().dump(data=data, poi_mins=np.array(poi_mins), formatter="numpy")
+        self.output().dump(data=data, poi_mins=poi_mins, formatter="numpy")
 
 
 class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
@@ -291,12 +294,30 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         description="save allowed parameter ranges in an additional output; 1D only; "
         "default: False",
     )
+    eft_lines = luigi.Parameter(
+        default=law.NO_STR,
+        significant=False,
+        description="file path for potential EFT lines in 2D likelihood plot; ignored for 1D; "
+        "empty default",
+    )
 
     force_n_pois = (1, 2)
     force_n_scan_parameters = (1, 2)
     sort_pois = False
     sort_scan_parameters = False
     allow_multiple_scan_ranges = True
+
+    default_plot_function = [
+        "dhi.plots.likelihoods.plot_likelihood_scans_1d",
+        "dhi.plots.likelihoods.plot_likelihood_scan_2d",
+    ]
+
+    @property
+    def plot_function_id(self):
+        if self.plot_function not in (None, law.NO_STR):
+            return self.plot_function
+
+        return self.default_plot_function[self.n_pois - 1]
 
     def requires(self):
         return [
@@ -313,18 +334,28 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             parts.append("log")
 
         # plots
-        names = self.create_plot_names(["nll{}d".format(self.n_pois), self.get_output_postfix(), parts])
+        names = self.create_plot_names([
+            "nll{}d".format(self.n_pois),
+            self.get_output_postfix(),
+            parts,
+        ])
         outputs["plots"] = [self.local_target(name) for name in names]
 
         # ranges
         if self.n_pois == 1 and self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
-                self.get_output_postfix()))
+                self.get_output_postfix(),
+            ))
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
             outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
 
         return outputs
 
@@ -345,7 +376,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             # prepare data
             data = [{
                 "values": values,
-                "poi_min": None if self.recompute_best_fit else poi_mins[0],
+                "poi_min": None if self.recompute_best_fit else poi_mins[self.pois[0]],
                 "name": "",
             }]
 
@@ -353,7 +384,6 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             theory_value = poi_data.get(self.pois[0], {}).get("sm_value")
 
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scans_1d",
                 paths=[outp.path for outp in outputs["plots"]],
                 poi=self.pois[0],
                 data=data,
@@ -373,18 +403,19 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 show_points=self.show_points,
-                paper=self.paper,
+                cms_postfix=self.cms_postfix,
+                style=self.style,
+                dump_target=outputs.get("plot_data"),
             )
         else:  # 2
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scan_2d",
                 paths=[outp.path for outp in outputs["plots"]],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
                 values=values,
                 hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
-                poi1_min=None if self.recompute_best_fit else poi_mins[0],
-                poi2_min=None if self.recompute_best_fit else poi_mins[1],
+                poi1_min=None if self.recompute_best_fit else poi_mins[self.pois[0]],
+                poi2_min=None if self.recompute_best_fit else poi_mins[self.pois[1]],
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
                 show_significances=self.show_significances,
@@ -401,29 +432,43 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 z_max=self.get_axis_limit("z_max"),
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
-                paper=self.paper,
-                style=self.style if self.style != law.NO_STR else None,
+                eft_lines=self.eft_lines if self.eft_lines != law.NO_STR else None,
+                cms_postfix=self.cms_postfix,
+                style=self.style,
+                dump_target=outputs.get("plot_data"),
             )
 
     def load_scan_data(self, inputs, recompute_dnll2=True, merge_scans=True):
-        return self._load_scan_data(inputs, self.scan_parameter_names,
-            self.get_scan_parameter_combinations(), recompute_dnll2=recompute_dnll2,
-            merge_scans=merge_scans)
+        return self._load_scan_data(
+            inputs,
+            self.scan_parameter_names,
+            self.get_scan_parameter_combinations(),
+            recompute_dnll2=recompute_dnll2,
+            merge_scans=merge_scans,
+        )
 
     @classmethod
-    def _load_scan_data(cls, inputs, scan_parameter_names, scan_parameter_combinations,
-            recompute_dnll2=True, merge_scans=True):
+    def _load_scan_data(
+        cls,
+        inputs,
+        scan_parameter_names,
+        scan_parameter_combinations,
+        recompute_dnll2=True,
+        merge_scans=True,
+    ):
         import numpy as np
 
         # load values of each input
         values = []
         all_poi_mins = []
         for inp in inputs:
-            data = inp.load(formatter="numpy")
+            data = inp.load(allow_pickle=True, formatter="numpy")
             values.append(data["data"])
             all_poi_mins.append([
-                (None if np.isnan(data["poi_mins"][i]) else float(data["poi_mins"][i]))
-                for i in range(len(scan_parameter_names))
+                (None if np.isnan(v) else v)
+                for v in (
+                    float(data["poi_mins"][p]) for p in scan_parameter_names
+                )
             ])
 
         # nll0 values must be identical per input (otherwise there might be an issue with the model)
@@ -431,8 +476,10 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             nll_unique = np.unique(v["nll0"])
             nll_unique = nll_unique[~np.isnan(nll_unique)]
             if len(nll_unique) != 1:
-                raise Exception("found {} different nll0 values in scan data which indicates in "
-                    "issue with the model: {}".format(len(nll_unique), nll_unique))
+                raise Exception(
+                    "found {} different nll0 values in scan data which indicates in "
+                    "issue with the model: {}".format(len(nll_unique), nll_unique),
+                )
 
         # recompute dnll2 from the minimum nll and fit_nll
         if recompute_dnll2:
@@ -445,13 +492,16 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         # concatenate values and safely remove duplicates when configured
         if merge_scans:
             test_fn = lambda kept, removed: kept < 1e-7 or abs((kept - removed) / kept) < 0.001
-            values = unique_recarray(values, cols=scan_parameter_names,
-                test_metric=("dnll2", test_fn))
+            values = unique_recarray(
+                values,
+                cols=scan_parameter_names,
+                test_metric=("dnll2", test_fn),
+            )
 
         # pick the most appropriate poi mins
         poi_mins = cls._select_poi_mins(all_poi_mins, scan_parameter_combinations)
 
-        return values, poi_mins
+        return values, dict(zip(scan_parameter_names, poi_mins))
 
     @classmethod
     def _select_poi_mins(cls, poi_mins, scan_parameter_combinations):
@@ -492,6 +542,11 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
 
     compare_multi_sequence = "multi_datacards"
 
+    default_plot_function = [
+        "dhi.plots.likelihoods.plot_likelihood_scans_1d",
+        "dhi.plots.likelihoods.plot_likelihood_scans_2d",
+    ]
+
     @classmethod
     def modify_param_values(cls, params):
         params = PlotLikelihoodScan.modify_param_values.__func__.__get__(cls)(params)
@@ -501,8 +556,12 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
     def requires(self):
         return [
             [
-                MergeLikelihoodScan.req(self, datacards=datacards, scan_parameters=scan_parameters,
-                    **kwargs)
+                MergeLikelihoodScan.req(
+                    self,
+                    datacards=datacards,
+                    scan_parameters=scan_parameters,
+                    **kwargs  # noqa
+                )
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
             for datacards, kwargs in zip(self.multi_datacards, self.get_multi_task_kwargs())
@@ -517,18 +576,28 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
             parts.append("log")
 
         # plots
-        names = self.create_plot_names(["multinll{}d".format(self.n_pois), self.get_output_postfix(), parts])
+        names = self.create_plot_names([
+            "multinll{}d".format(self.n_pois),
+            self.get_output_postfix(),
+            parts,
+        ])
         outputs["plots"] = [self.local_target(name) for name in names]
 
         # ranges
         if self.n_pois == 1 and self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
-                self.get_output_postfix()))
+                self.get_output_postfix(),
+            ))
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
             outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
 
         return outputs
 
@@ -547,12 +616,12 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
             values, poi_mins = self.load_scan_data(inps)
 
             if self.recompute_best_fit:
-                poi_mins = [None] * len(poi_mins)
+                poi_mins = {p: None for p in poi_mins}
 
             # store a data entry
             data.append(dict([
                 ("values", values),
-                ("poi_min", poi_mins[0]) if self.n_pois == 1 else ("poi_mins", poi_mins),
+                ("poi_min", [poi_mins[p] for p in self.pois]),
                 ("name", "Cards {}".format(i + 1)),
             ]))
 
@@ -574,7 +643,6 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
             theory_value = poi_data.get(self.pois[0], {}).get("sm_value")
 
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scans_1d",
                 paths=[outp.path for outp in outputs["plots"]],
                 poi=self.pois[0],
                 data=data,
@@ -595,11 +663,12 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 show_points=self.show_points,
-                paper=self.paper,
+                cms_postfix=self.cms_postfix,
+                style=self.style,
+                dump_target=outputs.get("plot_data"),
             )
         else:  # 2
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scans_2d",
                 paths=[outp.path for outp in outputs["plots"]],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
@@ -614,7 +683,9 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 y_max=self.get_axis_limit("y_max"),
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
-                paper=self.paper,
+                cms_postfix=self.cms_postfix,
+                style=self.style,
+                dump_target=outputs.get("plot_data"),
             )
 
 
@@ -627,11 +698,20 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
 
     compare_multi_sequence = "hh_models"
 
+    default_plot_function = [
+        "dhi.plots.likelihoods.plot_likelihood_scans_1d",
+        "dhi.plots.likelihoods.plot_likelihood_scans_2d",
+    ]
+
     def requires(self):
         return [
             [
-                MergeLikelihoodScan.req(self, hh_model=hh_model, scan_parameters=scan_parameters,
-                    **kwargs)
+                MergeLikelihoodScan.req(
+                    self,
+                    hh_model=hh_model,
+                    scan_parameters=scan_parameters,
+                    **kwargs  # noqa
+                )
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
             for hh_model, kwargs in zip(self.hh_models, self.get_multi_task_kwargs())
@@ -646,18 +726,28 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
             parts.append("log")
 
         # plots
-        names = self.create_plot_names(["multinllbymodel{}d".format(self.n_pois), self.get_output_postfix(), parts])
+        names = self.create_plot_names([
+            "multinllbymodel{}d".format(self.n_pois),
+            self.get_output_postfix(),
+            parts,
+        ])
         outputs["plots"] = [self.local_target(name) for name in names]
 
         # ranges
         if self.n_pois == 1 and self.save_ranges:
             outputs["ranges"] = self.local_target("ranges__{}.json".format(
-                self.get_output_postfix()))
+                self.get_output_postfix(),
+            ))
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
             outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
 
         return outputs
 
@@ -676,7 +766,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
             values, poi_mins = self.load_scan_data(inps)
 
             if self.recompute_best_fit:
-                poi_mins = [None] * len(poi_mins)
+                poi_mins = {p: None for p in poi_mins}
 
             # prepare the name
             name = hh_model.rsplit(".", 1)[-1].replace("_", " ")
@@ -686,7 +776,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
             # store a data entry
             data.append(dict([
                 ("values", values),
-                ("poi_min", poi_mins[0]) if self.n_pois == 1 else ("poi_mins", poi_mins),
+                ("poi_min", [poi_mins[p] for p in self.pois]),
                 ("name", name),
             ]))
 
@@ -705,7 +795,6 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
             theory_value = poi_data.get(self.pois[0], {}).get("sm_value")
 
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scans_1d",
                 paths=[outp.path for outp in outputs["plots"]],
                 poi=self.pois[0],
                 data=data,
@@ -725,11 +814,12 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
                 show_points=self.show_points,
-                paper=self.paper,
+                cms_postfix=self.cms_postfix,
+                style=self.style,
+                dump_target=outputs.get("plot_data"),
             )
         else:  # 2
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_likelihood_scans_2d",
                 paths=[outp.path for outp in outputs["plots"]],
                 poi1=self.pois[0],
                 poi2=self.pois[1],
@@ -744,5 +834,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
                 y_max=self.get_axis_limit("y_max"),
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
-                paper=self.paper,
+                cms_postfix=self.cms_postfix,
+                style=self.style,
+                dump_target=outputs.get("plot_data"),
             )

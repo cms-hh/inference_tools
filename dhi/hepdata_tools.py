@@ -177,8 +177,13 @@ def create_error(value, label=None, parent=None):
 # adapters
 #
 
-def create_independent_variable_from_x_axis(x_axis, label=None, unit=None, parent=None,
-        transform=None):
+def create_independent_variable_from_x_axis(
+    x_axis,
+    label=None,
+    unit=None,
+    parent=None,
+    transform=None,
+):
     # default transform
     if not callable(transform):
         transform = lambda bin_number, low, high: (low, high)
@@ -201,8 +206,16 @@ def create_independent_variable_from_x_axis(x_axis, label=None, unit=None, paren
     return create_independent_variable(label, unit=unit, values=values, parent=parent)
 
 
-def create_dependent_variable_from_hist(hist, label=None, unit=None, qualifiers=None, parent=None,
-        error_label=None, rounding_method=None, transform=None):
+def create_dependent_variable_from_hist(
+    hist,
+    label=None,
+    unit=None,
+    qualifiers=None,
+    parent=None,
+    error_label=None,
+    rounding_method=None,
+    transform=None,
+):
     # default transform
     if not callable(transform):
         transform = lambda bin_number, value, error: (value, error)
@@ -228,12 +241,27 @@ def create_dependent_variable_from_hist(hist, label=None, unit=None, qualifiers=
         num = Number(v, err, default_format=rounding_method)
         values.append(num)
 
-    return create_dependent_variable(label, unit=unit, qualifiers=qualifiers, values=values,
-        parent=parent)
+    return create_dependent_variable(
+        label,
+        unit=unit,
+        qualifiers=qualifiers,
+        values=values,
+        parent=parent,
+    )
 
 
-def create_dependent_variable_from_graph(graph, label=None, unit=None, qualifiers=None, parent=None,
-        coord="y", x_values=None, error_label=None, rounding_method=None, transform=None):
+def create_dependent_variable_from_graph(
+    graph,
+    label=None,
+    unit=None,
+    qualifiers=None,
+    parent=None,
+    coord="y",
+    x_values=None,
+    error_label=None,
+    rounding_method=None,
+    transform=None,
+):
     ROOT = import_ROOT()
 
     # checks
@@ -314,5 +342,10 @@ def create_dependent_variable_from_graph(graph, label=None, unit=None, qualifier
             num = Number(y, err, default_format=rounding_method)
             values.append(num)
 
-    return create_dependent_variable(label, unit=unit, qualifiers=qualifiers, values=values,
-        parent=parent)
+    return create_dependent_variable(
+        label,
+        unit=unit,
+        qualifiers=qualifiers,
+        values=values,
+        parent=parent,
+    )

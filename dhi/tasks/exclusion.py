@@ -17,8 +17,14 @@ from dhi.tasks.likelihoods import MergeLikelihoodScan, PlotLikelihoodScan
 from dhi.config import br_hh
 
 
-class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIPlotTask,
-        SnapshotUser, BoxPlotTask):
+class PlotExclusionAndBestFit(
+    POIScanTask,
+    POIMultiTask,
+    MultiDatacardTask,
+    POIPlotTask,
+    SnapshotUser,
+    BoxPlotTask,
+):
 
     show_best_fit = PlotLikelihoodScan.show_best_fit
     show_best_fit_error = PlotLikelihoodScan.show_best_fit_error
@@ -42,6 +48,8 @@ class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIP
     allow_multiple_scan_ranges = True
     compare_multi_sequence = "multi_datacards"
 
+    default_plot_function = "dhi.plots.exclusion.plot_exclusion_and_bestfit_1d"
+
     def requires(self):
         def merge_tasks(cls, **kwargs):
             return [
@@ -53,8 +61,12 @@ class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIP
         for datacards, kwargs in zip(self.multi_datacards, self.get_multi_task_kwargs()):
             req = {"limits": merge_tasks(MergeUpperLimits, datacards=datacards, **kwargs)}
             if self.show_best_fit:
-                req["likelihoods"] = merge_tasks(MergeLikelihoodScan, datacards=datacards,
-                    pois=tuple(self.scan_parameter_names), **kwargs)
+                req["likelihoods"] = merge_tasks(
+                    MergeLikelihoodScan,
+                    datacards=datacards,
+                    pois=tuple(self.scan_parameter_names),
+                    **kwargs  # noqa
+                )
             reqs.append(req)
 
         return reqs
@@ -68,8 +80,17 @@ class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIP
         return self.join_postfix(parts) if join else parts
 
     def output(self):
+        outputs = {}
+
         names = self.create_plot_names(["exclusionbestfit", self.get_output_postfix()])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()])
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -80,21 +101,26 @@ class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIP
 
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load input data
         data = []
-        for i, inp in enumerate(self.input()):
+        inputs = self.input()
+        for i, (inp, unblinded) in enumerate(zip(inputs, self.unblinded * len(inputs))):
             # load limits
             limits = PlotUpperLimits._load_scan_data(inp["limits"], self.scan_parameter_names)
 
             # load likelihoods
             nll_values, scan_min = None, None
             if "likelihoods" in inp:
-                nll_values, _scan_min = PlotLikelihoodScan._load_scan_data(inp["likelihoods"],
-                    self.scan_parameter_names, self.get_scan_parameter_combinations())
-                if not self.recompute_best_fit and not np.isnan(_scan_min[0]):
-                    scan_min = float(_scan_min[0])
+                nll_values, _scan_min = PlotLikelihoodScan._load_scan_data(
+                    inp["likelihoods"],
+                    self.scan_parameter_names,
+                    self.get_scan_parameter_combinations(),
+                )
+                _scan_min = _scan_min[self.scan_parameter_names[0]]
+                if not self.recompute_best_fit and not np.isnan(_scan_min):
+                    scan_min = float(_scan_min)
 
             # store data
             entry = dict(
@@ -103,7 +129,7 @@ class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIP
                 nll_values=nll_values,
                 scan_min=scan_min,
             )
-            if self.unblinded:
+            if unblinded:
                 entry["observed_limits"] = {
                     self.scan_parameter_names[0]: limits[self.scan_parameter_names[0]],
                     "limit": limits["observed"],
@@ -121,8 +147,7 @@ class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIP
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.exclusion.plot_exclusion_and_bestfit_1d",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             data=data,
             poi=self.pois[0],
             scan_parameter=self.scan_parameter_names[0],
@@ -137,7 +162,9 @@ class PlotExclusionAndBestFit(POIScanTask, POIMultiTask, MultiDatacardTask, POIP
             model_parameters=self.get_shown_parameters(),
             h_lines=self.h_lines,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
+            style=self.style,
+            dump_target=outputs.get("plot_data"),
         )
 
 
@@ -147,6 +174,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
     show_best_fit_error = copy.copy(PlotLikelihoodScan.show_best_fit_error)
     show_best_fit_error._default = False
     recompute_best_fit = PlotLikelihoodScan.recompute_best_fit
+    interpolation_method = PlotLikelihoodScan.interpolation_method
     xsec_contours = law.CSVParameter(
         default=("auto",),
         significant=False,
@@ -182,12 +210,15 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
     sort_scan_parameters = False
     allow_multiple_scan_ranges = True
 
+    default_plot_function = "dhi.plots.exclusion.plot_exclusion_and_bestfit_2d"
+
     def __init__(self, *args, **kwargs):
         super(PlotExclusionAndBestFit2D, self).__init__(*args, **kwargs)
 
         if self.pois[0] not in self.r_pois and self.xsec_contours:
-            self.logger.warning("cross section contours not supported for POI {}".format(
-                self.pois[0]))
+            self.logger.warning(
+                "cross section contours not supported for POI {}".format(self.pois[0]),
+            )
             self.xsec_contours = tuple()
 
     def requires(self):
@@ -199,8 +230,10 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
 
         reqs = {"limits": merge_tasks(MergeUpperLimits)}
         if self.show_best_fit:
-            reqs["likelihoods"] = merge_tasks(MergeLikelihoodScan,
-                pois=tuple(self.scan_parameter_names))
+            reqs["likelihoods"] = merge_tasks(
+                MergeLikelihoodScan,
+                pois=tuple(self.scan_parameter_names),
+            )
 
         return reqs
 
@@ -213,8 +246,17 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
         return self.join_postfix(parts) if join else parts
 
     def output(self):
+        outputs = {}
+
         names = self.create_plot_names(["exclusionbestfit2d", self.get_output_postfix()])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.local_target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()])
+            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
@@ -225,7 +267,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
 
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load limit scan data
         inputs = self.input()
@@ -273,16 +315,20 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
                 xsec_levels = [float(l) for l in self.xsec_contours]
 
         # load likelihood scan data
-        nll_values, scan_mins = None, None
+        nll_values, scan_min1, scan_min2 = None, None, None
         if "likelihoods" in inputs:
-            nll_values, scan_mins = PlotLikelihoodScan._load_scan_data(inputs["likelihoods"],
-                self.scan_parameter_names, self.get_scan_parameter_combinations())
-            scan_mins = [(None if np.isnan(v) else float(v)) for v in scan_mins]
+            nll_values, scan_mins = PlotLikelihoodScan._load_scan_data(
+                inputs["likelihoods"],
+                self.scan_parameter_names,
+                self.get_scan_parameter_combinations(),
+            )
+            nan_to_none = lambda v: None if np.isnan(float(v)) else float(v)
+            scan_min1 = nan_to_none(scan_mins[self.scan_parameter_names[0]])
+            scan_min2 = nan_to_none(scan_mins[self.scan_parameter_names[1]])
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.exclusion.plot_exclusion_and_bestfit_2d",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             poi=self.pois[0],
             scan_parameter1=self.scan_parameter_names[0],
             scan_parameter2=self.scan_parameter_names[1],
@@ -292,15 +338,17 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
             xsec_levels=xsec_levels,
             xsec_unit=self.xsec,
             nll_values=nll_values,
-            interpolation_method="rbf",
+            interpolation_method=self.interpolation_method,
             show_best_fit_error=self.show_best_fit_error,
-            scan_minima=None if self.recompute_best_fit else scan_mins,
+            scan_min1=None if self.recompute_best_fit else scan_min1,
+            scan_min2=None if self.recompute_best_fit else scan_min2,
             x_min=self.get_axis_limit("x_min"),
             x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
             style=self.style,
+            dump_target=outputs.get("plot_data"),
         )

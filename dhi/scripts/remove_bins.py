@@ -25,7 +25,8 @@ from dhi.datacard_tools import expand_file_lines
 from dhi.util import create_console_logger, patch_object
 
 
-logger = create_console_logger(os.path.splitext(os.path.basename(__file__))[0])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = create_console_logger(script_name)
 
 
 def remove_bins(datacard, patterns, directory=None, skip_shapes=False):
@@ -47,29 +48,60 @@ def remove_bins(datacard, patterns, directory=None, skip_shapes=False):
 
     # just call remove_bin_process_pairs with our own logger
     with patch_object(remove_bin_process_pairs, "logger", logger):
-        remove_bin_process_pairs.remove_bin_process_pairs(datacard, pairs, directory=directory,
-            skip_shapes=skip_shapes)
+        remove_bin_process_pairs.remove_bin_process_pairs(
+            datacard,
+            pairs,
+            directory=directory,
+            skip_shapes=skip_shapes,
+        )
 
 
 if __name__ == "__main__":
     import argparse
 
     # setup argument parsing
-    parser = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    parser.add_argument("input", metavar="DATACARD", help="the datacard to read and possibly "
-        "update (see --directory)")
-    parser.add_argument("names", nargs="+", metavar="NAME", help="names of bins or files "
-        "containing bin names to remove line by line; supports patterns; prepending '!' to a "
-        "pattern negates its meaning")
-    parser.add_argument("--directory", "-d", nargs="?", help="directory in which the updated "
-        "datacard and shape files are stored; when not set, the input files are changed in-place")
-    parser.add_argument("--no-shapes", "-n", action="store_true", help="do not copy shape files to "
-        "the output directory when --directory is set")
-    parser.add_argument("--log-level", "-l", default="INFO", help="python log level; default: INFO")
-    parser.add_argument("--log-name", default=logger.name, help="name of the logger on the command "
-        "line; default: {}".format(logger.name))
+    parser.add_argument(
+        "input",
+        metavar="DATACARD",
+        help="the datacard to read and possibly update (see --directory)",
+    )
+    parser.add_argument(
+        "names",
+        nargs="+",
+        metavar="NAME",
+        help="names of bins or files containing bin names to remove line by line; supports "
+        "patterns; prepending '!' to a pattern negates its meaning",
+    )
+    parser.add_argument(
+        "--directory",
+        "-d",
+        nargs="?",
+        default=script_name,
+        help="directory in which the updated datacard and shape files are stored; when empty or "
+        "'none', the input files are changed in-place; default: '{}'".format(script_name),
+    )
+    parser.add_argument(
+        "--no-shapes",
+        "-n",
+        action="store_true",
+        help="do not copy shape files to the output directory when --directory is set",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        help="python log level; default: INFO",
+    )
+    parser.add_argument(
+        "--log-name",
+        default=logger.name,
+        help="name of the logger on the command line; default: {}".format(logger.name),
+    )
     args = parser.parse_args()
 
     # configure the logger
@@ -77,4 +109,9 @@ if __name__ == "__main__":
 
     # run the removing
     with patch_object(logger, "name", args.log_name):
-        remove_bins(args.input, args.names, directory=args.directory, skip_shapes=args.no_shapes)
+        remove_bins(
+            args.input,
+            args.names,
+            directory=None if args.directory.lower() in ["", "none"] else args.directory,
+            skip_shapes=args.no_shapes,
+        )
