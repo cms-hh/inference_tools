@@ -29,6 +29,7 @@ from dhi.tasks.exclusion import PlotExclusionAndBestFit, PlotExclusionAndBestFit
 from dhi.tasks.postfit import PlotPostfitSOverB, PlotNuisanceLikelihoodScans
 from dhi.tasks.gof import PlotGoodnessOfFit, PlotMultipleGoodnessOfFits
 from dhi.tasks.eft import PlotEFTBenchmarkLimits, PlotMultipleEFTBenchmarkLimits
+from dhi.tasks.resonant import PlotResonantLimits, PlotMultipleResonantLimits
 from dhi.tasks.studies.model_selection import (
     PlotMorphingScales,
     PlotMorphedDiscriminant,
@@ -99,6 +100,10 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
             "upper_limits_c2",
             "likelihood_scan_c2_2d",
         ],
+        "resonant": [
+            "resonant_limits",
+            "multiple_resonant_limits",
+        ],
         "studies": [
             "morphing_scales",
             "morphed_discriminant",
@@ -160,8 +165,8 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         eft_bm_cards = get_cards("CARDS_EFT_BM")
         eft_bm_cards_multi = (get_cards("CARDS_EFT_BM_1"), get_cards("CARDS_EFT_BM_2"))
 
-        # res_cards = get_cards("CARDS_RES")
-        # res_cards_multi = (get_cards("CARDS_RES_1"), get_cards("CARDS_RES_2"))
+        res_cards = get_cards("CARDS_RES")
+        res_cards_multi = (get_cards("CARDS_RES_1"), get_cards("CARDS_RES_2"))
 
         test_models = tuple(map("model_default{}".format, ["", "@noBRscaling", "@noHscaling"]))
         c2_model = "hh_model_C2klkt.model_default"
@@ -423,6 +428,24 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 ),
                 show_parameters=(("CV", "kt"),),
                 unblinded=True,
+            )
+
+        if self.check_enabled("resonant_limits"):
+            reqs["resonant_limits"] = PlotResonantLimits.req(
+                self,
+                multi_datacards=(res_cards,),
+                unblinded=True,
+                xsec="fb",
+                y_log=True,
+            )
+
+        if self.check_enabled("multiple_resonant_limits"):
+            reqs["multiple_resonant_limits"] = PlotMultipleResonantLimits.req(
+                self,
+                multi_datacards=res_cards_multi,
+                unblinded=True,
+                xsec="fb",
+                y_log=True,
             )
 
         if self.check_enabled("morphing_scales"):
