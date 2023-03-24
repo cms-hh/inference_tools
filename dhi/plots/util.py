@@ -249,7 +249,7 @@ def get_y_range(
         if y_min is None:
             y_min = 0. if y_min_value is None else y_min_value
         if y_max is None:
-            y_max = (y_max_value - y_min) * (1. + top_margin)
+            y_max = y_min + (y_max_value - y_min) * (1. + top_margin)
         y_max_vis = y_max / (1. + visible_margin) + y_min
 
     return y_min, y_max, y_max_vis

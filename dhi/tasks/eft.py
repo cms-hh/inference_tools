@@ -344,6 +344,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
 class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
 
     datacard_names = MultiDatacardTask.datacard_names
+    datacard_order = MultiDatacardTask.datacard_order
     force_equal_sequence_lengths = True
     compare_sequence_length = True
 
@@ -395,8 +396,8 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
             for inp in self.input()
         ]
 
-        # prepare conversion scale
-        scale = br_hh.get(self.br, 1.) * {"fb": 1., "pb": 0.001}[self.xsec]
+        # prepare conversion scale, default is expected to be pb!
+        scale = br_hh.get(self.br, 1.0) * {"fb": 1000.0, "pb": 1.0}[self.xsec]
 
         # fill data entries as expected by the plot function
         data = []
@@ -421,6 +422,11 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
             if self.datacard_names
             else ["datacards {}".format(i + 1) for i in range(len(limit_values))]
         )
+
+        # reorder if requested
+        if self.datacard_order:
+            data = [data[i] for i in self.datacard_order]
+            names = [names[i] for i in self.datacard_order]
 
         # call the plot function
         self.call_plot_func(
