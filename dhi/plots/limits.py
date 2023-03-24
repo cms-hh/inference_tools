@@ -1150,7 +1150,7 @@ def plot_limit_points(
         g_obs = create_graph(key="observed")
         r.setup_graph(g_obs, props={"LineWidth": 2, "LineStyle": 1})
         draw_objs.append((g_obs, "SAME,PEZ"))
-        legend_entries[0] = (g_obs, "Observed", "PL")
+        legend_entries[0] = (g_obs, "Observed", "PLp")
 
     # vertical line for theory prediction, represented by a graph in case of uncertainties
     if has_thy and any((d["theory"][0] >= x_min) for d in data):
