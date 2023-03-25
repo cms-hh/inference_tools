@@ -978,7 +978,6 @@ class PlotUpperLimitsAtPoint(
         description="comma-separated vertical positions of horizontal lines in dashed; default: empty",
     )
     factor_left_border = law.CSVParameter(
-        #cls=luigi.IntParameter,
         default=1.0,
         significant=False,
         description="Factor to enlarge the right border with. Multiplicative; default: 1.0",
