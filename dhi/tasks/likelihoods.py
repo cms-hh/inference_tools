@@ -270,13 +270,13 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         "values instead; default: empty",
     )
     interpolation_method = law.CSVParameter(
-        default=("root",),
+        default=("tgraph2d",),
         significant=False,
-        description="the 2D interpolation method; either 'root' to use ROOT's TGraph2D "
-        "interpolation, 'linear' or 'cubic' for scipy's implementation including a "
-        "custom extrapolator, or 'rbf' for scipy's radial basis functions; in case of 'rbf', "
-        "comma-separated options for 'function', 'smooth' and 'epsilon' arguments can be added in "
-        "that order; 2D only; default: root",
+        description="the 2D interpolation method; either 'tgraph2d' to use ROOT's TGraph2D "
+        "interpolation, 'linear' or 'cubic' for scipy's implementation including a custom "
+        "extrapolator for even grids, or 'rbf' for scipy's radial basis functions; in case of "
+        "'rbf', comma-separated options for 'function', 'smooth' and 'epsilon' arguments can be "
+        "added in that order; default: tgraph2d",
     )
     show_points = luigi.BoolParameter(
         default=False,

@@ -24,7 +24,7 @@ import law
 from dhi.config import poi_data, br_hh_names
 from dhi.util import (
     import_ROOT, import_file, try_int, to_root_latex, make_list, make_tuple, InterExtrapolator,
-    DotDict,
+    GridDataInterpolator, DotDict,
 )
 
 
@@ -320,7 +320,7 @@ def fill_hist_from_points(
     z_min=None,
     z_max=None,
     replace_nan=None,
-    interpolation="root",
+    interpolation="tgraph2d",
 ):
     ROOT = import_ROOT()
 
@@ -334,23 +334,52 @@ def fill_hist_from_points(
     else:
         z_values[nan_indices] = replace_nan
 
+    # check if the grid is even
+    def values_even(values):
+        values = sorted(set(values))
+        diffs = set(round(b - a, 5) for a, b in zip(values[:-1], values[1:]))
+        return len(diffs) == 1
+
+    even_grid = values_even(x_values) and values_even(y_values)
+
     # create an interpolation function
     interp_args = ()
     if isinstance(interpolation, (list, tuple)):
         interpolation, interp_args = interpolation[0], interpolation[1:]
-    if interpolation in ("tgraph2d", "root"):
+    if interpolation == "tgraph2d":
         g = ROOT.TGraph2D(len(z_values))
         for i, (x, y, z) in enumerate(zip(x_values, y_values, z_values)):
             g.SetPoint(i, x, y, z)
         interp = lambda x, y: g.Interpolate(x, y)
-    elif interpolation in ("linear", "cubic", "quintic"):
-        interp = InterExtrapolator(
-            x_values,
-            y_values,
-            z_values,
-            kind2d=interpolation,
-            kind1d=interpolation,
-        )
+    elif interpolation in ("linear", "cubic"):
+        if even_grid:
+            interp = InterExtrapolator(
+                x_values,
+                y_values,
+                z_values,
+                kind2d=interpolation,
+                kind1d=interpolation,
+            )
+        else:
+            # prepare ad-hoc interpolation points as required by scipy's griddata
+            interp_points = []
+            if isinstance(h, ROOT.TH2Poly):
+                for poly_bin in h.GetBins():
+                    interp_points.append(list(find_poly_bin_center(poly_bin)))
+            else:
+                # strictly rectangular bins
+                for bx in range(1, h.GetNbinsX() + 1):
+                    for by in range(1, h.GetNbinsY() + 1):
+                        x = h.GetXaxis().GetBinCenter(bx)
+                        y = h.GetYaxis().GetBinCenter(by)
+                        interp_points.append([x, y])
+            interp = GridDataInterpolator(
+                x_values,
+                y_values,
+                z_values,
+                interp_points,
+                kind=interpolation,
+            )
     elif interpolation == "rbf":
         # parse arguments in order
         spec = [("function", str), ("smooth", float), ("epsilon", float)]
@@ -363,6 +392,8 @@ def fill_hist_from_points(
                     val, name, _type,
                 ))
         interp = scipy.interpolate.Rbf(x_values, y_values, z_values, **rbf_args)
+    else:
+        raise ValueError("unknown interpolation method '{}'".format(interpolation))
 
     # helper for limiting z values
     def cap_z(z):
