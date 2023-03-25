@@ -1065,9 +1065,9 @@ def plot_limit_points(
     draw_objs = []
 
     # dummy histogram to control axes
-    x_title = "95% CL limit on {} {}".format(
+    x_title = "95% CL limit on {}{}".format(
         to_root_latex(create_hh_xsbr_label(poi, hh_process)),
-        to_root_latex("({})".format(xsec_unit)) if xsec_unit else "/ #sigma_{Theory}",
+        to_root_latex("({})".format(xsec_unit)) if xsec_unit else "/#sigma_{Theory}",
     )
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(
@@ -1496,7 +1496,7 @@ def plot_limit_scan_2d(
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[scan_parameter1].label)
     y_title = to_root_latex(poi_data[scan_parameter2].label)
-    z_title = "95% CL limit on {} / #sigma_{{Theory}}".format(
+    z_title = "95% CL limit on {}/#sigma_{{Theory}}".format(
         to_root_latex(create_hh_xsbr_label(poi)),
     )
     h_dummy = ROOT.TH2F(
