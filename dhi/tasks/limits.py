@@ -197,7 +197,7 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
         name = self.join_postfix(["limit", self.get_output_postfix()]) + ".root"
         return self.local_target(name)
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         inputs = self.input()
 
         # get the workspace to use and define snapshot args
@@ -314,9 +314,9 @@ class UpperLimitsGrid(UpperLimits):
         name = self.join_postfix(["limitgridpoint", self.get_output_postfix()]) + ".root"
         return self.local_target(name)
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         # the command for grid points is almost identical, just apply three transformations
-        cmd = super(UpperLimitsGrid, self).build_command()
+        cmd = super(UpperLimitsGrid, self).build_command(fallback_level)
 
         # 1. remove the scan parameter (== the POI) from --setParameters
         cmd = re.sub(r"^(.+--setParameters)\s+[^,]+,(.+)$", r"\1 \2", cmd)
@@ -726,7 +726,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
                     )
 
             limit_values.append(_limit_values)
-            names.append("datacards {}".format(i + 1))
+            names.append("Datacards {}".format(i + 1))
 
         # set names if requested
         if self.datacard_names:

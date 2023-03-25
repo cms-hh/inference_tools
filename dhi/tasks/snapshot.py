@@ -48,7 +48,7 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
         name = self.join_postfix(["snapshot", self.get_output_postfix()]) + ".root"
         return self.local_target(name)
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         # args for blinding / unblinding
         if self.unblinded:
             blinded_args = "--seed {self.branch}".format(self=self)

@@ -50,6 +50,10 @@ variables:
       - "all_studies"
     description: "A specific plot to produce (see test.TestPlots for more info)."
 
+  PARAMETERS:
+    value: ""
+    description: "Additional parameters to be passed to the command."
+
 .setup:
   stage: build
   tags:
@@ -101,7 +105,7 @@ lint:
   script:
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
     - source setup.sh
-    - export TEST_CMD="law run test.TestPlots --version "ci_${CI_COMMIT_SHORT_SHA}" --plots ${TEST_PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf"
+    - export TEST_CMD="law run test.TestPlots --version "ci_${CI_COMMIT_SHORT_SHA}" --plots ${TEST_PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf ${PARAMETERS}"
     - echo "running command '${TEST_CMD}'"
     - eval "${TEST_CMD}"
     - eval "${TEST_CMD} --fetch-output 0,a,plots"
