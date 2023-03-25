@@ -159,7 +159,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
             get_cards("CARDS_1") + get_cards("CARDS_2"),
             get_cards("CARDS_2") + get_cards("CARDS_3"),
         )
-        sm_cards_multi_names = ("Cards 1", "Cards 2")
+        sm_cards_multi_names = ("Datacards 1", "Datacards 2")
 
         eft_c2_cards = get_cards("CARDS_EFT_C2")
         eft_bm_cards = get_cards("CARDS_EFT_BM")

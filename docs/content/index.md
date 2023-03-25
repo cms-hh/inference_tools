@@ -180,13 +180,46 @@ More detailed information on the different scans & fits can be found in the foll
     </div>
   </a>
 
-  <a href="tasks/eft.html#testing-multiple-datacards">
+  <a href="tasks/eft.html#benchmark-limits">
     <div class="dhi_image_box">
       <div>
         <img src="images/limits__eft__benchmarks.png" />
       </div>
       <div>
         Limits on EFT benchmarks
+      </div>
+    </div>
+  </a>
+
+  <a href="tasks/eft.html#multiple-benchmark-limits">
+    <div class="dhi_image_box">
+      <div>
+        <img src="images/multilimits__eft__benchmarks.png" />
+      </div>
+      <div>
+        Multiple limits on EFT benchmarks
+      </div>
+    </div>
+  </a>
+
+  <a href="tasks/resonant.html#resonant-limits">
+    <div class="dhi_image_box">
+      <div>
+        <img src="images/limits__res.png" />
+      </div>
+      <div>
+        Limits on resonant scenarios
+      </div>
+    </div>
+  </a>
+
+  <a href="tasks/resonant.html#multiple-resonant-limits">
+    <div class="dhi_image_box">
+      <div>
+        <img src="images/multilimits__res.png" />
+      </div>
+      <div>
+        Multiple limits on resonant scenarios
       </div>
     </div>
   </a>

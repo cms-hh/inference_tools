@@ -157,6 +157,7 @@ poi_data = DotDict(
     C2=DotDict(range=(-2.0, 3.0), label=r"$C_{2}$", sm_value=0.0),
     CG=DotDict(range=(-2.0, 2.0), label=r"$C_{g}$", sm_value=0.0),
     C2G=DotDict(range=(-2.0, 2.0), label=r"$C_{2g}$", sm_value=0.0),
+    mhh=DotDict(range=(0.0, 3000.0), label=r"$m_{HH}$", unit="GeV"),
 )
 
 # colors

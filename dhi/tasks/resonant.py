@@ -1,7 +1,7 @@
 # coding: utf-8
 
 """
-Tasks related to upper limits  of resonant scenarios.
+Tasks related to upper limits on resonant scenarios.
 """
 
 from collections import OrderedDict
@@ -27,7 +27,8 @@ class ResonantBase(POITask, MultiDatacardPatternTask):
     hh_model = law.NO_STR
     allow_empty_hh_model = True
 
-    poi = "r_gghh"
+    poi = "r_xhh"
+    scan_parameter = "mhh"
 
     @classmethod
     def modify_param_values(cls, params):
@@ -154,6 +155,7 @@ class MergeResonantLimits(ResonantBase):
 
         records = []
         dtype = [
+            (self.scan_parameter, np.float32),
             ("limit", np.float32),
             ("limit_p1", np.float32),
             ("limit_m1", np.float32),
@@ -163,9 +165,10 @@ class MergeResonantLimits(ResonantBase):
         if self.unblinded:
             dtype.append(("observed", np.float32))
 
-        for branch, inp in self.input()["collection"].targets.items():
+        masses = list(self.resonant_datacards.keys())
+        for mass, inp in zip(masses, self.input()["collection"].targets.values()):
             limits = UpperLimits.load_limits(inp, unblinded=self.unblinded)
-            records.append(limits)
+            records.append((mass,) + limits)
 
         data = np.array(records, dtype=dtype)
         self.output().dump(data=data, formatter="numpy")
@@ -188,14 +191,15 @@ class PlotResonantLimits(ResonantBase, POIPlotTask):
         default=False,
         description="apply log scaling to the y-axis; default: False",
     )
-    x_min = None
-    x_max = None
+    show_points = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="show points of central limit values; default: False",
+    )
     z_min = None
     z_max = None
-    save_hep_data = None
 
-    # TODO
-    default_plot_function = "dhi.plots.limits.plot_benchmark_limits"
+    default_plot_function = "dhi.plots.limits.plot_limit_scan"
 
     def requires(self):
         return MergeResonantLimits.req(self)
@@ -214,6 +218,11 @@ class PlotResonantLimits(ResonantBase, POIPlotTask):
         names = self.create_plot_names(["reslimits", self.get_output_postfix(), parts])
         outputs["plots"] = [self.local_target(name) for name in names]
 
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
@@ -230,39 +239,43 @@ class PlotResonantLimits(ResonantBase, POIPlotTask):
         outputs = self.output()
         outputs["plots"][0].parent.touch()
 
-        # load limit values
-        masses = list(self.resonant_datacards.keys())
-        limit_values = dict(zip(masses, self.input().load(formatter="numpy")["data"]))
-
         # prepare conversion scale, default is expected to be pb!
         scale = br_hh.get(self.br, 1.0) * {"fb": 1000.0, "pb": 1.0}[self.xsec]
 
-        # fill data entries as expected by the plot function
-        data = []
-        for mass in masses:
-            record = limit_values[mass]
-            entry = {
-                "name": str(mass),  # TODO
-                "expected": [v * scale for v in record.tolist()[:5]],
-            }
-            if self.unblinded:
-                entry["observed"] = float(record[5]) * scale
-            data.append(entry)
+        # load limit values
+        limit_values = self.input().load(formatter="numpy")["data"]
 
-            # some printing
-            self.publish_message("{} GeV -> {}".format(mass, record["limit"]))
+        # multiply scale
+        scale_keys = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2", "observed"]
+        for key in scale_keys:
+            if key in limit_values.dtype.names:
+                limit_values[key] *= scale
+
+        # prepare observed values
+        obs_values = None
+        if self.unblinded:
+            obs_values = {
+                self.scan_parameter: limit_values[self.scan_parameter],
+                "limit": limit_values["observed"],
+            }
 
         # call the plot function
         self.call_plot_func(
             paths=[outp.path for outp in outputs["plots"]],
-            data=data,
             poi=self.poi,
+            scan_parameter=self.scan_parameter,
+            expected_values=limit_values,
+            observed_values=obs_values,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
             xsec_unit=self.xsec,
             hh_process=self.br if self.br in br_hh else None,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            show_points=self.show_points,
             cms_postfix=self.cms_postfix,
             style=self.style,
             dump_target=outputs.get("plot_data"),
@@ -276,8 +289,7 @@ class PlotMultipleResonantLimits(PlotResonantLimits):
     force_equal_sequence_lengths = True
     compare_sequence_length = True
 
-    # TODO
-    default_plot_function = "dhi.plots.limits.plot_multi_benchmark_limits"
+    default_plot_function = "dhi.plots.limits.plot_limit_scans"
 
     def requires(self):
         return [
@@ -302,6 +314,11 @@ class PlotMultipleResonantLimits(PlotResonantLimits):
         names = self.create_plot_names(["multi_reslimits", self.get_output_postfix(), parts])
         outputs["plots"] = [self.local_target(name) for name in names]
 
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
@@ -318,57 +335,60 @@ class PlotMultipleResonantLimits(PlotResonantLimits):
         outputs = self.output()
         outputs["plots"][0].parent.touch()
 
-        # load limit values
-        masses = list(self.resonant_datacards.keys())
-        limit_values = [
-            dict(zip(masses, list(inp.load(formatter="numpy")["data"])))
-            for inp in self.input()
-        ]
-
         # prepare conversion scale, default is expected to be pb!
         scale = br_hh.get(self.br, 1.0) * {"fb": 1000.0, "pb": 1.0}[self.xsec]
 
-        # fill data entries as expected by the plot function
-        data = []
-        for mass in masses:
-            entry = {
-                "name": str(mass),  # TODO
-                "expected": [
-                    [v * scale for v in records[mass].tolist()[:5]]
-                    for records in limit_values
-                ],
-            }
-            if self.unblinded:
-                entry["observed"] = [
-                    float(records[mass][5]) * scale
-                    for records in limit_values
-                ]
-            data.append(entry)
+        # load values
+        limit_values = []
+        obs_values = []
+        names = []
+        for i, inp in enumerate(self.input()):
+            _limit_values = inp.load(formatter="numpy")["data"]
+            limit_values.append(_limit_values)
 
-        # datacard names
-        names = (
-            list(self.datacard_names)
-            if self.datacard_names
-            else ["datacards {}".format(i + 1) for i in range(len(limit_values))]
-        )
+            # multiply scale
+            scale_keys = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2", "observed"]
+            for key in scale_keys:
+                if key in _limit_values.dtype.names:
+                    _limit_values[key] *= scale
+
+            # prepare observed values
+            if self.unblinded:
+                obs_values.append({
+                    self.scan_parameter: _limit_values[self.scan_parameter],
+                    "limit": _limit_values["observed"],
+                })
+
+            # name
+            names.append("Datacards {}".format(i + 1))
+
+        # set custom names if requested
+        if self.datacard_names:
+            names = list(self.datacard_names)
 
         # reorder if requested
         if self.datacard_order:
-            data = [data[i] for i in self.datacard_order]
+            limit_values = [limit_values[i] for i in self.datacard_order]
             names = [names[i] for i in self.datacard_order]
 
         # call the plot function
         self.call_plot_func(
             paths=[outp.path for outp in outputs["plots"]],
-            data=data,
-            names=names,
             poi=self.poi,
+            scan_parameter=self.scan_parameter,
+            names=names,
+            expected_values=limit_values,
+            observed_values=obs_values,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
             xsec_unit=self.xsec,
-            hh_process=self.br if self.br in br_hh else None,
+            hh_process=self.br if self.xsec and self.br in br_hh else None,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            show_points=self.show_points,
             cms_postfix=self.cms_postfix,
             style=self.style,
             dump_target=outputs.get("plot_data"),
