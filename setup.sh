@@ -334,7 +334,7 @@ interactive_setup() {
         if ${setup_is_default} || ${env_file_exists}; then
             variable_exists "${varname}" && value="$( eval echo "\$${varname}" )"
         else
-            printf "${text} (\x1b[1;49;39m${varname}\x1b[0m, default \x1b[1;49;39m${default_text}\x1b[0m):  "
+            printf "${text} (\x1b[1;49;39m${varname}\x1b[0m, default \x1b[1;49;39m${default_text}\x1b[0m): "
             read query_response
             [ "X${query_response}" = "X" ] && query_response="${default_text}"
 
@@ -342,7 +342,7 @@ interactive_setup() {
             while true; do
                 ( [ "${default}" != "True" ] && [ "${default}" != "False" ] ) && break
                 ( [ "${query_response}" = "True" ] || [ "${query_response}" = "False" ] ) && break
-                printf "please enter either '\x1b[1;49;39mTrue\x1b[0m' or '\x1b[1;49;39mFalse\x1b[0m':  " query_response
+                printf "please enter either '\x1b[1;49;39mTrue\x1b[0m' or '\x1b[1;49;39mFalse\x1b[0m': " query_response
                 read query_response
                 [ "X${query_response}" = "X" ] && query_response="${default_text}"
             done
@@ -364,6 +364,7 @@ interactive_setup() {
 
     # start querying for variables
     query DHI_USER "CERN / WLCG username" "$( whoami )"
+    export_and_save DHI_USER_FIRSTCHAR "\${DHI_USER:0:1}"
     query DHI_DATA "Local data directory" "${DHI_BASE}/data" "./data"
     query DHI_STORE "Default local output store" "${DHI_DATA}/store" "\$DHI_DATA/store"
     query DHI_STORE_JOBS "Default local store for job files (should not be on /eos when submitting via lxplus!)" "${DHI_STORE}" "\$DHI_STORE"
