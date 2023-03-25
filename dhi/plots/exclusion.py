@@ -43,6 +43,7 @@ def plot_exclusion_and_bestfit_1d(
     campaign=None,
     cms_postfix=None,
     style=None,
+    factor_left_border=None
 ):
     """
     Creates a plot showing exluded regions of a *poi* over a *scan_parameter* for multiple analyses
@@ -91,6 +92,7 @@ def plot_exclusion_and_bestfit_1d(
     """
     import plotlib.root as r
     ROOT = import_ROOT()
+    factor_left_border = 1.3
 
     # style-based adjustments
     style = Style.new(style)
@@ -127,7 +129,7 @@ def plot_exclusion_and_bestfit_1d(
     pad_margins = {
         "TopMargin": float(top_margin) / pad_height,
         "BottomMargin": float(bottom_margin) / pad_height,
-        "LeftMargin": float(left_margin) / pad_width,
+        "LeftMargin": factor_left_border*float(left_margin) / pad_width,
         "RightMargin": float(right_margin) / pad_width,
     }
 
@@ -173,8 +175,13 @@ def plot_exclusion_and_bestfit_1d(
                 ranges,
                 "linear",
             )
+
             for start, stop in ranges:
                 is_left = start < 1 and stop < 1
+                if is_left :
+                    start = -40
+                else:
+                    stop = 40
                 excl_x.append(stop if is_left else start)
                 excl_y.append(n - i - 0.5)
                 excl_d.append((stop - start) if is_left else 0)
@@ -193,7 +200,7 @@ def plot_exclusion_and_bestfit_1d(
             props={"FillStyle": 3345, "MarkerStyle": 20, "MarkerSize": 0, "LineWidth": 0},
         )
         draw_objs.append((g_excl_exp, "SAME,2"))
-        legend_entries.append((g_excl_exp, "Excluded (expected)"))
+        legend_entries.append((g_excl_exp, "Expected"))
     else:
         warn("no expected exclusion range found, no graph will be visible")
         legend_entries.append((h_dummy, " ", ""))
@@ -209,7 +216,7 @@ def plot_exclusion_and_bestfit_1d(
                 props={"FillStyle": 3354, "MarkerStyle": 20, "MarkerSize": 0, "LineWidth": 0},
             )
             draw_objs.append((g_excl_obs, "SAME,2"))
-            legend_entries.insert(-1, (g_excl_obs, "Excluded (observed)"))
+            legend_entries.insert(-1, (g_excl_obs, "Observed"))
         else:
             warn("no observed exclusion range found, no graph will be visible")
             legend_entries.append((h_dummy, " ", ""))
@@ -266,7 +273,7 @@ def plot_exclusion_and_bestfit_1d(
         line_thy = ROOT.TLine(sm_value, 0., sm_value, n)
         r.setup_line(line_thy, props={"NDC": False, "LineStyle": 1}, color=colors.red)
         draw_objs.insert(-1, line_thy)
-        legend_entries.append((line_thy, "Theory prediction", "l"))
+        legend_entries.append((line_thy, "SM prediction", "l"))
 
     # horizontal guidance lines
     if h_lines:
@@ -294,7 +301,7 @@ def plot_exclusion_and_bestfit_1d(
             args = (
                 label,
                 scan_label,
-                scan.num_min.str("%.2f", style="root", force_asymmetric=True, styles={"space": ""}),
+                scan.num_min.str("%.1f", style="root", force_asymmetric=True, styles={"space": ""}),
             )
             if style.matches("summary") and d["name"] in hh_references:
                 tmpl = label_tmpl_summary
@@ -318,8 +325,8 @@ def plot_exclusion_and_bestfit_1d(
         draw_objs.extend([tl, tr])
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=480, n=2)
-    r.setup_legend(legend, props={"NColumns": 2})
+    legend = r.routines.create_legend(pad=pad, width=460, x2=-24, y1=-94, n=2)
+    r.setup_legend(legend, props={"NColumns": 2, "Header": "Excluded at 95% CL"})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
 
@@ -609,7 +616,7 @@ def plot_exclusion_and_bestfit_2d(
         r.setup_graph(g, props={"LineStyle": 2})
         draw_objs.append((g, "SAME,L"))
         if i == 0:
-            legend_entries[3] = (g, "Excluded (expected)", "L")
+            legend_entries[3] = (g, "Expected", "L")
 
     # observed exclusion
     # for testing
@@ -630,6 +637,7 @@ def plot_exclusion_and_bestfit_2d(
             frame_kwargs=[{"mode": "edge"}] + [{"mode": "contour+"}],
             interpolation=interpolation_method,
         )[0]
+        print("==obs_contours", obs_contours)
 
         # draw them
         for i, g in enumerate(obs_contours):
@@ -640,7 +648,7 @@ def plot_exclusion_and_bestfit_2d(
             draw_objs.append((g, "SAME,L"))
             draw_objs.append((g_inv, "SAME,F"))
             if i == 0:
-                legend_entries[0] = (g_inv, "Excluded (observed)", "AF")
+                legend_entries[0] = (g_inv, "Observed", "AF")
 
     # best fit point
     if nll_values:
@@ -699,7 +707,7 @@ def plot_exclusion_and_bestfit_2d(
         legend_entries[2 if has_best_fit else 1] = (g_sm, "Standard Model", "P")
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=480, n=3, x2=-44, props={"NColumns": 2})
+    legend = r.routines.create_legend(pad=pad, width=480, n=3, x2=-44, props={"NColumns": 2, "Header": "Excluded at 95% CL"})
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
     legend_box = r.routines.create_legend_box(
