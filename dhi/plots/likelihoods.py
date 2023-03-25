@@ -200,6 +200,8 @@ def plot_likelihood_scans_1d(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[poi].label)
+    if "unit" in poi_data[poi]:
+        x_title = "{} ({})".format(x_title, to_root_latex(poi_data[poi].unit))
     y_title = "-2 #Delta log(L)"
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(
@@ -721,7 +723,11 @@ def plot_likelihood_scan_2d(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[poi1].label)
+    if "unit" in poi_data[poi1]:
+        x_title = "{} ({})".format(x_title, to_root_latex(poi_data[poi1].unit))
     y_title = to_root_latex(poi_data[poi2].label)
+    if "unit" in poi_data[poi2]:
+        y_title = "{} ({})".format(y_title, to_root_latex(poi_data[poi2].unit))
     z_title = "-2 #Delta log(L)"
     h_dummy = ROOT.TH2F(
         "h_nll",
@@ -1150,7 +1156,11 @@ def plot_likelihood_scans_2d(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[poi1].label)
+    if "unit" in poi_data[poi1]:
+        x_title = "{} ({})".format(x_title, to_root_latex(poi_data[poi1].unit))
     y_title = to_root_latex(poi_data[poi2].label)
+    if "unit" in poi_data[poi2]:
+        y_title = "{} ({})".format(y_title, to_root_latex(poi_data[poi2].unit))
     h_dummy = ROOT.TH2F("h", ";{};{};".format(x_title, y_title), 1, x_min, x_max, 1, y_min, y_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))

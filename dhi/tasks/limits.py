@@ -726,7 +726,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
                     )
 
             limit_values.append(_limit_values)
-            names.append("datacards {}".format(i + 1))
+            names.append("Datacards {}".format(i + 1))
 
         # set names if requested
         if self.datacard_names:

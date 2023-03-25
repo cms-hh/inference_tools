@@ -4,11 +4,12 @@ This entails two major differences in the preparation of datacards and the steer
 
 **Datacards**
 
-The datacards for the various EFT benchmarks should be prepared according to the central [EFT documentation](https://gitlab.cern.ch/hh/eft-benchmarks).
+The datacards for the various EFT benchmarks should be prepared according to the central [naming and datacard conventions](https://gitlab.cern.ch/hh/naming-conventions#hh-signals-for-eft-results) as well as the [EFT documentation](https://gitlab.cern.ch/hh/eft-benchmarks).
 In particular, please make sure that
 
-- your ggF signal is normalized to a hypothetical cross section of 1 *pb* (❗️) times the **branching ratio of your channel**, and
+- your ggF signal is normalized to a hypothetical cross section of 1 **pb** (❗️) times the **branching ratio of your channel**, and
 - that VBF processes (`qqHH_*`) are dropped except for the SM VBF signal, which should be marked as background by attributing a positive process id to it.
+
 Names of EFT benchmark datacard files should have the format
 
 ```
@@ -134,7 +135,7 @@ law run PlotEFTBenchmarkLimits \
 
 The `PlotMultipleEFTBenchmarkLimits` task shows the upper limits on the rate of HH production via gluon-gluon fusion (POI `r_gghh`) obtained for several EFT benchmarks, but unlike `PlotEFTBenchmarkLimits` described [above](#benchmark-limits), results of datacards are not combined per benchmark, but separately shown.
 
-- [Quick example](#quick-example_-_1)
+- [Quick example](#quick-example_1)
 - [Dependencies](#dependencies_1)
 - [Parameters](#parameters_1)
 - [Example commands](#example-commands_1)
