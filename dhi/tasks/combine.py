@@ -15,10 +15,18 @@ import functools
 from abc import abstractproperty
 from collections import defaultdict, OrderedDict
 
-from backports.functools_lru_cache import lru_cache
 import law
 import luigi
 import six
+
+try:
+    from backports.functools_lru_cache import lru_cache
+except ImportError:
+    # empty decorator
+    def lru_cache(**kwargs):
+        def decorator(func):
+            return func
+        return decorator
 
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, HTCondorWorkflow, ModelParameters
 from dhi.config import poi_data, br_hh
