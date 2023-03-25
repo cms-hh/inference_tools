@@ -465,7 +465,8 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             data = inp.load(allow_pickle=True, formatter="numpy")
             values.append(data["data"])
             """
-            # keep that handy in case we want to load Nature results, but commenetd to not mess with pipeline
+            # keep that handy in case we want to load Nature results, 
+            #but commenetd to not mess with pipeline
             try :
                 all_poi_mins.append([
                     (None if np.isnan(v) else v)
@@ -553,12 +554,12 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
     legend_cols = law.CSVParameter(
         default=None,
         significant=False,
-        description="If you want to enforce a number of columns. If default it will compute a best choice given the number of entries; default: None",
+        description="Enforce a number of columns. Default:compute given the #entries; default: None",
     )
     legend_x2 = law.CSVParameter(
         default=None,
         significant=False,
-        description="If you want to enforce where legend starts. If default it will be -20; default: None",
+        description="If you want to enforce where legend starts. Default = -20; default: None",
     )
 
     compare_multi_sequence = "multi_datacards"
