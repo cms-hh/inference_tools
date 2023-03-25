@@ -182,7 +182,9 @@ def determine_limit_digits(limit, is_xsec=False):
         elif limit < 200:
             digits = 1
     else:
-        if limit < 10:
+        if limit < 1:
+            digits = 2
+        elif limit < 10:
             digits = 1
     return digits
 
