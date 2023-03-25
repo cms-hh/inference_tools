@@ -72,12 +72,12 @@ br_hh["bbzz4l"] = br_hh.bbzzllll
 
 # HH branching names (TODO: find prettier abbreviations)
 br_hh_names = DotDict(
-    vhh4b=r"bb bb (VHH prod.)",
+    vhh4b=r"(VHH) bb bb",
     bbbb=r"bb bb",
     bbbb_low=r"bb bb, #scale[0.75]{resolved} $\club$",
-    bbbb_boosted=r"bb bb, #scale[0.75]{merged-jet} $\club$",
-    bbbb_boosted_ggf=r"bb bb #scale[0.75]{high $m_{HH}$, ggF} $\club$",
-    bbbb_boosted_vbf=r"bb bb #scale[0.75]{high $m_{HH}$, VBF} $\club$",
+    bbbb_boosted=r"bb bb, #scale[0.75]{merged-jet}  $\club$",
+    bbbb_boosted_ggf=r"bb bb #scale[0.75]{high $m_{HH}$, ggF} $\club$", 
+    bbbb_boosted_vbf=r"bb bb #scale[0.75]{high $m_{HH}$, VBF} $\club$", 
     bbbb_all=r"bb bb $\club$",
     bbvv=r"bb VV",
     bbww=r"bb WW",
@@ -86,7 +86,7 @@ br_hh_names = DotDict(
     bbzz=r"bb ZZ",
     bbzzqqll=r"bb ZZ, qqll",
     bbzzllll=r"bb ZZ $\club$",
-    bbtt=r"bb $\tau\tau$ $\club$",
+    bbtt=r"bb $\tau\tau$ $\club$", 
     bbgg=r"bb $\gamma\gamma$ $\club$",
     ttww=r"WW $\tau\tau",
     ttzz=r"ZZ $\tau\tau",
@@ -134,6 +134,7 @@ hh_references = DotDict(
 )
 hh_references["bbzz4l"] = hh_references.bbzzllll
 
+# In some time keep a version of plotting with CADI only to internal consumption
 hh_references_cadi = DotDict(
     vhh4b=r"HIG-22-006",
     bbbb=r"Not yet",
