@@ -143,6 +143,7 @@ test_all:
         - "all_gof"
         - "all_eft_bm"
         - "all_eft_c2"
+        - "all_resonant"
         - "all_studies"
 
 test_specific:
