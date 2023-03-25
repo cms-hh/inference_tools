@@ -41,7 +41,11 @@ class PlotExclusionAndBestFit(
         significant=False,
         description="comma-separated vertical positions of horizontal lines in dashed; default: empty",
     )
-
+    factor_left_border = law.CSVParameter(
+        default=1.0,
+        significant=False,
+        description="Factor to enlarge the right border with. Multiplicative; default: 1.0",
+    )
     y_min = None
     y_max = None
     z_min = None
@@ -358,4 +362,5 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
             cms_postfix=self.cms_postfix,
             style=self.style,
             dump_target=outputs.get("plot_data"),
+            factor_left_border=self.factor_left_border
         )
