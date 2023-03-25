@@ -336,7 +336,7 @@ interactive_setup() {
         else
             printf "${text} (\x1b[1;49;39m${varname}\x1b[0m, default \x1b[1;49;39m${default_text}\x1b[0m):  "
             read query_response
-            [ "X${query_response}" = "X" ] && query_response="${default}"
+            [ "X${query_response}" = "X" ] && query_response="${default_text}"
 
             # repeat for boolean flags that were not entered correctly
             while true; do
@@ -344,7 +344,7 @@ interactive_setup() {
                 ( [ "${query_response}" = "True" ] || [ "${query_response}" = "False" ] ) && break
                 printf "please enter either '\x1b[1;49;39mTrue\x1b[0m' or '\x1b[1;49;39mFalse\x1b[0m':  " query_response
                 read query_response
-                [ "X${query_response}" = "X" ] && query_response="${default}"
+                [ "X${query_response}" = "X" ] && query_response="${default_text}"
             done
 
             value="${query_response}"
