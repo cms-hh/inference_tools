@@ -1785,8 +1785,8 @@ class CombineCommandTask(CommandTask):
 
         return args
 
-    def get_command(self):
-        cmd = super(CombineCommandTask, self).get_command()
+    def get_command(self, fallback_level):
+        cmd = super(CombineCommandTask, self).get_command(fallback_level)
 
         def is_number(s):
             try:
@@ -2043,7 +2043,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
 
         return self.local_target("workspace.root")
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         if self.input_is_workspace:
             return None
 

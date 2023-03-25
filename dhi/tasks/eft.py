@@ -101,7 +101,7 @@ class EFTBenchmarkLimits(EFTBase, CombineCommandTask, law.LocalWorkflow, HTCondo
             self=self,
         )
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         return (
             "combine -M AsymptoticLimits {workspace}"
             " {self.custom_args}"
