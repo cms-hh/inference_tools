@@ -688,7 +688,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 style=self.style,
                 dump_target=outputs.get("plot_data"),
                 legend_cols=self.legend_cols[0],
-                legend_x2=self.legend_x2[0]
+                legend_x2=self.legend_x2[0],
             )
         else:  # 2
             self.call_plot_func(
