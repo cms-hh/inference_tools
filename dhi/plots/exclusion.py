@@ -372,7 +372,7 @@ def plot_exclusion_and_bestfit_1d(
                 label,
                 scan_label,
                 " / ".join(
-                    s.num_min.str("%.2f", style="root", force_asymmetric=True, styles={"space": ""})
+                    s.num_min.str("%.1f", style="root", force_asymmetric=True, styles={"space": ""})
                     for s in scan
                 ),
             )

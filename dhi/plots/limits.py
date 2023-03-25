@@ -1520,7 +1520,7 @@ def plot_limit_scan_2d(
     y_title = to_root_latex(poi_data[scan_parameter2].label)
     if "unit" in poi_data[scan_parameter2]:
         y_title = "{} ({})".format(y_title, to_root_latex(poi_data[scan_parameter2].unit))
-    z_title = "95% CL limit on {} / #sigma_{{Theory}}".format(
+    z_title = "95% CL limit on {}/#sigma_{{Theory}}".format(
         to_root_latex(create_hh_xsbr_label(poi)),
     )
     h_dummy = ROOT.TH2F(
