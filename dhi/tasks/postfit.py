@@ -109,7 +109,7 @@ class FitDiagnostics(
             "diagnostics": self.local_target(name("fitdiagnostics") + ".root"),
         }
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         # get the workspace to use and define snapshot args
         if self.use_snapshot:
             workspace = self.input()["snapshot"].path

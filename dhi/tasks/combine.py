@@ -19,9 +19,20 @@ import law
 import luigi
 import six
 
+try:
+    from backports.functools_lru_cache import lru_cache
+except ImportError:
+    # empty decorator
+    def lru_cache(**kwargs):
+        def decorator(func):
+            return func
+        return decorator
+
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, HTCondorWorkflow, ModelParameters
 from dhi.config import poi_data, br_hh
-from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path
+from dhi.util import (
+    linspace, try_int, real_path, expand_path, get_dcr2_path, common_leading_substring,
+)
 from dhi.datacard_tools import bundle_datacard, read_datacard_blocks
 
 
@@ -482,6 +493,7 @@ class DatacardTask(HHModelTask):
         return _path, bin_name, inject, store_dir
 
     @classmethod
+    @lru_cache(maxsize=None)
     def resolve_datacards(cls, patterns):
         paths = []
         bin_names = []
@@ -765,6 +777,86 @@ class MultiDatacardTask(DatacardTask):
         parts = super(MultiDatacardTask, self).store_parts()
         parts["inputs"] = "multidatacards_{}".format(law.util.create_hash(self.multi_datacards))
         return parts
+
+
+class MultiDatacardPatternTask(MultiDatacardTask):
+
+    datacard_pattern = law.CSVParameter(
+        default=(),
+        description="one or multiple comma-separated regular expressions for selecting datacards "
+        "from each of the sequences passed in --multi-datacards, and for extracting information "
+        "with a single regex group; when set on the command line, single quotes should be used; "
+        "when empty, a common pattern is extracted per datacard sequence; default: empty",
+    )
+    datacard_pattern_matches = law.CSVParameter(
+        default=(),
+        significant=False,
+        description="internal parameter, do not use manually",
+    )
+
+    exclude_params_index = {"datacard_names", "datacard_order", "datacard_pattern_matches"}
+    exclude_params_repr = {"datacard_pattern", "datacard_pattern_matches"}
+
+    datacard_names = None
+    datacard_order = None
+
+    @classmethod
+    def modify_param_values(cls, params):
+        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
+
+        # re-group multi datacards by basenames, filter with datacard_pattern and store matches
+        if (
+            "multi_datacards" in params and
+            "datacard_pattern" in params and
+            not params.get("datacard_pattern_matches")
+        ):
+            patterns = params["datacard_pattern"]
+            multi_datacards = params["multi_datacards"]
+
+            # infer a common pattern automatically per sequence
+            if not patterns:
+                # find the common leading substring of datacard bases and built a pattern from that
+                patterns = []
+                for datacards in multi_datacards:
+                    basenames = [os.path.basename(datacard) for datacard in datacards]
+                    common_basename = functools.reduce(common_leading_substring, basenames)
+                    patterns.append(common_basename + r"(.+)\.txt")
+
+            # when there is one pattern and multiple datacards or vice versa, expand the former
+            if len(patterns) == 1 and len(multi_datacards) > 1:
+                patterns *= len(params["multi_datacards"])
+            elif len(patterns) > 1 and len(multi_datacards) == 1:
+                multi_datacards *= len(patterns)
+            elif len(patterns) != len(multi_datacards):
+                raise ValueError(
+                    "the number of patterns in --datacard-pattern ({}) does not "
+                    "match the number of datacard sequences in --multi-datacards ({})".format(
+                        len(patterns), len(params["multi_datacards"]),
+                    ),
+                )
+
+            # assign datacards to groups, based on the matched group
+            groups = defaultdict(set)
+            for datacards, pattern in zip(multi_datacards, patterns):
+                n_matches = 0
+                for datacard in datacards:
+                    # apply the pattern to the basename
+                    m = re.match(pattern, os.path.basename(datacard))
+                    if m:
+                        groups[m.group(1)].add(datacard)
+                        n_matches += 1
+                if not n_matches:
+                    raise Exception(
+                        "the datacard pattern '{}' did not match any of the selected "
+                        "datacards\n  {}".format(pattern, "\n  ".join(datacards)),
+                    )
+
+            # sort cards, assign back to multi_datacards and store the pattern matches
+            params["multi_datacards"] = tuple(tuple(sorted(cards)) for cards in groups.values())
+            params["datacard_pattern_matches"] = tuple(groups.keys())
+            params["datacard_pattern"] = tuple(patterns)
+
+        return params
 
 
 class ParameterValuesTask(AnalysisTask):
@@ -1071,8 +1163,11 @@ class ParameterScanTask(AnalysisTask):
             for values in itertools.product(*self.scan_parameters_dict.values())
         ]
 
-    def htcondor_output_postfix(self):
-        return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
+    def control_output_postfix(self):
+        return "{}__{}".format(
+            super(ParameterScanTask, self).control_output_postfix(),
+            self.get_output_postfix(),
+        )
 
 
 class POITask(DatacardTask, ParameterValuesTask):
@@ -1312,7 +1407,7 @@ class POITask(DatacardTask, ParameterValuesTask):
         # manually frozen parameters
         params += tuple(self.frozen_parameters)
 
-        return ",".join(params) if join else params
+        return (",".join(params) or '""') if join else params
 
     @property
     def joined_frozen_parameters(self):
@@ -1338,8 +1433,11 @@ class POITask(DatacardTask, ParameterValuesTask):
         # flip flags
         return tuple(map((lambda b: not b), self.unblinded))
 
-    def htcondor_output_postfix(self):
-        return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
+    def control_output_postfix(self):
+        return "{}__{}".format(
+            super(POITask, self).control_output_postfix(),
+            self.control_output_postfix(),
+        )
 
 
 class POIMultiTask(POITask):
@@ -1431,6 +1529,7 @@ class POIScanTask(POITask, ParameterScanTask):
     force_scan_parameters_equal_pois = False
     force_scan_parameters_unequal_pois = False
     allow_parameter_values_in_scan_parameters = False
+    allow_parameter_ranges_in_scan_parameters = False
 
     @classmethod
     def modify_param_values(cls, params):
@@ -1477,12 +1576,53 @@ class POIScanTask(POITask, ParameterScanTask):
                     )
 
         # check if no scan parameter is in custom parameter ranges
-        for p in self.scan_parameter_names:
-            if p in self.parameter_ranges_dict:
-                raise Exception(
-                    "scan parameters are not allowed to be in parameter ranges, "
-                    "but found {}".format(p),
-                )
+        if not self.allow_parameter_ranges_in_scan_parameters:
+            for p in self.scan_parameter_names:
+                if p in self.parameter_ranges_dict:
+                    raise Exception(
+                        "scan parameters are not allowed to be in parameter ranges, "
+                        "but found {}".format(p),
+                    )
+
+        # print a warning when a scan range exceeds the valid parameter range
+        if not self.hh_model_empty:
+            msg = (
+                "the requested {where} value {value} of the scan range of parameter {p} exceeds "
+                "the {where} value {allowed} of the physics model, please adjust the allowed range "
+                "via --parameter-ranges 'name,start,stop' or choose a different scan range"
+            )
+            _, model = self.load_hh_model()
+            for p, ranges in self.scan_parameters_dict.items():
+                for s, e, _ in ranges:
+                    # check parameter ranges first
+                    if p in self.parameter_ranges_dict:
+                        _s, _e = self.parameter_ranges_dict[p][0:2]
+                        if s < _s:
+                            self.logger.warning_once(
+                                "exceeded_start_{}_{}".format(p, s),
+                                msg.format(p=p, where="start", value=s, allowed=_s),
+                            )
+                        if e > _e:
+                            self.logger.warning_once(
+                                "exceeded_stop_{}_{}".format(p, e),
+                                msg.format(p=p, where="stop", value=e, allowed=_e),
+                            )
+                        continue
+
+                    # check model poi ranges
+                    model_ranges = law.util.merge_dicts({}, model.r_pois, model.k_pois)
+                    if p in model_ranges:
+                        _s, _e = model_ranges[p][1:3]
+                        if s < _s:
+                            self.logger.warning_once(
+                                "exceeded_start_{}_{}".format(p, s),
+                                msg.format(p=p, where="start", value=s, allowed=_s),
+                            )
+                        if e > _e:
+                            self.logger.warning_once(
+                                "exceeded_start_{}_{}".format(p, e),
+                                msg.format(p=p, where="stop", value=e, allowed=_e),
+                            )
 
     def _joined_parameter_values_pois(self):
         pois = super(POIScanTask, self)._joined_parameter_values_pois()
@@ -1653,8 +1793,8 @@ class CombineCommandTask(CommandTask):
 
         return args
 
-    def get_command(self):
-        cmd = super(CombineCommandTask, self).get_command()
+    def get_command(self, fallback_level):
+        cmd = super(CombineCommandTask, self).get_command(fallback_level)
 
         def is_number(s):
             try:
@@ -1911,7 +2051,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
 
         return self.local_target("workspace.root")
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         if self.input_is_workspace:
             return None
 

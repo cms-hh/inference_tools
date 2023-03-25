@@ -24,6 +24,7 @@ class SignificanceBase(POIScanTask, SnapshotUser):
 
     force_scan_parameters_unequal_pois = True
     allow_parameter_values_in_pois = True
+    allow_parameter_ranges_in_scan_parameters = True
 
     frequentist_toys = luigi.BoolParameter(
         default=False,
@@ -78,7 +79,7 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
         name = self.join_postfix(["significance", self.get_output_postfix()]) + ".root"
         return self.local_target(name)
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         # get the workspace to use and define snapshot args
         if self.use_snapshot:
             workspace = self.input()["snapshot"].path

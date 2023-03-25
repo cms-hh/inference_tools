@@ -41,11 +41,24 @@ class PullsAndImpactsBase(POITask, SnapshotUser):
         description="when True, calculate pulls and impacts for MC stats nuisances as well; "
         "default: False",
     )
+    retry_no_analytic = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when True, retry failed fits with option '--X-rtd MINIMIZER_no_analytic'; "
+        "only available for the 'default' method; default: False",
+    )
 
     mc_stats_patterns = ["*prop_bin*"]
 
     force_n_pois = 1
     allow_parameter_values_in_pois = True
+
+    def __init__(self, *args, **kwargs):
+        super(PullsAndImpactsBase, self).__init__(*args, **kwargs)
+
+        if self.retry_no_analytic and self.method != "default":
+            self.logger.warning("disabling retry_no_analytic feature since method is not 'default'")
+            self.retry_no_analytic = False
 
     def get_output_postfix(self, join=True):
         parts = super(PullsAndImpactsBase, self).get_output_postfix(join=False)
@@ -145,7 +158,11 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
 
         return outputs
 
-    def build_command(self):
+    def allow_fallback_command(self, errors):
+        # potentially retry once
+        return self.retry_no_analytic and len(errors) <= 1
+
+    def build_command(self, fallback_level):
         outputs = self.output()
 
         # get the workspace to use and define snapshot args
@@ -161,6 +178,11 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             blinded_args = "--seed {self.branch}".format(self=self)
         else:
             blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
+
+        # fallback arguments
+        fallback_args = ""
+        if fallback_level == 1:
+            fallback_args = "--X-rtd MINIMIZER_no_analytic"
 
         # define output files as (src, dst, optional) to be moved after command execution
         mv_files = [(
@@ -230,6 +252,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --saveNLL"
             " {self.combine_optimization_args}"
+            " {fallback_args}"
             " {branch_opts}"
             " && "
             "{mv_cmd}"
@@ -238,14 +261,16 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             workspace=workspace,
             snapshot_args=snapshot_args,
             blinded_args=blinded_args,
+            fallback_args=fallback_args,
             branch_opts=branch_opts,
             mv_cmd=mv_cmd,
         )
 
         return cmd
 
-    def htcondor_output_postfix(self):
-        postfix = super(PullsAndImpacts, self).htcondor_output_postfix()
+    def control_output_postfix(self):
+        # hook defined by law.RemoteWorkflow
+        postfix = super(PullsAndImpacts, self).control_output_postfix()
 
         if self.mc_stats:
             postfix += "_mcstats"
@@ -322,9 +347,19 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
                 msg += " You can try to remove the corresponding output files via\n\n"
                 for _, _, path in fail_info:
                     msg += "       rm {}\n".format(path)
-                msg += "\n     and then add different options such as\n\n"
-                msg += c("       --PullsAndImpacts-custom-args='--X-rtd MINIMIZER_no_analytic'\n",
-                    style="bright")
+                msg += "\n     and then add different fit options "
+                if self.retry_no_analytic:
+                    msg += "via\n\n"
+                    msg += c(
+                        "       --PullsAndImpacts-custom-args='CUSTOM_FIT_OPTIONS'\n",
+                        style="bright",
+                    )
+                else:
+                    msg += "such as\n\n"
+                    msg += c(
+                        "       --PullsAndImpacts-custom-args='--X-rtd MINIMIZER_no_analytic'\n",
+                        style="bright",
+                    )
                 msg += "\n     to your 'law run ...' command.\n\n"
                 msg += "  " + c("2.", "magenta")
                 msg += " You can proceed with the converging fits only by adding\n\n"

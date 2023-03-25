@@ -4,10 +4,7 @@
 Tasks related to EFT benchmarks and scans.
 """
 
-import os
-import re
-from functools import reduce
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 
 import law
 import luigi
@@ -15,6 +12,7 @@ import luigi
 from dhi.tasks.base import HTCondorWorkflow, view_output_plots
 from dhi.tasks.combine import (
     MultiDatacardTask,
+    MultiDatacardPatternTask,
     POITask,
     POIPlotTask,
     CombineCommandTask,
@@ -23,30 +21,11 @@ from dhi.tasks.combine import (
 from dhi.tasks.limits import UpperLimits
 from dhi.eft_tools import sort_eft_benchmark_names
 from dhi.config import br_hh
-from dhi.util import common_leading_substring
 
 
-class EFTBase(POITask, MultiDatacardTask):
-
-    datacard_pattern = law.CSVParameter(
-        default=(),
-        description="one or multiple comma-separated regular expressions for selecting datacards "
-        "from each of the sequences passed in --multi-datacards, and for extracting information "
-        "with a single regex group; when set on the command line, single quotes should be used; "
-        "when empty, a common pattern is extracted per datacard sequence; default: empty",
-    )
-    datacard_pattern_matches = law.CSVParameter(
-        default=(),
-        significant=False,
-        description="internal parameter, do not use manually",
-    )
-
-    exclude_params_index = {"datacard_names", "datacard_order", "datacard_pattern_matches"}
-    exclude_params_repr = {"datacard_pattern", "datacard_pattern_matches"}
+class EFTBase(POITask, MultiDatacardPatternTask):
 
     hh_model = law.NO_STR
-    datacard_names = None
-    datacard_order = None
     allow_empty_hh_model = True
 
     poi = "r_gghh"
@@ -54,67 +33,20 @@ class EFTBase(POITask, MultiDatacardTask):
     @classmethod
     def modify_param_values(cls, params):
         params = POITask.modify_param_values.__func__.__get__(cls)(params)
-        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
-
-        # re-group multi datacards by basenames, filter with datacard_pattern and store matches
-        if (
-            "multi_datacards" in params and
-            "datacard_pattern" in params and
-            not params.get("datacard_pattern_matches")
-        ):
-            patterns = params["datacard_pattern"]
-            multi_datacards = params["multi_datacards"]
-
-            # infer a common pattern automatically per sequence
-            if not patterns:
-                # find the common leading substring of datacard bases and built a pattern from that
-                patterns = []
-                for datacards in multi_datacards:
-                    basenames = [os.path.basename(datacard) for datacard in datacards]
-                    common_basename = reduce(common_leading_substring, basenames)
-                    patterns.append(common_basename + r"(.+)\.txt")
-
-            # when there is one pattern and multiple datacards or vice versa, expand the former
-            if len(patterns) == 1 and len(multi_datacards) > 1:
-                patterns *= len(params["multi_datacards"])
-            elif len(patterns) > 1 and len(multi_datacards) == 1:
-                multi_datacards *= len(patterns)
-            elif len(patterns) != len(multi_datacards):
-                raise ValueError(
-                    "the number of patterns in --datacard-pattern ({}) does not "
-                    "match the number of datacard sequences in --multi-datacards ({})".format(
-                        len(patterns), len(params["multi_datacards"]),
-                    ),
-                )
-
-            # assign datacards to groups, based on the matched group
-            groups = defaultdict(set)
-            for datacards, pattern in zip(multi_datacards, patterns):
-                n_matches = 0
-                for datacard in datacards:
-                    # apply the pattern to the basename
-                    m = re.match(pattern, os.path.basename(datacard))
-                    if m:
-                        groups[m.group(1)].add(datacard)
-                        n_matches += 1
-                if not n_matches:
-                    raise Exception(
-                        "the datacard pattern '{}' did not match any of the selected "
-                        "datacards\n  {}".format(pattern, "\n  ".join(datacards)),
-                    )
-
-            # sort cards, assign back to multi_datacards and store the pattern matches
-            params["multi_datacards"] = tuple(tuple(sorted(cards)) for cards in groups.values())
-            params["datacard_pattern_matches"] = tuple(groups.keys())
-            params["datacard_pattern"] = tuple(patterns)
-
+        params = MultiDatacardPatternTask.modify_param_values.__func__.__get__(cls)(params)
         return params
 
     def __init__(self, *args, **kwargs):
         super(EFTBase, self).__init__(*args, **kwargs)
 
-        # create a map of datacard names (e.g. benchmark number or EFT parameters) to datacard paths
-        self.eft_datacards = dict(zip(self.datacard_pattern_matches, self.multi_datacards))
+        # sort EFT datacards according to benchmark names
+        cards = dict(zip(self.datacard_pattern_matches, self.multi_datacards))
+        names = sort_eft_benchmark_names(cards.keys())
+        self.benchmark_datacards = OrderedDict((name, cards[name]) for name in names)
+
+    @property
+    def other_pois(self):
+        return []
 
     def store_parts(self):
         parts = super(EFTBase, self).store_parts()
@@ -122,22 +54,15 @@ class EFTBase(POITask, MultiDatacardTask):
         return parts
 
 
-class EFTBenchmarkBase(EFTBase):
-
-    def __init__(self, *args, **kwargs):
-        super(EFTBenchmarkBase, self).__init__(*args, **kwargs)
-
-        # sort EFT datacards according to benchmark names
-        names = sort_eft_benchmark_names(self.eft_datacards.keys())
-        self.benchmark_datacards = OrderedDict((name, self.eft_datacards[name]) for name in names)
-
-
-class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+class EFTBenchmarkLimits(EFTBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     run_command_in_tmp = True
 
+    def create_branch_map(self):
+        return list(self.benchmark_datacards.keys())
+
     def workflow_requires(self):
-        reqs = super(EFTLimitBase, self).workflow_requires()
+        reqs = super(EFTBenchmarkLimits, self).workflow_requires()
 
         # workspaces of all datacard sequences
         if not self.pilot:
@@ -153,6 +78,20 @@ class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
         return reqs
 
+    def requires(self):
+        return CreateWorkspace.req(
+            self,
+            datacards=self.benchmark_datacards[self.branch_data],
+            hh_model=law.NO_STR,
+            branch=0,
+        )
+
+    def output(self):
+        parts = self.get_output_postfix(join=False)
+        parts.append("bm{}".format(self.branch_data))
+
+        return self.local_target("eftlimit__{}.root".format(self.join_postfix(parts)))
+
     @property
     def blinded_args(self):
         if self.unblinded:
@@ -162,7 +101,7 @@ class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
             self=self,
         )
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         return (
             "combine -M AsymptoticLimits {workspace}"
             " {self.custom_args}"
@@ -180,33 +119,14 @@ class EFTLimitBase(CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
             output=self.output().path,
         )
 
-    def htcondor_output_postfix(self):
-        return "_{}__{}".format(self.get_branches_repr(), self.get_output_postfix())
-
-
-class EFTBenchmarkLimits(EFTBenchmarkBase, EFTLimitBase):
-
-    run_command_in_tmp = True
-
-    def create_branch_map(self):
-        return list(self.benchmark_datacards.keys())
-
-    def requires(self):
-        return CreateWorkspace.req(
-            self,
-            datacards=self.benchmark_datacards[self.branch_data],
-            hh_model=law.NO_STR,
-            branch=0,
+    def control_output_postfix(self):
+        return "{}__{}".format(
+            super(EFTBenchmarkLimits, self).control_output_postfix(),
+            self.get_output_postfix(),
         )
 
-    def output(self):
-        parts = self.get_output_postfix(join=False)
-        parts.append("bm{}".format(self.branch_data))
 
-        return self.local_target("eftlimit__{}.root".format(self.join_postfix(parts)))
-
-
-class MergeEFTBenchmarkLimits(EFTBenchmarkBase):
+class MergeEFTBenchmarkLimits(EFTBase):
 
     def requires(self):
         return EFTBenchmarkLimits.req(self)
@@ -241,7 +161,7 @@ class MergeEFTBenchmarkLimits(EFTBenchmarkBase):
         self.output().dump(data=data, formatter="numpy")
 
 
-class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
+class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
 
     xsec = luigi.ChoiceParameter(
         default="fb",
@@ -264,7 +184,7 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
     z_max = None
     save_hep_data = None
 
-    default_plot_function = "dhi.plots.limits.plot_benchmark_limits"
+    default_plot_function = "dhi.plots.eft.plot_benchmark_limits"
 
     def requires(self):
         return MergeEFTBenchmarkLimits.req(self)
@@ -341,10 +261,11 @@ class PlotEFTBenchmarkLimits(EFTBenchmarkBase, POIPlotTask):
 class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
 
     datacard_names = MultiDatacardTask.datacard_names
+    datacard_order = MultiDatacardTask.datacard_order
     force_equal_sequence_lengths = True
     compare_sequence_length = True
 
-    default_plot_function = "dhi.plots.limits.plot_multi_benchmark_limits"
+    default_plot_function = "dhi.plots.eft.plot_multi_benchmark_limits"
 
     def requires(self):
         return [
@@ -392,8 +313,8 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
             for inp in self.input()
         ]
 
-        # prepare conversion scale
-        scale = br_hh.get(self.br, 1.) * {"fb": 1., "pb": 0.001}[self.xsec]
+        # prepare conversion scale, default is expected to be pb!
+        scale = br_hh.get(self.br, 1.0) * {"fb": 1000.0, "pb": 1.0}[self.xsec]
 
         # fill data entries as expected by the plot function
         data = []
@@ -419,6 +340,11 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
             else ["datacards {}".format(i + 1) for i in range(len(limit_values))]
         )
 
+        # reorder if requested
+        if self.datacard_order:
+            data = [data[i] for i in self.datacard_order]
+            names = [names[i] for i in self.datacard_order]
+
         # call the plot function
         self.call_plot_func(
             paths=[outp.path for outp in outputs["plots"]],
@@ -437,4 +363,4 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
         )
 
 
-PlotMultipleEFTBenchmarkLimits.exclude_params_index -= {"datacard_names"}
+PlotMultipleEFTBenchmarkLimits.exclude_params_index -= {"datacard_names", "datacard_order"}

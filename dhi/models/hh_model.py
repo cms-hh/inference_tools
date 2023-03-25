@@ -788,8 +788,8 @@ class HHModelBase(PhysicsModelBase):
         """
         if name in self.hh_options or default == no_value:
             return self.hh_options[name]["value"]
-        else:
-            return default
+
+        return default
 
     def setPhysicsOptions(self, options):
         """

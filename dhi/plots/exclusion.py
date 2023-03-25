@@ -226,9 +226,10 @@ def plot_exclusion_and_bestfit_1d(
 
     # perform scans to extract best fit values
     scans = []
+    n_intervals = 1
     for d in data:
         if not d or d.get("nll_values") is None:
-            scans.append(None)
+            scans.append([])
             continue
 
         # preprocess values
@@ -242,23 +243,68 @@ def plot_exclusion_and_bestfit_1d(
             origin="entry '{}'".format(d["name"]),
         )
 
+        # check for disjoint intervals
+        dnll2_below_1sigma = np.where(dnll2_values < 1)[0]
+        dnll2_below_1sigma_intervals = np.split(
+            dnll2_below_1sigma,
+            np.where(np.diff(dnll2_below_1sigma) != 1)[0] + 1,
+        )
+
         # evaluate the scan
-        scans.append(evaluate_likelihood_scan_1d(
-            poi_values,
-            dnll2_values,
-            poi_min=poi_min,
-            origin="entry '{}'".format(d["name"]),
-        ))
+        if len(dnll2_below_1sigma_intervals) <= 1:
+            scans.append([evaluate_likelihood_scan_1d(
+                poi_values,
+                dnll2_values,
+                poi_min=poi_min,
+                origin="entry '{}'".format(d["name"]),
+            )])
+        else:
+            warn("{} disjoint intervals of dnll2 values below 1 sigma".format(
+                len(dnll2_below_1sigma_intervals),
+            ))
+            # perform scans
+            scan_intervals = []
+            for i in range(len(dnll2_below_1sigma_intervals)):
+                dnll2_values_tmp = dnll2_values.copy()
+
+                # exclude points of other intervals
+                for j in range(len(dnll2_below_1sigma_intervals)):
+                    if i != j:
+                        dnll2_values_tmp[dnll2_below_1sigma_intervals[j]] = 1.1
+                scan_intervals.append(evaluate_likelihood_scan_1d(
+                    poi_values,
+                    dnll2_values_tmp,
+                    poi_min=None,
+                    origin="entry '{}' (interval {})".format(d["name"], i),
+                ))
+
+            # order them by minimum of dnll2
+            order_dnll2 = np.argsort([
+                dnll2_values[idx].min()
+                for idx in dnll2_below_1sigma_intervals
+            ])
+            scans.append([scan_intervals[i] for i in order_dnll2])
+            n_intervals = max(n_intervals, len(scan_intervals))
 
     # draw best fit values
     if any(scans):
         f = int(show_best_fit_error)
         g_bestfit = create_tgraph(
             n,
-            [(scan.num_min() if scan else -1e5) for scan in scans],
+            [scan[0].num_min() if scan else -1e5 for scan in scans],
             [n - i - 0.5 for i in range(n)],
-            [(f * scan.num_min.u(direction="down", default=0.0) if scan else 0) for scan in scans],
-            [(f * scan.num_min.u(direction="up", default=0.0) if scan else 0) for scan in scans],
+            [
+                f * scan[0].num_min.u(direction="down", default=0.0)
+                if scan
+                else 0.0
+                for scan in scans
+            ],
+            [
+                f * scan[0].num_min.u(direction="up", default=0.0)
+                if scan
+                else 0.0
+                for scan in scans
+            ],
             0,
             0,
         )
@@ -266,6 +312,30 @@ def plot_exclusion_and_bestfit_1d(
         r.setup_graph(g_bestfit, props={"MarkerStyle": 20, "MarkerSize": 1.2, "LineWidth": 1})
         draw_objs.append((g_bestfit, "PZ" + opt("E")))
         legend_entries.append((g_bestfit, "Best fit value", "P" + opt("L")))
+
+        # add potential additional intervals
+        if n_intervals > 1:
+            for idx in range(1, n_intervals):
+                g_interval = create_tgraph(
+                    n,
+                    [(scan[idx].num_min() if len(scan) > idx else -1e5) for scan in scans],
+                    [n - i - 0.5 for i in range(n)],
+                    [
+                        f * scan[idx].num_min.u(direction="down", default=0.0)
+                        if len(scan) > idx
+                        else 0.0
+                        for scan in scans
+                    ],
+                    [
+                        f * scan[idx].num_min.u(direction="up", default=0.0)
+                        if len(scan) > idx else 0.0
+                        for scan in scans
+                    ],
+                    0,
+                    0,
+                )
+                r.setup_graph(g_interval, props={"MarkerSize": 0., "LineWidth": 1})
+                draw_objs.append((g_interval, "PZ" + opt("E")))
 
     # theory prediction
     if x_min < 1:
@@ -301,7 +371,10 @@ def plot_exclusion_and_bestfit_1d(
             args = (
                 label,
                 scan_label,
-                scan.num_min.str("%.1f", style="root", force_asymmetric=True, styles={"space": ""}),
+                " / ".join(
+                    s.num_min.str("%.2f", style="root", force_asymmetric=True, styles={"space": ""})
+                    for s in scan
+                ),
             )
             if style.matches("summary") and d["name"] in hh_references:
                 tmpl = label_tmpl_summary
@@ -379,7 +452,7 @@ def plot_exclusion_and_bestfit_2d(
     scan_min1=None,
     scan_min2=None,
     show_sm_point=True,
-    interpolation_method="root",
+    interpolation_method="tgraph2d",
     x_min=None,
     x_max=None,
     y_min=None,
@@ -412,9 +485,9 @@ def plot_exclusion_and_bestfit_2d(
     e.g. to use combine's internally interpolated value.
 
     The standard model point is drawn as well unless *show_sm_point* is *False*.
-    *interpolation_method* can either be "root" (TGraph2D), "linear" or "cubic"
-    (scipy.interpolate.interp2d), or "rbf" (scipy.interpolate.Rbf). In case a tuple is passed, the
-    method should be the first element, followed by optional configuration options.
+    *interpolation_method* can either be "tgraph2d" (TGraph2D), "linear" or "cubic"
+    (scipy.interpolate's interp2d or griddata), or "rbf" (scipy.interpolate.Rbf). In case a tuple is
+    passed, the method should be the first element, followed by optional configuration options.
 
     *x_min*, *x_max*, *y_min* and *y_max* define the range of the x- and y-axis, respectively, and
     default to the scan parameter ranges found in *expected_limits*. *model_parameters* can be a

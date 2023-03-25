@@ -119,7 +119,7 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
         name = self.join_postfix(["gof", self.get_output_postfix(), parts])
         return self.local_target(name + ".root")
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         # get the workspace to use and define snapshot args
         if self.use_snapshot:
             workspace = self.input()["snapshot"].path
@@ -163,9 +163,11 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
 
         return cmd
 
-    def htcondor_output_postfix(self):
-        postfix = super(GoodnessOfFit, self).htcondor_output_postfix()
-        return "{}__{}".format(postfix, self.toys_postfix)
+    def control_output_postfix(self):
+        return "{}__{}".format(
+            super(GoodnessOfFit, self).control_output_postfix(),
+            self.toys_postfix,
+        )
 
 
 class MergeGoodnessOfFit(GoodnessOfFitBase):

@@ -526,11 +526,17 @@ def create_shape_plot(
         # set y limits
         no_yrange2_set = y_min2 is None and y_max2 is None
         if y_min2 is None:
-            y_min2 = min(hist_d_trans2.GetMinimum(), hist_u_trans2.GetMinimum())
-            y_min2 = min(-0.059, max(-59., y_min2 * 1.5))
+            y_min2 = min(
+                min(h.GetBinContent(b) - h.GetBinErrorLow(b) for b in range(1, h.GetNbinsX() + 1))
+                for h in [hist_d_trans2, hist_u_trans2, hist_n_trans2]
+            )
+            y_min2 = min(-0.059, max(-59., y_min2 * 1.2))
         if y_max2 is None:
-            y_max2 = max(hist_d_trans2.GetMaximum(), hist_u_trans2.GetMaximum())
-            y_max2 = max(0.059, min(59., y_max2 * 1.5))
+            y_max2 = max(
+                max(h.GetBinContent(b) + h.GetBinErrorUp(b) for b in range(1, h.GetNbinsX() + 1))
+                for h in [hist_d_trans2, hist_u_trans2, hist_n_trans2]
+            )
+            y_max2 = max(0.059, min(59., y_max2 * 1.2))
         # when no limit was requested, ensure it is symmetric
         if no_yrange2_set:
             y_min2 = min(y_min2, -y_max2)
@@ -539,9 +545,9 @@ def create_shape_plot(
         h_dummy2.SetMaximum(y_max2)
 
         # add to plots
-        draw_objs2.append((hist_d_trans2, "SAME,HIST"))
-        draw_objs2.append((hist_u_trans2, "SAME,HIST"))
-        draw_objs2.append((hist_n_trans2, "SAME,HIST"))
+        draw_objs2.append((hist_d_trans2, "SAME,HIST,E"))
+        draw_objs2.append((hist_u_trans2, "SAME,HIST,E"))
+        draw_objs2.append((hist_n_trans2, "SAME,HIST,E"))
 
     # legend
     legend = r.routines.create_legend(pad=pad1, width=250, n=len(legend_entries))

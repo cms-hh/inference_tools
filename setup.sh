@@ -89,7 +89,8 @@ setup() {
 
     source "/cvmfs/cms.cern.ch/cmsset_default.sh" "" || return "$?"
     export SCRAM_ARCH="slc7_amd64_gcc900"
-    export CMSSW_VERSION="CMSSW_11_3_4"
+    export CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_11_3_4}"
+    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v9.0.0}"
     flag_file_combine="${flag_file_combine}_${SCRAM_ARCH}_${CMSSW_VERSION}"
 
     [ "${DHI_REINSTALL_COMBINE}" = "1" ] && rm -f "${flag_file_combine}"
@@ -111,7 +112,7 @@ setup() {
         (
             cd "${DHI_SOFTWARE}/${CMSSW_VERSION}/src"
             eval "$( scramv1 runtime -sh )" && \
-            git clone --branch v9.0.0 https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
+            git clone --branch "${DHI_COMBINE_VERSION}" https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
             cd HiggsAnalysis/CombinedLimit && \
             chmod ug+x test/diffNuisances.py && \
             ( [ "${DHI_COMBINE_PYTHON_ONLY}" = "1" ] && scram b python || scram b -j ${DHI_INSTALL_CORES} )
@@ -333,17 +334,17 @@ interactive_setup() {
         if ${setup_is_default} || ${env_file_exists}; then
             variable_exists "${varname}" && value="$( eval echo "\$${varname}" )"
         else
-            printf "${text} (\x1b[1;49;39m${varname}\x1b[0m, default \x1b[1;49;39m${default_text}\x1b[0m):  "
+            printf "${text} (\x1b[1;49;39m${varname}\x1b[0m, default \x1b[1;49;39m${default_text}\x1b[0m): "
             read query_response
-            [ "X${query_response}" = "X" ] && query_response="${default}"
+            [ "X${query_response}" = "X" ] && query_response="${default_text}"
 
             # repeat for boolean flags that were not entered correctly
             while true; do
                 ( [ "${default}" != "True" ] && [ "${default}" != "False" ] ) && break
                 ( [ "${query_response}" = "True" ] || [ "${query_response}" = "False" ] ) && break
-                printf "please enter either '\x1b[1;49;39mTrue\x1b[0m' or '\x1b[1;49;39mFalse\x1b[0m':  " query_response
+                printf "please enter either '\x1b[1;49;39mTrue\x1b[0m' or '\x1b[1;49;39mFalse\x1b[0m': " query_response
                 read query_response
-                [ "X${query_response}" = "X" ] && query_response="${default}"
+                [ "X${query_response}" = "X" ] && query_response="${default_text}"
             done
 
             value="${query_response}"
@@ -363,6 +364,7 @@ interactive_setup() {
 
     # start querying for variables
     query DHI_USER "CERN / WLCG username" "$( whoami )"
+    export_and_save DHI_USER_FIRSTCHAR "\${DHI_USER:0:1}"
     query DHI_DATA "Local data directory" "${DHI_BASE}/data" "./data"
     query DHI_STORE "Default local output store" "${DHI_DATA}/store" "\$DHI_DATA/store"
     query DHI_STORE_JOBS "Default local store for job files (should not be on /eos when submitting via lxplus!)" "${DHI_STORE}" "\$DHI_STORE"
@@ -376,6 +378,8 @@ interactive_setup() {
     fi
     query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "${eos_user_store}" "${eos_user_store_repr}"
     query DHI_SOFTWARE "Directory for installing software" "${DHI_DATA}/software" "\$DHI_DATA/software"
+    query DHI_CMSSW_VERSION "Version of CMSSW to be used" "CMSSW_11_3_4"
+    query DHI_COMBINE_VERSION "Version of combine to be used (tag name)" "v9.0.0"
     query DHI_DATACARDS_RUN2 "Location of the datacards_run2 repository (optional)" "" "''"
     query DHI_HOOK_FILE "Location of a file with custom hooks (optional)" "" "''"
     query DHI_LOCAL_SCHEDULER "Use a local scheduler for law tasks" "True"

@@ -5,6 +5,7 @@ Generic base tasks.
 """
 
 import os
+import sys
 import re
 import math
 import importlib
@@ -524,13 +525,17 @@ class CommandTask(AnalysisTask):
     # by default, do not cleanup tmp dirs on error, except when running as a remote job
     cleanup_tmp_on_error = dhi_remote_job
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         # this method should build and return the command to run
         raise NotImplementedError
 
-    def get_command(self):
+    def get_command(self, *args, **kwargs):
         # this method is returning the actual, possibly cleaned command
-        return self.build_command()
+        return self.build_command(*args, **kwargs)
+
+    def allow_fallback_command(self, errors):
+        # by default, never allow fallbacks
+        return False
 
     def touch_output_dirs(self):
         # keep track of created uris so we can avoid creating them twice
@@ -564,7 +569,7 @@ class CommandTask(AnalysisTask):
                 log_file=self.local_target(log_file).path,
             )
             cmd = "{} {}".format(timing_cmd, cmd)
-            print("adding timeing command")
+            print("adding timing command")
 
         # default highlighted command
         if not highlighted_cmd:
@@ -595,11 +600,7 @@ class CommandTask(AnalysisTask):
                 tmp_dir.is_tmp = False
 
             # raise exception
-            msg = "command execution failed"
-            msg += "\nexit code: {}".format(p.returncode)
-            msg += "\ncwd      : {}".format(kwargs.get("cwd", os.getcwd()))
-            msg += "\ncommand  : {}".format(cmd)
-            raise Exception(msg)
+            raise CommandException(cmd, p.returncode, kwargs.get("cwd"))
 
         return p
 
@@ -612,14 +613,26 @@ class CommandTask(AnalysisTask):
         # first, create all output directories
         self.touch_output_dirs()
 
-        # get the command
-        cmd = self.get_command()
-        if isinstance(cmd, tuple) and len(cmd) == 2:
-            kwargs["highlighted_cmd"] = cmd[1]
-            cmd = cmd[0]
+        # start command building and execution in a fallback loop
+        errors = []
+        while True:
+            # get the command
+            cmd = self.get_command(fallback_level=len(errors))
+            if isinstance(cmd, tuple) and len(cmd) == 2:
+                kwargs["highlighted_cmd"] = cmd[1]
+                cmd = cmd[0]
 
-        # run it
-        self.run_command(cmd, **kwargs)
+            # run it
+            try:
+                self.run_command(cmd, **kwargs)
+                break
+            except CommandException as e:
+                errors.append(e)
+                if self.allow_fallback_command(errors):
+                    self.logger.warning(str(e))
+                    self.logger.info("starting fallback command {}".format(len(errors)))
+                else:
+                    six.reraise(*sys.exc_info())
 
         self.post_run_command()
 
@@ -636,7 +649,7 @@ class PlotTask(AnalysisTask):
         default=law.NO_STR,
         significant=False,
         description="a custom plot function to use; when empty, the default plot function is used "
-        "instead; nod default",
+        "instead; no default",
     )
     plot_postfix = luigi.Parameter(
         default=law.NO_STR,
@@ -943,3 +956,18 @@ def view_output_plots(fn, opts, task, *args, **kwargs):
             law.util.interruptable_popen(view_cmd.format(path), shell=True, executable="/bin/bash")
 
     return before_call, call, after_call
+
+
+class CommandException(Exception):
+
+    def __init__(self, cmd, returncode, cwd=None):
+        self.cmd = cmd
+        self.returncode = returncode
+        self.cwd = cwd or os.getcwd()
+
+        msg = "command execution failed"
+        msg += "\nexit code: {}".format(self.returncode)
+        msg += "\ncwd      : {}".format(self.cwd)
+        msg += "\ncommand  : {}".format(self.cmd)
+
+        super(CommandException, self).__init__(msg)
