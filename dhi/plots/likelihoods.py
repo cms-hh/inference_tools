@@ -200,6 +200,8 @@ def plot_likelihood_scans_1d(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[poi].label)
+    if "unit" in poi_data[poi]:
+        x_title = "{} ({})".format(x_title, to_root_latex(poi_data[poi].unit))
     y_title = "-2 #Delta log(L)"
     h_dummy = ROOT.TH1F("dummy", ";{};{}".format(x_title, y_title), 1, x_min, x_max)
     r.setup_hist(
@@ -470,7 +472,7 @@ def plot_likelihood_scan_2d(
     shift_negative_values=False,
     interpolate_nans=False,
     interpolate_above=None,
-    interpolation_method="root",
+    interpolation_method="tgraph2d",
     show_sm_point=True,
     show_box=False,
     x_min=None,
@@ -505,9 +507,9 @@ def plot_likelihood_scan_2d(
     with information from neighboring pixels through ROOT's TGraph2D.Interpolate feature (similar to
     how its line interpolation draws values between two discrete points in a 1D graph). When
     *interpolate_above* is defined, the same interpolation is applied to values that exceed this
-    threshold. *interpolation_method* can either be "root" (TGraph2D), "linear" or "cubic"
-    (scipy.interpolate.interp2d), or "rbf" (scipy.interpolate.Rbf). In case a tuple is passed, the
-    method should be the first element, followed by optional configuration options.
+    threshold. *interpolation_method* can either be "tgraph2d" (TGraph2D), "linear" or "cubic"
+    (scipy.interpolate's interp2d or griddata), or "rbf" (scipy.interpolate.Rbf). In case a tuple is
+    passed, the method should be the first element, followed by optional configuration options.
 
     The standard model point at (1, 1) as drawn as well unless *show_sm_point* is *False*. The best
     fit value is drawn with uncertainties on one POI being estimated while setting the other POI to
@@ -721,7 +723,11 @@ def plot_likelihood_scan_2d(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[poi1].label)
+    if "unit" in poi_data[poi1]:
+        x_title = "{} ({})".format(x_title, to_root_latex(poi_data[poi1].unit))
     y_title = to_root_latex(poi_data[poi2].label)
+    if "unit" in poi_data[poi2]:
+        y_title = "{} ({})".format(y_title, to_root_latex(poi_data[poi2].unit))
     z_title = "-2 #Delta log(L)"
     h_dummy = ROOT.TH2F(
         "h_nll",
@@ -1032,7 +1038,7 @@ def plot_likelihood_scans_2d(
     shift_negative_values=False,
     interpolate_nans=True,
     interpolate_above=None,
-    interpolation_method="root",
+    interpolation_method="tgraph2d",
     x_min=None,
     x_max=None,
     y_min=None,
@@ -1060,9 +1066,9 @@ def plot_likelihood_scans_2d(
     and default to the ranges of the poi values. When *interpolate_nans* is *True*, points with
     failed fits, denoted by nan values, are filled with the averages of neighboring fits. When
     *interpolate_above* is defined, the same interpolation is applied to values that exceed this
-    threshold. *interpolation_method* can either be "root" (TGraph2D), "linear" or "cubic"
-    (scipy.interpolate.interp2d), or "rbf" (scipy.interpolate.Rbf). In case a tuple is passed, the
-    method should be the first element, followed by optional configuration options.
+    threshold. *interpolation_method* can either be "tgraph2d" (TGraph2D), "linear" or "cubic"
+    (scipy.interpolate's interp2d or griddata), or "rbf" (scipy.interpolate.Rbf). In case a tuple is
+    passed, the method should be the first element, followed by optional configuration options.
 
     When *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign*
     should refer to the name of a campaign label defined in *dhi.config.campaign_labels*.
@@ -1150,7 +1156,11 @@ def plot_likelihood_scans_2d(
 
     # dummy histogram to control axes
     x_title = to_root_latex(poi_data[poi1].label)
+    if "unit" in poi_data[poi1]:
+        x_title = "{} ({})".format(x_title, to_root_latex(poi_data[poi1].unit))
     y_title = to_root_latex(poi_data[poi2].label)
+    if "unit" in poi_data[poi2]:
+        y_title = "{} ({})".format(y_title, to_root_latex(poi_data[poi2].unit))
     h_dummy = ROOT.TH2F("h", ";{};{};".format(x_title, y_title), 1, x_min, x_max, 1, y_min, y_max)
     r.setup_hist(h_dummy, pad=pad, props={"LineWidth": 0})
     draw_objs.append((h_dummy, "HIST"))

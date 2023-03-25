@@ -4,73 +4,57 @@ This entails two major differences in the preparation of datacards and the steer
 
 **Datacards**
 
-The datacards for the various EFT benchmarks should be prepared according to the central [EFT documentation](https://gitlab.cern.ch/hh/eft-benchmarks).
-In particular, please make sure that your ggF signal is normalized to a hypothetical cross section of 1fb times the branching ratio of your channel, and that VBF processes (`qqHH_*`) are dropped except for the SM VBF signal, which should be marked as background by attributing a positive process id.
+The datacards for the various EFT benchmarks should be prepared according to the central [naming and datacard conventions](https://gitlab.cern.ch/hh/naming-conventions#hh-signals-for-eft-results) as well as the [EFT documentation](https://gitlab.cern.ch/hh/eft-benchmarks).
+In particular, please make sure that
+
+- your ggF signal is normalized to a hypothetical cross section of 1 **pb** (❗️) times the **branching ratio of your channel**, and
+- that VBF processes (`qqHH_*`) are dropped except for the SM VBF signal, which should be marked as background by attributing a positive process id to it.
+
 Names of EFT benchmark datacard files should have the format
 
-`datacard_<NAME>.txt`,
+```
+datacard_<NAME>.txt
+```
 
 where `NAME` is the name of the particular benchmark.
 
-When working with the provided law tasks, the accepted datacard naming scheme can be slightly adapted to cover scenarios where several datacards of the same EFT benchmark are located in the same directory.
-See the **task parameters** section below for more information.
+For automatic benchmark grouping (e.g. into JHEP03 or JHEP04) within plots, you should use `NAME`'s such as `JHEP04BM1`, `JHEP04BM2`, etc, which are special names recognized by the plot routines. See `bm_labels` in [dhi/config.py](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/dhi/config.py) for a list of all known `NAME`'s.
+
 
 ==If your datacards contribute to the HH combination==, please make sure to use the ==exact same== naming scheme for processes, bins and parameters as the other datacards provided by your channel.
 
 **Task parameters**
 
-As benchmark names are extracted from names of the datacard files, the usual `--datacards` parameter cannot be used as it would not support the combination of cards across multiple channels.
+==Unlike==, for instance, the [upper limit](limits.md#limit-on-poi-vs-scan-parameter) or [likelihood scan](likelihood.md#single-likelihood-profiles) tasks where a single set of combined cards is used to extract results over a range of scan parameter values, each benchmark point requires its own datacard.
+To allow that cards of different channels can still be combined per benchmark scenario, the usual `--datacards` parameter cannot be used as it targets only a single sequence of cards.
 
-The tasks below use the `--multi-datacards` parameter instead, allowing multiple sequences of files, separated by `:`, to be passed in the format `ch1/cardA,ch1/cardB:ch2/cardA,ch2/cardB`.
-In this example, the different sequences `ch1/cardA,ch1/cardB` and `ch2/cardA,ch2/cardB` could correspond to different analysis channels.
-**Files with the same (base)name across sequences will be combined** by means of the `CombineDatacards` task.
+Instead, the tasks below use the `--multi-datacards` parameter that allows to define multiple sequences of files, separated by `:`, to be passed in the format
+
+```
+ch1/datacard_A.txt,ch1/datacard_B.txt:ch2/datacard_A.txt,ch2/datacard_B.txt:...
+```
+
+In this example, the different sequences `ch1/datacard_A.txt,ch1/datacard_B.txt` and `ch2/datacard_A.txt,ch2/datacard_B.txt` could correspond to different analysis channels.
+**Datacards with the same `NAME` (`A` and `B`) across sequences will be combined** by means of the `CombineDatacards` task.
 Therefore, a valid example is
 
 ```shell
---multi-datacards 'my_cards/datacard_bm*.txt'
+--multi-datacards 'my_cards/datacard_JHEP04*.txt'
 ```
 
 for a **single channel**, and
 
 ```shell
---multi-datacards 'bbbb/datacard_bm*.txt:bbgg/datacard_bm*.txt'
+--multi-datacards 'bbbb/datacard_JHEP04*.txt:bbgg/datacard_JHEP04*.txt'
 ```
 
-for **multiple channels**, where datacards corresponding to the same benchmark (name) will be combined across the channels.
-
-When datacards of the same EFT benchmark are located in the same directory (unlike the example above which assumes that files are placed in different subdirectories), you can use the `--datacard-pattern` parameter to select the datacards per sequence and to extract either the benchmark name.
-
-Consider a directory that contains 6 files
-
-```
-datacard_bm1_A.txt
-datacard_bm2_A.txt
-datacard_bm3_A.txt
-datacard_bm1_B.txt
-datacard_bm2_B.txt
-datacard_bm3_B.txt
-```
-
-and you want to compute the benchmark limits **only** for datacards `A`.
-In this case, one can use
-
-```shell
---multi-datacards 'datacard_bm*.txt' --datacard-pattern 'datacard_bm(.*)_A.txt'
-```
-
-where the pattern `datacard_bm(.*)_A.txt` is used both to select files from all matches of `--multi-datacards` and to extract the corresponding benchmark name via the regex group `(.*)`.
-
-If you like to perform the scan for `A` **and** `B`, with datacards of the same benchmark being combined first, you can add another pattern separated by comma,
-
-```shell
---multi-datacards 'datacard_bm*.txt' --datacard-pattern 'datacard_bm(.*)_A.txt,datacard_bm(.*)_B.txt'
-```
+for **multiple channels**, where datacards corresponding to the same benchmark will be combined across the channels.
+For obvious reasons, the number of files matched by `bbbb/datacard_JHEP04*.txt` and `bbgg/datacard_JHEP04*.txt` must be identical.
 
 
 ### Benchmark limits
 
 The `PlotEFTBenchmarkLimits` task shows the upper limits on the rate of HH production via gluon-gluon fusion (POI `r_gghh`) obtained for several EFT benchmarks.
-As described above, datacard names should have the format `datacard_<NAME>.txt`.
 
 - [Quick example](#quick-example)
 - [Dependencies](#dependencies)
@@ -143,5 +127,91 @@ law run PlotEFTBenchmarkLimits \
     --multi-datacards $DHI_EXAMPLE_CARDS_EFT_BM \
     --xsec fb \
     --br bbgg \
+    --EFTBenchmarkLimits-workflow htcondor
+```
+
+
+### Multiple benchmark limits
+
+The `PlotMultipleEFTBenchmarkLimits` task shows the upper limits on the rate of HH production via gluon-gluon fusion (POI `r_gghh`) obtained for several EFT benchmarks, but unlike `PlotEFTBenchmarkLimits` described [above](#benchmark-limits), results of datacards are not combined per benchmark, but separately shown.
+
+- [Quick example](#quick-example_1)
+- [Dependencies](#dependencies_1)
+- [Parameters](#parameters_1)
+- [Example commands](#example-commands_1)
+
+
+#### Quick example
+
+```shell
+law run PlotMultipleEFTBenchmarkLimits \
+    --version dev \
+    --multi-datacards $$DHI_EXAMPLE_CARDS_EFT_BM_1:$DHI_EXAMPLE_CARDS_EFT_BM_2 \
+    --xsec fb
+```
+
+As described above, the `--multi-datacards` parameter should be used to identify different sequences of datacards.
+
+Output:
+
+![Multiple EFT benchmark limits](../images/multilimits__eft__benchmarks.png)
+
+
+#### Dependencies
+
+```mermaid
+graph LR;
+    A(PlotEFTBenchmarkLimits) --> B1(MergeEFTBenchmarkLimits);
+    A --> B2(MergeEFTBenchmarkLimits);
+    A --> X1(...);
+    B1 --> C1([EFTBenchmarkLimits]);
+    B2 --> C2([EFTBenchmarkLimits]);
+    C1 --> D1([CreateWorkspace]);
+    C1 --> D2([CreateWorkspace]);
+    C1 --> X2(...);
+    C2 --> D3([CreateWorkspace]);
+    C2 --> D4([CreateWorkspace]);
+    C2 --> X3(...);
+    D1 --> E1(CombineDatacards);
+    D2 --> E2(CombineDatacards);
+    D3 --> E3(CombineDatacards);
+    D4 --> E4(CombineDatacards);
+```
+
+Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
+
+
+#### Parameters
+
+=== "PlotMultipleEFTBenchmarkLimits"
+
+    --8<-- "content/snippets/plotmultipleeftbenchmarklimits_param_tab.md"
+
+=== "MergeEFTBenchmarkLimits"
+
+    --8<-- "content/snippets/mergeeftbenchmarklimits_param_tab.md"
+
+=== "EFTBenchmarkLimits"
+
+    --8<-- "content/snippets/eftbenchmarklimits_param_tab.md"
+
+=== "CreateWorkspace"
+
+    --8<-- "content/snippets/createworkspace_param_tab.md"
+
+=== "CombineDatacards"
+
+    --8<-- "content/snippets/combinedatacards_param_tab.md"
+
+
+#### Example commands
+
+**1.** Execute `EFTBenchmarkLimits` tasks on HTCondor:
+
+```shell hl_lines="5"
+law run PlotMultipleEFTBenchmarkLimits \
+    --version dev \
+    --multi-datacards $DHI_EXAMPLE_CARDS_EFT_BM_1:$DHI_EXAMPLE_CARDS_EFT_BM_2 \
+    --xsec fb \
     --EFTBenchmarkLimits-workflow htcondor
 ```

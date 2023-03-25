@@ -69,6 +69,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
             "likelihood_scan_2d",
             "multiple_likelihood_scans",
             "multiple_likelihood_scans_2d",
+            "likelihood_scan_2d_multigrid",
             "multiple_likelihood_scans_by_model",
             "multiple_likelihood_scans_by_model_2d",
         ],
@@ -239,6 +240,21 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 ),
                 show_parameters=(("CV",),),
                 unblinded=True,
+            )
+
+        if self.check_enabled("likelihood_scan_2d_multigrid"):
+            reqs["likelihood_scan_2d"] = PlotLikelihoodScan.req(
+                self,
+                datacards=sm_cards,
+                pois=("kl", "kt"),
+                scan_parameters=(
+                    ("kl", -30.0, 30.0, 7),
+                    ("kt", -10.0, 10.0, 6),
+                    ("kl", -10.0, 10.0, 5),
+                ),
+                show_parameters=(("CV",),),
+                unblinded=True,
+                interpolation_method=("nearest",),
             )
 
         if self.check_enabled("multiple_likelihood_scans"):
