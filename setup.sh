@@ -88,9 +88,17 @@ setup() {
     local flag_file_combine="${DHI_SOFTWARE}/.combine_good"
 
     source "/cvmfs/cms.cern.ch/cmsset_default.sh" "" || return "$?"
-    export SCRAM_ARCH="slc7_amd64_gcc900"
-    export CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_11_3_4}"
-    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v9.0.0}"
+    #export SCRAM_ARCH="slc7_amd64_gcc900"
+    #export CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_11_3_4}"
+    #export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v9.0.0}"
+    #export SCRAM_ARCH="slc7_amd64_gcc900"
+    #export CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_11_3_4}"
+    #export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v9.0.0}"
+
+    export SCRAM_ARCH="slc7_amd64_gcc700"
+    export CMSSW_VERSION="CMSSW_10_2_13"
+    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-102x-comb2021}"
+
     flag_file_combine="${flag_file_combine}_${SCRAM_ARCH}_${CMSSW_VERSION}"
 
     [ "${DHI_REINSTALL_COMBINE}" = "1" ] && rm -f "${flag_file_combine}"
