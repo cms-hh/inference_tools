@@ -1044,17 +1044,16 @@ def plot_limit_points(
         else:
             x_min = 0.75 * x_min_value
     if x_max is None:
-        x_max = x_max_value * 1.33 
-        if  style.matches("summary") :
-            x_max = (x_max_value * 10.0) if x_log else (x_max_value * 2.5) 
-        
+        x_max = x_max_value * 1.33
+        if style.matches("summary"):
+            x_max = (x_max_value * 10.0) if x_log else (x_max_value * 2.5)
 
     # some constants for plotting
     pad_width = pad_width or 800  # pixels
     top_margin = 35  # pixels
     bottom_margin = 70  # pixels
     left_margin = (left_margin or 150)  # pixels
-    right_margin = right_margin or 20 # pixels
+    right_margin = right_margin or 20  # pixels
     entry_height = entry_height or 90  # pixels
     head_space = 130  # pixels
     label_size = label_size or 22
@@ -1066,7 +1065,7 @@ def plot_limit_points(
     pad_margins = {
         "TopMargin": float(top_margin) / pad_height,
         "BottomMargin": float(bottom_margin) / pad_height,
-        "LeftMargin": factor_left_border*float(left_margin) / pad_width,
+        "LeftMargin": factor_left_border * float(left_margin) / pad_width,
         "RightMargin": float(right_margin) / pad_width,
         "Logx": x_log,
     }

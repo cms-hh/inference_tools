@@ -43,7 +43,7 @@ def plot_exclusion_and_bestfit_1d(
     campaign=None,
     cms_postfix=None,
     style=None,
-    factor_left_border=None
+    factor_left_border=None,
 ):
     """
     Creates a plot showing exluded regions of a *poi* over a *scan_parameter* for multiple analyses
@@ -129,7 +129,7 @@ def plot_exclusion_and_bestfit_1d(
     pad_margins = {
         "TopMargin": float(top_margin) / pad_height,
         "BottomMargin": float(bottom_margin) / pad_height,
-        "LeftMargin": factor_left_border*float(left_margin) / pad_width,
+        "LeftMargin": factor_left_border * float(left_margin) / pad_width,
         "RightMargin": float(right_margin) / pad_width,
     }
 
@@ -178,10 +178,6 @@ def plot_exclusion_and_bestfit_1d(
 
             for start, stop in ranges:
                 is_left = start < 1 and stop < 1
-                if is_left :
-                    start = -40
-                else:
-                    stop = 40
                 excl_x.append(stop if is_left else start)
                 excl_y.append(n - i - 0.5)
                 excl_d.append((stop - start) if is_left else 0)
@@ -780,7 +776,13 @@ def plot_exclusion_and_bestfit_2d(
         legend_entries[2 if has_best_fit else 1] = (g_sm, "Standard Model", "P")
 
     # legend
-    legend = r.routines.create_legend(pad=pad, width=480, n=3, x2=-44, props={"NColumns": 2, "Header": "Excluded at 95% CL"})
+    legend = r.routines.create_legend(
+        pad=pad, 
+        width=480, 
+        n=3, 
+        x2=-44, 
+        props={"NColumns": 2, "Header": "Excluded at 95% CL"}
+    )
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
     legend_box = r.routines.create_legend_box(

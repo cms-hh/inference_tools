@@ -976,7 +976,7 @@ class PlotUpperLimitsAtPoint(
         cls=luigi.IntParameter,
         default=tuple(),
         significant=False,
-        description="comma-separated vertical positions of horizontal lines in dashed; default: empty",
+        description="comma-separated vertical positions of horizontal lines in dashed; no default",
     )
     factor_left_border = law.CSVParameter(
         default=1.0,

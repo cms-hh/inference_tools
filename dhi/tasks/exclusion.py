@@ -39,7 +39,7 @@ class PlotExclusionAndBestFit(
         cls=luigi.IntParameter,
         default=tuple(),
         significant=False,
-        description="comma-separated vertical positions of horizontal lines in dashed; default: empty",
+        description="comma-separated vertical positions of horizontal lines in dashed; no default",
     )
     factor_left_border = law.CSVParameter(
         default=1.0,
@@ -362,5 +362,5 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
             cms_postfix=self.cms_postfix,
             style=self.style,
             dump_target=outputs.get("plot_data"),
-            factor_left_border=self.factor_left_border
+            factor_left_border=self.factor_left_border,
         )

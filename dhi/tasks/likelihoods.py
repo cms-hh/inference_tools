@@ -465,20 +465,21 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             data = inp.load(allow_pickle=True, formatter="numpy")
             values.append(data["data"])
             """
-            # keep that handy in case we want to load Nature results, 
+            # keep that handy in case we want to load Nature results,
             #but commenetd to not mess with pipeline
             try :
                 all_poi_mins.append([
                     (None if np.isnan(v) else v)
                     for v in (
-                        float(data["poi_mins"]) for p in scan_parameter_names 
+                        float(data["poi_mins"]) for p in scan_parameter_names
                     )
                 ])
-            except:"""
+            except:
+            """
             all_poi_mins.append([
                 (None if np.isnan(v) else v)
                 for v in (
-                    float(data["poi_mins"][p]) for p in scan_parameter_names 
+                    float(data["poi_mins"][p]) for p in scan_parameter_names
                 )
             ])
 
