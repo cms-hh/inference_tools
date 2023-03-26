@@ -777,11 +777,11 @@ def plot_exclusion_and_bestfit_2d(
 
     # legend
     legend = r.routines.create_legend(
-        pad=pad, 
-        width=480, 
-        n=3, 
-        x2=-44, 
-        props={"NColumns": 2, "Header": "Excluded at 95% CL"}
+        pad=pad,
+        width=480,
+        n=3,
+        x2=-44,
+        props={"NColumns": 2, "Header": "Excluded at 95% CL"},
     )
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)

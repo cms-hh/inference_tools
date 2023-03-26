@@ -76,8 +76,8 @@ br_hh_names = DotDict(
     bbbb=r"bb bb",
     bbbb_low=r"bb bb, #scale[0.75]{resolved}",  # $\club$
     bbbb_boosted=r"bb bb, #scale[0.75]{merged-jet}",  # $\club$
-    bbbb_boosted_ggf=r"bb bb #scale[0.75]{high $m_{HH}$, ggF}",  # $\club$ 
-    bbbb_boosted_vbf=r"bb bb #scale[0.75]{high $m_{HH}$, VBF}",  # $\club$ 
+    bbbb_boosted_ggf=r"bb bb #scale[0.75]{high $m_{HH}$, ggF}",  # $\club$
+    bbbb_boosted_vbf=r"bb bb #scale[0.75]{high $m_{HH}$, VBF}",  # $\club$
     bbbb_all=r"bb bb",  # $\club$
     bbvv=r"bb VV",
     bbww=r"bb WW",
@@ -86,7 +86,7 @@ br_hh_names = DotDict(
     bbzz=r"bb ZZ",
     bbzzqqll=r"bb ZZ, qqll",
     bbzzllll=r"bb ZZ",  # $\club$
-    bbtt=r"bb $\tau\tau$",  # $\club$ 
+    bbtt=r"bb $\tau\tau$",  # $\club$
     bbgg=r"bb $\gamma\gamma$",  # $\club$
     ttww=r"WW $\tau\tau",
     ttzz=r"ZZ $\tau\tau",
@@ -96,7 +96,7 @@ br_hh_names = DotDict(
     wwzz=r"WW ZZ",
     wwgg=r"WW $\gamma\gamma$",
     multilepton="Multilepton",  # $\club$
-    comb_nat="Comb. of $\club$",
+    comb_nat="Comb. of ",  # $\club$ The pipeline does not like club sign
 )
 # aliases
 br_hh_names["bbwwdl"] = br_hh_names.bbwwlvlv
@@ -160,7 +160,8 @@ hh_references_cadi = DotDict(
     wwzz=r"Not yet",
     wwgg=r"Not yet",
     multilepton="HIG-21-002",
-    bbbb_v4__bbbb_boosted_ggf_v5__bbbb_boosted_vbf_v3__bbgg_v7__bbtt_v7__bbzz4l_v5__multilepton_v6=r"HIG-22-001",
+    bbbb_v4__bbbb_boosted_ggf_v5__bbbb_boosted_vbf_v3__bbgg_v7__bbtt_v7__bbzz4l_v5__multilepton_v6\
+    =r"HIG-22-001",  ## CI does not like long lines
 )
 hh_references_cadi["bbzz4l"] = hh_references.bbzzllll
 
