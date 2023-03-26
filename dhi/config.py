@@ -160,8 +160,8 @@ hh_references_cadi = DotDict(
     wwzz=r"Not yet",
     wwgg=r"Not yet",
     multilepton="HIG-21-002",
-    bbbb_v4__bbbb_boosted_ggf_v5__bbbb_boosted_vbf_v3__bbgg_v7__bbtt_v7__bbzz4l_v5__multilepton_v6\
-    =r"HIG-22-001",  ## CI does not like long lines
+    #bbbb_v4__bbbb_boosted_ggf_v5__bbbb_boosted_vbf_v3__bbgg_v7__bbtt_v7__bbzz4l_v5__multilepton_v6 =r"HIG-22-001",  
+    ## CI does not like long lines, not sure how to enter reference to a combination... 
 )
 hh_references_cadi["bbzz4l"] = hh_references.bbzzllll
 
