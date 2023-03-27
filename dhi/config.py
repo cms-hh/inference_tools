@@ -70,7 +70,7 @@ br_hh["bbwwllvv"] = br_hh.bbwwlvlv
 br_hh["bbwwsl"] = br_hh.bbwwqqlv
 br_hh["bbzz4l"] = br_hh.bbzzllll
 
-# HH branching names (TODO: find prettier abbreviations)
+# HH branching names
 br_hh_names = DotDict(
     bbbb=r"bb bb",
     bbbb_low=r"bb bb, #scale[0.75]{low $m_{HH}$}",
@@ -84,7 +84,7 @@ br_hh_names = DotDict(
     bbwwlvlv=r"bb WW, 2l2$\nu$",
     bbzz=r"bb ZZ",
     bbzzqqll=r"bb ZZ, qqll",
-    bbzzllll=r"bb ZZ",
+    bbzzllll=r"bb ZZ, 4l",
     bbtt=r"bb $\tau\tau$",
     bbgg=r"bb $\gamma\gamma$",
     ttww=r"WW $\tau\tau",

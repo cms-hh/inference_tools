@@ -1387,7 +1387,7 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     @property
     def joined_parameter_values(self):
-        return self._joined_parameter_values()
+        return self._joined_parameter_values() or '""'
 
     def _joined_frozen_parameters(self, join=True):
         params = tuple()
