@@ -92,10 +92,10 @@ module 'law.contrib.git', 1 task(s):
 
 module 'dhi.tasks.combine', 3 task(s):
     - InputDatacards
-    - CombineDatacards
     - CreateWorkspace
+    - CombineDatacards
 
-module 'dhi.tasks.base', 3 task(s):
+module 'dhi.tasks.remote', 3 task(s):
     - BundleCMSSW
     - BundleRepo
     - BundleSoftware
@@ -127,13 +127,15 @@ module 'dhi.tasks.significances', 4 task(s):
     - PlotMultipleSignificanceScans
     - MergeSignificanceScan
 
-module 'dhi.tasks.pulls_impacts', 3 task(s):
+module 'dhi.tasks.pulls_impacts', 4 task(s):
     - PullsAndImpacts
     - PlotPullsAndImpacts
+    - PlotMultiplePullsAndImpacts
     - MergePullsAndImpacts
 
-module 'dhi.tasks.postfit', 3 task(s):
+module 'dhi.tasks.postfit', 4 task(s):
     - FitDiagnostics
+    - PlotDistributionsAndTables
     - PlotPostfitSOverB
     - PlotNuisanceLikelihoodScans
 
@@ -144,9 +146,9 @@ module 'dhi.tasks.gof', 4 task(s):
     - MergeGoodnessOfFit
 
 module 'dhi.tasks.eft', 4 task(s):
-    - EFTLimitBase
     - EFTBenchmarkLimits
     - PlotEFTBenchmarkLimits
+    - PlotMultipleEFTBenchmarkLimits
     - MergeEFTBenchmarkLimits
 
 module 'dhi.tasks.test', 1 task(s):
@@ -164,7 +166,7 @@ module 'dhi.tasks.exclusion', 2 task(s):
     - PlotExclusionAndBestFit
     - PlotExclusionAndBestFit2D
 
-written 48 task(s) to index file '/your/path/inference/.law/index'
+written 50 task(s) to index file '/your/path/inference/.law/index'
 ```
 
 You can type
