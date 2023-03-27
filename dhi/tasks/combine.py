@@ -28,7 +28,8 @@ except ImportError:
             return func
         return decorator
 
-from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, HTCondorWorkflow, ModelParameters
+from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
+from dhi.tasks.remote import HTCondorWorkflow
 from dhi.config import poi_data, br_hh
 from dhi.util import (
     linspace, try_int, real_path, expand_path, get_dcr2_path, common_leading_substring,
@@ -1163,12 +1164,6 @@ class ParameterScanTask(AnalysisTask):
             for values in itertools.product(*self.scan_parameters_dict.values())
         ]
 
-    def control_output_postfix(self):
-        return "{}__{}".format(
-            super(ParameterScanTask, self).control_output_postfix(),
-            self.get_output_postfix(),
-        )
-
 
 class POITask(DatacardTask, ParameterValuesTask):
 
@@ -1432,12 +1427,6 @@ class POITask(DatacardTask, ParameterValuesTask):
 
         # flip flags
         return tuple(map((lambda b: not b), self.unblinded))
-
-    def control_output_postfix(self):
-        return "{}__{}".format(
-            super(POITask, self).control_output_postfix(),
-            self.control_output_postfix(),
-        )
 
 
 class POIMultiTask(POITask):
@@ -2049,7 +2038,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
         if self.input_is_workspace:
             return law.LocalFileTarget(self.datacards[0], external=True)
 
-        return self.local_target("workspace.root")
+        return self.target("workspace.root")
 
     def build_command(self, fallback_level):
         if self.input_is_workspace:

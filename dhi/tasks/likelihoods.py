@@ -11,7 +11,8 @@ import law
 import luigi
 import six
 
-from dhi.tasks.base import HTCondorWorkflow, view_output_plots
+from dhi.tasks.base import view_output_plots
+from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     CombineCommandTask,
     MultiDatacardTask,

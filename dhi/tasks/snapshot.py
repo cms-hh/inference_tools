@@ -9,7 +9,7 @@ import copy
 import law
 import luigi
 
-from dhi.tasks.base import HTCondorWorkflow
+from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     CombineCommandTask,
     POITask,

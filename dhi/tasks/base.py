@@ -7,7 +7,7 @@ Generic base tasks.
 import os
 import sys
 import re
-import math
+import enum
 import importlib
 import getpass
 from collections import OrderedDict
@@ -16,15 +16,12 @@ import luigi
 import law
 import six
 
-from dhi.util import call_hook, expand_path
+from dhi import dhi_remote_job, dhi_has_gfal
+from dhi.util import call_hook
 from dhi.config import cms_postfix as default_cms_postfix
 
 
-law.contrib.load(
-    "cms", "git", "htcondor", "numpy", "slack", "telegram", "root", "tasks",
-)
-
-dhi_remote_job = str(os.getenv("DHI_REMOTE_JOB", "0")).lower() in ("1", "true", "yes")
+logger = law.logger.get_logger(__name__)
 
 
 class BaseTask(law.Task):
@@ -92,14 +89,27 @@ class BaseTask(law.Task):
         return params
 
 
+class OutputLocation(enum.Enum):
+    """
+    Output location flag.
+    """
+
+    config = "config"
+    local = "local"
+    wlcg = "wlcg"
+
+
 class AnalysisTask(BaseTask):
 
     version = luigi.Parameter(
         description="mandatory version that is encoded into output paths",
     )
 
+    # defaults for targets
     output_collection_cls = law.SiblingFileCollection
     default_store = "$DHI_STORE"
+    default_wlcg_fs = law.config.get_expanded("target", "default_wlcg_fs")
+    default_output_location = "config"
     store_by_family = False
 
     @classmethod
@@ -134,15 +144,104 @@ class AnalysisTask(BaseTask):
         return parts
 
     def local_path(self, *path, **kwargs):
-        store = kwargs.get("store") or self.default_store
-        parts = tuple(self.store_parts().values()) + tuple(self.store_parts_ext().values()) + path
-        return os.path.join(store, *(str(p) for p in parts))
+        """ local_path(*path, store=None, fs=None)
+        """
+        # if no fs is set, determine the main store directory
+        parts = ()
+        if not kwargs.pop("fs", None):
+            store = kwargs.get("store") or self.default_store
+            parts += (store,)
+
+        parts += tuple(self.store_parts().values())
+        parts += tuple(self.store_parts_ext().values())
+        parts += path
+
+        return os.path.join(*map(str, parts))
 
     def local_target(self, *path, **kwargs):
-        cls = law.LocalFileTarget if not kwargs.pop("dir", False) else law.LocalDirectoryTarget
+        """ local_target(*path, dir=False, store=None, fs=None, **kwargs)
+        """
+        _dir = kwargs.pop("dir", False)
         store = kwargs.pop("store", None)
-        path = self.local_path(*path, store=store)
+        fs = kwargs.get("fs", None)
+
+        # select the target class
+        cls = law.LocalDirectoryTarget if _dir else law.LocalFileTarget
+
+        # create the local path
+        path = self.local_path(*path, store=store, fs=fs)
+
+        # create the target instance and return it
         return cls(path, **kwargs)
+
+    def wlcg_path(self, *path):
+        # concatenate all parts that make up the path and join them
+        parts = ()
+        parts += tuple(self.store_parts().values())
+        parts += tuple(self.store_parts_ext().values())
+        parts += path
+
+        return os.path.join(*map(str, parts))
+
+    def wlcg_target(self, *path, **kwargs):
+        """ wlcg_target(*path, dir=False, fs=default_wlcg_fs, **kwargs)
+        """
+        _dir = kwargs.pop("dir", False)
+        if not kwargs.get("fs"):
+            kwargs["fs"] = self.default_wlcg_fs
+
+        # select the target class
+        cls = law.wlcg.WLCGDirectoryTarget if _dir else law.wlcg.WLCGFileTarget
+
+        # create the local path
+        path = self.wlcg_path(*path)
+
+        # create the target instance and return it
+        return cls(path, **kwargs)
+
+    def target(self, *path, **kwargs):
+        """ target(*path, location=None, **kwargs)
+        """
+        # get the default location
+        location = kwargs.pop("location", self.default_output_location)
+
+        # parse it and obtain config values if necessary
+        if isinstance(location, str):
+            location = OutputLocation[location]
+        if location == OutputLocation.config:
+            location = law.config.get_expanded("outputs", self.task_family, split_csv=True)
+            if not location:
+                self.logger.debug(
+                    "no option 'outputs::{}' found in law.cfg to obtain target "
+                    "location, falling back to 'local'".format(self.task_family),
+                )
+                location = ["local"]
+            location[0] = OutputLocation[location[0]]
+        location = law.util.make_list(location)
+
+        # forward to correct function
+        if location[0] == OutputLocation.wlcg:
+            # check if gfal exists
+            if not dhi_has_gfal:
+                logger.warning_once(
+                    "gfal2_missing_for_wlcg_target",
+                    "cannot create wlcg target, gfal2 is missing",
+                )
+                location[0] = OutputLocation.local
+            else:
+                # get other options
+                (fs,) = (location[1:] + [None])[:1]
+                kwargs.setdefault("fs", fs)
+                return self.wlcg_target(*path, **kwargs)
+
+        if location[0] == OutputLocation.local:
+            # get other options
+            (loc,) = (location[1:] + [None])[:1]
+            loc_key = "fs" if (loc and law.config.has_section(loc)) else "store"
+            kwargs.setdefault(loc_key, loc)
+            return self.local_target(*path, **kwargs)
+
+        raise Exception("cannot determine output location based on '{}'".format(location))
 
     def join_postfix(self, parts, sep1="__", sep2="_"):
         def repl(s):
@@ -166,184 +265,6 @@ class AnalysisTask(BaseTask):
         return call_hook(name, self, **kwargs)
 
 
-class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
-
-    transfer_logs = luigi.BoolParameter(
-        default=True,
-        significant=False,
-        description="transfer job logs to the output directory; default: True",
-    )
-    max_runtime = law.DurationParameter(
-        default=2.0,
-        unit="h",
-        significant=False,
-        description="maximum runtime; default unit is hours; default: 2",
-    )
-    htcondor_cpus = luigi.IntParameter(
-        default=law.NO_INT,
-        significant=False,
-        description="number of CPUs to request; empty value leads to the cluster default setting; "
-        "no default",
-    )
-    htcondor_mem = law.BytesParameter(
-        default=law.NO_FLOAT,
-        unit="GB",
-        significant=False,
-        description="amount of memory to request; the default unit is GB; empty value leads to the "
-        "cluster default setting; no default",
-    )
-    htcondor_flavor = luigi.ChoiceParameter(
-        default=os.getenv("DHI_HTCONDOR_FLAVOR", "cern"),
-        choices=("cern", "naf", "infn"),
-        significant=False,
-        description="the 'flavor' (i.e. configuration name) of the batch system; choices: "
-        "cern,naf,infn; default: {}".format(os.getenv("DHI_HTCONDOR_FLAVOR", "cern")),
-    )
-    htcondor_getenv = luigi.BoolParameter(
-        default=False,
-        significant=False,
-        description="whether to use htcondor's getenv feature to set the job enrivonment to the "
-        "current one, instead of using repository and software bundling; default: False",
-    )
-    htcondor_group = luigi.Parameter(
-        default=law.NO_STR,
-        significant=False,
-        description="the name of an accounting group on the cluster to handle user priority; not "
-        "used when empty; no default",
-    )
-
-    exclude_params_branch = {
-        "max_runtime", "htcondor_cpus", "htcondor_mem", "htcondor_flavor", "htcondor_getenv",
-        "htcondor_group",
-    }
-
-    def htcondor_workflow_requires(self):
-        reqs = law.htcondor.HTCondorWorkflow.htcondor_workflow_requires(self)
-
-        # add repo and software bundling as requirements when getenv is not requested
-        if not self.htcondor_getenv:
-            reqs["repo"] = BundleRepo.req(self, replicas=3)
-            reqs["software"] = BundleSoftware.req(self, replicas=3)
-            reqs["cmssw"] = BundleCMSSW.req(self, replicas=3)
-
-        return reqs
-
-    def htcondor_output_directory(self):
-        # the directory where submission meta data and logs should be stored
-        return self.local_target(store="$DHI_STORE_JOBS", dir=True)
-
-    def htcondor_bootstrap_file(self):
-        # each job can define a bootstrap file that is executed prior to the actual job
-        # in order to setup software and environment variables
-        bootstrap_file = os.path.expandvars("$DHI_BASE/dhi/tasks/remote_bootstrap.sh")
-        return law.JobInputFile(bootstrap_file, share=True, render_job=True)
-
-    def htcondor_job_config(self, config, job_num, branches):
-        # use cc7 at CERN (http://batchdocs.web.cern.ch/batchdocs/local/submit.html#os-choice)
-        # and NAF
-        if self.htcondor_flavor in ("cern", "naf"):
-            config.custom_content.append(("requirements", '(OpSysAndVer =?= "CentOS7")'))
-        # architecture at INFN
-        if self.htcondor_flavor == "infn":
-            config.custom_content.append((
-                "requirements",
-                'TARGET.OpSys == "LINUX" && (TARGET.Arch != "DUMMY")',
-            ))
-
-        # copy the entire environment when requests
-        if self.htcondor_getenv:
-            config.custom_content.append(("getenv", "true"))
-
-        # include the wlcg specific tools script in the input sandbox
-        tools_file = law.util.law_src_path("contrib/wlcg/scripts/law_wlcg_tools.sh")
-        config.input_files["wlcg_tools"] = law.JobInputFile(tools_file, share=True, render=False)
-
-        # the CERN htcondor setup requires a "log" config, but we can safely set it to /dev/null
-        # if you are interested in the logs of the batch system itself, set a meaningful value here
-        config.custom_content.append(("log", "/dev/null"))
-
-        # max runtime
-        config.custom_content.append(("+MaxRuntime", int(math.floor(self.max_runtime * 3600)) - 1))
-
-        # request cpus
-        if self.htcondor_cpus > 0:
-            if self.htcondor_flavor == "naf":
-                self.logger.warning(
-                    "--htcondor-cpus has no effect on NAF resources, use --htcondor-mem instead",
-                )
-            else:
-                config.custom_content.append(("RequestCpus", self.htcondor_cpus))
-
-        # request memory
-        if self.htcondor_mem > 0:
-            if self.htcondor_flavor == "cern":
-                self.logger.warning(
-                    "--htcondor-mem has no effect on CERN resources, use --htcondor-cpus instead",
-                )
-            elif self.htcondor_flavor == "naf":
-                # NAF uses MB
-                config.custom_content.append(("RequestMemory", self.htcondor_mem * 1024))
-            else:
-                config.custom_content.append(("RequestMemory", self.htcondor_mem))
-
-        # accounting group for priority on the cluster
-        if self.htcondor_group and self.htcondor_group != law.NO_STR:
-            config.custom_content.append(("+AccountingGroup", self.htcondor_group))
-
-        # helper to return uris and a file pattern for replicated bundles
-        reqs = self.htcondor_workflow_requires()
-        def get_bundle_info(task):
-            uris = task.output().dir.uri(cmd="filecopy", return_all=True)
-            pattern = os.path.basename(task.get_file_pattern())
-            return ",".join(uris), pattern
-
-        # prepare the hook file location
-        hook_file = os.getenv("DHI_HOOK_FILE", "")
-        if hook_file:
-            hook_file = expand_path(hook_file)
-            dhi_base = expand_path("$DHI_BASE")
-            if hook_file.startswith(dhi_base):
-                hook_file = os.path.relpath(hook_file, dhi_base)
-
-        # render_variables are rendered into all files sent with a job
-        config.render_variables["dhi_env_path"] = os.environ["PATH"]
-        config.render_variables["dhi_env_pythonpath"] = os.environ["PYTHONPATH"]
-        config.render_variables["dhi_htcondor_flavor"] = self.htcondor_flavor
-        config.render_variables["dhi_base"] = os.environ["DHI_BASE"]
-        config.render_variables["dhi_user"] = os.environ["DHI_USER"]
-        config.render_variables["dhi_store"] = os.environ["DHI_STORE"]
-        config.render_variables["dhi_local_scheduler"] = os.environ["DHI_LOCAL_SCHEDULER"]
-        config.render_variables["dhi_hook_file"] = hook_file
-        if self.htcondor_getenv:
-            config.render_variables["dhi_bootstrap_name"] = "htcondor_getenv"
-        else:
-            config.render_variables["dhi_bootstrap_name"] = "htcondor_standalone"
-
-            # add repo bundle variables
-            uris, pattern = get_bundle_info(reqs["repo"])
-            config.render_variables["dhi_repo_uris"] = uris
-            config.render_variables["dhi_repo_pattern"] = pattern
-
-            # add software bundle variables
-            uris, pattern = get_bundle_info(reqs["software"])
-            config.render_variables["dhi_software_uris"] = uris
-            config.render_variables["dhi_software_pattern"] = pattern
-
-            # add cmssw bundle variables
-            if "cmssw" in reqs:
-                uris, pattern = get_bundle_info(reqs["cmssw"])
-                config.render_variables["dhi_cmssw_uris"] = uris
-                config.render_variables["dhi_cmssw_pattern"] = pattern
-                config.render_variables["dhi_scram_arch"] = os.environ["SCRAM_ARCH"]
-                config.render_variables["dhi_cmssw_version"] = os.environ["CMSSW_VERSION"]
-
-        return config
-
-    def htcondor_use_local_scheduler(self):
-        # remote jobs should not communicate with ther central scheduler but with a local one
-        return True
-
-
 class UserTask(AnalysisTask):
 
     user = luigi.Parameter(
@@ -352,150 +273,6 @@ class UserTask(AnalysisTask):
 
     exclude_params_index = {"user"}
     exclude_params_req = {"user"}
-
-
-class BundleRepo(UserTask, law.git.BundleGitRepository, law.tasks.TransferLocalFile):
-
-    replicas = luigi.IntParameter(
-        default=10,
-        description="number of replicas to generate; default: 10",
-    )
-
-    exclude_files = ["docs", "data", ".law", ".setups", "datacards_run2*/*", "*~", "*.pyc"]
-
-    version = None
-    task_namespace = None
-    default_store = "$DHI_STORE_BUNDLES"
-
-    def get_repo_path(self):
-        # required by BundleGitRepository
-        return os.environ["DHI_BASE"]
-
-    def single_output(self):
-        repo_base = os.path.basename(self.get_repo_path())
-        return self.local_target("{}.{}.tgz".format(repo_base, self.checksum))
-
-    def get_file_pattern(self):
-        path = os.path.expandvars(os.path.expanduser(self.single_output().path))
-        return self.get_replicated_path(path, i=None if self.replicas <= 0 else "*")
-
-    def output(self):
-        return law.tasks.TransferLocalFile.output(self)
-
-    @law.decorator.safe_output
-    def run(self):
-        # create the bundle
-        bundle = law.LocalFileTarget(is_tmp="tgz")
-        self.bundle(bundle)
-
-        # log the size
-        self.publish_message("bundled repository archive, size is {}".format(
-            law.util.human_bytes(bundle.stat().st_size, fmt=True),
-        ))
-
-        # transfer the bundle
-        self.transfer(bundle)
-
-
-class BundleSoftware(UserTask, law.tasks.TransferLocalFile):
-
-    replicas = luigi.IntParameter(
-        default=10,
-        description="number of replicas to generate; default: 10",
-    )
-
-    version = None
-    default_store = "$DHI_STORE_BUNDLES"
-
-    def __init__(self, *args, **kwargs):
-        super(BundleSoftware, self).__init__(*args, **kwargs)
-
-        self._checksum = None
-
-    @property
-    def checksum(self):
-        if not self._checksum:
-            # read content of all software flag files and create a hash
-            contents = []
-            for flag_file in os.environ["DHI_SOFTWARE_FLAG_FILES"].strip().split():
-                if os.path.exists(flag_file):
-                    with open(flag_file, "r") as f:
-                        contents.append((flag_file, f.read().strip()))
-            self._checksum = law.util.create_hash(contents)
-
-        return self._checksum
-
-    def single_output(self):
-        return self.local_target("software.{}.tgz".format(self.checksum))
-
-    def get_file_pattern(self):
-        path = os.path.expandvars(os.path.expanduser(self.single_output().path))
-        return self.get_replicated_path(path, i=None if self.replicas <= 0 else "*")
-
-    @law.decorator.safe_output
-    def run(self):
-        software_path = os.environ["DHI_SOFTWARE"]
-
-        # create the local bundle
-        bundle = law.LocalFileTarget(software_path + ".tgz", is_tmp=True)
-
-        def _filter(tarinfo):
-            if re.search(r"(\.pyc|\/\.git|\.tgz|__pycache__|black)$", tarinfo.name):
-                return None
-            if re.search(r"^(.+/)?CMSSW_\d+_\d+_\d+", tarinfo.name):
-                return None
-            return tarinfo
-
-        # create the archive with a custom filter
-        bundle.dump(software_path, filter=_filter)
-
-        # log the size
-        self.publish_message("bundled software archive, size is {}".format(
-            law.util.human_bytes(bundle.stat().st_size, fmt=True),
-        ))
-
-        # transfer the bundle
-        self.transfer(bundle)
-
-
-class BundleCMSSW(UserTask, law.cms.BundleCMSSW, law.tasks.TransferLocalFile):
-
-    replicas = luigi.IntParameter(
-        default=10,
-        description="number of replicas to generate; default: 10",
-    )
-
-    version = None
-    task_namespace = None
-    exclude = "^src/tmp"
-    default_store = "$DHI_STORE_BUNDLES"
-
-    def get_cmssw_path(self):
-        return os.environ["CMSSW_BASE"]
-
-    def single_output(self):
-        path = "{}.{}.tgz".format(os.path.basename(self.get_cmssw_path()), self.checksum)
-        return self.local_target(path)
-
-    def get_file_pattern(self):
-        path = os.path.expandvars(os.path.expanduser(self.single_output().path))
-        return self.get_replicated_path(path, i=None if self.replicas <= 0 else "*")
-
-    def output(self):
-        return law.tasks.TransferLocalFile.output(self)
-
-    def run(self):
-        # create the bundle
-        bundle = law.LocalFileTarget(is_tmp="tgz")
-        self.bundle(bundle)
-
-        # log the size
-        self.publish_message("bundled CMSSW archive, size is {}".format(
-            law.util.human_bytes(bundle.stat().st_size, fmt=True),
-        ))
-
-        # transfer the bundle
-        self.transfer(bundle)
 
 
 class CommandTask(AnalysisTask):
@@ -606,6 +383,7 @@ class CommandTask(AnalysisTask):
 
     @law.decorator.log
     @law.decorator.notify
+    @law.decorator.localize
     def run(self, **kwargs):
         self.pre_run_command()
 
@@ -938,7 +716,7 @@ def view_output_plots(fn, opts, task, *args, **kwargs):
             view_cmd += " {}"
 
         # collect all paths to view
-        view_paths = []
+        view_targets = OrderedDict()
         outputs = law.util.flatten(task.output())
         while outputs:
             output = outputs.pop(0)
@@ -947,13 +725,18 @@ def view_output_plots(fn, opts, task, *args, **kwargs):
                 continue
             if not getattr(output, "path", None):
                 continue
-            if output.path.endswith((".pdf", ".png")) and output.path not in view_paths:
-                view_paths.append(output.path)
+            if output.path.endswith((".pdf", ".png")) and output.uri() not in view_targets:
+                view_targets[output.uri()] = output
 
-        # loop through paths and view them
-        for path in view_paths:
-            task.publish_message("showing {}".format(path))
-            law.util.interruptable_popen(view_cmd.format(path), shell=True, executable="/bin/bash")
+        # loop through targets and view them
+        for target in view_targets.values():
+            task.publish_message("showing {}".format(target.path))
+            with target.localize("r") as tmp:
+                law.util.interruptable_popen(
+                    view_cmd.format(tmp.path),
+                    shell=True,
+                    executable="/bin/bash",
+                )
 
     return before_call, call, after_call
 
