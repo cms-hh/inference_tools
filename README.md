@@ -193,12 +193,27 @@ In the meantime, you can use a separate set of scripts that allow to create full
 For more info, see the dedicated [README](dhi/scripts/README_postfit_plots.md).
 
 
-## Documentation
+## For developers
+
+### Code checks and CI
+
+The code in this project follows a rather relaxed, yet [PEP8 compliant](https://peps.python.org/pep-0008) style that is defined in [.flake8](https://gitlab.cern.ch/hh/tools/inference/-/blob/master/.flake8).
+A linting process is triggered on each push event to the repository in a [CI pipeline](https://gitlab.cern.ch/hh/tools/inference/-/pipelines).
+However, you can also run these checks in your local environment by running
+
+```bash
+./lint.sh
+```
+
+in the root directory of the project, or by setting up your editor accordingly (recommended).
+
+In addition to simple code checks, the CI is also configured to perform the standard project setup (including the CMSSW setup and compilation of combine), as well as to run specific tests tasks whose output plots will be visible right in GitLab UI.
+For more info, see [this talk](https://indico.cern.ch/event/1233725/#178-update-on-inference-tool-d).
+
+
+### Documentation
 
 The documentation is hosted at [cern.ch/cms-hh/tools/inference](https://cern.ch/cms-hh/tools/inference).
-
-
-### For developers
 
 It is built with [MkDocs](https://www.mkdocs.org) using the [material](https://squidfunk.github.io/mkdocs-material) theme and support for [PyMdown](https://facelessuser.github.io/pymdown-extensions) extensions.
 Developing and building the documentation locally requires docker and a valid login at the CERN GitLab container registry.

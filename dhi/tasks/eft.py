@@ -109,6 +109,8 @@ class EFTBenchmarkLimits(EFTBase, CombineCommandTask, law.LocalWorkflow, HTCondo
             " --verbose 1"
             " --mass {self.mass}"
             " {self.blinded_args}"
+            " --setParameterRanges {self.joined_parameter_ranges}"
+            " --setParameters {self.joined_parameter_values}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {self.combine_optimization_args}"
