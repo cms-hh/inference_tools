@@ -79,7 +79,7 @@ Output:
 
 ```mermaid
 graph LR;
-    A(PlotResonantLimits) --> B(MergeResonantLimits);
+    A{{PlotResonantLimits}} --> B(MergeResonantLimits);
     B --> C([ResonantLimits]);
     C --> D1([CreateWorkspace]);
     C --> D2([CreateWorkspace]);
@@ -89,6 +89,7 @@ graph LR;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
+Hexagonal boxes mark tasks that can produce [HEPData](https://hepdata-submission.readthedocs.io/en/latest/) compatible yaml files.
 
 
 #### Parameters
@@ -158,7 +159,7 @@ Output:
 
 ```mermaid
 graph LR;
-    A(PlotResonantLimits) --> B1(MergeResonantLimits);
+    A{{PlotResonantLimits}} --> B1(MergeResonantLimits);
     A --> B2(MergeResonantLimits);
     A --> X1(...);
     B1 --> C1([ResonantLimits]);
@@ -176,6 +177,7 @@ graph LR;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
+Hexagonal boxes mark tasks that can produce [HEPData](https://hepdata-submission.readthedocs.io/en/latest/) compatible yaml files.
 
 
 #### Parameters
