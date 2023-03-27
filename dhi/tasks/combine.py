@@ -191,13 +191,17 @@ class HHModelTask(AnalysisTask):
             get_xsec = module.create_vhh_xsec_func(model.vhh_formula)
             has_unc = get_xsec.has_unc()
             signature_kwargs = set(get_xsec.xsec_kwargs)
-        else:  # r
+        elif not hh_model=="model_dummy.model_dummy":  # r
             get_xsec = model.create_hh_xsec_func()
             has_unc = get_xsec.has_unc(ggf_nnlo=model.opt("doNNLOscaling"))
             signature_kwargs = set(get_xsec.xsec_kwargs)
             if "ggf_nnlo" in signature_kwargs:
                 signature_kwargs -= {"ggf_nnlo"}
                 get_xsec = functools.partial(get_xsec, ggf_nnlo=model.opt("doNNLOscaling"))
+        else:
+            get_xsec = model.create_hh_xsec_func()
+            has_unc = False
+            signature_kwargs = set()
 
         # compute the scale conversion
         scale = {"pb": 1.0, "fb": 1000.0}[unit]
@@ -209,7 +213,10 @@ class HHModelTask(AnalysisTask):
             if safe_signature:
                 # remove all kwargs that are not accepted
                 kwargs = {k: v for k, v in kwargs.items() if k in signature_kwargs}
-            return get_xsec(**kwargs) * scale
+            if not hh_model=="model_dummy.model_dummy":
+                return get_xsec(**kwargs) * scale
+            else :
+                return 1.0
 
         # store whether it accepts an uncertainty
         wrapper.has_unc = has_unc
@@ -1075,9 +1082,13 @@ class ParameterScanTask(AnalysisTask):
                 ),
             )
 
-        return ",".join(
-            "{}={}".format(*tpl) for tpl in zip(self.scan_parameter_names, self.branch_data)
-        )
+        print("==== self.scan_parameter_names", self.scan_parameter_names)
+        if not self.scan_parameter_names[0] == "":
+            return ",".join(
+                "{}={}".format(*tpl) for tpl in zip(self.scan_parameter_names, self.branch_data)
+            )
+        else:
+            return ''
 
     def _joined_scan_ranges(self, join=True):
         self._assert_single_scan_range("joined_scan_ranges")
@@ -1989,7 +2000,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
                     to_remove.add(proc)
 
             # actual removal
-            if to_remove:
+            if to_remove and not self.hh_model=="model_dummy.model_dummy":
                 from dhi.scripts.remove_processes import remove_processes
                 self.logger.info(
                     "trying to remove processe(s) '{}' from the combined datacard as "
@@ -2057,7 +2068,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
 
         # build physics model arguments when not empty
         model_args = []
-        if not self.hh_model_empty:
+        if not self.hh_model_empty and not self.hh_model=="model_dummy.model_dummy":
             model = self.load_hh_model()[1]
             model_args.append("--physics-model {model.__module__}:{model.name}".format(model=model))
             # add options

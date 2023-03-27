@@ -224,6 +224,7 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
                 " --noFitAsimov"
             ).format(self=self)
 
+        set_parameters = " --setParameters {self.joined_scan_values},{self.joined_parameter_values}" if not self.joined_scan_values == "" else ""
         # build the command
         cmd = (
             "combine -M AsymptoticLimits {workspace}"
@@ -235,7 +236,7 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
             " {snapshot_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameterRanges {self.joined_parameter_ranges}"
-            " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
+            "{set_parameters}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {self.combine_optimization_args}"
@@ -248,6 +249,7 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
             grid_args=grid_args,
             blinded_args=blinded_args,
             snapshot_args=snapshot_args,
+            set_parameters=set_parameters,
         )
 
         return cmd
@@ -1005,7 +1007,10 @@ class PlotUpperLimitsAtPoint(
         # we rather require a single point, so define a pseudo scan parameter for easier handling
         pois_with_values = [p for p in self.parameter_values_dict if p in self.all_pois]
         other_pois = [p for p in (self.k_pois + self.r_pois) if p != self.pois[0]]
-        self.pseudo_scan_parameter = (pois_with_values + other_pois)[0]
+        try:
+            self.pseudo_scan_parameter = (pois_with_values + other_pois)[0]
+        except:
+            self.pseudo_scan_parameter = ""
 
         # show a hint when xsec and br related nuisances can be frozen
         if self.xsec != law.NO_STR:
