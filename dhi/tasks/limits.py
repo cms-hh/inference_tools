@@ -224,7 +224,10 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
                 " --noFitAsimov"
             ).format(self=self)
 
-        set_parameters = " --setParameters {self.joined_scan_values},{self.joined_parameter_values}" if not self.joined_scan_values == "" else ""
+        set_parameters = ""
+        if not self.joined_scan_values == "":
+            set_parameters = " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
+
         # build the command
         cmd = (
             "combine -M AsymptoticLimits {workspace}"
