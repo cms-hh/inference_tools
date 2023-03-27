@@ -7,7 +7,8 @@ Tasks related to significance calculation.
 import law
 import luigi
 
-from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, view_output_plots
+from dhi.tasks.base import BoxPlotTask, view_output_plots
+from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     MultiDatacardTask,
     CombineCommandTask,
@@ -213,7 +214,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
 
     z_min = None
     z_max = None
-    save_hep_data = None
+    save_hep_data = False
 
     sort_pois = False
 

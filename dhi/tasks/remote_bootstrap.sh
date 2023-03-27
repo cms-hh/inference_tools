@@ -31,45 +31,42 @@ bootstrap_htcondor_standalone() {
     # set env variables
     export DHI_BASE="${LAW_JOB_HOME}/repo"
     export DHI_DATA="${LAW_JOB_HOME}/dhi_data"
-    export DHI_SOFTWARE="${DHI_DATA}/software"
+    export DHI_SOFTWARE="{{dhi_software}}"
+    export DHI_SOFTWARE="${DHI_SOFTWARE:-${DHI_DATA}/software}"
     export DHI_USER="{{dhi_user}}"
     export DHI_STORE="{{dhi_store}}"
     export DHI_LOCAL_SCHEDULER="{{dhi_local_scheduler}}"
     export DHI_HOOK_FILE="{{dhi_hook_file}}"
+    export DHI_LCG_DIR="{{dhi_lcg_dir}}"
     export DHI_ON_HTCONDOR="1"
     export DHI_REMOTE_JOB="1"
+    [ ! -z "{{voms_proxy_file}}" ] && export X509_USER_PROXY="${PWD}/{{voms_proxy_file}}"
+    [ ! -z "{{dhi_x509_cert_dir}}" ] && export X509_CERT_DIR="{{dhi_x509_cert_dir}}"
+    [ ! -z "{{dhi_x509_voms_dir}}" ] && export X509_VOMS_DIR="{{dhi_x509_voms_dir}}"
 
     # source the law wlcg tools, mainly for law_wlcg_get_file
-    source "{{wlcg_tools}}" ""
+    source "{{wlcg_tools}}" "" || return "$?"
 
-    # start loading bundles
-    mkdir -p "${DHI_SOFTWARE}"
+    # when gfal-* executables are not available, source the lcg dir
+    if ! law_wlcg_check_executable "gfal-ls" "silent" && [ ! -z "${DHI_LCG_DIR}" ] && [ -d "${DHI_LCG_DIR}" ]; then
+        source "${DHI_LCG_DIR}/etc/profile.d/setup-c7-ui-example.sh" ""
+    fi
 
-    # load the cmssw bundle
-    cd "${DHI_SOFTWARE}"
-    source "/cvmfs/cms.cern.ch/cmsset_default.sh" "" || return "$?"
-    export SCRAM_ARCH="{{dhi_scram_arch}}"
-    export CMSSW_VERSION="{{dhi_cmssw_version}}"
-    scramv1 project CMSSW "${CMSSW_VERSION}" || return "$?"
-    cd "${CMSSW_VERSION}"
-    law_wlcg_get_file "{{dhi_cmssw_uris}}" "{{dhi_cmssw_pattern}}" "${PWD}/cmssw.tgz" || return "$?"
-    tar -xzf cmssw.tgz || return "$?"
-    cd "src" || return "$?"
-    eval "$( scramv1 runtime -sh )" || return "$?"
-    scram b || return "$?"
-    cd "${LAW_JOB_HOME}"
+    # store variables required for fetching the cmssw bundle if needed
+    export DHI_SCRAM_ARCH="{{dhi_scram_arch}}"
+    export DHI_CMSSW_VERSION="{{dhi_cmssw_version}}"
+    export DHI_COMBINE_VERSION="{{dhi_combine_version}}"
+    export DHI_JOB_CMSSW_URIS="{{dhi_cmssw_uris}}"
+    export DHI_JOB_CMSSW_PATTERN='{{dhi_cmssw_pattern}}'
 
-    # load the software bundle
-    cd "${DHI_SOFTWARE}"
-    law_wlcg_get_file "{{dhi_software_uris}}" "{{dhi_software_pattern}}" "${PWD}/software.tgz" || return "$?"
-    tar -xzf "software.tgz" || return "$?"
-    rm "software.tgz"
-    cd "${LAW_JOB_HOME}"
+    # store variables required for fetching the software bundle if needed
+    export DHI_JOB_SOFTWARE_URIS="{{dhi_software_uris}}"
+    export DHI_JOB_SOFTWARE_PATTERN='{{dhi_software_pattern}}'
 
     # load the repo bundle
     mkdir -p "${DHI_BASE}"
     cd "${DHI_BASE}"
-    law_wlcg_get_file "{{dhi_repo_uris}}" "{{dhi_repo_pattern}}" "${PWD}/repo.tgz" || return "$?"
+    law_wlcg_get_file "{{dhi_repo_uris}}" '{{dhi_repo_pattern}}' "${PWD}/repo.tgz" || return "$?"
     tar -xzf "repo.tgz" || return "$?"
     rm "repo.tgz"
     cd "${LAW_JOB_HOME}"

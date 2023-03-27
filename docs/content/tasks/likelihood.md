@@ -51,7 +51,7 @@ Output:
 
 ```mermaid
     graph LR;
-    A(PlotLikelihoodScan) --> B(MergeLikelihoodScan);
+    A{{PlotLikelihoodScan}} --> B(MergeLikelihoodScan);
     B --> C([LikelihoodScan]);
     C -. either .-> D([CreateWorkspace]);
     D --> E(CombineDatacards);
@@ -60,6 +60,7 @@ Output:
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
+Hexagonal boxes mark tasks that can produce [HEPData](https://hepdata-submission.readthedocs.io/en/latest/) compatible yaml files.
 
 
 #### Parameters
@@ -169,7 +170,7 @@ Output:
 
 ```mermaid
     graph LR;
-    A(PlotMultipleLikelihoodScans) --> B1(MergeLikelihoodScan);
+    A{{PlotMultipleLikelihoodScans}} --> B1(MergeLikelihoodScan);
     A --> B2(MergeLikelihoodScan);
     A --> ...;
     B1 --> C1([LikelihoodScan]);
@@ -185,6 +186,7 @@ Output:
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
+Hexagonal boxes mark tasks that can produce [HEPData](https://hepdata-submission.readthedocs.io/en/latest/) compatible yaml files.
 
 
 #### Parameters
@@ -276,7 +278,7 @@ Output:
 law run PlotMultipleLikelihoodScansByModel \
     --version dev \
     --datacards $DHI_EXAMPLE_CARDS \
-    --hh-models HHModelPinv.model_default,HHModelPinv.model_default@noHscaling \
+    --hh-models "HHModelPinv.model_default,HHModelPinv.model_default@noHscaling" \
     --pois kl,kt \
     --scan-parameters kl,-10,10,21:kt,-5,5,11
 ```
@@ -294,7 +296,7 @@ Output:
 
 ```mermaid
     graph LR;
-    A(PlotMultipleLikelihoodScansByModel) --> B1(MergeLikelihoodScan);
+    A{{PlotMultipleLikelihoodScansByModel}} --> B1(MergeLikelihoodScan);
     A --> B2(MergeLikelihoodScan);
     A --> ...;
     B1 --> C1([LikelihoodScan]);
@@ -310,6 +312,7 @@ Output:
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
+Hexagonal boxes mark tasks that can produce [HEPData](https://hepdata-submission.readthedocs.io/en/latest/) compatible yaml files.
 
 
 #### Parameters
@@ -356,7 +359,7 @@ law run PlotMultipleLikelihoodScansByModel \
 law run PlotMultipleLikelihoodScansByModel \
     --version dev \
     --datacards $DHI_EXAMPLE_CARDS_GGF \
-    --hh-models HHModelPinv.model_default,HHModelPinv.model_default@noHscaling \
+    --hh-models "HHModelPinv.model_default,HHModelPinv.model_default@noHscaling" \
     --pois kl,kt \
     --scan-parameters kl,-10,10,21:kt,-5,5,11 \
     --LikelihoodScan-workflow htcondor \

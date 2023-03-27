@@ -9,7 +9,8 @@ from collections import OrderedDict
 import law
 import luigi
 
-from dhi.tasks.base import HTCondorWorkflow, view_output_plots
+from dhi.tasks.base import view_output_plots
+from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     MultiDatacardTask,
     MultiDatacardPatternTask,
@@ -182,7 +183,7 @@ class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
     x_max = None
     z_min = None
     z_max = None
-    save_hep_data = None
+    save_hep_data = False
 
     default_plot_function = "dhi.plots.eft.plot_benchmark_limits"
 

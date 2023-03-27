@@ -12,7 +12,8 @@ import os
 import law
 import luigi
 
-from dhi.tasks.base import HTCondorWorkflow, view_output_plots
+from dhi.tasks.base import view_output_plots
+from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
 from dhi.tasks.limits import UpperLimits
@@ -431,6 +432,7 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
     file_types = ("pdf",)
     z_min = None
     z_max = None
+    save_hep_data = False
 
     force_n_pois = 1
 
