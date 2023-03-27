@@ -432,6 +432,7 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
     file_types = ("pdf",)
     z_min = None
     z_max = None
+    save_hep_data = False
 
     force_n_pois = 1
 

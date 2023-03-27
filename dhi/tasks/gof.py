@@ -214,7 +214,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
 
     z_min = None
     z_max = None
-    save_hep_data = None
+    save_hep_data = False
 
     sort_pois = False
 

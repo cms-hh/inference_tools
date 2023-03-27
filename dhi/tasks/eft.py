@@ -183,7 +183,7 @@ class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
     x_max = None
     z_min = None
     z_max = None
-    save_hep_data = None
+    save_hep_data = False
 
     default_plot_function = "dhi.plots.eft.plot_benchmark_limits"
 

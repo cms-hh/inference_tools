@@ -40,7 +40,7 @@ class PlotExclusionAndBestFit(
     y_max = None
     z_min = None
     z_max = None
-    save_hep_data = None
+    save_hep_data = False
 
     force_n_pois = 1
     force_n_scan_parameters = 1
@@ -202,7 +202,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
 
     z_min = None
     z_max = None
-    save_hep_data = None
+    save_hep_data = False
 
     force_n_pois = 1
     force_n_scan_parameters = 2
