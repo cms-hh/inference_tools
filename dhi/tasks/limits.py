@@ -224,9 +224,9 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
                 " --noFitAsimov"
             ).format(self=self)
 
-        set_parameters = ""
+        set_par = ""
         if not self.joined_scan_values == "":
-            set_parameters = " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
+            set_par = " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
 
         # build the command
         cmd = (
@@ -252,7 +252,7 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
             grid_args=grid_args,
             blinded_args=blinded_args,
             snapshot_args=snapshot_args,
-            set_parameters=set_parameters,
+            set_parameters=set_par,
         )
 
         return cmd
