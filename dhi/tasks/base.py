@@ -60,7 +60,7 @@ class BaseTask(law.Task):
                     text += " (from branch {})".format(law.util.colored("0", "red"))
                 text += ": "
 
-                cmd = dep.get_command()
+                cmd = dep.get_command(fallback_level=0)
                 if cmd:
                     # when cmd is a 2-tuple, i.e. the real command and a representation for printing
                     # pick the second one
