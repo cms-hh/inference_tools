@@ -9,7 +9,8 @@ from collections import OrderedDict
 import law
 import luigi
 
-from dhi.tasks.base import HTCondorWorkflow, view_output_plots
+from dhi.tasks.base import view_output_plots
+from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     MultiDatacardTask,
     MultiDatacardPatternTask,
