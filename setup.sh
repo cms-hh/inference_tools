@@ -88,7 +88,7 @@ setup() {
 
     # pip install helper
     dhi_pip_install() {
-        PYTHONUSERBASE="${DHI_SOFTWARE}" pip install --user --no-cache-dir "$@"
+        PYTHONUSERBASE="${DHI_SOFTWARE}" pip3 install --user --no-cache-dir "$@"
     }
     [ ! -z "${BASH_VERSION}" ] && export -f dhi_pip_install
 
@@ -191,13 +191,11 @@ setup() {
     #
 
     # update paths and flags
-    local pyv="$( python -c "import sys; print('{0.major}.{0.minor}'.format(sys.version_info))" )"
+    local pyv="$( python3 -c "import sys; print('{0.major}.{0.minor}'.format(sys.version_info))" )"
     export PATH="${DHI_BASE}/bin:${DHI_BASE}/dhi/scripts:${DHI_BASE}/modules/law/bin:${DHI_SOFTWARE}/bin:$PATH"
     export PYTHONPATH="${DHI_BASE}:${DHI_BASE}/modules/law:${DHI_BASE}/modules/plotlib:${DHI_SOFTWARE}/lib/python${pyv}/site-packages:${DHI_SOFTWARE}/lib64/python${pyv}/site-packages:${PYTHONPATH}"
     export PYTHONWARNINGS="ignore"
     export PYTHONNOUSERSITE="1"
-    # TODO: fix thread model, gfal2 seems to hang when --workers > 1
-    # export GLOBUS_THREAD_MODEL="none"
 
     # unlimited stack size (as fallback, set soft-limit only)
     ulimit -s unlimited 2> /dev/null
@@ -220,14 +218,17 @@ setup() {
             mkdir -p "${DHI_SOFTWARE}"
 
             # python packages
+            dhi_pip_install -U pip || return "$?"
             dhi_pip_install 'six~=1.16' || return "$?"
-            dhi_pip_install 'luigi==2.8.13' || return "$?"
+            dhi_pip_install 'luigi~=3.2' || return "$?"
             dhi_pip_install 'scinum~=1.4' || return "$?"
             dhi_pip_install 'tabulate~=0.8' || return "$?"
-            dhi_pip_install 'PyYAML~=5.4' || return "$?"
-            dhi_pip_install 'flake8>=3.0,<4.0' || return "$?"
-            dhi_pip_install 'flake8-commas>=2.1' || return "$?"
-            dhi_pip_install 'flake8-quotes<=3.2' || return "$?"
+            dhi_pip_install 'uproot~=5.0' || return "$?"
+            dhi_pip_install 'awkward~=2.1' || return "$?"
+            dhi_pip_install 'PyYAML~=6.0' || return "$?"
+            dhi_pip_install 'flake8~=5.0' || return "$?"
+            dhi_pip_install 'flake8-commas~=2.1' || return "$?"
+            dhi_pip_install 'flake8-quotes~=3.3' || return "$?"
 
             # optional packages, disabled at the moment
             # dhi_pip_install python-telegram-bot==12.3.0
@@ -259,11 +260,11 @@ setup() {
 
     # gfal2 bindings (optional)
     export DHI_HAS_GFAL="0"
-    export DHI_LCG_DIR="${DHI_LCG_DIR:-/cvmfs/grid.cern.ch/umd-c7ui-latest}"
+    export DHI_LCG_DIR="${DHI_LCG_DIR:-/cvmfs/grid.cern.ch/centos7-ui-200122}"
     if [ ! -d "${DHI_LCG_DIR}" ]; then
         >&2 echo "lcg directory ${DHI_LCG_DIR} not existing, skip gfal2 bindings setup"
     else
-        source "${DHI_LCG_DIR}/etc/profile.d/setup-c7-ui-example.sh" "" || return "$?"
+        source "${DHI_LCG_DIR}/etc/profile.d/setup-c7-ui-python3-example.sh" "" || return "$?"
         export DHI_HAS_GFAL="1"
     fi
 

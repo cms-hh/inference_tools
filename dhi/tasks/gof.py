@@ -118,7 +118,7 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
             ))
 
         name = self.join_postfix(["gof", self.get_output_postfix(), parts])
-        return self.local_target(name + ".root")
+        return self.target(name + ".root")
 
     def build_command(self, fallback_level):
         # get the workspace to use and define snapshot args
@@ -178,7 +178,7 @@ class MergeGoodnessOfFit(GoodnessOfFitBase):
 
     def output(self):
         name = self.join_postfix(["gofs", self.get_output_postfix(), self.toys_postfix])
-        return self.local_target(name + ".json")
+        return self.target(name + ".json")
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -194,7 +194,7 @@ class MergeGoodnessOfFit(GoodnessOfFitBase):
                 )
                 continue
 
-            values = inp.load(formatter="uproot")["limit"].array("limit")
+            values = inp.load(formatter="uproot")["limit"].array(["limit"])["limit"]
             if branch == 0:
                 data["data"] = float(values[0])
             else:
@@ -227,12 +227,12 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
         outputs = {}
 
         names = self.create_plot_names(["gofs", self.get_output_postfix(), self.toys_postfix])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix(), self.toys_postfix])
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -240,6 +240,7 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
@@ -338,12 +339,12 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
         outputs = {}
 
         names = self.create_plot_names(["multigofs", self.get_output_postfix(), self.toys_postfix])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix(), self.toys_postfix])
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -351,6 +352,7 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()

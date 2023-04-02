@@ -106,8 +106,8 @@ class FitDiagnostics(
 
         name = lambda prefix: self.join_postfix([prefix, self.get_output_postfix(), parts])
         return {
-            "result": self.local_target(name("result") + ".root"),
-            "diagnostics": self.local_target(name("fitdiagnostics") + ".root"),
+            "result": self.target(name("result") + ".root"),
+            "diagnostics": self.target(name("fitdiagnostics") + ".root"),
         }
 
     def build_command(self, fallback_level):
@@ -316,17 +316,17 @@ class PlotPostfitSOverB(PostfitPlotBase):
         # plots
         name = "prefitsoverb" if self.prefit else "postfitsoverb"
         names = self.create_plot_names([name, self.get_output_postfix()] + parts)
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
-            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -334,6 +334,7 @@ class PlotPostfitSOverB(PostfitPlotBase):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
@@ -465,12 +466,12 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
         outputs = {}
 
         names = self.create_plot_names(parts)
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -478,6 +479,7 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
@@ -609,7 +611,7 @@ class PlotDistributionsAndTables(POIPlotTask):
             plot_options_dict = get_full_path(channel["plot_options"])
             options_dat       = os.path.normpath(plot_options_dict)
 
-            base_command = "python dhi/scripts/postfit_plots.py  "
+            base_command = "python3 dhi/scripts/postfit_plots.py  "
             file_output = open(outputs[0].path, 'a')
 
             # to save the locally with the plot the options to reproduce it

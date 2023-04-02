@@ -97,7 +97,7 @@ class EFTBenchmarkLimits(EFTBase, CombineCommandTask, law.LocalWorkflow, HTCondo
         parts = self.get_output_postfix(join=False)
         parts.append("bm{}".format(self.branch_data["benchmark"]))
 
-        return self.local_target("eftlimit__{}.root".format(self.join_postfix(parts)))
+        return self.target("eftlimit__{}.root".format(self.join_postfix(parts)))
 
     @property
     def blinded_args(self):
@@ -144,7 +144,7 @@ class MergeEFTBenchmarkLimits(EFTBase):
         parts = self.get_output_postfix(join=False)
         postfix = ("__" + self.join_postfix(parts)) if parts else ""
 
-        return self.local_target("eftlimits{}.npz".format(postfix))
+        return self.target("eftlimits{}.npz".format(postfix))
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -213,12 +213,12 @@ class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
         outputs = {}
 
         names = self.create_plot_names(["benchmarks", self.get_output_postfix(), parts])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -226,6 +226,7 @@ class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
@@ -323,12 +324,12 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
         outputs = {}
 
         names = self.create_plot_names(["multi_benchmarks", self.get_output_postfix(), parts])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -336,6 +337,7 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()

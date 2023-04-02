@@ -83,12 +83,12 @@ class PlotExclusionAndBestFit(
         outputs = {}
 
         names = self.create_plot_names(["exclusionbestfit", self.get_output_postfix()])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()])
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -96,6 +96,7 @@ class PlotExclusionAndBestFit(
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         import numpy as np
 
@@ -249,12 +250,12 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
         outputs = {}
 
         names = self.create_plot_names(["exclusionbestfit2d", self.get_output_postfix()])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()])
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -262,6 +263,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         import numpy as np
 
