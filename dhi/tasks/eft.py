@@ -13,7 +13,7 @@ from dhi.tasks.base import view_output_plots
 from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     MultiDatacardTask,
-    MultiDatacardPatternTask,
+    MultiDatacardTransposedTask,
     POITask,
     POIPlotTask,
     CombineCommandTask,
@@ -24,7 +24,7 @@ from dhi.eft_tools import sort_eft_benchmark_names
 from dhi.config import br_hh
 
 
-class EFTBase(POITask, MultiDatacardPatternTask):
+class EFTBase(POITask, MultiDatacardTransposedTask):
 
     hh_model = law.NO_STR
     allow_empty_hh_model = True
@@ -34,16 +34,18 @@ class EFTBase(POITask, MultiDatacardPatternTask):
     @classmethod
     def modify_param_values(cls, params):
         params = POITask.modify_param_values.__func__.__get__(cls)(params)
-        params = MultiDatacardPatternTask.modify_param_values.__func__.__get__(cls)(params)
+        params = MultiDatacardTransposedTask.modify_param_values.__func__.__get__(cls)(params)
         return params
 
     def __init__(self, *args, **kwargs):
         super(EFTBase, self).__init__(*args, **kwargs)
 
         # sort EFT datacards according to benchmark names
-        cards = dict(zip(self.datacard_pattern_matches, self.multi_datacards))
-        names = sort_eft_benchmark_names(cards.keys())
-        self.benchmark_datacards = OrderedDict((name, cards[name]) for name in names)
+        names = sort_eft_benchmark_names(self.multi_datacards_transposed.keys())
+        self.benchmark_datacards = OrderedDict(
+            (name, self.multi_datacards_transposed[name])
+            for name in names
+        )
 
     @property
     def other_pois(self):
@@ -60,7 +62,11 @@ class EFTBenchmarkLimits(EFTBase, CombineCommandTask, law.LocalWorkflow, HTCondo
     run_command_in_tmp = True
 
     def create_branch_map(self):
-        return list(self.benchmark_datacards.keys())
+        branch_map = []
+        for name, cards in self.benchmark_datacards.items():
+            for _cards in cards:
+                branch_map.append({"benchmark": name, "cards": _cards})
+        return branch_map
 
     def workflow_requires(self):
         reqs = super(EFTBenchmarkLimits, self).workflow_requires()
@@ -69,12 +75,12 @@ class EFTBenchmarkLimits(EFTBase, CombineCommandTask, law.LocalWorkflow, HTCondo
         if not self.pilot:
             # require the requirements of all branch tasks when not in pilot mode
             reqs["workspace"] = {
-                b: CreateWorkspace.req(
+                b: CreateWorkspace.req_different_branching(
                     self,
-                    datacards=self.benchmark_datacards[data],
+                    datacards=tuple(branch_data["cards"]),
                     hh_model=law.NO_STR,
                 )
-                for b, data in self.branch_map.items()
+                for b, branch_data in self.branch_map.items()
             }
 
         return reqs
@@ -82,14 +88,14 @@ class EFTBenchmarkLimits(EFTBase, CombineCommandTask, law.LocalWorkflow, HTCondo
     def requires(self):
         return CreateWorkspace.req(
             self,
-            datacards=self.benchmark_datacards[self.branch_data],
+            datacards=tuple(self.branch_data["cards"]),
             hh_model=law.NO_STR,
             branch=0,
         )
 
     def output(self):
         parts = self.get_output_postfix(join=False)
-        parts.append("bm{}".format(self.branch_data))
+        parts.append("bm{}".format(self.branch_data["benchmark"]))
 
         return self.local_target("eftlimit__{}.root".format(self.join_postfix(parts)))
 
@@ -147,6 +153,7 @@ class MergeEFTBenchmarkLimits(EFTBase):
 
         records = []
         dtype = [
+            ("benchmark", np.unicode_, max(len(n) for n in self.benchmark_datacards)),
             ("limit", np.float32),
             ("limit_p1", np.float32),
             ("limit_m1", np.float32),
@@ -156,9 +163,11 @@ class MergeEFTBenchmarkLimits(EFTBase):
         if self.unblinded:
             dtype.append(("observed", np.float32))
 
-        for branch, inp in self.input()["collection"].targets.items():
-            limits = UpperLimits.load_limits(inp, unblinded=self.unblinded)
-            records.append(limits)
+        branch_map = self.requires().branch_map
+        inputs = self.input()["collection"].targets
+        for b, branch_data in branch_map.items():
+            limits = UpperLimits.load_limits(inputs[b], unblinded=self.unblinded)
+            records.append((branch_data["benchmark"],) + limits)
 
         data = np.array(records, dtype=dtype)
         self.output().dump(data=data, formatter="numpy")
@@ -223,18 +232,18 @@ class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
         outputs["plots"][0].parent.touch()
 
         # load limit values
-        bm_names = list(self.benchmark_datacards.keys())
-        limit_values = dict(zip(bm_names, self.input().load(formatter="numpy")["data"]))
+        limit_values = self.input().load(formatter="numpy")["data"]
 
         # prepare conversion scale, default is expected to be pb!
         scale = br_hh.get(self.br, 1.0) * {"fb": 1000.0, "pb": 1.0}[self.xsec]
 
         # fill data entries as expected by the plot function
         data = []
-        for bm_name in bm_names:
-            record = limit_values[bm_name]
+        value_mask = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2", "observed"]
+        for bm_name in limit_values["benchmark"]:
+            record = limit_values[limit_values["benchmark"] == bm_name][value_mask][0]
             entry = {
-                "name": bm_name,
+                "name": str(bm_name),
                 "expected": [v * scale for v in record.tolist()[:5]],
             }
             if self.unblinded:
@@ -265,18 +274,41 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
 
     datacard_names = MultiDatacardTask.datacard_names
     datacard_order = MultiDatacardTask.datacard_order
-    force_equal_sequence_lengths = True
-    compare_sequence_length = True
+    group_duplicate_cards = True
 
     default_plot_function = "dhi.plots.eft.plot_multi_benchmark_limits"
+
+    def __init__(self, *args, **kwargs):
+        super(PlotMultipleEFTBenchmarkLimits, self).__init__(*args, **kwargs)
+
+        # check that each mass point has the same amount of cards
+        n_entries = {len(cards) for cards in self.benchmark_datacards.values()}
+        if len(n_entries) != 1:
+            raise Exception("founds different amount of entries in input datacards: {}".format(
+                ",".join(map(str, n_entries)),
+            ))
+        self.n_entries = list(n_entries)[0]
+
+        # the lengths of names and order indices must match multi_datacards when given
+        if self.datacard_names and len(self.datacard_names) != self.n_entries:
+            raise Exception("found {} entries in datacard_names whereas {} are expected".format(
+                len(self.datacard_names), self.n_entries,
+            ))
+        if self.datacard_order and len(self.datacard_order) != self.n_entries:
+            raise Exception("found {} entries in datacard_order whereas {} are expected".format(
+                len(self.datacard_order), self.n_entries,
+            ))
 
     def requires(self):
         return [
             MergeEFTBenchmarkLimits.req(
                 self,
-                multi_datacards=tuple((datacards[i],) for datacards in self.multi_datacards),
+                multi_datacards=tuple(
+                    tuple(cards[i])
+                    for cards in self.benchmark_datacards.values()
+                ),
             )
-            for i in range(len(self.multi_datacards[0]))
+            for i in range(self.n_entries)
         ]
 
     def output(self):
@@ -310,9 +342,8 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
         outputs["plots"][0].parent.touch()
 
         # load limit values
-        bm_names = list(self.benchmark_datacards.keys())
         limit_values = [
-            dict(zip(bm_names, list(inp.load(formatter="numpy")["data"])))
+            inp.load(formatter="numpy")["data"]
             for inp in self.input()
         ]
 
@@ -321,18 +352,22 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
 
         # fill data entries as expected by the plot function
         data = []
-        for bm_name in bm_names:
+        value_mask = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
+        for bm_name in limit_values[0]["benchmark"]:
             entry = {
-                "name": bm_name,
+                "name": str(bm_name),
                 "expected": [
-                    [v * scale for v in records[bm_name].tolist()[:5]]
-                    for records in limit_values
+                    [
+                        v * scale
+                        for v in vals[vals["benchmark"] == bm_name][0][value_mask].tolist()
+                    ]
+                    for vals in limit_values
                 ],
             }
             if self.unblinded:
                 entry["observed"] = [
-                    float(records[bm_name][5]) * scale
-                    for records in limit_values
+                    float(vals[vals["benchmark"] == bm_name]["observed"]) * scale
+                    for vals in limit_values
                 ]
             data.append(entry)
 

@@ -13,7 +13,7 @@ from dhi.tasks.base import view_output_plots
 from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     MultiDatacardTask,
-    MultiDatacardPatternTask,
+    MultiDatacardTransposedTask,
     POITask,
     POIPlotTask,
     CombineCommandTask,
@@ -23,7 +23,7 @@ from dhi.tasks.limits import UpperLimits
 from dhi.config import br_hh
 
 
-class ResonantBase(POITask, MultiDatacardPatternTask):
+class ResonantBase(POITask, MultiDatacardTransposedTask):
 
     hh_model = law.NO_STR
     allow_empty_hh_model = True
@@ -34,27 +34,24 @@ class ResonantBase(POITask, MultiDatacardPatternTask):
     @classmethod
     def modify_param_values(cls, params):
         params = POITask.modify_param_values.__func__.__get__(cls)(params)
-        params = MultiDatacardPatternTask.modify_param_values.__func__.__get__(cls)(params)
+        params = MultiDatacardTransposedTask.modify_param_values.__func__.__get__(cls)(params)
         return params
 
     def __init__(self, *args, **kwargs):
         super(ResonantBase, self).__init__(*args, **kwargs)
 
-        # datacard pattern matches must resolve to integer values
-        masses = []
-        for name in self.datacard_pattern_matches:
+        # convert keys in multi_datacards_transposed to integers and store them as resonant cards
+        pairs = []
+        for info, datacards in self.multi_datacards_transposed.items():
             try:
-                mass = int(name)
+                mass = int(info)
             except:
                 raise Exception(
                     "datacards contain a mass point '{}' which cannot be interpreted as an "
-                    "integer".fomrat(name),
+                    "integer".format(info),
                 )
-            masses.append(mass)
-
-        # sort datacards according to mass points
-        cards = dict(zip(masses, self.multi_datacards))
-        self.resonant_datacards = OrderedDict((mass, cards[mass]) for mass in sorted(masses))
+            pairs.append((mass, datacards))
+        self.resonant_datacards = OrderedDict(sorted(pairs, key=lambda pair: pair[0]))
 
     @property
     def other_pois(self):
@@ -71,7 +68,11 @@ class ResonantLimits(ResonantBase, CombineCommandTask, law.LocalWorkflow, HTCond
     run_command_in_tmp = True
 
     def create_branch_map(self):
-        return list(self.resonant_datacards.keys())
+        branch_map = []
+        for mass, cards in self.resonant_datacards.items():
+            for _cards in cards:
+                branch_map.append({"mass": mass, "cards": _cards})
+        return branch_map
 
     def workflow_requires(self):
         reqs = super(ResonantLimits, self).workflow_requires()
@@ -80,12 +81,12 @@ class ResonantLimits(ResonantBase, CombineCommandTask, law.LocalWorkflow, HTCond
         if not self.pilot:
             # require the requirements of all branch tasks when not in pilot mode
             reqs["workspace"] = {
-                b: CreateWorkspace.req(
+                b: CreateWorkspace.req_different_branching(
                     self,
-                    datacards=self.resonant_datacards[data],
+                    datacards=tuple(branch_data["cards"]),
                     hh_model=law.NO_STR,
                 )
-                for b, data in self.branch_map.items()
+                for b, branch_data in self.branch_map.items()
             }
 
         return reqs
@@ -93,14 +94,14 @@ class ResonantLimits(ResonantBase, CombineCommandTask, law.LocalWorkflow, HTCond
     def requires(self):
         return CreateWorkspace.req(
             self,
-            datacards=self.resonant_datacards[self.branch_data],
+            datacards=tuple(self.branch_data["cards"]),
             hh_model=law.NO_STR,
             branch=0,
         )
 
     def output(self):
         parts = self.get_output_postfix(join=False)
-        parts.append("res{}".format(self.branch_data))
+        parts.append("res{}".format(self.branch_data["mass"]))
 
         return self.local_target("reslimit__{}.root".format(self.join_postfix(parts)))
 
@@ -168,10 +169,11 @@ class MergeResonantLimits(ResonantBase):
         if self.unblinded:
             dtype.append(("observed", np.float32))
 
-        masses = list(self.resonant_datacards.keys())
-        for mass, inp in zip(masses, self.input()["collection"].targets.values()):
-            limits = UpperLimits.load_limits(inp, unblinded=self.unblinded)
-            records.append((mass,) + limits)
+        branch_map = self.requires().branch_map
+        inputs = self.input()["collection"].targets
+        for b, branch_data in branch_map.items():
+            limits = UpperLimits.load_limits(inputs[b], unblinded=self.unblinded)
+            records.append((branch_data["mass"],) + limits)
 
         data = np.array(records, dtype=dtype)
         self.output().dump(data=data, formatter="numpy")
@@ -289,18 +291,41 @@ class PlotMultipleResonantLimits(PlotResonantLimits):
 
     datacard_names = MultiDatacardTask.datacard_names
     datacard_order = MultiDatacardTask.datacard_order
-    force_equal_sequence_lengths = True
-    compare_sequence_length = True
+    group_duplicate_cards = True
 
     default_plot_function = "dhi.plots.limits.plot_limit_scans"
+
+    def __init__(self, *args, **kwargs):
+        super(PlotMultipleResonantLimits, self).__init__(*args, **kwargs)
+
+        # check that each mass point has the same amount of cards
+        n_entries = {len(cards) for cards in self.resonant_datacards.values()}
+        if len(n_entries) != 1:
+            raise Exception("founds different amount of entries in input datacards: {}".format(
+                ",".join(map(str, n_entries)),
+            ))
+        self.n_entries = list(n_entries)[0]
+
+        # the lengths of names and order indices must match multi_datacards when given
+        if self.datacard_names and len(self.datacard_names) != self.n_entries:
+            raise Exception("found {} entries in datacard_names whereas {} are expected".format(
+                len(self.datacard_names), self.n_entries,
+            ))
+        if self.datacard_order and len(self.datacard_order) != self.n_entries:
+            raise Exception("found {} entries in datacard_order whereas {} are expected".format(
+                len(self.datacard_order), self.n_entries,
+            ))
 
     def requires(self):
         return [
             MergeResonantLimits.req(
                 self,
-                multi_datacards=tuple((datacards[i],) for datacards in self.multi_datacards),
+                multi_datacards=tuple(
+                    tuple(cards[i])
+                    for cards in self.resonant_datacards.values()
+                ),
             )
-            for i in range(len(self.multi_datacards[0]))
+            for i in range(self.n_entries)
         ]
 
     def output(self):

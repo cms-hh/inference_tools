@@ -780,84 +780,46 @@ class MultiDatacardTask(DatacardTask):
         return parts
 
 
-class MultiDatacardPatternTask(MultiDatacardTask):
+class MultiDatacardTransposedTask(MultiDatacardTask):
 
-    datacard_pattern = law.CSVParameter(
-        default=(),
-        description="one or multiple comma-separated regular expressions for selecting datacards "
-        "from each of the sequences passed in --multi-datacards, and for extracting information "
-        "with a single regex group; when set on the command line, single quotes should be used; "
-        "when empty, a common pattern is extracted per datacard sequence; default: empty",
-    )
-    datacard_pattern_matches = law.CSVParameter(
-        default=(),
-        significant=False,
-        description="internal parameter, do not use manually",
-    )
-
-    exclude_params_index = {"datacard_names", "datacard_order", "datacard_pattern_matches"}
-    exclude_params_repr = {"datacard_pattern", "datacard_pattern_matches"}
+    exclude_params_index = {"datacard_names", "datacard_order"}
 
     datacard_names = None
     datacard_order = None
+    group_duplicate_cards = False
 
     @classmethod
-    def modify_param_values(cls, params):
-        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
+    def extract_info_from_datacard_path(cls, datacard):
+        return os.path.splitext(os.path.basename(datacard).rsplit("_", 1)[-1])[0]
 
-        # re-group multi datacards by basenames, filter with datacard_pattern and store matches
-        if (
-            "multi_datacards" in params and
-            "datacard_pattern" in params and
-            not params.get("datacard_pattern_matches")
-        ):
-            patterns = params["datacard_pattern"]
-            multi_datacards = params["multi_datacards"]
+    def __init__(self, *args, **kwargs):
+        super(MultiDatacardTransposedTask, self).__init__(*args, **kwargs)
 
-            # infer a common pattern automatically per sequence
-            if not patterns:
-                # find the common leading substring of datacard bases and built a pattern from that
-                patterns = []
-                for datacards in multi_datacards:
-                    basenames = [os.path.basename(datacard) for datacard in datacards]
-                    common_basename = functools.reduce(common_leading_substring, basenames)
-                    patterns.append(common_basename + r"(.+)\.txt")
+        # create a map of datacard info strings to lists of cards that contain it
+        self.multi_datacards_transposed = OrderedDict()
+        seen = set()
+        for datacards in self.multi_datacards:
+            contains_duplicate = any(datacard in seen for datacard in datacards)
+            groups = OrderedDict()
+            for datacard in datacards:
+                # extract the info string from the basename
+                info = self.extract_info_from_datacard_path(datacard)
 
-            # when there is one pattern and multiple datacards or vice versa, expand the former
-            if len(patterns) == 1 and len(multi_datacards) > 1:
-                patterns *= len(params["multi_datacards"])
-            elif len(patterns) > 1 and len(multi_datacards) == 1:
-                multi_datacards *= len(patterns)
-            elif len(patterns) != len(multi_datacards):
-                raise ValueError(
-                    "the number of patterns in --datacard-pattern ({}) does not "
-                    "match the number of datacard sequences in --multi-datacards ({})".format(
-                        len(patterns), len(params["multi_datacards"]),
-                    ),
-                )
+                if not self.group_duplicate_cards:
+                    # when not grouping, just add the card
+                    self.multi_datacards_transposed.setdefault(info, [[]])[0].append(datacard)
+                elif not contains_duplicate:
+                    # when the sequence contains only unseen cards, just add the card
+                    self.multi_datacards_transposed.setdefault(info, []).append([datacard])
+                else:
+                    # add it to groups for the current sequence
+                    groups.setdefault(info, []).append(datacard)
+                seen.add(datacard)
 
-            # assign datacards to groups, based on the matched group
-            groups = defaultdict(set)
-            for datacards, pattern in zip(multi_datacards, patterns):
-                n_matches = 0
-                for datacard in datacards:
-                    # apply the pattern to the basename
-                    m = re.match(pattern, os.path.basename(datacard))
-                    if m:
-                        groups[m.group(1)].add(datacard)
-                        n_matches += 1
-                if not n_matches:
-                    raise Exception(
-                        "the datacard pattern '{}' did not match any of the selected "
-                        "datacards\n  {}".format(pattern, "\n  ".join(datacards)),
-                    )
-
-            # sort cards, assign back to multi_datacards and store the pattern matches
-            params["multi_datacards"] = tuple(tuple(sorted(cards)) for cards in groups.values())
-            params["datacard_pattern_matches"] = tuple(groups.keys())
-            params["datacard_pattern"] = tuple(patterns)
-
-        return params
+            # add groups if any
+            if groups:
+                for info, group in groups.items():
+                    self.multi_datacards_transposed.setdefault(info, []).append(group)
 
 
 class ParameterValuesTask(AnalysisTask):
@@ -1334,7 +1296,8 @@ class POITask(DatacardTask, ParameterValuesTask):
             params = OrderedDict((p, v) for p, v in params.items() if p not in exclude_params)
         if include_params:
             params.update((k, include_params[k]) for k in sorted(include_params.keys()))
-        parts.append(["params"] + ["{}{}".format(*tpl) for tpl in params.items()])
+        if params:
+            parts.append(["params"] + ["{}{}".format(*tpl) for tpl in params.items()])
 
         # add frozen paramaters
         if self.frozen_parameters:
@@ -2013,7 +1976,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
     allow_empty_hh_model = True
     run_command_in_tmp = True
 
-    exclude_params_req_get = {"start_branch", "end_branch", "branches", "workflow"}
+    exclude_params_req_get = {"branches", "workflow"}
     prefer_params_cli = {"workflow", "max_runtime", "htcondor_cpus", "htcondor_mem"}
 
     def create_branch_map(self):
