@@ -84,24 +84,24 @@ get_eft_ggf_xsec_nnlo = eft_xsec_provider.get_ggf_xsec_nnlo
 
 def sort_eft_benchmark_names(names):
     """
-    Example order: 1, 2, 3, 3a, 3b, 4, 5, a_string, other_string, z_string
+    Input format: <TYPE>BM<NUM><POSTFIX>, or just <TYPE>
     """
     names = make_list(names)
 
-    # split into names being a number or starting with one, and pure strings
-    # store numeric names as tuples as sorted() will do exactly what we want
-    num_names, str_names = [], []
+    # split names
+    parts = []
+    rest = []
     for name in names:
-        m = re.match(r"^(\d+)(.*)$", name)
+        m = re.match(r"^((.+)BM|)(\d+)(.*)$", name)
         if m:
-            num_names.append((int(m.group(1)), m.group(2)))
+            parts.append((m.group(1), int(m.group(3)), m.group(4)))
         else:
-            str_names.append(name)
+            rest.append(name)
 
-    # sort and add
-    num_names.sort()
-    str_names.sort()
-    return ["{}{}".format(*pair) for pair in num_names] + str_names
+    # sort parts and rebuilt names
+    parts.sort()
+
+    return ["{}{}{}".format(*tpl) for tpl in parts] + rest
 
 
 def extract_eft_scan_parameter(name):

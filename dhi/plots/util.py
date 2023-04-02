@@ -158,7 +158,13 @@ def create_model_parameters(
 def create_hh_process_label(poi="r", prefix=r"pp $\rightarrow$ "):
     # please note the possible ambiguity in the process between r and r_gghh, and consider using
     # sth like "HH (incl.)" for r (however, this was recently discouraged)
-    proc = {"r": "HH", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH")
+    proc = {
+        "r": "HH",
+        "r_gghh": "HH",
+        "r_qqhh": "qqHH",
+        "r_vhh": "VHH",
+        "r_xhh": r"X $\rightarrow$ HH",
+    }.get(poi, "HH")
     return prefix + proc
 
 
@@ -687,6 +693,19 @@ def invert_graph(
         g_inv.SetPoint(i, x, y)
 
     return g_inv
+
+
+def fill_legend_column(legend_entries, n_column_entries, dummy_obj):
+    n_entries = len(legend_entries)
+    if not isinstance(dummy_obj, tuple):
+        dummy_obj = (dummy_obj, " ", "L")
+
+    # number of missing entries in the column
+    n_missing = int(math.ceil((1.0 * n_entries) / n_column_entries)) * n_column_entries - n_entries
+
+    # fill up legend entries
+    for _ in range(n_missing):
+        legend_entries.append(dummy_obj)
 
 
 def get_text_extent(t, text_size=None, text_font=None):

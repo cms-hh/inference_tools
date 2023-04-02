@@ -11,7 +11,7 @@ from dhi.config import (
     br_hh_names, br_hh_colors, campaign_labels, colors, color_sequence, bm_labels,
 )
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, make_list, make_tuple
-from dhi.plots.util import use_style, create_hh_xsbr_label, get_y_range, Style
+from dhi.plots.util import use_style, create_hh_xsbr_label, get_y_range, fill_legend_column, Style
 
 
 colors = colors.root
@@ -473,9 +473,10 @@ def plot_multi_benchmark_limits(
             )
             draw_objs.append((g_obs, "SAME,EZ"))
 
+    # fill the current legend column
+    fill_legend_column(legend_entries, 3, h_dummy)
+
     # add additional legend entries to distinguish expected and observed lines
-    for _ in range(3 - len(legend_entries) % 3):
-        legend_entries.append((h_dummy, " ", "L"))
     g_exp_dummy = g_exp.Clone()
     r.apply_properties(g_exp_dummy, {"LineColor": colors.black})
     legend_entries.append((g_exp_dummy, "Median expected", "L"))
@@ -483,8 +484,9 @@ def plot_multi_benchmark_limits(
         g_obs_dummy = g_obs.Clone()
         r.apply_properties(g_obs_dummy, {"LineColor": colors.black})
         legend_entries.append((g_obs_dummy, "Observed", "L"))
-    else:
-        legend_entries.append((h_dummy, " ", "L"))
+
+    # fill the current legend column again
+    fill_legend_column(legend_entries, 3, h_dummy)
 
     # texts over and lines between groups
     group_names = list(groups)

@@ -94,6 +94,7 @@ nav:
     - Postfit plots: tasks/postfit.md
     - Goodness-of-fit tests: tasks/gof.md
     - EFT limits: tasks/eft.md
+    - Resonant limits: tasks/resonant.md
     - Snapshots: tasks/snapshot.md
     - Best practices: tasks/practices.md
   - Datacard manipulation: datacard_manipulation.md
