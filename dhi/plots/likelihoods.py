@@ -398,12 +398,14 @@ def plot_likelihood_scans_1d(
             )
 
     # legend
+    legend_columns = legend_columns
+    legend_x2 = legend_x2
     if legend_columns is None:
         legend_columns = min(int(math.ceil(len(legend_entries) / 4.)), 3)
     else:
         int(legend_columns)
     legend_x2 = -20 if legend_x2 is None else int(legend_x2)
-    legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
+    legend_rows = int(math.ceil(len(legend_entries) / float(legend_columns)))
     legend = r.routines.create_legend(
         pad=pad,
         x2=legend_x2,
