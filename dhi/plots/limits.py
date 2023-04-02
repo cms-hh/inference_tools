@@ -1197,9 +1197,9 @@ def plot_limit_points(
     # observed values
     if has_obs:
         g_obs = create_graph(key="observed")
-        r.setup_graph(g_obs, 
+        r.setup_graph(g_obs,
             props={
-                "LineWidth": 2, "LineStyle": 1, 
+                "LineWidth": 2, "LineStyle": 1,
                 "MarkerStyle": 8, "MarkerSize": 1.5
             }
         )
