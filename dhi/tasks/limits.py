@@ -110,7 +110,7 @@ class UpperLimitsBase(POITask, SnapshotUser):
         # prepare limit values in the format (nominal, err1_up, err1_down, err2_up, err2_down)
         indices = {0.5: 0, 0.84: 1, 0.16: 2, 0.975: 3, 0.025: 4}
         values = [np.nan] * len(indices)
-        for l, q in zip(limits, quantiles)[:len(indices)]:
+        for l, q in list(zip(limits, quantiles))[:len(indices)]:
             q = round(float(q), 3)
             if q in indices:
                 values[indices[q]] = l

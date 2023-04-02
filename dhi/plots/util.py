@@ -683,7 +683,7 @@ def invert_graph(
     # the 4 corners, the graph points itself, the first point of the graph again to close it, and
     # ending with the closest corner again
     points = (2 * corners)[start_index:start_index + 5]
-    points.extend(zip(x_values, y_values))
+    points.extend(list(zip(x_values, y_values)))
     points.append((x_values[0], y_values[0]))
     points.append(corners[start_index])
 

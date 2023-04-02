@@ -422,7 +422,7 @@ def plot_limit_scan(
 
         def exp_limit_value(i, sigma, label):
             keys = ["limit", "limit_p{}".format(sigma), "limit_m{}".format(sigma)]
-            n, p, m = map(float, (expected_values[key][i] for key in keys))
+            n, p, m = tuple(float(expected_values[key][i]) for key in keys)
             return Number(n, {label: (p - n, n - m)}, default_format="publication")
 
         # expected limits with 68% error
@@ -1878,7 +1878,7 @@ def excluded_to_allowed_ranges(excluded_ranges, min_value, max_value):
             e_ranges[-1] = (e_ranges[-1][0], max_value)
 
     # linearize excluded ranges (assuming edges are always reasonably far apart)
-    e_edges = map(float, sum(map(list, excluded_ranges), []))
+    e_edges = list(map(float, sum(map(list, excluded_ranges), [])))
 
     # loop through adjacent pairs and create allowed ranges in an alternating fashion
     for i, (start, stop) in enumerate(zip(e_edges[:-1], e_edges[1:])):

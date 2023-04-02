@@ -46,7 +46,7 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
 
     def output(self):
         name = self.join_postfix(["snapshot", self.get_output_postfix()]) + ".root"
-        return self.local_target(name)
+        return self.target(name)
 
     def build_command(self, fallback_level):
         # args for blinding / unblinding

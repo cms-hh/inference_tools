@@ -69,7 +69,7 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
 
     def output(self):
         name = self.join_postfix(["likelihood", self.get_output_postfix()]) + ".root"
-        return self.local_target(name)
+        return self.target(name)
 
     def build_command(self, fallback_level):
         # get the workspace to use and define snapshot args
@@ -163,7 +163,7 @@ class MergeLikelihoodScan(LikelihoodBase):
 
     def output(self):
         name = self.join_postfix(["likelihoods", self.get_output_postfix()]) + ".npz"
-        return self.local_target(name)
+        return self.target(name)
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -340,23 +340,23 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
             self.get_output_postfix(),
             parts,
         ])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # ranges
         if self.n_pois == 1 and self.save_ranges:
-            outputs["ranges"] = self.local_target("ranges__{}.json".format(
+            outputs["ranges"] = self.target("ranges__{}.json".format(
                 self.get_output_postfix(),
             ))
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
-            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -364,6 +364,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
@@ -582,23 +583,23 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
             self.get_output_postfix(),
             parts,
         ])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # ranges
         if self.n_pois == 1 and self.save_ranges:
-            outputs["ranges"] = self.local_target("ranges__{}.json".format(
+            outputs["ranges"] = self.target("ranges__{}.json".format(
                 self.get_output_postfix(),
             ))
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
-            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -606,6 +607,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
@@ -732,23 +734,23 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
             self.get_output_postfix(),
             parts,
         ])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # ranges
         if self.n_pois == 1 and self.save_ranges:
-            outputs["ranges"] = self.local_target("ranges__{}.json".format(
+            outputs["ranges"] = self.target("ranges__{}.json".format(
                 self.get_output_postfix(),
             ))
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
-            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -756,6 +758,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()

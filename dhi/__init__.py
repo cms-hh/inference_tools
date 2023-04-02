@@ -44,3 +44,7 @@ if law.config.has_option("outputs", "wlcg_file_systems"):
         law.wlcg.WLCGFileSystem(fs.strip())
         for fs in law.config.get_expanded("outputs", "wlcg_file_systems", split_csv=True)
     ]
+
+# import gfal2 once when available to pre-load it before anything ROOT related is imported
+if dhi_has_gfal:
+    import gfal2  # noqa

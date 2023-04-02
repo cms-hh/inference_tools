@@ -103,7 +103,7 @@ class ResonantLimits(ResonantBase, CombineCommandTask, law.LocalWorkflow, HTCond
         parts = self.get_output_postfix(join=False)
         parts.append("res{}".format(self.branch_data["mass"]))
 
-        return self.local_target("reslimit__{}.root".format(self.join_postfix(parts)))
+        return self.target("reslimit__{}.root".format(self.join_postfix(parts)))
 
     @property
     def blinded_args(self):
@@ -150,7 +150,7 @@ class MergeResonantLimits(ResonantBase):
         parts = self.get_output_postfix(join=False)
         postfix = ("__" + self.join_postfix(parts)) if parts else ""
 
-        return self.local_target("reslimits{}.npz".format(postfix))
+        return self.target("reslimits{}.npz".format(postfix))
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -221,17 +221,17 @@ class PlotResonantLimits(ResonantBase, POIPlotTask):
         outputs = {}
 
         names = self.create_plot_names(["reslimits", self.get_output_postfix(), parts])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
-            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -239,6 +239,7 @@ class PlotResonantLimits(ResonantBase, POIPlotTask):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
@@ -340,17 +341,17 @@ class PlotMultipleResonantLimits(PlotResonantLimits):
         outputs = {}
 
         names = self.create_plot_names(["multi_reslimits", self.get_output_postfix(), parts])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
-            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -358,6 +359,7 @@ class PlotMultipleResonantLimits(PlotResonantLimits):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()

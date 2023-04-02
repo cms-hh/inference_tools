@@ -430,6 +430,7 @@ def create_tgraph(n, *args, **kwargs):
     """
     ROOT = import_ROOT()
 
+    n = int(n)
     if len(args) <= 2:
         cls = ROOT.TGraph
     elif len(args) <= 4:
@@ -464,8 +465,8 @@ def create_tgraph(n, *args, **kwargs):
 
     if n == 0:
         return cls(n)
-    else:
-        return cls(n, *(array.array("f", a) for a in _args))
+
+    return cls(n, *(array.array("f", a) for a in _args))
 
 
 def convert_rooargset(argset):
