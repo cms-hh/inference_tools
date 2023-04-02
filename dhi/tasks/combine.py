@@ -32,7 +32,7 @@ from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
 from dhi.tasks.remote import HTCondorWorkflow
 from dhi.config import poi_data, br_hh
 from dhi.util import (
-    linspace, try_int, real_path, expand_path, get_dcr2_path, common_leading_substring,
+    linspace, try_int, real_path, expand_path, get_dcr2_path,
 )
 from dhi.datacard_tools import bundle_datacard, read_datacard_blocks
 
