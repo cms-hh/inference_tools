@@ -129,9 +129,9 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
 
     def workflow_requires(self):
         reqs = super(PullsAndImpacts, self).workflow_requires()
-        reqs["workspace"] = CreateWorkspace.req(self)
+        reqs["workspace"] = CreateWorkspace.req_different_branching(self)
         if self.use_snapshot:
-            reqs["snapshot"] = Snapshot.req(self)
+            reqs["snapshot"] = Snapshot.req_different_branching(self)
         return reqs
 
     def requires(self):

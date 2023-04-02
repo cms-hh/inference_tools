@@ -27,11 +27,13 @@ variables:
       - "postfit_s_over_b"
       - "nuisance_likelihood_scans"
       - "goodness_of_fit"
+      - "multiple_goodness_of_fits"
       - "eft_benchmark_limits"
       - "multiple_eft_benchmark_limits"
       - "upper_limits_c2"
       - "likelihood_scan_c2_2d"
-      - "multiple_goodness_of_fits"
+      - "resonant_limits"
+      - "multiple_resonant_limits"
       - "morphing_scales"
       - "morphed_discriminant"
       - "stat_error_scan"
@@ -44,6 +46,7 @@ variables:
       - "all_gof"
       - "all_eft_bm"
       - "all_eft_c2"
+      - "all_resonant"
       - "all_studies"
     description: "A specific plot to produce (see test.TestPlots for more info)."
 
@@ -140,6 +143,7 @@ test_all:
         - "all_gof"
         - "all_eft_bm"
         - "all_eft_c2"
+        - "all_resonant"
         - "all_studies"
 
 test_specific:

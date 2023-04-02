@@ -26,7 +26,7 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
     allow_parameter_values_in_pois = True
     run_command_in_tmp = True
 
-    exclude_params_req_get = {"start_branch", "end_branch", "branches", "workflow"}
+    exclude_params_req_get = {"branches", "workflow"}
     prefer_params_cli = {
         "toys", "frozen_parameters", "frozen_groups", "minimizer", "parameter_values",
         "parameter_ranges", "workflow", "max_runtime",
@@ -38,7 +38,7 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
 
     def workflow_requires(self):
         reqs = super(Snapshot, self).workflow_requires()
-        reqs["workspace"] = CreateWorkspace.req(self)
+        reqs["workspace"] = CreateWorkspace.req_different_branching(self)
         return reqs
 
     def requires(self):
