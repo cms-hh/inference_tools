@@ -159,12 +159,18 @@ build_docs_image:
   stage: build
   when: manual
   tags:
-    - docker-image-build
-  script: "echo Building image ${CI_REGISTRY_IMAGE}"
+    - docker-privileged
+  image: docker:19.03.1
+  services:
+    - docker:19.03.1-dind
   variables:
-    CONTEXT_DIR: "docs/docker"
-    TO: "${CI_REGISTRY_IMAGE}:latest"
-    NO_CACHE: "true"
+    DOCKER_TLS_CERTDIR: "/certs"
+  script:
+    - docker info
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+    - cd docs/docker
+    - docker build --pull -t "$CI_REGISTRY_IMAGE" .
+    - docker push "$CI_REGISTRY_IMAGE"
 
 deploy_docs:
   stage: build
