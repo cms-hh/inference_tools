@@ -43,7 +43,6 @@ def plot_exclusion_and_bestfit_1d(
     campaign=None,
     cms_postfix=None,
     style=None,
-    factor_left_border=None,
 ):
     """
     Creates a plot showing exluded regions of a *poi* over a *scan_parameter* for multiple analyses
@@ -92,7 +91,6 @@ def plot_exclusion_and_bestfit_1d(
     """
     import plotlib.root as r
     ROOT = import_ROOT()
-    factor_left_border = 1.3
 
     # style-based adjustments
     style = Style.new(style)
@@ -131,7 +129,7 @@ def plot_exclusion_and_bestfit_1d(
     pad_margins = {
         "TopMargin": float(top_margin) / pad_height,
         "BottomMargin": float(bottom_margin) / pad_height,
-        "LeftMargin": factor_left_border * float(left_margin) / pad_width,
+        "LeftMargin": float(left_margin) / pad_width,
         "RightMargin": float(right_margin) / pad_width,
     }
 

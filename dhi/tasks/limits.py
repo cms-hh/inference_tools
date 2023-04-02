@@ -978,11 +978,6 @@ class PlotUpperLimitsAtPoint(
         significant=False,
         description="comma-separated vertical positions of horizontal lines in dashed; no default",
     )
-    factor_left_border = law.CSVParameter(
-        default=1.0,
-        significant=False,
-        description="Factor to enlarge the right border with. Multiplicative; default: 1.0",
-    )
     extra_labels = law.CSVParameter(
         default=tuple(),
         description="comma-separated labels to be shown per entry; default: empty",
@@ -1241,7 +1236,6 @@ class PlotUpperLimitsAtPoint(
             model_parameters=self.get_shown_parameters(),
             h_lines=self.h_lines,
             h_dotted_lines=self.h_dotted_lines,
-            factor_left_border=float(self.factor_left_border[0]),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             cms_postfix=self.cms_postfix,
             style=self.style,
