@@ -7,7 +7,8 @@ Tasks related to significance calculation.
 import law
 import luigi
 
-from dhi.tasks.base import HTCondorWorkflow, view_output_plots
+from dhi.tasks.base import view_output_plots
+from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     MultiDatacardTask,
     CombineCommandTask,
@@ -62,9 +63,9 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
     def workflow_requires(self):
         reqs = super(SignificanceScan, self).workflow_requires()
         if self.use_snapshot:
-            reqs["snapshot"] = Snapshot.req(self)
+            reqs["snapshot"] = Snapshot.req_different_branching(self)
         else:
-            reqs["workspace"] = CreateWorkspace.req(self)
+            reqs["workspace"] = CreateWorkspace.req_different_branching(self)
         return reqs
 
     def requires(self):
@@ -77,7 +78,7 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
 
     def output(self):
         name = self.join_postfix(["significance", self.get_output_postfix()]) + ".root"
-        return self.local_target(name)
+        return self.target(name)
 
     def build_command(self, fallback_level):
         # get the workspace to use and define snapshot args
@@ -130,7 +131,7 @@ class MergeSignificanceScan(SignificanceBase):
 
     def output(self):
         name = self.join_postfix(["significance", self.get_output_postfix()]) + ".npz"
-        return self.local_target(name)
+        return self.target(name)
 
     @law.decorator.log
     def run(self):
@@ -151,7 +152,7 @@ class MergeSignificanceScan(SignificanceBase):
                 continue
 
             scan_values = scan_task.branch_map[branch]
-            sig = inp.load(formatter="uproot")["limit"].array("limit")
+            sig = inp.load(formatter="uproot")["limit"].arrays(["limit"])["limit"]
             if sig:
                 sig = sig[0]
                 pval = scipy.stats.norm.sf(sig)
@@ -218,12 +219,12 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
 
         prefix = "significance" if self.convert == law.NO_STR else self.convert
         names = self.create_plot_names([prefix, self.get_output_postfix(), parts])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -231,6 +232,7 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
@@ -330,12 +332,12 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
 
         prefix = "significance" if self.convert == law.NO_STR else self.convert
         names = self.create_plot_names(["multi{}s".format(prefix), self.get_output_postfix(), parts])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -343,6 +345,7 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()

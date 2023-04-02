@@ -128,7 +128,7 @@ Output:
 
 ```mermaid
 graph LR;
-    A(PlotMultipleUpperLimits) --> B1(MergeUpperLimits);
+    A{{PlotMultipleUpperLimits}} --> B1(MergeUpperLimits);
     A --> B2(MergeUpperLimits);
     A --> ...;
     B1 --> C1([UpperLimits]);
@@ -144,6 +144,7 @@ graph LR;
 ```
 
 Rounded boxes mark [workflows](practices.md#workflows) with the option to run tasks as HTCondor jobs.
+Hexagonal boxes mark tasks that can produce [HEPData](https://hepdata-submission.readthedocs.io/en/latest/) compatible yaml files.
 
 
 #### Parameters

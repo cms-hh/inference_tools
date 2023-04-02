@@ -234,7 +234,7 @@ def plot_likelihood_scans_1d(
 
             # vertical indicators at 1 and 2 sigma when only one curve is shown
             if show_best_fit_indicators and len(data) == 1 and scans[0] and sig in [1, 2]:
-                values = map(lambda s: getattr(scans[0], "poi_{}{}".format(s, sig)), "pm")
+                values = list(map(lambda s: getattr(scans[0], "poi_{}{}".format(s, sig)), "pm"))
                 for value in values:
                     if value is None or not (x_min < value < x_max):
                         continue

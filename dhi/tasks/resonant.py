@@ -1,7 +1,7 @@
 # coding: utf-8
 
 """
-Tasks related to EFT benchmarks and scans.
+Tasks related to upper limits on resonant scenarios.
 """
 
 from collections import OrderedDict
@@ -20,16 +20,16 @@ from dhi.tasks.combine import (
     CreateWorkspace,
 )
 from dhi.tasks.limits import UpperLimits
-from dhi.eft_tools import sort_eft_benchmark_names
 from dhi.config import br_hh
 
 
-class EFTBase(POITask, MultiDatacardTransposedTask):
+class ResonantBase(POITask, MultiDatacardTransposedTask):
 
     hh_model = law.NO_STR
     allow_empty_hh_model = True
 
-    poi = "r_gghh"
+    poi = "r_xhh"
+    scan_parameter = "mhh"
 
     @classmethod
     def modify_param_values(cls, params):
@@ -38,38 +38,44 @@ class EFTBase(POITask, MultiDatacardTransposedTask):
         return params
 
     def __init__(self, *args, **kwargs):
-        super(EFTBase, self).__init__(*args, **kwargs)
+        super(ResonantBase, self).__init__(*args, **kwargs)
 
-        # sort EFT datacards according to benchmark names
-        names = sort_eft_benchmark_names(self.multi_datacards_transposed.keys())
-        self.benchmark_datacards = OrderedDict(
-            (name, self.multi_datacards_transposed[name])
-            for name in names
-        )
+        # convert keys in multi_datacards_transposed to integers and store them as resonant cards
+        pairs = []
+        for info, datacards in self.multi_datacards_transposed.items():
+            try:
+                mass = int(info)
+            except:
+                raise Exception(
+                    "datacards contain a mass point '{}' which cannot be interpreted as an "
+                    "integer".format(info),
+                )
+            pairs.append((mass, datacards))
+        self.resonant_datacards = OrderedDict(sorted(pairs, key=lambda pair: pair[0]))
 
     @property
     def other_pois(self):
         return []
 
     def store_parts(self):
-        parts = super(EFTBase, self).store_parts()
+        parts = super(ResonantBase, self).store_parts()
         parts["poi"] = "poi_{}".format(self.poi)
         return parts
 
 
-class EFTBenchmarkLimits(EFTBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+class ResonantLimits(ResonantBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     run_command_in_tmp = True
 
     def create_branch_map(self):
         branch_map = []
-        for name, cards in self.benchmark_datacards.items():
+        for mass, cards in self.resonant_datacards.items():
             for _cards in cards:
-                branch_map.append({"benchmark": name, "cards": _cards})
+                branch_map.append({"mass": mass, "cards": _cards})
         return branch_map
 
     def workflow_requires(self):
-        reqs = super(EFTBenchmarkLimits, self).workflow_requires()
+        reqs = super(ResonantLimits, self).workflow_requires()
 
         # workspaces of all datacard sequences
         if not self.pilot:
@@ -95,9 +101,9 @@ class EFTBenchmarkLimits(EFTBase, CombineCommandTask, law.LocalWorkflow, HTCondo
 
     def output(self):
         parts = self.get_output_postfix(join=False)
-        parts.append("bm{}".format(self.branch_data["benchmark"]))
+        parts.append("res{}".format(self.branch_data["mass"]))
 
-        return self.target("eftlimit__{}.root".format(self.join_postfix(parts)))
+        return self.target("reslimit__{}.root".format(self.join_postfix(parts)))
 
     @property
     def blinded_args(self):
@@ -130,21 +136,21 @@ class EFTBenchmarkLimits(EFTBase, CombineCommandTask, law.LocalWorkflow, HTCondo
 
     def control_output_postfix(self):
         return "{}__{}".format(
-            super(EFTBenchmarkLimits, self).control_output_postfix(),
+            super(ResonantLimits, self).control_output_postfix(),
             self.get_output_postfix(),
         )
 
 
-class MergeEFTBenchmarkLimits(EFTBase):
+class MergeResonantLimits(ResonantBase):
 
     def requires(self):
-        return EFTBenchmarkLimits.req(self)
+        return ResonantLimits.req(self)
 
     def output(self):
         parts = self.get_output_postfix(join=False)
         postfix = ("__" + self.join_postfix(parts)) if parts else ""
 
-        return self.target("eftlimits{}.npz".format(postfix))
+        return self.target("reslimits{}.npz".format(postfix))
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -153,7 +159,7 @@ class MergeEFTBenchmarkLimits(EFTBase):
 
         records = []
         dtype = [
-            ("benchmark", np.unicode_, max(len(n) for n in self.benchmark_datacards)),
+            (self.scan_parameter, np.float32),
             ("limit", np.float32),
             ("limit_p1", np.float32),
             ("limit_m1", np.float32),
@@ -167,13 +173,13 @@ class MergeEFTBenchmarkLimits(EFTBase):
         inputs = self.input()["collection"].targets
         for b, branch_data in branch_map.items():
             limits = UpperLimits.load_limits(inputs[b], unblinded=self.unblinded)
-            records.append((branch_data["benchmark"],) + limits)
+            records.append((branch_data["mass"],) + limits)
 
         data = np.array(records, dtype=dtype)
         self.output().dump(data=data, formatter="numpy")
 
 
-class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
+class PlotResonantLimits(ResonantBase, POIPlotTask):
 
     xsec = luigi.ChoiceParameter(
         default="fb",
@@ -190,16 +196,18 @@ class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
         default=False,
         description="apply log scaling to the y-axis; default: False",
     )
-    x_min = None
-    x_max = None
+    show_points = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="show points of central limit values; default: False",
+    )
     z_min = None
     z_max = None
-    save_hep_data = False
 
-    default_plot_function = "dhi.plots.eft.plot_benchmark_limits"
+    default_plot_function = "dhi.plots.limits.plot_limit_scan"
 
     def requires(self):
-        return MergeEFTBenchmarkLimits.req(self)
+        return MergeResonantLimits.req(self)
 
     def output(self):
         # additional postfix
@@ -212,8 +220,13 @@ class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
 
         outputs = {}
 
-        names = self.create_plot_names(["benchmarks", self.get_output_postfix(), parts])
+        names = self.create_plot_names(["reslimits", self.get_output_postfix(), parts])
         outputs["plots"] = [self.target(name) for name in names]
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
@@ -232,58 +245,62 @@ class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
         outputs = self.output()
         outputs["plots"][0].parent.touch()
 
-        # load limit values
-        limit_values = self.input().load(formatter="numpy")["data"]
-
         # prepare conversion scale, default is expected to be pb!
         scale = br_hh.get(self.br, 1.0) * {"fb": 1000.0, "pb": 1.0}[self.xsec]
 
-        # fill data entries as expected by the plot function
-        data = []
-        value_mask = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2", "observed"]
-        for bm_name in limit_values["benchmark"]:
-            record = limit_values[limit_values["benchmark"] == bm_name][value_mask][0]
-            entry = {
-                "name": str(bm_name),
-                "expected": [v * scale for v in record.tolist()[:5]],
-            }
-            if self.unblinded:
-                entry["observed"] = float(record[5]) * scale
-            data.append(entry)
+        # load limit values
+        limit_values = self.input().load(formatter="numpy")["data"]
 
-            # some printing
-            self.publish_message("BM {} -> {}".format(bm_name, record["limit"]))
+        # multiply scale
+        scale_keys = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2", "observed"]
+        for key in scale_keys:
+            if key in limit_values.dtype.names:
+                limit_values[key] *= scale
+
+        # prepare observed values
+        obs_values = None
+        if self.unblinded:
+            obs_values = {
+                self.scan_parameter: limit_values[self.scan_parameter],
+                "limit": limit_values["observed"],
+            }
 
         # call the plot function
         self.call_plot_func(
             paths=[outp.path for outp in outputs["plots"]],
-            data=data,
             poi=self.poi,
+            scan_parameter=self.scan_parameter,
+            expected_values=limit_values,
+            observed_values=obs_values,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
             xsec_unit=self.xsec,
             hh_process=self.br if self.br in br_hh else None,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            show_points=self.show_points,
             cms_postfix=self.cms_postfix,
             style=self.style,
             dump_target=outputs.get("plot_data"),
         )
 
 
-class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
+class PlotMultipleResonantLimits(PlotResonantLimits):
 
     datacard_names = MultiDatacardTask.datacard_names
     datacard_order = MultiDatacardTask.datacard_order
     group_duplicate_cards = True
 
-    default_plot_function = "dhi.plots.eft.plot_multi_benchmark_limits"
+    default_plot_function = "dhi.plots.limits.plot_limit_scans"
 
     def __init__(self, *args, **kwargs):
-        super(PlotMultipleEFTBenchmarkLimits, self).__init__(*args, **kwargs)
+        super(PlotMultipleResonantLimits, self).__init__(*args, **kwargs)
 
         # check that each mass point has the same amount of cards
-        n_entries = {len(cards) for cards in self.benchmark_datacards.values()}
+        n_entries = {len(cards) for cards in self.resonant_datacards.values()}
         if len(n_entries) != 1:
             raise Exception("founds different amount of entries in input datacards: {}".format(
                 ",".join(map(str, n_entries)),
@@ -302,11 +319,11 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
 
     def requires(self):
         return [
-            MergeEFTBenchmarkLimits.req(
+            MergeResonantLimits.req(
                 self,
                 multi_datacards=tuple(
                     tuple(cards[i])
-                    for cards in self.benchmark_datacards.values()
+                    for cards in self.resonant_datacards.values()
                 ),
             )
             for i in range(self.n_entries)
@@ -323,8 +340,13 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
 
         outputs = {}
 
-        names = self.create_plot_names(["multi_benchmarks", self.get_output_postfix(), parts])
+        names = self.create_plot_names(["multi_reslimits", self.get_output_postfix(), parts])
         outputs["plots"] = [self.target(name) for name in names]
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
@@ -343,64 +365,64 @@ class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
         outputs = self.output()
         outputs["plots"][0].parent.touch()
 
-        # load limit values
-        limit_values = [
-            inp.load(formatter="numpy")["data"]
-            for inp in self.input()
-        ]
-
         # prepare conversion scale, default is expected to be pb!
         scale = br_hh.get(self.br, 1.0) * {"fb": 1000.0, "pb": 1.0}[self.xsec]
 
-        # fill data entries as expected by the plot function
-        data = []
-        value_mask = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
-        for bm_name in limit_values[0]["benchmark"]:
-            entry = {
-                "name": str(bm_name),
-                "expected": [
-                    [
-                        v * scale
-                        for v in vals[vals["benchmark"] == bm_name][0][value_mask].tolist()
-                    ]
-                    for vals in limit_values
-                ],
-            }
-            if self.unblinded:
-                entry["observed"] = [
-                    float(vals[vals["benchmark"] == bm_name]["observed"]) * scale
-                    for vals in limit_values
-                ]
-            data.append(entry)
+        # load values
+        limit_values = []
+        obs_values = []
+        names = []
+        for i, inp in enumerate(self.input()):
+            _limit_values = inp.load(formatter="numpy")["data"]
+            limit_values.append(_limit_values)
 
-        # datacard names
-        names = (
-            list(self.datacard_names)
-            if self.datacard_names
-            else ["datacards {}".format(i + 1) for i in range(len(limit_values))]
-        )
+            # multiply scale
+            scale_keys = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2", "observed"]
+            for key in scale_keys:
+                if key in _limit_values.dtype.names:
+                    _limit_values[key] *= scale
+
+            # prepare observed values
+            if self.unblinded:
+                obs_values.append({
+                    self.scan_parameter: _limit_values[self.scan_parameter],
+                    "limit": _limit_values["observed"],
+                })
+
+            # name
+            names.append("Datacards {}".format(i + 1))
+
+        # set custom names if requested
+        if self.datacard_names:
+            names = list(self.datacard_names)
 
         # reorder if requested
         if self.datacard_order:
-            data = [data[i] for i in self.datacard_order]
+            limit_values = [limit_values[i] for i in self.datacard_order]
             names = [names[i] for i in self.datacard_order]
 
         # call the plot function
         self.call_plot_func(
             paths=[outp.path for outp in outputs["plots"]],
-            data=data,
-            names=names,
             poi=self.poi,
+            scan_parameter=self.scan_parameter,
+            names=names,
+            expected_values=limit_values,
+            observed_values=obs_values,
+            hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
+            x_min=self.get_axis_limit("x_min"),
+            x_max=self.get_axis_limit("x_max"),
             y_min=self.get_axis_limit("y_min"),
             y_max=self.get_axis_limit("y_max"),
             y_log=self.y_log,
             xsec_unit=self.xsec,
-            hh_process=self.br if self.br in br_hh else None,
+            hh_process=self.br if self.xsec and self.br in br_hh else None,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
+            show_points=self.show_points,
             cms_postfix=self.cms_postfix,
             style=self.style,
             dump_target=outputs.get("plot_data"),
         )
 
 
-PlotMultipleEFTBenchmarkLimits.exclude_params_index -= {"datacard_names", "datacard_order"}
+PlotMultipleResonantLimits.exclude_params_index -= {"datacard_names", "datacard_order"}

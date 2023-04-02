@@ -10,7 +10,8 @@ import re
 import law
 import luigi
 
-from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, ModelParameters, view_output_plots
+from dhi.tasks.base import BoxPlotTask, ModelParameters, view_output_plots
+from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     MultiDatacardTask,
     MultiHHModelTask,
@@ -109,7 +110,7 @@ class UpperLimitsBase(POITask, SnapshotUser):
         # prepare limit values in the format (nominal, err1_up, err1_down, err2_up, err2_down)
         indices = {0.5: 0, 0.84: 1, 0.16: 2, 0.975: 3, 0.025: 4}
         values = [np.nan] * len(indices)
-        for l, q in zip(limits, quantiles)[:len(indices)]:
+        for l, q in list(zip(limits, quantiles))[:len(indices)]:
             q = round(float(q), 3)
             if q in indices:
                 values[indices[q]] = l
@@ -155,9 +156,9 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
 
         # workspace or snapshot
         if self.use_snapshot:
-            reqs["snapshot"] = Snapshot.req(self)
+            reqs["snapshot"] = Snapshot.req_different_branching(self)
         else:
-            reqs["workspace"] = CreateWorkspace.req(self)
+            reqs["workspace"] = CreateWorkspace.req_different_branching(self)
 
         # grid scans for each point in the scan of _this_ task
         if self.from_grid:
@@ -195,7 +196,7 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
 
     def output(self):
         name = self.join_postfix(["limit", self.get_output_postfix()]) + ".root"
-        return self.local_target(name)
+        return self.target(name)
 
     def build_command(self, fallback_level):
         inputs = self.input()
@@ -260,7 +261,7 @@ class MergeUpperLimits(UpperLimitsScanBase):
 
     def output(self):
         name = self.join_postfix(["limits", self.get_output_postfix()]) + ".npz"
-        return self.local_target(name)
+        return self.target(name)
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -312,7 +313,7 @@ class UpperLimitsGrid(UpperLimits):
 
     def output(self):
         name = self.join_postfix(["limitgridpoint", self.get_output_postfix()]) + ".root"
-        return self.local_target(name)
+        return self.target(name)
 
     def build_command(self, fallback_level):
         # the command for grid points is almost identical, just apply three transformations
@@ -350,7 +351,7 @@ class MergeUpperLimitsGrid(UpperLimitsScanBase):
 
     def output(self):
         name = self.join_postfix(["limitgrid", self.get_output_postfix()]) + ".root"
-        return self.local_target(name)
+        return self.target(name)
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -471,23 +472,23 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
 
         # plots
         names = self.create_plot_names(["limits", self.get_output_postfix(), parts])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # ranges
         if self.save_ranges:
-            outputs["ranges"] = self.local_target("ranges__{}.json".format(
+            outputs["ranges"] = self.target("ranges__{}.json".format(
                 self.get_output_postfix(),
             ))
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
-            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -495,6 +496,7 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         import numpy as np
 
@@ -649,23 +651,23 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
 
         # plots
         names = self.create_plot_names(["multilimits", self.get_output_postfix(), parts])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # ranges
         if self.save_ranges:
-            outputs["ranges"] = self.local_target("ranges__{}.json".format(
+            outputs["ranges"] = self.target("ranges__{}.json".format(
                 self.get_output_postfix(),
             ))
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
-            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -673,6 +675,7 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         import numpy as np
 
@@ -810,23 +813,23 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
 
         # plots
         names = self.create_plot_names(["multilimitsbymodel", self.get_output_postfix(), parts])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # ranges
         if self.save_ranges:
-            outputs["ranges"] = self.local_target("ranges__{}.json".format(
+            outputs["ranges"] = self.target("ranges__{}.json".format(
                 self.get_output_postfix(),
             ))
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
-            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -834,6 +837,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         import numpy as np
 
@@ -1111,17 +1115,17 @@ class PlotUpperLimitsAtPoint(
 
         # plots
         names = self.create_plot_names(["limitsatpoint", self.get_output_postfix(), parts])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
-            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -1129,6 +1133,7 @@ class PlotUpperLimitsAtPoint(
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         import numpy as np
 
@@ -1284,12 +1289,12 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
         outputs = {}
 
         names = self.create_plot_names(["limits2d", self.get_output_postfix(), parts])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -1297,6 +1302,7 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()

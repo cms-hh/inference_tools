@@ -70,7 +70,7 @@ br_hh["bbwwllvv"] = br_hh.bbwwlvlv
 br_hh["bbwwsl"] = br_hh.bbwwqqlv
 br_hh["bbzz4l"] = br_hh.bbzzllll
 
-# HH branching names (TODO: find prettier abbreviations)
+# HH branching names
 br_hh_names = DotDict(
     vhh4b=r"(VHH) bb bb",
     bbbb=r"bb bb",
@@ -85,7 +85,7 @@ br_hh_names = DotDict(
     bbwwlvlv=r"bb WW, 2l2$\nu$",
     bbzz=r"bb ZZ",
     bbzzqqll=r"bb ZZ, qqll",
-    bbzzllll=r"bb ZZ",  # $\club$
+    bbzzllll=r"bb ZZ, 4l",  # $\club$
     bbtt=r"bb $\tau\tau$",  # $\club$
     bbgg=r"bb $\gamma\gamma$",  # $\club$
     ttww=r"WW $\tau\tau",
@@ -193,6 +193,7 @@ poi_data = DotDict(
     C2=DotDict(range=(-2.0, 3.0), label=r"$C_{2}$", sm_value=0.0),
     CG=DotDict(range=(-2.0, 2.0), label=r"$C_{g}$", sm_value=0.0),
     C2G=DotDict(range=(-2.0, 2.0), label=r"$C_{2g}$", sm_value=0.0),
+    mhh=DotDict(range=(0.0, 3000.0), label=r"$m_{HH}$", unit="GeV"),
 )
 
 # colors
@@ -211,6 +212,7 @@ colors = DotDict(
         dark_grey_trans_30=(13, 0.3),
         red=628,
         red_trans_50=(628, 0.5),
+        bright_red=632,
         blue=214,
         green=418,
         light_green=413,
