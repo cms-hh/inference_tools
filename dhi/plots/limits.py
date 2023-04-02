@@ -590,6 +590,8 @@ def plot_limit_scans(
         assert len(observed_values) == n_graphs
         observed_values = check_values(observed_values)
         has_obs = any(v is not None for v in observed_values)
+    else:
+        observed_values = [None] * n_graphs
     scan_values = expected_values[0][scan_parameter]
     has_thy = theory_values is not None
     has_thy_err = False

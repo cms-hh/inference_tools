@@ -164,10 +164,20 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
 
         eft_c2_cards = get_cards("CARDS_EFT_C2")
         eft_bm_cards = get_cards("CARDS_EFT_BM")
-        eft_bm_cards_multi = (get_cards("CARDS_EFT_BM_1"), get_cards("CARDS_EFT_BM_2"))
+        eft_bm_cards_multi = (
+            get_cards("CARDS_EFT_BM_1"),
+            get_cards("CARDS_EFT_BM_2"),
+            get_cards("CARDS_EFT_BM_1") + get_cards("CARDS_EFT_BM_2"),
+        )
+        eft_bm_cards_multi_names = ("Datacards 1", "Datacards 2", "Combined")
 
         res_cards = get_cards("CARDS_RES")
-        res_cards_multi = (get_cards("CARDS_RES_1"), get_cards("CARDS_RES_2"))
+        res_cards_multi = (
+            get_cards("CARDS_RES_1")[1:14:2],
+            get_cards("CARDS_RES_2")[1:14:2],
+            get_cards("CARDS_RES_1")[1:14:2] + get_cards("CARDS_RES_2")[1:14:2],
+        )
+        res_cards_multi_names = ("Datacards 1", "Datacards 2", "Combined")
 
         test_models = tuple(map("model_default{}".format, ["", "@noBRscaling", "@noHscaling"]))
         c2_model = "hh_model_C2klkt.model_default"
@@ -414,6 +424,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
             reqs["multiple_eft_benchmark_limits"] = PlotMultipleEFTBenchmarkLimits.req(
                 self,
                 multi_datacards=eft_bm_cards_multi,
+                datacard_names=eft_bm_cards_multi_names,
                 unblinded=True,
                 xsec="fb",
                 y_log=True,
@@ -450,7 +461,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
             reqs["resonant_limits"] = PlotResonantLimits.req(
                 self,
                 multi_datacards=(res_cards,),
-                unblinded=True,
+                unblinded=False,
                 xsec="fb",
                 y_log=True,
             )
@@ -459,6 +470,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
             reqs["multiple_resonant_limits"] = PlotMultipleResonantLimits.req(
                 self,
                 multi_datacards=res_cards_multi,
+                datacard_names=res_cards_multi_names,
                 unblinded=True,
                 xsec="fb",
                 y_log=True,
