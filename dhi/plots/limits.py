@@ -422,7 +422,7 @@ def plot_limit_scan(
 
         def exp_limit_value(i, sigma, label):
             keys = ["limit", "limit_p{}".format(sigma), "limit_m{}".format(sigma)]
-            n, p, m = list(map(float, (expected_values[key][i] for key in keys)))
+            n, p, m = tuple(float(expected_values[key][i]) for key in keys)
             return Number(n, {label: (p - n, n - m)}, default_format="publication")
 
         # expected limits with 68% error
