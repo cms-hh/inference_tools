@@ -98,6 +98,8 @@ def plot_exclusion_and_bestfit_1d(
     style = Style.new(style)
     if style.matches("paper"):
         cms_postfix = None
+    elif style.matches("summary"):
+        cms_postfix = "Preliminary"
 
     # check minimal fields per data entry
     assert all("name" in d for d in data)
@@ -507,6 +509,9 @@ def plot_exclusion_and_bestfit_2d(
     style.color_95 = colors.light_grey
     if style.matches("paper"):
         cms_postfix = None
+    elif style.matches("summary"):
+        cms_postfix = "Preliminary"
+
     if style.matches("brazil"):
         style.color_68 = colors.brazil_green
         style.color_95 = colors.brazil_yellow

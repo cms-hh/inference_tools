@@ -98,6 +98,8 @@ def plot_limit_scan(
     style = Style.new(style)
     if style.matches("paper"):
         cms_postfix = None
+    elif style.matches("summary"):
+        cms_postfix = "Preliminary"
 
     # input checks
     def check_values(values, keys=None):
@@ -557,6 +559,8 @@ def plot_limit_scans(
     style = Style.new(style)
     if style.matches("paper"):
         cms_postfix = None
+    elif style.matches("summary"):
+        cms_postfix = "Preliminary"
 
     # convert record arrays to dicts mapping to arrays
     def check_values(values):
@@ -988,6 +992,8 @@ def plot_limit_points(
     style = Style.new(style)
     if style.matches("paper"):
         cms_postfix = None
+    elif style.matches("summary"):
+        cms_postfix = "Preliminary"
 
     # check inputs and get extrema
     n = len(data)
@@ -1415,6 +1421,8 @@ def plot_limit_scan_2d(
     style = Style.new(style)
     if style.matches("paper"):
         cms_postfix = None
+    elif style.matches("summary"):
+        cms_postfix = "Preliminary"
 
     def check_values(values):
         if isinstance(values, list):
