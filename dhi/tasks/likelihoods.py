@@ -552,17 +552,6 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
     z_max = None
     z_log = None
 
-    legend_cols = law.CSVParameter(
-        default=None,
-        significant=False,
-        description="Enforce a number of columns. Default:compute given the #entries; default: None",
-    )
-    legend_x2 = law.CSVParameter(
-        default=None,
-        significant=False,
-        description="If you want to enforce where legend starts. Default = -20; default: None",
-    )
-
     compare_multi_sequence = "multi_datacards"
 
     default_plot_function = [
@@ -689,8 +678,6 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 cms_postfix=self.cms_postfix,
                 style=self.style,
                 dump_target=outputs.get("plot_data"),
-                legend_cols=self.legend_cols[0],
-                legend_x2=self.legend_x2[0],
             )
         else:  # 2
             self.call_plot_func(

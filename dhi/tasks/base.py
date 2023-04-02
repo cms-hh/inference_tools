@@ -824,6 +824,18 @@ class BoxPlotTask(PlotTask):
         description="size of the nuisance labels on the y-axis; uses the default of the plot when "
         "empty; no default",
     )
+    legend_columns = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="Force a number for legend columns "
+        "empty; no default",
+    )
+    legend_x2 = luigi.IntParameter(
+        default=law.NO_INT,
+        significant=False,
+        description="Force a number for legend starting point "
+        "empty; no default",
+    )
 
 
 class ModelParameters(luigi.Parameter):

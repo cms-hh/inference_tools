@@ -59,8 +59,6 @@ def plot_likelihood_scans_1d(
     show_points=True,
     cms_postfix=None,
     style=None,
-    legend_cols=None,
-    legend_x2=None,
 ):
     """
     Plots multiple curves of 1D likelihood scans of a POI *poi1* and *poi2*, and saves it at *paths*.
@@ -400,18 +398,18 @@ def plot_likelihood_scans_1d(
             )
 
     # legend
-    if legend_cols is None:
-        legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
+    if legend_columns is None:
+        legend_columns = min(int(math.ceil(len(legend_entries) / 4.)), 3)
     else:
-        int(legend_cols)
+        int(legend_columns)
     legend_x2 = -20 if legend_x2 is None else int(legend_x2)
     legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
     legend = r.routines.create_legend(
         pad=pad,
         x2=legend_x2,
-        width=legend_cols * 210,
+        width=legend_columns * 210,
         n=legend_rows,
-        props={"NColumns": legend_cols, "TextSize": 18},
+        props={"NColumns": legend_columns, "TextSize": 18},
     )
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
