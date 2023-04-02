@@ -408,6 +408,8 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 cms_postfix=self.cms_postfix,
                 style=self.style,
                 dump_target=outputs.get("plot_data"),
+                legend_columns=None if self.legend_columns == law.NO_INT else self.legend_columns,
+                legend_x2=None if self.legend_x2 == law.NO_INT else self.legend_x2,
             )
         else:  # 2
             self.call_plot_func(
