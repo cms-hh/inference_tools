@@ -59,6 +59,8 @@ def plot_likelihood_scans_1d(
     show_points=True,
     cms_postfix=None,
     style=None,
+    legend_columns=None,
+    legend_x2=None,
 ):
     """
     Plots multiple curves of 1D likelihood scans of a POI *poi1* and *poi2*, and saves it at *paths*.
