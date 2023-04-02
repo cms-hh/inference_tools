@@ -266,7 +266,7 @@ def plot_datacard_shapes(
                     if effect != "-":
                         if param["type"] in ["lnN", "lnU"]:
                             if "/" in effect:
-                                d, u = map(float, effect.split("/", 1))
+                                d, u = list(map(float, effect.split("/", 1)))
                             else:
                                 u = float(effect)
                                 d = 2 - u

@@ -49,7 +49,7 @@ bootstrap_htcondor_standalone() {
 
     # when gfal-* executables are not available, source the lcg dir
     if ! law_wlcg_check_executable "gfal-ls" "silent" && [ ! -z "${DHI_LCG_DIR}" ] && [ -d "${DHI_LCG_DIR}" ]; then
-        source "${DHI_LCG_DIR}/etc/profile.d/setup-c7-ui-example.sh" ""
+        source "${DHI_LCG_DIR}/etc/profile.d/setup-c7-ui-python3-example.sh" ""
     fi
 
     # store variables required for fetching the cmssw bundle if needed
