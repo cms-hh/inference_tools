@@ -202,7 +202,7 @@ setup() {
     [ "$?" != "0" ] && ulimit -S -s unlimited
 
     # local stack
-    local sw_version="5"
+    local sw_version="6"
     local flag_file_sw="${DHI_SOFTWARE}/.sw_good"
 
     # reset software if requested
