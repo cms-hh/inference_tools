@@ -436,7 +436,7 @@ def plot_likelihood_scans_1d(
     # model parameter labels
     if model_parameters:
         param_kwargs = {}
-        if legend_cols == 3:
+        if legend_columns == 3:
             param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
         draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
