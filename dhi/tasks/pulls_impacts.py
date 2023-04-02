@@ -109,7 +109,8 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         ws_input = CreateWorkspace.req(self, branch=0).output()
         if not ws_input.exists():
             return law.no_value
-        return get_workspace_parameters(ws_input.path)
+        with ws_input.localize("r") as tmp:
+            return get_workspace_parameters(tmp.path)
 
     def create_branch_map(self):
         # the first branch (index 0) is the nominal fit of the poi
@@ -328,7 +329,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
                 # load the result
                 values = self.load_default_fit(inp, poi, name, keep_failures=self.keep_failures)
-                if values:
+                if values is not None:
                     fit_results[name] = values
                 else:
                     fail_info.append((b, name, inp.path))
@@ -438,9 +439,9 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         values = tree.arrays([poi] if param == poi else [poi, param])
 
         # the fit converged when there are 3 values in the parameter array
-        converged = values[param].size == 3
+        converged = len(values[param].tolist()) == 3
         if converged:
-            return values
+            return values.to_numpy()
         if keep_failures:
             return {
                 poi: np.array([np.nan, np.nan, np.nan]),

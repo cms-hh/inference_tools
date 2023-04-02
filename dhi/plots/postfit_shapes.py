@@ -191,7 +191,7 @@ def plot_s_over_b(
         x_max = bins[-1]
 
     # load the signal strength modifier
-    signal_strength = uproot.open(fit_diagnostics_path)["tree_fit_sb"].array(poi).tolist()[0]
+    signal_strength = uproot.open(fit_diagnostics_path)["tree_fit_sb"].arrays([poi])[poi].tolist()[0]
 
     # start plotting
     r.setup_style()

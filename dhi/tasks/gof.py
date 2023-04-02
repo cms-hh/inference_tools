@@ -194,7 +194,7 @@ class MergeGoodnessOfFit(GoodnessOfFitBase):
                 )
                 continue
 
-            values = inp.load(formatter="uproot")["limit"].array(["limit"])["limit"]
+            values = inp.load(formatter="uproot")["limit"].arrays(["limit"])["limit"]
             if branch == 0:
                 data["data"] = float(values[0])
             else:

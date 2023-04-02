@@ -269,7 +269,6 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
                 ),
                 show_parameters=(("CV",),),
                 unblinded=True,
-                interpolation_method=("nearest",),
             )
 
         if self.check_enabled("multiple_likelihood_scans"):
