@@ -920,7 +920,6 @@ def plot_limit_points(
     model_parameters=None,
     h_lines=None,
     h_dotted_lines=None,
-    factor_left_border=1.0,
     campaign=None,
     digits=None,
     cms_postfix=None,
@@ -1071,7 +1070,7 @@ def plot_limit_points(
     pad_margins = {
         "TopMargin": float(top_margin) / pad_height,
         "BottomMargin": float(bottom_margin) / pad_height,
-        "LeftMargin": factor_left_border * float(left_margin) / pad_width,
+        "LeftMargin": float(left_margin) / pad_width,
         "RightMargin": float(right_margin) / pad_width,
         "Logx": x_log,
     }
