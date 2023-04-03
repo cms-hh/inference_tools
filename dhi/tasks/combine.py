@@ -2020,6 +2020,11 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
             " {self.custom_args}"
             " --out workspace.root"
             " --mass {self.mass}"
+            " --no-wrappers"
+            " --optimize-simpdf-constraints cms"
+            " --X-pack-asympows"
+            " --X-optimizeMHDependency fixed"
+            " --use-histsum"
             " {model_args}"
         ).format(
             self=self,
