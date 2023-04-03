@@ -28,6 +28,7 @@ except ImportError:
             return func
         return decorator
 
+from dhi import dhi_combine_version
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
 from dhi.tasks.remote import HTCondorWorkflow
 from dhi.config import poi_data, br_hh
@@ -2014,16 +2015,29 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
             for name, opt in model.hh_options.items():
                 model_args.append("--physics-option {}={}".format(name, opt["value"]))
 
+        # optimization options
+        opt_args = ""
+        if dhi_combine_version[:3] >= (9, 0, 0):
+            opt_args = (
+                " --no-wrappers"
+                " --optimize-simpdf-constraints cms"
+                " --X-pack-asympows"
+                " --X-optimizeMHDependency fixed"
+                " --use-histsum"
+            )
+
         # build the t2w command
         cmd = (
             "text2workspace.py {datacard}"
             " {self.custom_args}"
             " --out workspace.root"
             " --mass {self.mass}"
+            " {opt_args}"
             " {model_args}"
         ).format(
             self=self,
             datacard=self.input().path,
+            opt_args=opt_args,
             model_args=" ".join(model_args),
         )
 
