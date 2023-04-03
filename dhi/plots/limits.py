@@ -26,7 +26,7 @@ from dhi.util import (
 from dhi.plots.util import (
     use_style, create_model_parameters, create_hh_xsbr_label, determine_limit_digits,
     get_graph_points, get_y_range, get_contours, fill_hist_from_points, infer_binning_from_grid,
-    Style,
+    fill_legend_column, Style,
 )
 import dhi.hepdata_tools as hdt
 
@@ -382,6 +382,16 @@ def plot_limit_scan(
         if xsec_unit:
             legend_entries_l.append(legend_entry)
 
+            # also add a star showing the SM prediction
+            sm_value = float(poi_data[scan_parameter].sm_value)
+            g_sm = create_tgraph(1, sm_value, g_thy.Eval(sm_value))
+            r.setup_graph(
+                g_sm,
+                props={"MarkerStyle": 29, "MarkerSize": 2.5, "MarkerColor": colors.bright_red},
+            )
+            draw_objs.append((g_sm, "SAME,P"))
+            legend_entries_l.append((g_sm, "SM prediction", "P"))
+
     # fill hep data
     if hep_data:
         poi_div = "" if xsec_unit else r" / $\sigma_{Theory}$"
@@ -412,7 +422,7 @@ def plot_limit_scan(
 
         def exp_limit_value(i, sigma, label):
             keys = ["limit", "limit_p{}".format(sigma), "limit_m{}".format(sigma)]
-            n, p, m = map(float, (expected_values[key][i] for key in keys))
+            n, p, m = tuple(float(expected_values[key][i]) for key in keys)
             return Number(n, {label: (p - n, n - m)}, default_format="publication")
 
         # expected limits with 68% error
@@ -580,6 +590,8 @@ def plot_limit_scans(
         assert len(observed_values) == n_graphs
         observed_values = check_values(observed_values)
         has_obs = any(v is not None for v in observed_values)
+    else:
+        observed_values = [None] * n_graphs
     scan_values = expected_values[0][scan_parameter]
     has_thy = theory_values is not None
     has_thy_err = False
@@ -729,8 +741,7 @@ def plot_limit_scans(
                     )
 
     # fill up legend entries
-    for _ in range(3 - len(legend_entries) % 3):
-        legend_entries.append((h_dummy, " ", "L"))
+    fill_legend_column(legend_entries, 4, h_dummy)
 
     # save ranges
     if ranges_path and allowed_ranges:
@@ -740,12 +751,12 @@ def plot_limit_scans(
         print("saved allowed ranges to {}".format(ranges_path))
 
     # add additional legend entries to distinguish expected and observed lines
+    g_exp_dummy = g_exp.Clone()
+    r.apply_properties(g_exp_dummy, {"LineColor": colors.black})
+    legend_entries.append((g_exp_dummy, "Median expected", "L"))
     if has_obs:
-        g_exp_dummy = g_exp.Clone()
         g_obs_dummy = g_obs.Clone()
-        r.apply_properties(g_exp_dummy, {"LineColor": colors.black})
         r.apply_properties(g_obs_dummy, {"LineColor": colors.black})
-        legend_entries.append((g_exp_dummy, "Median expected", "L"))
         legend_entries.append((g_obs_dummy, "Observed", "L"))
 
     # get theory prediction limits
@@ -789,9 +800,23 @@ def plot_limit_scans(
             r.setup_graph(g_thy, props={"LineWidth": 2, "LineStyle": 1}, color=colors.red)
             draw_objs.insert(1, (g_thy, "SAME,C"))
             legend_entry = (g_thy, "Theory prediction", "L")
+
         # only add to the legend if values are in terms of a cross section
         if xsec_unit:
             legend_entries.append(legend_entry)
+
+            # also add a star showing the SM prediction
+            sm_value = float(poi_data[scan_parameter].sm_value)
+            g_sm = create_tgraph(1, sm_value, g_thy.Eval(sm_value))
+            r.setup_graph(
+                g_sm,
+                props={"MarkerStyle": 29, "MarkerSize": 2.5, "MarkerColor": colors.bright_red},
+            )
+            draw_objs.append((g_sm, "SAME,P"))
+            legend_entries.append((g_sm, "SM prediction", "P"))
+
+    # fill up legend entries again
+    fill_legend_column(legend_entries, 4, h_dummy)
 
     # fill hep data
     if hep_data:
@@ -845,11 +870,11 @@ def plot_limit_scans(
                 )
 
     # legend
-    legend_cols = int(math.ceil(len(legend_entries) / 3.0))
+    legend_cols = int(math.ceil(len(legend_entries) / 4.0))
     legend = r.routines.create_legend(
         pad=pad,
         width=legend_cols * 180,
-        n=3,
+        n=4,
         props={"NColumns": legend_cols, "TextSize": 18},
     )
     r.fill_legend(legend, legend_entries)
@@ -1853,7 +1878,7 @@ def excluded_to_allowed_ranges(excluded_ranges, min_value, max_value):
             e_ranges[-1] = (e_ranges[-1][0], max_value)
 
     # linearize excluded ranges (assuming edges are always reasonably far apart)
-    e_edges = map(float, sum(map(list, excluded_ranges), []))
+    e_edges = list(map(float, sum(map(list, excluded_ranges), [])))
 
     # loop through adjacent pairs and create allowed ranges in an alternating fashion
     for i, (start, stop) in enumerate(zip(e_edges[:-1], e_edges[1:])):

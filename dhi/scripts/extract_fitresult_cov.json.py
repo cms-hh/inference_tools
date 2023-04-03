@@ -1,10 +1,13 @@
-#!/usr/bin/env python
-import ROOT
+#!/usr/bin/env python3
+
 import json
-import numpy as np
+
+from dhi.util import import_ROOT
 
 
 def matrix2array(matrix):
+    import numpy as np
+
     return np.frombuffer(
         matrix.GetMatrixArray(),
         dtype={
@@ -38,6 +41,7 @@ def extract_cov_json(filename, skip="prefit"):
     If `skip` (default "prefit") is given and not empty, all `RooFitResult`s with their name
     containing `skip`are  skipped.
     """
+    ROOT = import_ROOT()
     file_obj = ROOT.TFile(filename)
     for key in file_obj.GetListOfKeys():
         if key.GetClassName() != "RooFitResult":
@@ -56,9 +60,6 @@ def extract_cov_json(filename, skip="prefit"):
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
-
-    ROOT.PyConfig.IgnoreCommandLineOptions = True
-    ROOT.gROOT.SetBatch(ROOT.kTRUE)
 
     ap = ArgumentParser(
         description=extract_cov_json.__doc__ + " Multiple `filename`s can be given simultaneously",

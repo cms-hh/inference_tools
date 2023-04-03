@@ -10,7 +10,8 @@ import law
 import luigi
 import numpy as np
 
-from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, view_output_plots
+from dhi.tasks.base import BoxPlotTask, view_output_plots
+from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     CombineCommandTask, POITask, POIPlotTask, CreateWorkspace, MultiDatacardTask,
     POIMultiTask,
@@ -108,7 +109,8 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         ws_input = CreateWorkspace.req(self, branch=0).output()
         if not ws_input.exists():
             return law.no_value
-        return get_workspace_parameters(ws_input.path)
+        with ws_input.localize("r") as tmp:
+            return get_workspace_parameters(tmp.path)
 
     def create_branch_map(self):
         # the first branch (index 0) is the nominal fit of the poi
@@ -128,9 +130,9 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
 
     def workflow_requires(self):
         reqs = super(PullsAndImpacts, self).workflow_requires()
-        reqs["workspace"] = CreateWorkspace.req(self)
+        reqs["workspace"] = CreateWorkspace.req_different_branching(self)
         if self.use_snapshot:
-            reqs["snapshot"] = Snapshot.req(self)
+            reqs["snapshot"] = Snapshot.req_different_branching(self)
         return reqs
 
     def requires(self):
@@ -144,17 +146,17 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         name = lambda prefix: self.join_postfix([prefix, self.get_output_postfix(), parts]) + ".root"
 
         # the default fit result
-        outputs = {"result": self.local_target(name("fit"))}
+        outputs = {"result": self.target(name("fit"))}
 
         # additional output files, depending on method and branch
         if self.method == "default":
             if self.branch == 0:
-                outputs["multidimfit"] = self.local_target(name("multidimfit"))
+                outputs["multidimfit"] = self.target(name("multidimfit"))
         elif self.method == "hesse":
-            outputs["multidimfit"] = self.local_target(name("multidimfit"))
+            outputs["multidimfit"] = self.target(name("multidimfit"))
         elif self.method == "robust":
-            outputs["robusthesse"] = self.local_target(name("robusthesse"))
-            outputs["hessian"] = self.local_target(name("hessian"))
+            outputs["robusthesse"] = self.target(name("robusthesse"))
+            outputs["hessian"] = self.target(name("hessian"))
 
         return outputs
 
@@ -303,7 +305,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             parts.append("skip_" + law.util.create_hash(sorted(self.skip_parameters)))
 
         name = self.join_postfix(["pulls_impacts", self.get_output_postfix(), parts]) + ".json"
-        return self.local_target(name)
+        return self.target(name)
 
     @law.decorator.log
     def run(self):
@@ -327,7 +329,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
                 # load the result
                 values = self.load_default_fit(inp, poi, name, keep_failures=self.keep_failures)
-                if values:
+                if values is not None:
                     fit_results[name] = values
                 else:
                     fail_info.append((b, name, inp.path))
@@ -437,9 +439,9 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         values = tree.arrays([poi] if param == poi else [poi, param])
 
         # the fit converged when there are 3 values in the parameter array
-        converged = values[param].size == 3
+        converged = len(values[param].tolist()) == 3
         if converged:
-            return values
+            return values.to_numpy()
         if keep_failures:
             return {
                 poi: np.array([np.nan, np.nan, np.nan]),
@@ -604,12 +606,12 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
         outputs = {}
 
         names = self.create_plot_names(["pulls_impacts", self.get_output_postfix(), parts])
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.local_target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -617,6 +619,7 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
@@ -681,6 +684,7 @@ class PlotMultiplePullsAndImpacts(PlotPullsAndImpacts, POIMultiTask, MultiDataca
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()

@@ -1,5 +1,5 @@
 The tasks documented below can be used to produce and visualize the limits corresponding to certain discrete EFT benchmark.
-Compared to the [other tasks for obtaining limits](limits.md) which rely on the HH physics model for inter- and extrapolating the effect of variations of the *kappa* values, the EFT benchmark tasks extract information of the particular benchmarks directly from the name of the used datacard files.
+Compared to the [other tasks for obtaining limits](limits.md) which rely on the HH physics model for inter- and extrapolating the effect of variations of the *kappa* values, the EFT benchmark tasks extract information of the particular benchmarks directly ==from the name of the used datacard files==.
 This entails two major differences in the preparation of datacards and the steering of the tasks via parameters.
 
 **Datacards**
@@ -50,6 +50,12 @@ for a **single channel**, and
 
 for **multiple channels**, where datacards corresponding to the same benchmark will be combined across the channels.
 For obvious reasons, the number of files matched by `bbbb/datacard_JHEP04*.txt` and `bbgg/datacard_JHEP04*.txt` must be identical.
+
+For plotting multple resonant limit scans as describe [below](#multiple-benchmark-limits), simply repeat the same datacards but separate by a comma to signalize that they should be merged first.
+
+```shell
+--multi-datacards 'bbbb/datacard_JHEP04*.txt:bbgg/datacard_JHEP04*.txt:bbbb/datacard_JHEP04*.txt,bbgg/datacard_JHEP04*.txt'
+```
 
 
 ### Benchmark limits
@@ -146,7 +152,7 @@ The `PlotMultipleEFTBenchmarkLimits` task shows the upper limits on the rate of 
 ```shell
 law run PlotMultipleEFTBenchmarkLimits \
     --version dev \
-    --multi-datacards $$DHI_EXAMPLE_CARDS_EFT_BM_1:$DHI_EXAMPLE_CARDS_EFT_BM_2 \
+    --multi-datacards $DHI_EXAMPLE_CARDS_EFT_BM_1:$DHI_EXAMPLE_CARDS_EFT_BM_2 \
     --xsec fb
 ```
 
