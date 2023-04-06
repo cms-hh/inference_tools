@@ -280,6 +280,8 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
                 self.scan_parameter_names, self.get_scan_parameter_combinations())
             scan_mins = [(None if np.isnan(v) else float(v)) for v in scan_mins]
 
+	from IPython import embed;embed()
+
         # call the plot function
         self.call_plot_func(
             "dhi.plots.exclusion.plot_exclusion_and_bestfit_2d",
@@ -293,7 +295,7 @@ class PlotExclusionAndBestFit2D(POIScanTask, POIPlotTask, SnapshotUser):
             xsec_levels=xsec_levels,
             xsec_unit=self.xsec,
             nll_values=nll_values,
-            interpolation_method="root",
+            interpolation_method="cubic",
             show_best_fit_error=self.show_best_fit_error,
             scan_minima=None if self.recompute_best_fit else scan_mins,
             x_min=self.get_axis_limit("x_min"),

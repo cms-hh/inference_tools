@@ -563,7 +563,8 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
             paper=self.paper,
-            summary=self.summary
+            summary=self.summary,
+            show_excluded_ranges=True,
         )
 
     def load_scan_data(self, inputs):
@@ -578,7 +579,8 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
             values.append(data["data"])
 
         # concatenate values and safely remove duplicates
-        test_fn = lambda kept, removed: kept < 1e-7 or abs((kept - removed) / kept) < 0.001
+        # test_fn = lambda kept, removed: kept < 1e-3 or abs((kept - removed) / kept) < 0.00
+        test_fn = lambda kept, removed: True
         values = unique_recarray(values, cols=scan_parameter_names, test_metric=("limit", test_fn))
 
         return values

@@ -271,6 +271,28 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
     else:
         z_values[nan_indices] = replace_nan
 
+    # HACK
+    def cap_z(z):
+        if z_min is not None and z < z_min:
+            return z_min * (1 + 1e-5)
+        if z_max is not None and z > z_max:
+            return z_max * (1 - 1e-5)
+        return z
+    points = np.array([list(tpl) for tpl in zip(x_values, y_values)])
+    values = np.array(z_values)
+    xi = []
+    for bx in range(1, h.GetNbinsX() + 1):
+        for by in range(1, h.GetNbinsY() + 1):
+            x = h.GetXaxis().GetBinCenter(bx)
+            y = h.GetYaxis().GetBinCenter(by)
+            xi.append([x, y])
+    interp = list(scipy.interpolate.griddata(points, values, xi, method="cubic"))
+    for bx in range(1, h.GetNbinsX() + 1):
+        for by in range(1, h.GetNbinsY() + 1):
+            h.SetBinContent(bx, by, cap_z(interp.pop(0)))
+    return
+    # HACK END
+
     # create an interpolation function
     interp_args = ()
     if isinstance(interpolation, (list, tuple)):
