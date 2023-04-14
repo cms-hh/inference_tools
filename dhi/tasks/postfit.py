@@ -157,6 +157,106 @@ class FitDiagnostics(POITask, CombineCommandTask, SnapshotUser, law.LocalWorkflo
         )
 
 
+class FitDiagnosticsFrequentistToys(FitDiagnostics):
+    toys = luigi.IntParameter(default=200)
+
+    def create_branch_map(self):
+        return list(range(1000, 1000 + self.toys))
+
+    @property
+    def seed_postfix(self):
+        return ".toy.seed{}".format(self.branch_data)
+
+    def output(self):
+        parts = []
+        if not self.skip_b_only:
+            parts.append("withBOnly")
+        if self.skip_save:
+            parts.append(map("not{}".format, sorted(self.skip_save)))
+
+        name = lambda prefix: self.join_postfix([prefix, self.get_output_postfix(), parts])
+        return {
+            "result": self.local_target(name("result{}".format(self.seed_postfix)) + ".root"),
+            "diagnostics": self.local_target(name("fitdiagnostics{}".format(self.seed_postfix)) + ".root"),
+        }
+
+    def build_command(self):
+        # get the workspace to use and define snapshot args
+        if self.use_snapshot:
+            workspace = self.input()["snapshot"].path
+            snapshot_args = " --snapshotName MultiDimFit"
+        else:
+            workspace = self.input()["workspace"].path
+            snapshot_args = ""
+
+        toys_args = "-t 1 --toysFrequentist --seed {}".format(self.branch_data)
+
+        # prepare optional flags
+        flags = []
+        if self.skip_b_only:
+            flags.append("--skipBOnlyFit")
+        for save_flag in SAVEFLAGS:
+            if save_flag not in self.skip_save:
+                flags.append("--save{}".format(save_flag))
+
+        outputs = self.output()
+        return (
+            "combine -M FitDiagnostics {workspace}"
+            " {self.custom_args}"
+            " --verbose 1"
+            " --mass {self.mass}"
+            " {toys_args}"
+            " {snapshot_args}"
+            " --redefineSignalPOIs {self.joined_pois}"
+            " --setParameterRanges {self.joined_parameter_ranges}"
+            " --setParameters {self.joined_parameter_values}"
+            " --freezeParameters {self.joined_frozen_parameters}"
+            " --freezeNuisanceGroups {self.joined_frozen_groups}"
+            " -n {postfix}"
+            " {flags}"
+            " {self.combine_optimization_args}"
+            " && "
+            "mv higgsCombine{postfix}.FitDiagnostics.mH{self.mass_int}.{self.branch_data}.root {output_result}"
+            " && "
+            "mv fitDiagnostics{postfix}.root {output_diagnostics}"
+        ).format(
+            self=self,
+            workspace=workspace,
+            postfix=self.seed_postfix,
+            output_result=outputs["result"].path,
+            output_diagnostics=outputs["diagnostics"].path,
+            toys_args=toys_args,
+            snapshot_args=snapshot_args,
+            flags=" ".join(flags),
+        )
+
+
+# This task is not (should not be) used; just for debugging...
+class ExtractPostfitUncertaintyFromFrequentistToys(POITask, CombineCommandTask, SnapshotUser):
+    toys = FitDiagnosticsFrequentistToys.toys
+    skip_b_only = FitDiagnosticsFrequentistToys.skip_b_only
+    skip_save = FitDiagnosticsFrequentistToys.skip_save
+
+    force_n_pois = 1
+    allow_parameter_values_in_pois = True
+
+    run_command_in_tmp = True
+
+    def requires(self):
+        return FitDiagnosticsFrequentistToys.req(self)
+
+    def output(self):
+        return self.local_target("postfit_unc.npy")
+
+    def run(self):
+        import numpy as np
+        hists = [t["diagnostics"].load(formatter="uproot")["shapes_fit_s"]["total_background"].values for t in self.input()["collection"].targets.values()]
+        hists = np.array(hists) # toys x bins
+        unc = np.std(np.array(hists), axis=-1)
+        from IPython import embed; embed()
+
+
+
 class PostfitPlotBase(POIPlotTask, SnapshotUser):
 
     def get_output_postfix(self, join=True):
