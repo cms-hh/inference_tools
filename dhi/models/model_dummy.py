@@ -1,20 +1,15 @@
 # coding: utf-8
 # model for new channels development && resonant
 
-import os
-import re
 from collections import OrderedDict, defaultdict
 
-import sympy
 from HiggsAnalysis.CombinedLimit.PhysicsModel import PhysicsModelBase
 
 __all__ = [
     # model
     "HHModelBase", "HHModel", "create_model", "model_dummy",
     # xsec helpers
-    "ggf_k_factor", "ggf_kl_coeffs", "create_ggf_xsec_str", "create_ggf_xsec_func",
-    "create_vbf_xsec_func", "create_vhh_xsec_func", "create_hh_xsec_func", "get_ggf_xsec",
-    "get_vbf_xsec", "get_vhh_xsec", "get_hh_xsec",
+    "create_hh_xsec_func",
 ]
 
 no_value = object()
@@ -24,6 +19,7 @@ class HHModelBase(PhysicsModelBase):
     Base class for HH physics models providing a common interface for subclasses such as the default
     HH model or a potential EFT model (e.g. kt-kl-C2).
     """
+
 
     # pois with initial (SM) value, start and stop
     # to be defined by subclasses
@@ -197,9 +193,6 @@ class HHModel(HHModelBase):
     R_POIS = OrderedDict([
         ("r", (1, -20, 20)),
     ])
-    """K_POIS = OrderedDict([
-        ("kl", (1, 1, 1)),  # dummy that does not vary
-    ])"""
 
     def __init__(self, name,):
         super(HHModel, self).__init__(name)
