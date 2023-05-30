@@ -130,6 +130,10 @@ class UpperLimitsScanBase(UpperLimitsBase, POIScanTask):
 
 
 class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
+    no_toys = luigi.BoolParameter(
+        default=False,
+        description="If true it will not throw toys in Asimov ' -t -1'; default: False",
+    )
 
     run_command_in_tmp = True
 
@@ -218,12 +222,18 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
         if self.unblinded:
             blinded_args = "--seed {self.branch}".format(self=self)
         else:
-            blinded_args = (
+            if self.no_toys :
+                blinded_args = (
                 " --seed {self.branch}"
-                " --toys {self.toys}"
                 " --run expected"
-                " --noFitAsimov"
-            ).format(self=self)
+                ).format(self=self)
+            else :
+                blinded_args = (
+                    " --seed {self.branch}"
+                    " --toys {self.toys}"
+                    " --run expected"
+                    " --noFitAsimov"
+                ).format(self=self)
 
         set_par = ""
         if not self.joined_scan_values == "":
