@@ -222,12 +222,12 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
         if self.unblinded:
             blinded_args = "--seed {self.branch}".format(self=self)
         else:
-            if self.no_toys :
+            if self.no_toys:
                 blinded_args = (
-                " --seed {self.branch}"
-                " --run expected"
+                    " --seed {self.branch}"
+                    " --run expected"
                 ).format(self=self)
-            else :
+            else:
                 blinded_args = (
                     " --seed {self.branch}"
                     " --toys {self.toys}"

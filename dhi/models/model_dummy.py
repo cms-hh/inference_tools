@@ -304,9 +304,7 @@ def create_model(name, ggf=None, vbf=None, vhh=None, **kwargs):
     )
 
 
-model_dummy= create_model(
-    "model_dummy",
-)
+model_dummy= create_model("model_dummy",)
 
 ####################################################################################################
 # dummy cross section helpers
