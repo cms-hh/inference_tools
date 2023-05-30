@@ -14,12 +14,12 @@ __all__ = [
 
 no_value = object()
 
+
 class HHModelBase(PhysicsModelBase):
     """
     Base class for HH physics models providing a common interface for subclasses such as the default
     HH model or a potential EFT model (e.g. kt-kl-C2).
     """
-
 
     # pois with initial (SM) value, start and stop
     # to be defined by subclasses
@@ -111,17 +111,14 @@ class HHModelBase(PhysicsModelBase):
         self.r_pois = OrderedDict()
         for p, v in self.R_POIS.items():
             keep = p == "r"
-            #keep |= any(p == formula.r_poi for formula in self.get_formulae().values())
             if keep:
                 self.r_pois[p] = v
 
         # k pois
         self.k_pois = OrderedDict()
         for p, v in self.K_POIS.items():
-            #keep = any(p in formula.couplings for formula in self.get_formulae().values())
             if keep:
                 self.k_pois[p] = v
-
 
     def get_formulae(self, xs_only=False):
         """
