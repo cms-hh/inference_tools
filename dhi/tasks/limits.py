@@ -990,6 +990,10 @@ class PlotUpperLimitsAtPoint(
         description="one or multiple json files that contain externally computed limit values to "
         "be shown below the ones computed with actual datacards; default: empty",
     )
+    process_label = law.CSVParameter(
+        default="HH",
+        description="Process to be shown in the x-axis 'pp to ...' for 'r' ; default: HH",
+    )
 
     y_min = None
     y_max = None
@@ -1246,6 +1250,7 @@ class PlotUpperLimitsAtPoint(
             cms_postfix=self.cms_postfix,
             style=self.style,
             dump_target=outputs.get("plot_data"),
+            process_label=self.process_label[0],
         )
 
 

@@ -155,16 +155,16 @@ def create_model_parameters(
     return parameter_labels
 
 
-def create_hh_process_label(poi="r", prefix=r"pp $\rightarrow$ "):
+def create_hh_process_label(poi="r", process_label="HH", prefix=r"pp $\rightarrow$ "):
     # please note the possible ambiguity in the process between r and r_gghh, and consider using
     # sth like "HH (incl.)" for r (however, this was recently discouraged)
     proc = {
-        "r": "HH",
+        "r": process_label,
         "r_gghh": "HH",
         "r_qqhh": "qqHH",
         "r_vhh": "VHH",
         "r_xhh": r"X $\rightarrow$ HH",
-    }.get(poi, "HH")
+    }.get(poi, process_label)
     return prefix + proc
 
 
@@ -174,10 +174,10 @@ def create_hh_br_label(br):
     return "B({})".format(br_hh_names[br])
 
 
-def create_hh_xsbr_label(poi="r", br=None):
+def create_hh_xsbr_label(poi="r", br=None, process_label="HH"):
     br_label = create_hh_br_label(br)
     br_label = (" x " + br_label) if br_label else ""
-    return r"$\sigma$({}){}".format(create_hh_process_label(poi), br_label)
+    return r"$\sigma$({}){}".format(create_hh_process_label(poi, process_label), br_label)
 
 
 def determine_limit_digits(limit, is_xsec=False):
