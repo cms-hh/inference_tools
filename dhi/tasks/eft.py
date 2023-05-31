@@ -240,7 +240,7 @@ class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
 
         # fill data entries as expected by the plot function
         data = []
-        value_mask = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2", "observed"]
+        value_mask = ["limit", "limit_p1", "limit_m1", "limit_p2", "limit_m2"]
         for bm_name in limit_values["benchmark"]:
             record = limit_values[limit_values["benchmark"] == bm_name][value_mask][0]
             entry = {
