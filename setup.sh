@@ -106,6 +106,7 @@ setup() {
     # see https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit
     #
 
+    export DHI_COMBINE_UPSTREAM="${DHI_COMBINE_UPSTREAM:cms-analysis}" 
     export DHI_SCRAM_ARCH="${DHI_SCRAM_ARCH:-slc7_amd64_gcc900}"
     export DHI_CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_11_3_4}"
     export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v9.0.0}"
@@ -138,11 +139,11 @@ setup() {
                 scram b
             ) || return "$?"
 
-            # add combine
+            # add combine 
             (
                 cd "${DHI_CMSSW_BASE}/${DHI_CMSSW_VERSION}/src"
                 eval "$( scramv1 runtime -sh )" && \
-                git clone --branch "${DHI_COMBINE_VERSION}" https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
+                git clone --branch "${DHI_COMBINE_VERSION}" https://github.com/${DHI_COMBINE_UPSTREAM}/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
                 cd HiggsAnalysis/CombinedLimit && \
                 chmod ug+x test/diffNuisances.py && \
                 ( [ "${DHI_COMBINE_PYTHON_ONLY}" = "1" ] && scram b python || scram b -j "${DHI_INSTALL_CORES}" )
