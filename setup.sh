@@ -106,7 +106,7 @@ setup() {
     # see https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit
     #
 
-    export DHI_COMBINE_UPSTREAM="${DHI_COMBINE_UPSTREAM:cms-analysis}" 
+    export DHI_COMBINE_UPSTREAM="${DHI_COMBINE_UPSTREAM:-cms-analysis}" 
     export DHI_SCRAM_ARCH="${DHI_SCRAM_ARCH:-slc7_amd64_gcc900}"
     export DHI_CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_11_3_4}"
     export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v9.0.0}"
