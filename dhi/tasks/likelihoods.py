@@ -120,10 +120,6 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             for name, (start, stop, _) in zip(self.scan_parameter_names, ext_ranges)
         )
 
-        # build the command
-        set_parameters = ""
-        if not self.joined_parameter_values == "":
-            set_parameters = " --setParameters {self.joined_parameter_values}"
         cmd = (
             "combine -M MultiDimFit {workspace}"
             " {self.custom_args}"
@@ -138,7 +134,6 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             " --lastPoint {ext_point}"
             " --alignEdges 1"
             " --setParameterRanges {ext_joined_scan_ranges}:{self.joined_parameter_ranges}"
-            " {set_parameters}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --saveNLL"
@@ -154,7 +149,6 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             ext_joined_scan_points=ext_joined_scan_points,
             ext_joined_scan_ranges=ext_joined_scan_ranges,
             ext_point=ext_point,
-            set_parameters=set_parameters,
         )
 
         return cmd
