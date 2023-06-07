@@ -235,10 +235,6 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
                     " --noFitAsimov"
                 ).format(self=self)
 
-        set_par = ""
-        if not self.joined_scan_values == "":
-            set_par = " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
-
         # build the command
         cmd = (
             "combine -M AsymptoticLimits {workspace}"
@@ -250,7 +246,6 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
             " {snapshot_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameterRanges {self.joined_parameter_ranges}"
-            "{set_parameters}"
             " --freezeParameters {self.joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {self.combine_optimization_args}"
@@ -263,7 +258,6 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
             grid_args=grid_args,
             blinded_args=blinded_args,
             snapshot_args=snapshot_args,
-            set_parameters=set_par,
         )
 
         return cmd
