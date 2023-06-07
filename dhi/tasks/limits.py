@@ -1022,10 +1022,7 @@ class PlotUpperLimitsAtPoint(
         # we rather require a single point, so define a pseudo scan parameter for easier handling
         pois_with_values = [p for p in self.parameter_values_dict if p in self.all_pois]
         other_pois = [p for p in (self.k_pois + self.r_pois) if p != self.pois[0]]
-        try:
-            self.pseudo_scan_parameter = (pois_with_values + other_pois)[0]
-        except:
-            self.pseudo_scan_parameter = ""
+        self.pseudo_scan_parameter = (pois_with_values + other_pois)[0] if len(pois_with_values) > 0 else ""
 
         # show a hint when xsec and br related nuisances can be frozen
         if self.xsec != law.NO_STR:
