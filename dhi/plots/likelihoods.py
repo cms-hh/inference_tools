@@ -843,8 +843,6 @@ def plot_likelihood_scan_2d(
             color=colors.red,
             props={"MarkerStyle": 33, "MarkerSize": 2.5},
         )
-        draw_objs.append((g_sm, "P"))
-        legend_entries.append((g_sm, "SM Higgs", "P"))
         # yellow overlay for hcomb style
         if style.matches("contours_hcomb"):
             g_sm2 = create_tgraph(1, poi_data[poi1].sm_value, poi_data[poi2].sm_value)
@@ -854,7 +852,11 @@ def plot_likelihood_scan_2d(
                 props={"MarkerStyle": 33, "MarkerSize": 1.4},
             )
             draw_objs.append((g_sm2, "P"))
-
+            legend_entries.append((g_sm2, "SM Higgs", "P"))
+        else:
+            draw_objs.append((g_sm, "P"))
+            legend_entries.append((g_sm, "SM Higgs", "P"))
+             
     # central best fit point
     if show_best_fit and scan:
         g_fit = ROOT.TGraphAsymmErrors(1)
@@ -872,7 +874,6 @@ def plot_likelihood_scan_2d(
             props = {"MarkerStyle": 34, "MarkerSize": 2}
         r.setup_graph(g_fit, props=props, color=colors.black)
         draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
-
     # EFT lines
     if eft_lines:
         with open(eft_lines, "r") as f:
@@ -975,15 +976,13 @@ def plot_likelihood_scan_2d(
             legend_kwargs["n"] = 2
             legend_kwargs["props"] = {"NColumns": 2}
             legend_kwargs["width"] = 400 if style == "contours_hcomb" else 260
+            if show_best_fit or eft_lines: 
+                legend_kwargs["width"] = 600
         legend = r.routines.create_legend(**legend_kwargs)
         r.fill_legend(legend, legend_entries)
+        if show_best_fit or eft_lines:
+            legend.SetColumnSeparation(0.3)
         draw_objs.append(legend)
-
-        # draw the overlay SM point again for hcomb style (depends highly on the legend position)
-        if show_sm_point and style.matches("contours_hcomb"):
-            g_sm2_legend = g_sm2.Clone()
-            g_sm2_legend.SetPoint(1, 1.525, 1.685)
-            draw_objs.append((g_sm2_legend, "P"))
 
     # cms label
     cms_layout = "outside_horizontal"
@@ -1011,6 +1010,12 @@ def plot_likelihood_scan_2d(
         campaign_label = to_root_latex(campaign_labels.get(campaign, campaign))
         campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad, props=props)
         draw_objs.append(campaign_label)
+
+    #Draw SM point again to make it visible if under bestfit
+    if style.matches("contours_hcomb"):
+        draw_objs.append((g_sm2, "P"))
+    else:
+        draw_objs.append((g_sm, "P"))
 
     # draw all objects
     r.routines.draw_objects(draw_objs)
