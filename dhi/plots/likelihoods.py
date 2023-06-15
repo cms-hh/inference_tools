@@ -856,7 +856,7 @@ def plot_likelihood_scan_2d(
         else:
             draw_objs.append((g_sm, "P"))
             legend_entries.append((g_sm, "SM Higgs", "P"))
-             
+
     # central best fit point
     if show_best_fit and scan:
         g_fit = ROOT.TGraphAsymmErrors(1)
@@ -976,7 +976,7 @@ def plot_likelihood_scan_2d(
             legend_kwargs["n"] = 2
             legend_kwargs["props"] = {"NColumns": 2}
             legend_kwargs["width"] = 400 if style == "contours_hcomb" else 260
-            if show_best_fit or eft_lines: 
+            if show_best_fit or eft_lines:
                 legend_kwargs["width"] = 600
         legend = r.routines.create_legend(**legend_kwargs)
         r.fill_legend(legend, legend_entries)
@@ -1011,7 +1011,7 @@ def plot_likelihood_scan_2d(
         campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad, props=props)
         draw_objs.append(campaign_label)
 
-    #Draw SM point again to make it visible if under bestfit
+    # Draw SM point again to make it visible if under bestfit
     if style.matches("contours_hcomb"):
         draw_objs.append((g_sm2, "P"))
     else:
