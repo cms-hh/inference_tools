@@ -433,7 +433,7 @@ interactive_setup() {
     query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "${eos_user_store}" "${eos_user_store_repr}"
     query DHI_SOFTWARE "Directory for installing software" "${DHI_DATA}/software" "\$DHI_DATA/software"
     query DHI_CMSSW_VERSION "Version of CMSSW to be used" "CMSSW_11_3_4"
-    query DHI_COMBINE_VERSION "Version of combine to be used (tag name)" "v9.0.0"
+    query DHI_COMBINE_VERSION "Version of combine to be used (tag name)" "v9.1.0"
     query DHI_DATACARDS_RUN2 "Location of the datacards_run2 repository (optional)" "" "''"
     query DHI_WLCG_CACHE_ROOT "Local directory for caching remote files" "" "''"
     export_and_save DHI_WLCG_USE_CACHE "$( [ -z "${DHI_WLCG_CACHE_ROOT}" ] && echo false || echo true )"
