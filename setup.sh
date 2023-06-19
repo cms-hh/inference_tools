@@ -108,7 +108,7 @@ setup() {
 
     export DHI_SCRAM_ARCH="${DHI_SCRAM_ARCH:-slc7_amd64_gcc900}"
     export DHI_CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_11_3_4}"
-    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v9.0.0}"
+    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v9.1.0}"
     export DHI_CMSSW_BASE="${DHI_SOFTWARE}/combine_${DHI_COMBINE_VERSION}_${DHI_SCRAM_ARCH}"
 
     local flag_file_combine="${DHI_CMSSW_BASE}/.combine_${DHI_CMSSW_VERSION}_good"
