@@ -105,11 +105,7 @@ lint:
   script:
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
     - source setup.sh
-    - which python
-    - which python3 || echo "no python 3"
-    - python --version
-    - python3 --version || echo "no python 3"
-    - export TEST_CMD="law run test.TestPlots --version "ci_${CI_COMMIT_SHORT_SHA}" --plots ${TEST_PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf ${PARAMETERS}"
+    - export TEST_CMD="law run dhi.tasks.test.TestPlots --version "ci_${CI_COMMIT_SHORT_SHA}" --plots ${TEST_PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf ${PARAMETERS}"
     - echo "running command '${TEST_CMD}'"
     - eval "${TEST_CMD}"
     - eval "${TEST_CMD} --fetch-output 0,a,plots"
