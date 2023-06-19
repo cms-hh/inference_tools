@@ -79,6 +79,7 @@ compile:
   extends: .setup
   when: manual
   script:
+    - export DHI_LCG_DIR="/NOTEXISTING"
     - source setup.sh
   cache:
     key: "${CI_COMMIT_REF_SLUG}"
@@ -89,6 +90,7 @@ compile:
 lint:
   extends: .setup
   script:
+    - export DHI_LCG_DIR="/NOTEXISTING"
     - source setup.sh
     - ./lint.sh
   cache:
@@ -104,6 +106,7 @@ lint:
     - cvmfs
   script:
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
+    - export DHI_LCG_DIR="/NOTEXISTING"
     - source setup.sh
     - export TEST_CMD="law run dhi.tasks.test.TestPlots --version "ci_${CI_COMMIT_SHORT_SHA}" --plots ${TEST_PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf ${PARAMETERS}"
     - echo "running command '${TEST_CMD}'"
