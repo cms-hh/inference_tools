@@ -1970,6 +1970,13 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 
 class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
+    no_bundle = luigi.BoolParameter(
+        default=False,
+        description="when set, do not combine and bundle input datacards, but create the workspace "
+        "on the single (!) input datacard; an error is raised when more than one datacard is used; "
+        "default: False",
+    )
+
     priority = 90
 
     allow_empty_hh_model = True
@@ -1978,6 +1985,16 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
     exclude_params_req_get = {"branches", "workflow"}
     prefer_params_cli = {"workflow", "max_runtime", "htcondor_cpus", "htcondor_mem"}
 
+    def __init__(self, *args, **kwargs):
+        super(CreateWorkspace, self).__init__(*args, **kwargs)
+
+        # complain when no_bundle is used but there is more then one datacard provided
+        if self.no_bundle and len(self.datacards) > 1:
+            raise Exception(
+                "when --no-bundle is used, the number of passed --datacards must be 1,"
+                f"but got {len(self.datacards)}",
+            )
+
     def create_branch_map(self):
         # single branch that does not need special data
         return [None]
@@ -1985,13 +2002,13 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
     def workflow_requires(self):
         reqs = super(CreateWorkspace, self).workflow_requires()
 
-        if not self.input_is_workspace:
+        if not self.input_is_workspace and not self.no_bundle:
             reqs["datacard"] = CombineDatacards.req(self)
 
         return reqs
 
     def requires(self):
-        if self.input_is_workspace:
+        if self.input_is_workspace or self.no_bundle:
             return []
 
         return CombineDatacards.req(self)
@@ -2026,6 +2043,9 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
                 " --use-histsum"
             )
 
+        # get the datacard
+        datacard = self.datacards[0] if self.no_bundle else self.input().path
+
         # build the t2w command
         cmd = (
             "text2workspace.py {datacard}"
@@ -2036,7 +2056,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
             " {model_args}"
         ).format(
             self=self,
-            datacard=self.input().path,
+            datacard=datacard,
             opt_args=opt_args,
             model_args=" ".join(model_args),
         )
