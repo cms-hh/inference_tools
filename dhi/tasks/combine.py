@@ -2055,7 +2055,14 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
             )
 
         # get the datacard
-        datacard = self.datacards[0] if self.no_bundle else self.input().path
+        print(self.datacards[0])
+        if self.no_bundle:
+            if "=" in self.datacards[0]:
+                datacard = self.datacards[0].split("=")[1]
+            else:
+                datacard = self.datacards[0]
+        else:
+            datacard = self.input().path
 
         # build the t2w command
         cmd = (
