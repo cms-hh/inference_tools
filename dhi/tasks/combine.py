@@ -1976,6 +1976,12 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
         "on the single (!) input datacard; an error is raised when more than one datacard is used; "
         "default: False",
     )
+    optimize_limits = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when set, additional options are used for the workspace creation that make "
+        "the AsymptoticLimits faster, but that do not work in FitDiagnistics; default: False",
+    )
 
     priority = 90
 
@@ -2035,13 +2041,20 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
         # optimization options
         opt_args = ""
         if dhi_combine_version[:3] >= (9, 0, 0):
-            opt_args = (
-                " --no-wrappers"
-                " --optimize-simpdf-constraints cms"
-                " --X-pack-asympows"
-                " --X-optimizeMHDependency fixed"
-                " --use-histsum"
-            )
+            opt_args = "--optimize-simpdf-constraints cms"
+
+            # additional options for optimizing limits
+            if self.optimize_limits:
+                opt_args += (
+                    " --no-wrappers"
+                    " --X-pack-asympows"
+                    " --X-optimizeMHDependency fixed"
+                    " --use-histsum"
+                )
+                self.logger.warning(
+                    "workspaces created with --optimize-limits are optimized towards faster limit "
+                    "and likelihood computations, but are incompatible with FitDiagnistics",
+                )
 
         # get the datacard
         datacard = self.datacards[0] if self.no_bundle else self.input().path

@@ -560,7 +560,7 @@ def load_bin_data(fit_diagnostics_path, per_process=False):
         cat_dir_post = tdir_post.Get(cat_name)
         if not isinstance(cat_dir_pre, ROOT.TDirectoryFile):
             continue
-        elif not isinstance(cat_dir_post, ROOT.TDirectoryFile):
+        if not isinstance(cat_dir_post, ROOT.TDirectoryFile):
             raise Exception("category '{}' exists for pre- but not postfit".format(cat_name))
 
         # get histograms and the data graph
