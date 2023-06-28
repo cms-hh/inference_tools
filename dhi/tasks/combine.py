@@ -1983,7 +1983,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
         default=_optimize_limits_default,
         significant=False,
         description="when set, additional options are used for the workspace creation that make "
-        "the AsymptoticLimits faster, but that do not work in FitDiagnistics; "
+        "the AsymptoticLimits faster, but that do not work in FitDiagnostics; "
         f"default: {_optimize_limits_default}",
     )
 
@@ -2057,7 +2057,7 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
                 )
                 self.logger.warning(
                     "workspaces created with --optimize-limits are optimized towards faster limit "
-                    "and likelihood computations, but are incompatible with FitDiagnistics",
+                    "and likelihood computations, but are incompatible with FitDiagnostics",
                 )
 
         # get the datacard
