@@ -1968,6 +1968,9 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         output_card.copy_to(output)
 
 
+_optimize_limits_default = law.util.flag_to_bool(os.getenv("DHI_WORKSPACE_OPTIMIZE_LIMITS", "0"))
+
+
 class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     no_bundle = luigi.BoolParameter(
@@ -1975,6 +1978,13 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
         description="when set, do not combine and bundle input datacards, but create the workspace "
         "on the single (!) input datacard; an error is raised when more than one datacard is used; "
         "default: False",
+    )
+    optimize_limits = luigi.BoolParameter(
+        default=_optimize_limits_default,
+        significant=False,
+        description="when set, additional options are used for the workspace creation that make "
+        "the AsymptoticLimits faster, but that do not work in FitDiagnostics; "
+        f"default: {_optimize_limits_default}",
     )
 
     priority = 90
@@ -2035,13 +2045,20 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
         # optimization options
         opt_args = ""
         if dhi_combine_version[:3] >= (9, 0, 0):
-            opt_args = (
-                " --no-wrappers"
-                " --optimize-simpdf-constraints cms"
-                " --X-pack-asympows"
-                " --X-optimizeMHDependency fixed"
-                " --use-histsum"
-            )
+            opt_args = "--optimize-simpdf-constraints cms"
+
+            # additional options for optimizing limits
+            if self.optimize_limits:
+                opt_args += (
+                    " --no-wrappers"
+                    " --X-pack-asympows"
+                    " --X-optimizeMHDependency fixed"
+                    " --use-histsum"
+                )
+                self.logger.warning(
+                    "workspaces created with --optimize-limits are optimized towards faster limit "
+                    "and likelihood computations, but are incompatible with FitDiagnostics",
+                )
 
         # get the datacard
         datacard = self.datacards[0] if self.no_bundle else self.input().path

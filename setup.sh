@@ -108,7 +108,7 @@ setup() {
 
     export DHI_SCRAM_ARCH="${DHI_SCRAM_ARCH:-slc7_amd64_gcc900}"
     export DHI_CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_11_3_4}"
-    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v9.0.0}"
+    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v9.1.0}"
     export DHI_CMSSW_BASE="${DHI_SOFTWARE}/combine_${DHI_COMBINE_VERSION}_${DHI_SCRAM_ARCH}"
 
     local flag_file_combine="${DHI_CMSSW_BASE}/.combine_${DHI_CMSSW_VERSION}_good"
@@ -433,7 +433,7 @@ interactive_setup() {
     query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "${eos_user_store}" "${eos_user_store_repr}"
     query DHI_SOFTWARE "Directory for installing software" "${DHI_DATA}/software" "\$DHI_DATA/software"
     query DHI_CMSSW_VERSION "Version of CMSSW to be used" "CMSSW_11_3_4"
-    query DHI_COMBINE_VERSION "Version of combine to be used (tag name)" "v9.0.0"
+    query DHI_COMBINE_VERSION "Version of combine to be used (tag name)" "v9.1.0"
     query DHI_DATACARDS_RUN2 "Location of the datacards_run2 repository (optional)" "" "''"
     query DHI_WLCG_CACHE_ROOT "Local directory for caching remote files" "" "''"
     export_and_save DHI_WLCG_USE_CACHE "$( [ -z "${DHI_WLCG_CACHE_ROOT}" ] && echo false || echo true )"
