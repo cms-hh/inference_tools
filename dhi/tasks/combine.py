@@ -779,48 +779,6 @@ class MultiDatacardTask(DatacardTask):
         return parts
 
 
-class MultiDatacardTransposedTask(MultiDatacardTask):
-
-    exclude_params_index = {"datacard_names", "datacard_order"}
-
-    datacard_names = None
-    datacard_order = None
-    group_duplicate_cards = False
-
-    @classmethod
-    def extract_info_from_datacard_path(cls, datacard):
-        return os.path.splitext(os.path.basename(datacard).rsplit("_", 1)[-1])[0]
-
-    def __init__(self, *args, **kwargs):
-        super(MultiDatacardTransposedTask, self).__init__(*args, **kwargs)
-
-        # create a map of datacard info strings to lists of cards that contain it
-        self.multi_datacards_transposed = OrderedDict()
-        seen = set()
-        for datacards in self.multi_datacards:
-            contains_duplicate = any(datacard in seen for datacard in datacards)
-            groups = OrderedDict()
-            for datacard in datacards:
-                # extract the info string from the basename
-                info = self.extract_info_from_datacard_path(datacard)
-
-                if not self.group_duplicate_cards:
-                    # when not grouping, just add the card
-                    self.multi_datacards_transposed.setdefault(info, [[]])[0].append(datacard)
-                elif not contains_duplicate:
-                    # when the sequence contains only unseen cards, just add the card
-                    self.multi_datacards_transposed.setdefault(info, []).append([datacard])
-                else:
-                    # add it to groups for the current sequence
-                    groups.setdefault(info, []).append(datacard)
-                seen.add(datacard)
-
-            # add groups if any
-            if groups:
-                for info, group in groups.items():
-                    self.multi_datacards_transposed.setdefault(info, []).append(group)
-
-
 class ParameterValuesTask(AnalysisTask):
 
     parameter_values = ModelParameters(

@@ -2,6 +2,6 @@ The `MergeEFTBenchmarkLimits` task collects the limits from each of the `EFTBenc
 
 <div class="dhi_parameter_table">
 
---8<-- "content/snippets/parameters.md@-2,21,48,34,17,18"
+--8<-- "content/snippets/parameters.md@-2,20,101,48,34,17,18"
 
 </div>

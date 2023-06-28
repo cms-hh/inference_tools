@@ -4,7 +4,8 @@
 Tasks related to upper limits on resonant scenarios.
 """
 
-from collections import OrderedDict
+import re
+from collections import OrderedDict, defaultdict
 
 import law
 import luigi
@@ -13,7 +14,6 @@ from dhi.tasks.base import view_output_plots
 from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     MultiDatacardTask,
-    MultiDatacardTransposedTask,
     POITask,
     POIPlotTask,
     CombineCommandTask,
@@ -23,8 +23,13 @@ from dhi.tasks.limits import UpperLimits
 from dhi.config import br_hh
 
 
-class ResonantBase(POITask, MultiDatacardTransposedTask):
+class ResonantBase(POITask):
 
+    datacard_pattern = luigi.Parameter(
+        default=r"^.*_(\d+)\.txt$",
+        description="a regular expression with a single match group that is supposed to point to "
+        "the resonance mass value in the datacard path; default: ^.*_(\\d+)\\.txt$",
+    )
     hh_model = law.NO_STR
     allow_empty_hh_model = True
 
@@ -32,26 +37,31 @@ class ResonantBase(POITask, MultiDatacardTransposedTask):
     scan_parameter = "mhh"
 
     @classmethod
-    def modify_param_values(cls, params):
-        params = POITask.modify_param_values.__func__.__get__(cls)(params)
-        params = MultiDatacardTransposedTask.modify_param_values.__func__.__get__(cls)(params)
-        return params
+    def _group_datacards(cls, datacards, cre):
+        groups = defaultdict(list)
+        for datacard in datacards:
+            m = cre.match(datacard)
+            if not m:
+                raise Exception(
+                    f"no resonance mass could be extracted from datacard '{datacard}' "
+                    f"with pattern '{cre.pattern}'",
+                )
+            groups[int(m.group(1))].append(datacard)
+
+        return OrderedDict([
+            (mass, sorted(groups[mass]))
+            for mass in sorted(groups)
+        ])
 
     def __init__(self, *args, **kwargs):
         super(ResonantBase, self).__init__(*args, **kwargs)
 
-        # convert keys in multi_datacards_transposed to integers and store them as resonant cards
-        pairs = []
-        for info, datacards in self.multi_datacards_transposed.items():
-            try:
-                mass = int(info)
-            except:
-                raise Exception(
-                    "datacards contain a mass point '{}' which cannot be interpreted as an "
-                    "integer".format(info),
-                )
-            pairs.append((mass, datacards))
-        self.resonant_datacards = OrderedDict(sorted(pairs, key=lambda pair: pair[0]))
+        # group datacards into a dictionary mass -> [cards]
+        self.resonant_datacards = self.group_datacards()
+
+    def group_datacards(self):
+        cre = re.compile(self.datacard_pattern)
+        return self._group_datacards(self.datacards, cre)
 
     @property
     def other_pois(self):
@@ -68,11 +78,10 @@ class ResonantLimits(ResonantBase, CombineCommandTask, law.LocalWorkflow, HTCond
     run_command_in_tmp = True
 
     def create_branch_map(self):
-        branch_map = []
-        for mass, cards in self.resonant_datacards.items():
-            for _cards in cards:
-                branch_map.append({"mass": mass, "cards": _cards})
-        return branch_map
+        return [
+            {"mass": mass, "cards": cards}
+            for mass, cards in self.resonant_datacards.items()
+        ]
 
     def workflow_requires(self):
         reqs = super(ResonantLimits, self).workflow_requires()
@@ -288,45 +297,21 @@ class PlotResonantLimits(ResonantBase, POIPlotTask):
         )
 
 
-class PlotMultipleResonantLimits(PlotResonantLimits):
-
-    datacard_names = MultiDatacardTask.datacard_names
-    datacard_order = MultiDatacardTask.datacard_order
-    group_duplicate_cards = True
+class PlotMultipleResonantLimits(PlotResonantLimits, MultiDatacardTask):
 
     default_plot_function = "dhi.plots.limits.plot_limit_scans"
 
-    def __init__(self, *args, **kwargs):
-        super(PlotMultipleResonantLimits, self).__init__(*args, **kwargs)
-
-        # check that each mass point has the same amount of cards
-        n_entries = {len(cards) for cards in self.resonant_datacards.values()}
-        if len(n_entries) != 1:
-            raise Exception("founds different amount of entries in input datacards: {}".format(
-                ",".join(map(str, n_entries)),
-            ))
-        self.n_entries = list(n_entries)[0]
-
-        # the lengths of names and order indices must match multi_datacards when given
-        if self.datacard_names and len(self.datacard_names) != self.n_entries:
-            raise Exception("found {} entries in datacard_names whereas {} are expected".format(
-                len(self.datacard_names), self.n_entries,
-            ))
-        if self.datacard_order and len(self.datacard_order) != self.n_entries:
-            raise Exception("found {} entries in datacard_order whereas {} are expected".format(
-                len(self.datacard_order), self.n_entries,
-            ))
+    def group_datacards(self):
+        cre = re.compile(self.datacard_pattern)
+        return [
+            self._group_datacards(datacards, cre)
+            for datacards in self.multi_datacards
+        ]
 
     def requires(self):
         return [
-            MergeResonantLimits.req(
-                self,
-                multi_datacards=tuple(
-                    tuple(cards[i])
-                    for cards in self.resonant_datacards.values()
-                ),
-            )
-            for i in range(self.n_entries)
+            MergeResonantLimits.req(self, datacards=tuple(sum(groups.values(), [])))
+            for groups in self.resonant_datacards
         ]
 
     def output(self):

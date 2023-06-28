@@ -13,7 +13,7 @@ In particular, please make sure that
 Names of datacard files should have the format
 
 ```
-datacard_<MASS>.txt
+datacard_<some_other_info>_<MASS>.txt
 ```
 
 where `MASS` is the integer mass value of the resonance.
@@ -23,36 +23,25 @@ where `MASS` is the integer mass value of the resonance.
 **Task parameters**
 
 ==Unlike==, for instance, the [upper limit](limits.md#limit-on-poi-vs-scan-parameter) or [likelihood scan](likelihood.md#single-likelihood-profiles) tasks where a single set of combined cards is used to extract results over a range of scan parameter values, each mass point requires its own datacard.
-To allow that cards of different channels can still be combined per point, the usual `--datacards` parameter cannot be used as it targets only a single sequence of cards.
 
-Instead, the tasks below use the `--multi-datacards` parameter that allows to define multiple sequences of files, separated by `:`, to be passed in the format
+Therefore, the cards passed to `--datacards` are actually parsed using the regular expression configured by the `--datacard-pattern` parameter, which defaults to `^.*_(\d+)\.txt$` (meaning `<any_text>_<mass_integer_value>.txt`).
+The mass value is extracted using this expression (matching everything that within the brackets, i.e., the mass value `\d+`) and datacards with the same mass are combined.
+For instance, when passing
 
 ```
-ch1/datacard_A.txt,ch1/datacard_B.txt:ch2/datacard_A.txt,ch2/datacard_B.txt:...
+--datacards ch1/datacard_250.txt,ch1/datacard_300.txt,ch2/datacard_250.txt
 ```
 
-In this example, the different sequences `ch1/datacard_A.txt,ch1/datacard_B.txt` and `ch2/datacard_A.txt,ch2/datacard_B.txt` could correspond to different analysis channels.
-**Datacards with the same `MASS` (`A` and `B`) across sequences will be combined** by means of the `CombineDatacards` task.
-Therefore, a valid example is
+the resonant limit tasks will combine the first and last datacards as they are both corresponding to a mass value of `250`, and then compute two limits for `250` and `300`.
 
-```shell
---multi-datacards 'my_cards/datacard_*.txt'
+As usual, showing limit scans for multiple sequences (see [below](#multiple-resonant-limits)) requires the `--multi-datacards` parameter to be set instead.
+Multiple comma-separeted sequences are themselves separated by a color character, so
+
+```
+--multi-datacards ch1/datacard_250.txt,ch1/datacard_300.txt:ch2/datacard_250.txt
 ```
 
-for a **single channel**, and
-
-```shell
---multi-datacards 'bbbb/datacard_*.txt:bbgg/datacard_*.txt'
-```
-
-for **multiple channels**, where datacards corresponding to the same benchmark will be combined across the channels.
-For obvious reasons, the number of files matched by `bbbb/datacard_*.txt` and `bbgg/datacard_*.txt` must be identical.
-
-For plotting multple resonant limit scans as describe [below](#multiple-resonant-limits), simply repeat the same datacards but separate by a comma to signalize that they should be merged first.
-
-```shell
---multi-datacards 'bbbb/datacard_*.txt:bbgg/datacard_*.txt:bbbb/datacard_*.txt,bbgg/datacard_*.txt'
-```
+will perform two separate scans, one at mass points `250` and `300` for cards in `ch1/`, and one scan at a single mass point `250` for the card in `ch2/`.
 
 
 ### Resonant limits
@@ -70,11 +59,9 @@ The `PlotResonantLimits` task shows the upper limits on the rate of HH productio
 ```shell
 law run PlotResonantLimits \
     --version dev \
-    --multi-datacards $DHI_EXAMPLE_CARDS_RES \
+    --datacards $DHI_EXAMPLE_CARDS_RES \
     --xsec fb
 ```
-
-As described above, the `--multi-datacards` parameter should be used to identify different sequences of datacards.
 
 Output:
 
@@ -128,7 +115,7 @@ Hexagonal boxes mark tasks that can produce [HEPData](https://hepdata-submission
 ```shell hl_lines="5-6"
 law run PlotResonantLimits \
     --version dev \
-    --multi-datacards $DHI_EXAMPLE_CARDS_RES \
+    --datacards $DHI_EXAMPLE_CARDS_RES \
     --xsec fb \
     --br bbgg \
     --ResonantLimits-workflow htcondor

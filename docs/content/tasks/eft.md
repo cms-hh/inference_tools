@@ -13,7 +13,7 @@ In particular, please make sure that
 Names of EFT benchmark datacard files should have the format
 
 ```
-datacard_<NAME>.txt
+datacard_<some_other_info>_<NAME>.txt
 ```
 
 where `NAME` is the name of the particular benchmark.
@@ -26,36 +26,25 @@ For automatic benchmark grouping (e.g. into JHEP03 or JHEP04) within plots, you 
 **Task parameters**
 
 ==Unlike==, for instance, the [upper limit](limits.md#limit-on-poi-vs-scan-parameter) or [likelihood scan](likelihood.md#single-likelihood-profiles) tasks where a single set of combined cards is used to extract results over a range of scan parameter values, each benchmark point requires its own datacard.
-To allow that cards of different channels can still be combined per benchmark scenario, the usual `--datacards` parameter cannot be used as it targets only a single sequence of cards.
 
-Instead, the tasks below use the `--multi-datacards` parameter that allows to define multiple sequences of files, separated by `:`, to be passed in the format
+Therefore, the cards passed to `--datacards` are actually parsed using the regular expression configured by the `--datacard-pattern` parameter, which defaults to `^.*_([^_]+)\.txt$` (meaning `<any_text>_<benchmark_name_without_underscores>.txt`).
+The benchmark name is extracted using this expression (matching everything that within the brackets, i.e., the last string without underscores before the `.txt`) and datacards with the same benchmark name are combined.
+For instance, when passing
 
 ```
-ch1/datacard_A.txt,ch1/datacard_B.txt:ch2/datacard_A.txt,ch2/datacard_B.txt:...
+--datacards ch1/datacard_JHEP04BM1.txt,ch1/datacard_JHEP04BM2.txt,ch2/datacard_JHEP04BM1.txt
 ```
 
-In this example, the different sequences `ch1/datacard_A.txt,ch1/datacard_B.txt` and `ch2/datacard_A.txt,ch2/datacard_B.txt` could correspond to different analysis channels.
-**Datacards with the same `NAME` (`A` and `B`) across sequences will be combined** by means of the `CombineDatacards` task.
-Therefore, a valid example is
+the eft benchmark limit tasks will combine the first and last datacards as they are both corresponding to benchmark `JHEP04BM1`, and then compute two limits for `JHEP04BM1` and `JHEP04BM2`.
 
-```shell
---multi-datacards 'my_cards/datacard_JHEP04*.txt'
+As usual, showing limit scans for multiple sequences (see [below](#multiple-benchmark-limits)) requires the `--multi-datacards` parameter to be set instead.
+Multiple comma-separeted sequences are themselves separated by a color character, so
+
+```
+--multi-datacards ch1/datacard_JHEP04BM1.txt,ch1/datacard_JHEP04BM2.txt:ch2/datacard_JHEP04BM1.txt
 ```
 
-for a **single channel**, and
-
-```shell
---multi-datacards 'bbbb/datacard_JHEP04*.txt:bbgg/datacard_JHEP04*.txt'
-```
-
-for **multiple channels**, where datacards corresponding to the same benchmark will be combined across the channels.
-For obvious reasons, the number of files matched by `bbbb/datacard_JHEP04*.txt` and `bbgg/datacard_JHEP04*.txt` must be identical.
-
-For plotting multple resonant limit scans as describe [below](#multiple-benchmark-limits), simply repeat the same datacards but separate by a comma to signalize that they should be merged first.
-
-```shell
---multi-datacards 'bbbb/datacard_JHEP04*.txt:bbgg/datacard_JHEP04*.txt:bbbb/datacard_JHEP04*.txt,bbgg/datacard_JHEP04*.txt'
-```
+will perform two separate scans, one at benchmarks `JHEP04BM1` and `JHEP04BM2` for cards in `ch1/`, and one scan at a benchmark `JHEP04BM1` for the card in `ch2/`.
 
 
 ### Benchmark limits
@@ -73,11 +62,9 @@ The `PlotEFTBenchmarkLimits` task shows the upper limits on the rate of HH produ
 ```shell
 law run PlotEFTBenchmarkLimits \
     --version dev \
-    --multi-datacards $DHI_EXAMPLE_CARDS_EFT_BM \
+    --datacards $DHI_EXAMPLE_CARDS_EFT_BM \
     --xsec fb
 ```
-
-As described above, the `--multi-datacards` parameter should be used to identify different sequences of datacards.
 
 Output:
 
@@ -130,7 +117,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 ```shell hl_lines="5-6"
 law run PlotEFTBenchmarkLimits \
     --version dev \
-    --multi-datacards $DHI_EXAMPLE_CARDS_EFT_BM \
+    --datacards $DHI_EXAMPLE_CARDS_EFT_BM \
     --xsec fb \
     --br bbgg \
     --EFTBenchmarkLimits-workflow htcondor

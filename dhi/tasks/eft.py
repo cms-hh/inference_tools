@@ -4,7 +4,8 @@
 Tasks related to EFT benchmarks and scans.
 """
 
-from collections import OrderedDict
+import re
+from collections import OrderedDict, defaultdict
 
 import law
 import luigi
@@ -13,7 +14,6 @@ from dhi.tasks.base import view_output_plots
 from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     MultiDatacardTask,
-    MultiDatacardTransposedTask,
     POITask,
     POIPlotTask,
     CombineCommandTask,
@@ -24,28 +24,44 @@ from dhi.eft_tools import sort_eft_benchmark_names
 from dhi.config import br_hh
 
 
-class EFTBase(POITask, MultiDatacardTransposedTask):
+class EFTBase(POITask):
 
+    datacard_pattern = luigi.Parameter(
+        default=r"^.*_([^_]+)\.txt$",
+        description="a regular expression with a single match group that is supposed to point to "
+        "the benchmark name in the datacard path; default: ^.*_([^_]+)\\.txt$",
+    )
     hh_model = law.NO_STR
     allow_empty_hh_model = True
 
     poi = "r_gghh"
 
     @classmethod
-    def modify_param_values(cls, params):
-        params = POITask.modify_param_values.__func__.__get__(cls)(params)
-        params = MultiDatacardTransposedTask.modify_param_values.__func__.__get__(cls)(params)
-        return params
+    def _group_datacards(cls, datacards, cre):
+        groups = defaultdict(list)
+        for datacard in datacards:
+            m = cre.match(datacard)
+            if not m:
+                raise Exception(
+                    f"no benchmark value could be extracted from datacard '{datacard}' "
+                    f"with pattern '{cre.pattern}'",
+                )
+            groups[m.group(1)].append(datacard)
+
+        return OrderedDict([
+            (bm, sorted(groups[bm]))
+            for bm in sort_eft_benchmark_names(groups.keys())
+        ])
 
     def __init__(self, *args, **kwargs):
         super(EFTBase, self).__init__(*args, **kwargs)
 
-        # sort EFT datacards according to benchmark names
-        names = sort_eft_benchmark_names(self.multi_datacards_transposed.keys())
-        self.benchmark_datacards = OrderedDict(
-            (name, self.multi_datacards_transposed[name])
-            for name in names
-        )
+        # group datacards into a dictionary benchmark -> [cards]
+        self.benchmark_datacards = self.group_datacards()
+
+    def group_datacards(self):
+        cre = re.compile(self.datacard_pattern)
+        return self._group_datacards(self.datacards, cre)
 
     @property
     def other_pois(self):
@@ -62,11 +78,10 @@ class EFTBenchmarkLimits(EFTBase, CombineCommandTask, law.LocalWorkflow, HTCondo
     run_command_in_tmp = True
 
     def create_branch_map(self):
-        branch_map = []
-        for name, cards in self.benchmark_datacards.items():
-            for _cards in cards:
-                branch_map.append({"benchmark": name, "cards": _cards})
-        return branch_map
+        return [
+            {"benchmark": benchmark, "cards": cards}
+            for benchmark, cards in self.benchmark_datacards.items()
+        ]
 
     def workflow_requires(self):
         reqs = super(EFTBenchmarkLimits, self).workflow_requires()
@@ -273,45 +288,21 @@ class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
         )
 
 
-class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits):
-
-    datacard_names = MultiDatacardTask.datacard_names
-    datacard_order = MultiDatacardTask.datacard_order
-    group_duplicate_cards = True
+class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits, MultiDatacardTask):
 
     default_plot_function = "dhi.plots.eft.plot_multi_benchmark_limits"
 
-    def __init__(self, *args, **kwargs):
-        super(PlotMultipleEFTBenchmarkLimits, self).__init__(*args, **kwargs)
-
-        # check that each mass point has the same amount of cards
-        n_entries = {len(cards) for cards in self.benchmark_datacards.values()}
-        if len(n_entries) != 1:
-            raise Exception("founds different amount of entries in input datacards: {}".format(
-                ",".join(map(str, n_entries)),
-            ))
-        self.n_entries = list(n_entries)[0]
-
-        # the lengths of names and order indices must match multi_datacards when given
-        if self.datacard_names and len(self.datacard_names) != self.n_entries:
-            raise Exception("found {} entries in datacard_names whereas {} are expected".format(
-                len(self.datacard_names), self.n_entries,
-            ))
-        if self.datacard_order and len(self.datacard_order) != self.n_entries:
-            raise Exception("found {} entries in datacard_order whereas {} are expected".format(
-                len(self.datacard_order), self.n_entries,
-            ))
+    def group_datacards(self):
+        cre = re.compile(self.datacard_pattern)
+        return [
+            self._group_datacards(datacards, cre)
+            for datacards in self.multi_datacards
+        ]
 
     def requires(self):
         return [
-            MergeEFTBenchmarkLimits.req(
-                self,
-                multi_datacards=tuple(
-                    tuple(cards[i])
-                    for cards in self.benchmark_datacards.values()
-                ),
-            )
-            for i in range(self.n_entries)
+            MergeEFTBenchmarkLimits.req(self, datacards=tuple(sum(groups.values(), [])))
+            for groups in self.benchmark_datacards
         ]
 
     def output(self):
