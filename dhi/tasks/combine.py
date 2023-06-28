@@ -1968,6 +1968,9 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         output_card.copy_to(output)
 
 
+_optimize_limits_default = law.util.flag_to_bool(os.getenv("DHI_WORKSPACE_OPTIMIZE_LIMITS", "0"))
+
+
 class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     no_bundle = luigi.BoolParameter(
@@ -1977,10 +1980,11 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
         "default: False",
     )
     optimize_limits = luigi.BoolParameter(
-        default=False,
+        default=_optimize_limits_default,
         significant=False,
         description="when set, additional options are used for the workspace creation that make "
-        "the AsymptoticLimits faster, but that do not work in FitDiagnistics; default: False",
+        "the AsymptoticLimits faster, but that do not work in FitDiagnistics; "
+        f"default: {_optimize_limits_default}",
     )
 
     priority = 90
