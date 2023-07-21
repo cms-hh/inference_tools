@@ -5,7 +5,9 @@ CMS Di-Higgs inference tools.
 """
 
 import os
+import sys
 import re
+import csv
 
 import law
 
@@ -55,3 +57,6 @@ if law.config.has_option("outputs", "wlcg_file_systems"):
 # import gfal2 once when available to pre-load it before anything ROOT related is imported
 if dhi_has_gfal:
     import gfal2  # noqa
+
+# csv parsing settings
+csv.field_size_limit(sys.maxsize)

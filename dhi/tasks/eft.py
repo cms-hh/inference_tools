@@ -181,6 +181,12 @@ class MergeEFTBenchmarkLimits(EFTBase):
         branch_map = self.requires().branch_map
         inputs = self.input()["collection"].targets
         for b, branch_data in branch_map.items():
+            if not inputs[b].exists():
+                self.logger.warning("input of branch {} at {} does not exist".format(
+                    b, inputs[b].path,
+                ))
+                continue
+
             limits = UpperLimits.load_limits(inputs[b], unblinded=self.unblinded)
             records.append((branch_data["benchmark"],) + limits)
 
@@ -291,6 +297,12 @@ class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
 class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits, MultiDatacardTask):
 
     default_plot_function = "dhi.plots.eft.plot_multi_benchmark_limits"
+
+    @classmethod
+    def modify_param_values(cls, params):
+        params = PlotEFTBenchmarkLimits.modify_param_values.__func__.__get__(cls)(params)
+        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
+        return params
 
     def group_datacards(self):
         cre = re.compile(self.datacard_pattern)

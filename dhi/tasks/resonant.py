@@ -181,6 +181,12 @@ class MergeResonantLimits(ResonantBase):
         branch_map = self.requires().branch_map
         inputs = self.input()["collection"].targets
         for b, branch_data in branch_map.items():
+            if not inputs[b].exists():
+                self.logger.warning("input of branch {} at {} does not exist".format(
+                    b, inputs[b].path,
+                ))
+                continue
+
             limits = UpperLimits.load_limits(inputs[b], unblinded=self.unblinded)
             records.append((branch_data["mass"],) + limits)
 
@@ -300,6 +306,12 @@ class PlotResonantLimits(ResonantBase, POIPlotTask):
 class PlotMultipleResonantLimits(PlotResonantLimits, MultiDatacardTask):
 
     default_plot_function = "dhi.plots.limits.plot_limit_scans"
+
+    @classmethod
+    def modify_param_values(cls, params):
+        params = PlotResonantLimits.modify_param_values.__func__.__get__(cls)(params)
+        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
+        return params
 
     def group_datacards(self):
         cre = re.compile(self.datacard_pattern)
