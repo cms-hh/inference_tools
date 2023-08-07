@@ -59,6 +59,9 @@ class HHModelTask(AnalysisTask):
         "noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc",
         "doProfilergghh", "doProfilerqqhh", "doProfilervhh",
         "doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V", "doProfileC2",
+        "doProfileA", "doProdileLA", "doProfileM2", "doProfileB", "doProfileMHE",
+        "doProfileMHP", "doPrifileMA", "doProfileZ6", "doProfileLQ", "doProfileMQ",
+        "doProfileXi", "doProfilekl_EFT", "doProfilekt_EFT", "doProfileC2_EFT",
     }
 
     hh_model = luigi.Parameter(
@@ -155,6 +158,20 @@ class HHModelTask(AnalysisTask):
         set_opt("doProfileCV", options.get("doProfileCV"))
         set_opt("doProfileC2V", options.get("doProfileC2V"))
         set_opt("doProfileC2", options.get("doProfileC2"))
+        set_opt("doProfileA", options.get("doProfileA"))
+        set_opt("doProfileLA", options.get("doProfileLA"))
+        set_opt("doProfileM2", options.get("doProfileM2"))
+        set_opt("doProfileB", options.get("doProfileB"))
+        set_opt("doProfileMHE", options.get("doProfileMHE"))
+        set_opt("doProfileMHP", options.get("doProfileMHP"))
+        set_opt("doProfileMA", options.get("doProfileMA"))
+        set_opt("doProfileZ6", options.get("doProfileZ6"))
+        set_opt("doProfileLQ", options.get("doProfileLQ"))
+        set_opt("doProfileMQ", options.get("doProfileMQ"))
+        set_opt("doProfileXI", options.get("doProfileXI"))
+        set_opt("doProfilekl_EFT", options.get("doProfilekl_EFT"))
+        set_opt("doProfilekt_EFT", options.get("doProfilekt_EFT"))
+        set_opt("doProfileC2_EFT", options.get("doProfileC2_EFT"))
 
         # reset pois
         model.reset_pois()
@@ -1131,7 +1148,7 @@ class POITask(DatacardTask, ParameterValuesTask):
     # class-level sequence of all available pois
     # instances will have potentially reduced sequences, depending on the physics model
     r_pois = ("r", "r_gghh", "r_qqhh", "r_vhh")
-    k_pois = ("kl", "kt", "CV", "C2V", "C2")
+    k_pois = ("kl", "kt", "CV", "C2V", "C2", "A", "LA", "M2", "B", "MHE", "MHP", "MA", "Z6", "LQ", "MQ", "XI", "kl_EFT", "kt_EFT", "C2_EFT")
     all_pois = r_pois + k_pois
 
     pois = law.CSVParameter(

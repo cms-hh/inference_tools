@@ -158,6 +158,20 @@ poi_data = DotDict(
     CG=DotDict(range=(-2.0, 2.0), label=r"$C_{g}$", sm_value=0.0),
     C2G=DotDict(range=(-2.0, 2.0), label=r"$C_{2g}$", sm_value=0.0),
     mhh=DotDict(range=(0.0, 3000.0), label=r"$m_{HH}$", unit="GeV"),
+    A=DotDict(range=(0.0,6.0), label=r"$\alpha$", sm_value=0.0),
+    LA=DotDict(range=(-10.0,10.0), label=r"$\lambda_{\alpha}$", sm_value=0.0),
+    M2=DotDict(range=(0.0,3000.0), label=r"$m_{2}$", sm_value=0.0, unit="GeV"),
+    B=DotDict(range=(0.0,6.0), label=r"$\beta$", sm_value=0.0),
+    MHE=DotDict(range=(0.0,3000.0), label=r"$m_{H}$", sm_value=0.0, unit="GeV"),
+    MHP=DotDict(range=(0.0,3000.0), label=r"$m_{H+}$", sm_value=0.0, unit="GeV"),
+    MA=DotDict(range=(0.0,3000.0), label=r"$m_{A}$", sm_value=0.0, unit="GeV"),
+    Z6=DotDict(range=(0.0,3000.0), label=r"$Z_6$", sm_value=0.0),
+    LQ=DotDict(range=(-10.0,10.0), label=r"$\lambda_{Q}$", sm_value=0.0),
+    MQ=DotDict(range=(0.0,3000.0), label=r"$m_{Q}$", sm_value=0.0, unit="GeV"),
+    XI=DotDict(range=(0.0,1.0), label=r"$\Xi$", sm_value=0.0),
+    kl_EFT=DotDict(range=(-30.0, 30.0), label=r"$\kappa_{\lambda}$", sm_value=1.0),
+    kt_EFT=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
+    C2_EFT=DotDict(range=(-2.0, 3.0), label=r"$C_{2}$", sm_value=0.0),
 )
 
 # colors
