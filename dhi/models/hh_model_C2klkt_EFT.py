@@ -2,7 +2,7 @@
 
 """
 Custom HH physics model implementing the gluon gluon fusion (ggf / gghh) mode (depending on C2, kl
-and kt), and the vector boson fusion (vbf / qqhh) mode for the constraints of 
+and kt), and the vector boson fusion (vbf / qqhh) mode for the constraints of
 various eft physics scenarios from arXiv:1710.08261
 
 Authors:
@@ -11,22 +11,22 @@ Authors:
 
 from collections import OrderedDict
 
-from dhi.models.hh_model import (
+from dhi.models.hh_model import ( # noqa
     VBFSample, HHModel as DefaultHHModel, vbf_samples, create_ggf_xsec_str,
     ggf_k_factor, _create_add_sample_func, create_vbf_xsec_func, HBRScaler,
-)
+) # noqa
 
 # necessary imports
 from dhi.models.hh_model_C2klkt import (GGFSample, GGFFormula)
 
-""" 
-Placeholder imports, if we want it, we need to reimplement the xs functions, 
+"""
+Placeholder imports, if we want it, we need to reimplement the xs functions,
 if we only plan likelihoods, not really needed however.
 """
 
-from dhi.models.hh_model_C2klkt import (
+from dhi.models.hh_model_C2klkt import ( # noqa
     create_ggf_xsec_func, create_hh_xsec_func,
-    get_ggf_xsec, get_vbf_xsec, get_hh_xsec
+    get_ggf_xsec, get_vbf_xsec, get_hh_xsec,
 )
 
 # ggf samples with keys (kl, kt, C2), same as in hh_model_C2klkt
@@ -41,6 +41,7 @@ add_ggf_sample(kl=1.0, kt=1.0, C2=0.1, xs=0.015720, label="ggHH_kl_1p00_kt_1p00_
 add_ggf_sample(kl=1.0, kt=1.0, C2=0.35, xs=0.011103, label="ggHH_kl_1p00_kt_1p00_c2_0p35")
 add_ggf_sample(kl=1.0, kt=1.0, C2=3.0, xs=2.923567, label="ggHH_kl_1p00_kt_1p00_c2_3p00")
 add_ggf_sample(kl=1.0, kt=1.0, C2=-2.0, xs=1.956196, label="ggHH_kl_1p00_kt_1p00_c2_m2p00")
+
 
 class HHModelEFTBase(DefaultHHModel):
     """
@@ -73,7 +74,7 @@ class HHModelEFTBase(DefaultHHModel):
         # forward to the modul-level implementation
         return create_hh_xsec_func(*args, **kwargs)
 
-    #overwrite to not remove new POIs
+    # overwrite to not remove new POIs
     def reset_pois(self):
 
         # r pois
@@ -85,7 +86,7 @@ class HHModelEFTBase(DefaultHHModel):
         self.k_pois = OrderedDict()
         for p, v in self.K_POIS.items():
             self.k_pois[p] = v
-        
+
         # remove profiled r pois
         for p in list(self.r_pois):
             if self.opt("doProfile" + p.replace("_", ""), False):
@@ -149,7 +150,7 @@ class HHModelEFTBase(DefaultHHModel):
             self.make_var("MH[{}]".format(self.options.mass))
         self.get_var("MH").setConstant(True)
 
-        #hook for the model specific eft constraints
+        # hook for the model specific eft constraints
         self.make_eftconstraints()
 
         # define the POI group
@@ -170,54 +171,67 @@ class HHModelEFTBase(DefaultHHModel):
         # create cross section scaling functions
         self.create_scalings()
 
+
 class HBRScaler_Alpha(HBRScaler):
     REQUIRED_POIS = ["A"]
+
 
 class HBRScaler_AlphaM2(HBRScaler):
     REQUIRED_POIS = ["A", "lA", "M2"]
 
+
 class HBRScaler_BetaMHEMHP(HBRScaler):
     REQUIRED_POIS = ["B", "MHE", "MHP"]
+
 
 class HBRScaler_BetaMHEMA(HBRScaler):
     REQUIRED_POIS = ["B", "MHE", "MA"]
 
+
 class HBRScaler_BetaMHEZ6(HBRScaler):
     REQUIRED_POIS = ["B", "MHE", "Z6"]
+
 
 class HBRScaler_VLQ(HBRScaler):
     REQUIRED_POIS = ["LQ", "MQ"]
 
+
 class HBRScaler_Xi(HBRScaler):
     REQUIRED_POIS = ["XI"]
+
 
 class HBRScaler_kl(HBRScaler):
     REQUIRED_POIS = ["kl_EFT"]
 
+
 class HBRScaler_kt(HBRScaler):
     REQUIRED_POIS = ["kt_EFT"]
+
 
 class HBRScaler_klkt(HBRScaler):
     REQUIRED_POIS = ["kl_EFT", "kt_EFT"]
 
+
 class HBRScaler_klc2(HBRScaler):
     REQUIRED_POIS = ["kl_EFT", "C2_EFT"]
+
 
 class HBRScaler_klktc2(HBRScaler):
     REQUIRED_POIS = ["kl_EFT", "kt_EFT", "C2_EFT"]
 
-#Define common POIs and ranges
+
+# Define common POIs and ranges
 POI_R = ("r", (1, -20, 20))
-POI_R_GGHH = ("r_gghh", (1, -20, 20)),
-POI_R_QQHH = ("r_qqhh", (1, -20, 20)),
+POI_R_GGHH = ("r_gghh", (1, -20, 20))
+POI_R_QQHH = ("r_qqhh", (1, -20, 20))
 
 POI_A = ("A", (0, 0, 6))
 POI_LA = ("LA", (0, -10, 10))
 POI_M2 = ("M2", (0, 0, 3000))
 POI_B = ("B", (0, 0, 6))
-POI_MHE = ("MHE", (1000, 100, 3000)) # Heavy Higgs (H)
-POI_MHP = ("MHP", (100, 100, 3000)) # Charged Higgs (H+)
-POI_MA = ("MA", (100, 0, 3000)) # heavy higgs (A)
+POI_MHE = ("MHE", (1000, 100, 3000))  # Heavy Higgs (H)
+POI_MHP = ("MHP", (100, 100, 3000))  # Charged Higgs (H+)
+POI_MA = ("MA", (100, 0, 3000))  # heavy higgs (A)
 POI_Z6 = ("Z6", (0., 0, 3000))
 POI_LQ = ("LQ", (0., -10, 10))
 POI_MQ = ("MQ", (0., 0, 3000))
@@ -228,13 +242,15 @@ POI_kl = ("kl_EFT", (1, -10, 10))
 POI_kt = ("kt_EFT", (1, -10, 10))
 POI_C2 = ("C2_EFT", (1, -10, 10))
 
-DEF_R_POIS = OrderedDict([ POI_R, POI_R_GGHH, POI_R_QQHH ])
+DEF_R_POIS = OrderedDict([POI_R, POI_R_GGHH, POI_R_QQHH])
 
 
 """
 Model I (real scalar singlet with explicit Z2 breaking) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: A(α), LA(λ_α), M2(m_2), CV, C2V
 """
+
+
 class HHModel_Alpha_1(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_AlphaM2
 
@@ -253,14 +269,17 @@ class HHModel_Alpha_1(HHModelEFTBase):
     C2 = −tan(α)^2/2
     """
     def make_eftconstraints(self):
-        self.make_expr("expr::kl('1-(3./2.)*pow(tan(@0),2)+pow(tan(@0),2)*(@1-tan(@0)*(@2/246.))/(pow(@3,2)/(2*pow(246,2)))', A, LA, M2, MH)")
+        self.make_expr("expr::kl('1-(3./2.)*pow(tan(@0),2)+pow(tan(@0),2)*(@1-tan(@0)*(@2/246.))/(pow(@3,2)/(2*pow(246,2)))', A, LA, M2, MH)")  # noqa
         self.make_expr("expr::C2('-pow(tan(@0),2)/2.', A)")
         self.make_expr("expr::kt('1-pow(tan(@0),2)/2.', A)")
+
 
 """
 Model Ib (real scalar singlet with explicit Z2 breaking) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: kl_EFT (kl), kt_EFT (kt) CV, C2V
 """
+
+
 class HHModel_Alpha_1b(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_klkt
 
@@ -282,10 +301,13 @@ class HHModel_Alpha_1b(HHModelEFTBase):
         self.make_expr("expr::kt('@0', kt_EFT)")
         self.make_expr("expr::C2('@0', kt_EFT-1)")
 
+
 """
 Model II (real scalar singlet with spontaneous Z2 breaking) [arXiv:1704.07851]
 POIs: A(α), CV, C2V
 """
+
+
 class HHModel_Alpha_2(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_Alpha
 
@@ -306,10 +328,13 @@ class HHModel_Alpha_2(HHModelEFTBase):
         self.make_expr("expr::C2('-pow(tan(@0),2)/2.', A)")
         self.make_expr("expr::kt('1-pow(tan(@0),2)/2.', A)")
 
+
 """
 Model IIb (real scalar singlet with spontaneous Z2 breaking) [arXiv:1704.07851]
 POIs: kt_EFT (kt), CV, C2V
 """
+
+
 class HHModel_Alpha_2b(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_kt
 
@@ -330,10 +355,13 @@ class HHModel_Alpha_2b(HHModelEFTBase):
         self.make_expr("expr::kt('@0', kt_EFT)")
         self.make_expr("expr::C2('@0', kt_EFT-1)")
 
+
 """
 Model III (real scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: B(β), MHE(mH), MHP(mH+), CV, C2V
 """
+
+
 class HHModel_BETAMH_3(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_BetaMHEMHP
 
@@ -352,15 +380,18 @@ class HHModel_BETAMH_3(HHModelEFTBase):
     C2 = -2*sin(β)^2*(mH+^4)/(mH^4)
     """
     def make_eftconstraints(self):
-        self.make_expr("expr::kl('1+4*pow(sin(@0),2)*(3 + 2*pow(@1,2)/pow(@2,2))*pow(@1,4)/pow(@3,4)', B, MHP, MH, MHE)")
+        self.make_expr("expr::kl('1+4*pow(sin(@0),2)*(3 + 2*pow(@1,2)/pow(@2,2))*pow(@1,4)/pow(@3,4)', B, MHP, MH, MHE)")  # noqa
         self.make_expr("expr::C2('-2*pow(sin(@0),2)*pow(@1,4)/pow(@2,4)',B, MHP, MHE)")
         self.make_var("{}[1]".format("kt"))
         self.get_var("kt").setConstant(True)
+
 
 """
 Model IIIb (real scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: kl_EFT (kl), C2_EFT (C2), CV, C2V
 """
+
+
 class HHModel_BETAMH_3b(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_klc2
 
@@ -388,6 +419,8 @@ class HHModel_BETAMH_3b(HHModelEFTBase):
 Model IV (complex scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: B(β), MHE(mH), MA(mA), CV, C2V
 """
+
+
 class HHModel_BETAMH_4(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_BetaMHEMA
 
@@ -406,14 +439,17 @@ class HHModel_BETAMH_4(HHModelEFTBase):
     C2 = -4*sin(β)^2*(mA^4)/(mH^4)
     """
     def make_eftconstraints(self):
-        self.make_expr("expr::kl('1 + 2 * pow(sin(@0),2) * (3 + (4*pow(@1,2))/(pow(@2,2)/2))*pow(@1,4)/pow(@3,4)', B, MA, MH, MHE)")
+        self.make_expr("expr::kl('1 + 2 * pow(sin(@0),2) * (3 + (4*pow(@1,2))/(pow(@2,2)/2))*pow(@1,4)/pow(@3,4)', B, MA, MH, MHE)")  # noqa
         self.make_expr("expr::kt('1-2*sin(@0)*sin(@0)*pow(@1,4)/pow(@2,4)',B,MA,MHE)")
         self.make_expr("expr::C2('-4*sin(@0)*pow(@1,4)/pow(@2,4)',B, MA, MHE)")
+
 
 """
 Model IVb (complex scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: kl_EFT (kl), kt_EFT (kt) , CV, C2V
 """
+
+
 class HHModel_BETAMH_4b(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_klkt
 
@@ -435,10 +471,13 @@ class HHModel_BETAMH_4b(HHModelEFTBase):
         self.make_expr("expr::kt('@0', kt_EFT)")
         self.make_expr("expr::C2('2*@0-1', kt_EFT)")
 
+
 """
 Model V (quartet scalar with Y = 1/2) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: B(β), MHE(mH), MA(mA), CV, C2V
 """
+
+
 class HHModel_BETAMH_5(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_BetaMHEMA
 
@@ -457,17 +496,20 @@ class HHModel_BETAMH_5(HHModelEFTBase):
     C2 = 0
     """
     def make_eftconstraints(self):
-        self.make_expr("expr::kl('1 + 24./7. * pow(tan(@0),2) * (pow(@1,4)/(pow(@3,2)*pow(@2,2)/2))', B, MA, MH, MHE)")
+        self.make_expr("expr::kl('1 + 24./7. * pow(tan(@0),2) * (pow(@1,4)/(pow(@3,2)*pow(@2,2)/2))', B, MA, MH, MHE)")  # noqa
         self.make_var("{}[1]".format("kt"))
         self.get_var("kt").setConstant(True)
         self.make_var("{}[0]".format("C2"))
         self.get_var("C2").setConstant(True)
+
 
 """
 Model Vb (quartet scalar with Y = 1/2) [arXiv:1704.07851, arXiv:1412.8480]
 Model VIb (quartet scalar with Y = 3/2) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: kl_EFT (kl), CV, C2V
 """
+
+
 class HHModel_BETAMH_5b(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_kl
 
@@ -490,10 +532,13 @@ class HHModel_BETAMH_5b(HHModelEFTBase):
         self.make_var("{}[0]".format("C2"))
         self.get_var("C2").setConstant(True)
 
+
 """
 Model VI (quartet scalar with Y = 3/2) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: B(β), MHE(mH), MA(mA), CV, C2V
 """
+
+
 class HHModel_BETAMH_6(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_BetaMHEMA
 
@@ -512,16 +557,19 @@ class HHModel_BETAMH_6(HHModelEFTBase):
     C2 = 0
     """
     def make_eftconstraints(self):
-        self.make_expr("expr::kl('1 + 8./3. * pow(tan(@0),2) * (pow(@1,4)/(pow(@3,2)*pow(@2,2)/2))', B, MA, MH, MHE)")
+        self.make_expr("expr::kl('1 + 8./3. * pow(tan(@0),2) * (pow(@1,4)/(pow(@3,2)*pow(@2,2)/2))', B, MA, MH, MHE)")  # noqa
         self.make_var("{}[1]".format("kt"))
         self.get_var("kt").setConstant(True)
         self.make_var("{}[0]".format("C2"))
         self.get_var("C2").setConstant(True)
 
+
 """
 Model VII (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
 POIs: B(β), MHE(mH), Z6(Z6), CV, C2V
 """
+
+
 class HHModel_BETAMH_7(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_BetaMHEZ6
 
@@ -540,14 +588,17 @@ class HHModel_BETAMH_7(HHModelEFTBase):
     C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
     """
     def make_eftconstraints(self):
-        self.make_expr("expr::kl('1-(3*pow(@0,2)*pow(246,2))/(pow(@1,2)*pow(@2,2)/pow(246,2))',Z6, MH, MHE )")
+        self.make_expr("expr::kl('1-(3*pow(@0,2)*pow(246,2))/(pow(@1,2)*pow(@2,2)/pow(246,2))',Z6, MH, MHE )")  # noqa
         self.make_expr("expr::kt('1-@0*pow(246,2)/(tan(@1)*pow(@2,2))',Z6, B, MHE )")
         self.make_expr("expr::C2('-3.*@0*pow(246,2)/(2.*tan(@1)*pow(@2,2))',Z6, B, MHE )")
+
 
 """
 Model VIb (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
 POIs: kl_EFT (kl), kt_EFT (kt) CV, C2V
 """
+
+
 class HHModel_BETAMH_7b(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_klkt
 
@@ -574,6 +625,8 @@ class HHModel_BETAMH_7b(HHModelEFTBase):
 Model VIII (vector-like quark: T) [arXiv:hep-ph/0007316]
 POIs: LQ(λ_Tt), MQ (MT), CV, C2V
 """
+
+
 class HHModel_VLQ_8(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_VLQ
 
@@ -596,10 +649,13 @@ class HHModel_VLQ_8(HHModelEFTBase):
         self.make_expr("expr::kt('1-1.009*pow(@0*246,2)/(2*pow(@1,2))', LQ, MQ )")
         self.make_expr("expr::C2('-3*1.009*pow(@0*246,2)/(4*pow(@1,2))', LQ, MQ )")
 
+
 """
 Model VIIIb (vector-like quark: T) [arXiv:hep-ph/0007316]
 POIs: kt_EFT (kt), CV, C2V
 """
+
+
 class HHModel_VLQ_8b(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_kt
 
@@ -621,10 +677,13 @@ class HHModel_VLQ_8b(HHModelEFTBase):
         self.make_expr("expr::kt('@0', kt_EFT )")
         self.make_expr("expr::C2('3*(@0-1)/2', kt_EFT )")
 
+
 """
 Model IX (vector-like quark: E) [arXiv:0803.4008]
 POIs: LQ(λ_El), MQ (ME), CV, C2V
 """
+
+
 class HHModel_VLQ_9(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_VLQ
 
@@ -647,10 +706,13 @@ class HHModel_VLQ_9(HHModelEFTBase):
         self.make_expr("expr::kl('1+pow(@0*246,2)/(4*pow(@1,2))', LQ, MQ )")
         self.make_expr("expr::kt('1+pow(@0*246,2)/(4*pow(@1,2))', LQ, MQ )")
 
+
 """
 Model IXb (vector-like quark: E) [arXiv:0803.4008]
 POIs: kt_EFT (kt), CV, C2V
 """
+
+
 class HHModel_VLQ_9b(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_kt
 
@@ -672,10 +734,13 @@ class HHModel_VLQ_9b(HHModelEFTBase):
         self.make_expr("expr::kl('@0', kt_EFT )")
         self.make_expr("expr::kt('@0', kt_EFT )")
 
+
 """
 Model X (MCHM5) [arXiv:hep-ph/0703164, arXiv:1012.1562, arXiv:1303.3876, arXiv:1005.4269]
 POIs: XI(ξ)
 """
+
+
 class HHModel_XI_10(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_Xi
 
@@ -696,10 +761,13 @@ class HHModel_XI_10(HHModelEFTBase):
         self.make_expr("expr::kt('(1-2*@0)/sqrt(1-@0)', XI )")
         self.make_expr("expr::C2('-2*@0', XI )")
 
+
 """
 Model Xb (MCHM5) [arXiv:hep-ph/0703164, arXiv:1012.1562, arXiv:1303.3876, arXiv:1005.4269]
 POIs: kt_EFT (kt), CV, C2V
 """
+
+
 class HHModel_XI_10b(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_kt
 
@@ -720,10 +788,13 @@ class HHModel_XI_10b(HHModelEFTBase):
         self.make_expr("expr::kt('@0', kt_EFT )")
         self.make_expr("expr::C2('@0*(@0+sqrt(pow(@0,2)+8))/4.-1', kt_EFT )")
 
+
 """
 Model XI (MCHM4) [arXiv:hep-ph/0703164, arXiv:1012.1562, arXiv:1303.3876, arXiv:1005.4269]
 POIs: XI(ξ)
 """
+
+
 class HHModel_XI_11(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_Xi
 
@@ -745,10 +816,13 @@ class HHModel_XI_11(HHModelEFTBase):
         self.make_expr("expr::kt('sqrt(1-@0)', XI )")
         self.make_expr("expr::C2('-0.5*@0', XI )")
 
+
 """
 Model XIb (MCHM4) [arXiv:hep-ph/0703164, arXiv:1012.1562, arXiv:1303.3876, arXiv:1005.4269]
 POIs: kt_EFT (kt)
 """
+
+
 class HHModel_XI_11b(HHModelEFTBase):
     h_br_scaler_cls = HBRScaler_kt
 
@@ -769,6 +843,7 @@ class HHModel_XI_11b(HHModelEFTBase):
         self.make_expr("expr::kl('@0', kt_EFT )")
         self.make_expr("expr::kt('@0', kt_EFT )")
         self.make_expr("expr::C2('(pow(@0,2)-1)/2', kt_EFT )")
+
 
 # Addabt to build models for the various theory cases we implemented here
 def create_model(name, HHModel=HHModel_Alpha_1, ggf=None, vbf=None, **kwargs):
@@ -794,6 +869,7 @@ def create_model(name, HHModel=HHModel_Alpha_1, ggf=None, vbf=None, **kwargs):
         vbf_samples=get_samples(vbf, vbf_samples, VBFSample),
         **kwargs  # noqa
     )
+
 
 # default models
 
