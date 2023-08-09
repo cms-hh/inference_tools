@@ -77,6 +77,14 @@ class ResonantLimits(ResonantBase, CombineCommandTask, law.LocalWorkflow, HTCond
 
     run_command_in_tmp = True
 
+    @classmethod
+    def modify_param_values(cls, params):
+        params = ResonantBase.modify_param_values.__func__.__get__(cls)(params)
+        params = CombineCommandTask.modify_param_values.__func__.__get__(cls)(params)
+        params = law.LocalWorkflow.modify_param_values.__func__.__get__(cls)(params)
+        params = HTCondorWorkflow.modify_param_values.__func__.__get__(cls)(params)
+        return params
+
     def create_branch_map(self):
         return [
             {"mass": mass, "cards": cards}
