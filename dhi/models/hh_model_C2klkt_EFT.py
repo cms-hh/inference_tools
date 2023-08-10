@@ -177,7 +177,11 @@ class HBRScaler_Alpha(HBRScaler):
 
 
 class HBRScaler_AlphaM2(HBRScaler):
-    REQUIRED_POIS = ["A", "lA", "M2"]
+    REQUIRED_POIS = ["A", "LA", "M2"]
+
+
+class HBRScaler_AlphaLeff(HBRScaler):
+    REQUIRED_POIS = ["A", "LE"]
 
 
 class HBRScaler_BetaMHEMHP(HBRScaler):
@@ -231,6 +235,7 @@ POI_R_QQHH = ("r_qqhh", (1, -20, 20))
 
 POI_A = ("A", (0, 0, 6))
 POI_LA = ("LA", (0, -10, 10))
+POI_LE = ("LE", (0, -10, 10))
 POI_M2 = ("M2", (0, 0, 3000))
 POI_B = ("B", (0, 0, 6))
 POI_MHE = ("MHE", (1000, 100, 3000))  # Heavy Higgs (H)
@@ -304,6 +309,34 @@ class HHModel_Alpha_1b(HHModelEFTBase):
         self.make_expr("expr::kl('@0', kl_EFT)")
         self.make_expr("expr::kt('@0', kt_EFT)")
         self.make_expr("expr::C2('@0', kt_EFT-1)")
+
+
+"""
+Model Ic (real scalar singlet with explicit Z2 breaking) [arXiv:1704.07851, arXiv:1412.8480]
+POIs: A(α), LE(λ_eff = λ_α -tan(α)*m2/nu^2), CV, C2V
+"""
+
+
+class HHModel_Alpha_1c(HHModelEFTBase):
+    h_br_scaler_cls = HBRScaler_AlphaLeff
+
+    R_POIS = DEF_R_POIS
+    K_POIS = OrderedDict([
+        POI_A,
+        POI_LE,
+        POI_CV,
+        POI_C2V,
+    ])
+
+    """
+    kl = 1−3/2*tan(α)^2 + tan(α)^2 * (λ_α −tan(α)*(m2/nu))/λSM ; λSM=mh^2/(2*nu^2) ; nu=246 GeV
+    kt = 1−tan(α)^2/2
+    C2 = −tan(α)^2/2
+    """
+    def make_eftconstraints(self):
+        self.make_expr("expr::kl('1-(3./2.)*pow(tan(@0),2)+pow(tan(@0),2)*(@1)/(pow(@2,2)/(2*pow(246,2)))', A, LE, MH)")  # noqa
+        self.make_expr("expr::C2('-pow(tan(@0),2)/2.', A)")
+        self.make_expr("expr::kt('1-pow(tan(@0),2)/2.', A)")
 
 
 """
@@ -1025,6 +1058,18 @@ POIs: kl_EFT(kl), kt_EFT(kt), CV, C2V
 alpha_1b_model_default = create_model(
     "alpah_1b_model_default",
     HHModel=HHModel_Alpha_1b,
+    ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+"""
+Model Ic (real scalar singlet with explicit Z2 breaking) [arXiv:1704.07851, arXiv:1412.8480]
+POIs: A(α), LE(λ_eff = λ_α -tan(α)*m2/nu^2), CV, C2V
+--hh-model hh_model_C2klkt_EFT.alpha_1c_model_default
+"""
+alpha_1c_model_default = create_model(
+    "alpah_1c_model_default",
+    HHModel=HHModel_Alpha_1c,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )

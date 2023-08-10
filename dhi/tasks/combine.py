@@ -58,8 +58,8 @@ class HHModelTask(AnalysisTask):
     valid_hh_model_options = {
         "noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc",
         "doProfilergghh", "doProfilerqqhh", "doProfilervhh",
-        "doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V", "doProfileC2",
-        "doProfileA", "doProdileLA", "doProfileM2", "doProfileB", "doProfileMHE",
+        "doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V", "doProfileC2", "doProfileA",
+        "doProdileLA", "doProdileLE", "doProfileM2", "doProfileB", "doProfileMHE",
         "doProfileMHP", "doPrifileMA", "doProfileZ6", "doProfileLQ", "doProfileMQ",
         "doProfileXi", "doProfilekl_EFT", "doProfilekt_EFT", "doProfileC2_EFT",
     }
@@ -160,6 +160,7 @@ class HHModelTask(AnalysisTask):
         set_opt("doProfileC2", options.get("doProfileC2"))
         set_opt("doProfileA", options.get("doProfileA"))
         set_opt("doProfileLA", options.get("doProfileLA"))
+        set_opt("doProfileLE", options.get("doProfileLE"))
         set_opt("doProfileM2", options.get("doProfileM2"))
         set_opt("doProfileB", options.get("doProfileB"))
         set_opt("doProfileMHE", options.get("doProfileMHE"))
