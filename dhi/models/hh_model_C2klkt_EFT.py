@@ -662,7 +662,7 @@ POIs: kl_EFT (kl), CV, C2V
 """
 
 
-HHModel_BETAMH_6b=HHModel_BETAMH_5b
+HHModel_BETAMH_6b = HHModel_BETAMH_5b
 
 
 """
