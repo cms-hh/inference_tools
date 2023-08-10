@@ -1149,7 +1149,7 @@ class POITask(DatacardTask, ParameterValuesTask):
     # class-level sequence of all available pois
     # instances will have potentially reduced sequences, depending on the physics model
     r_pois = ("r", "r_gghh", "r_qqhh", "r_vhh")
-    k_pois = ("kl", "kt", "CV", "C2V", "C2", "A", "LA", "M2", "B", "MHE", "MHP",
+    k_pois = ("kl", "kt", "CV", "C2V", "C2", "A", "LA", "LE", "M2", "B", "MHE", "MHP",
               "MA", "Z6", "LQ", "MQ", "XI", "kl_EFT", "kt_EFT", "C2_EFT")
     all_pois = r_pois + k_pois
 
