@@ -192,6 +192,10 @@ class HBRScaler_BetaMHEZ6(HBRScaler):
     REQUIRED_POIS = ["B", "MHE", "Z6"]
 
 
+class HBRScaler_BetaMHE(HBRScaler):
+    REQUIRED_POIS = ["B", "MHE"]
+
+
 class HBRScaler_VLQ(HBRScaler):
     REQUIRED_POIS = ["LQ", "MQ"]
 
@@ -416,6 +420,35 @@ class HHModel_BETAMH_3b(HHModelEFTBase):
 
 
 """
+Model IIIc (real scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
+POIs: B(β), MHE(mH=mH+), CV, C2V
+"""
+
+
+class HHModel_BETAMH_3c(HHModelEFTBase):
+    h_br_scaler_cls = HBRScaler_BetaMHE
+
+    R_POIS = DEF_R_POIS
+    K_POIS = OrderedDict([
+        POI_CV,
+        POI_C2V,
+        POI_B,
+        POI_MHE,
+    ])
+
+    """
+    kl = 1 + 4*sin(β)^2*(3+(mH+^2)/(nu^2*λSM))*(mH+^4)/(mH^4); nu^2*λSM=mh^2/2 ; mH+=mH
+    kt = 1
+    C2 = -2*sin(β)^2*(mH+^4)/(mH^4) ; mH+=mH
+    """
+    def make_eftconstraints(self):
+        self.make_expr("expr::kl('1+4*pow(sin(@0),2)*(3 + 2*pow(@1,2)/pow(@2,2))*pow(@1,4)/pow(@1,4)', B, MHE, MH)")  # noqa
+        self.make_expr("expr::C2('-2*pow(sin(@0),2)*pow(@1,4)/pow(@1,4)',B, MHE)")
+        self.make_var("{}[1]".format("kt"))
+        self.get_var("kt").setConstant(True)
+
+
+"""
 Model IV (complex scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: B(β), MHE(mH), MA(mA), CV, C2V
 """
@@ -470,6 +503,34 @@ class HHModel_BETAMH_4b(HHModelEFTBase):
         self.make_expr("expr::kl('@0', kl_EFT)")
         self.make_expr("expr::kt('@0', kt_EFT)")
         self.make_expr("expr::C2('2*@0-1', kt_EFT)")
+
+
+"""
+Model IVc (complex scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
+POIs: B(β), MHE(mH=mA), CV, C2V
+"""
+
+
+class HHModel_BETAMH_4c(HHModelEFTBase):
+    h_br_scaler_cls = HBRScaler_BetaMHE
+
+    R_POIS = DEF_R_POIS
+    K_POIS = OrderedDict([
+        POI_CV,
+        POI_C2V,
+        POI_B,
+        POI_MHE,
+    ])
+
+    """
+    kl = 1 + 4*sin(β)^2*(3+(mA^2)/(nu^2*λSM))*(mA^4)/(mH^4); nu^2*λSM=mh^2/2 ; mA=mH
+    kt = 1-2*sin(β)^2(mA^4)/(mH^4) ; mA=mH
+    C2 = -4*sin(β)^2*(mA^4)/(mH^4) ; mA=mH
+    """
+    def make_eftconstraints(self):
+        self.make_expr("expr::kl('1 + 2 * pow(sin(@0),2) * (3 + (4*pow(@1,2))/(pow(@2,2)/2))*pow(@1,4)/pow(@1,4)', B, MHE, MH)")  # noqa
+        self.make_expr("expr::kt('1-2*sin(@0)*sin(@0)*pow(@1,4)/pow(@1,4)', B, MHE)")
+        self.make_expr("expr::C2('-4*sin(@0)*pow(@1,4)/pow(@1,4)',B, MHE)")
 
 
 """
@@ -534,6 +595,36 @@ class HHModel_BETAMH_5b(HHModelEFTBase):
 
 
 """
+Model Vc (quartet scalar with Y = 1/2) [arXiv:1704.07851, arXiv:1412.8480]
+POIs: B(β), MHE(mH=mA), CV, C2V
+"""
+
+
+class HHModel_BETAMH_5c(HHModelEFTBase):
+    h_br_scaler_cls = HBRScaler_BetaMHE
+
+    R_POIS = DEF_R_POIS
+    K_POIS = OrderedDict([
+        POI_CV,
+        POI_C2V,
+        POI_B,
+        POI_MHE,
+    ])
+
+    """
+    kl = 1+24/7*tan(β)^2*(mA^4)/(mH^2*nu^2*λSM); nu^2*λSM=mh^2/2 ; mH=mA
+    kt = 1
+    C2 = 0
+    """
+    def make_eftconstraints(self):
+        self.make_expr("expr::kl('1 + 24./7. * pow(tan(@0),2) * (pow(@1,4)/(pow(@1,2)*pow(@2,2)/2))', B, MHE, MH)")  # noqa
+        self.make_var("{}[1]".format("kt"))
+        self.get_var("kt").setConstant(True)
+        self.make_var("{}[0]".format("C2"))
+        self.get_var("C2").setConstant(True)
+
+
+"""
 Model VI (quartet scalar with Y = 3/2) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: B(β), MHE(mH), MA(mA), CV, C2V
 """
@@ -558,6 +649,47 @@ class HHModel_BETAMH_6(HHModelEFTBase):
     """
     def make_eftconstraints(self):
         self.make_expr("expr::kl('1 + 8./3. * pow(tan(@0),2) * (pow(@1,4)/(pow(@3,2)*pow(@2,2)/2))', B, MA, MH, MHE)")  # noqa
+        self.make_var("{}[1]".format("kt"))
+        self.get_var("kt").setConstant(True)
+        self.make_var("{}[0]".format("C2"))
+        self.get_var("C2").setConstant(True)
+
+
+"""
+Model Vb (quartet scalar with Y = 1/2) [arXiv:1704.07851, arXiv:1412.8480]
+Model VIb (quartet scalar with Y = 3/2) [arXiv:1704.07851, arXiv:1412.8480]
+POIs: kl_EFT (kl), CV, C2V
+"""
+
+
+HHModel_BETAMH_6b=HHModel_BETAMH_5b
+
+
+"""
+Model VIc (quartet scalar with Y = 3/2) [arXiv:1704.07851, arXiv:1412.8480]
+POIs: B(β), MHE(mH=mA), CV, C2V
+"""
+
+
+class HHModel_BETAMH_6c(HHModelEFTBase):
+    h_br_scaler_cls = HBRScaler_BetaMHE
+
+    R_POIS = DEF_R_POIS
+    K_POIS = OrderedDict([
+        POI_CV,
+        POI_C2V,
+        POI_B,
+        POI_MHE,
+        POI_MA,
+    ])
+
+    """
+    kl = 1+8/3*tan(β)^2*(mA^4)/(mH^2*nu^2*λSM); nu^2*λSM=mh^2/2 ; mA=mH
+    kt = 1
+    C2 = 0
+    """
+    def make_eftconstraints(self):
+        self.make_expr("expr::kl('1 + 8./3. * pow(tan(@0),2) * (pow(@1,4)/(pow(@1,2)*pow(@2,2)/2))', B, MHE, MH)")  # noqa
         self.make_var("{}[1]".format("kt"))
         self.get_var("kt").setConstant(True)
         self.make_var("{}[0]".format("C2"))
@@ -946,6 +1078,18 @@ betamh_3b_model_default = create_model(
 )
 
 """
+Model IIIc (real scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
+POIs: B(β), MHE(mH=mH+), CV, C2V
+--hh-model hh_model_C2klkt_EFT.betamh_3c_model_default
+"""
+betamh_3c_model_default = create_model(
+    "betamh_3c_model_default",
+    HHModel=HHModel_BETAMH_3c,
+    ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+"""
 Model IV (complex scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: B(β), MHE(mH), MA(mA), CV, C2V
 --hh-model hh_model_C2klkt_EFT.betamh_4_model_default
@@ -970,6 +1114,18 @@ betamh_4b_model_default = create_model(
 )
 
 """
+Model IVc (complex scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
+POIs: B(β), MHE(mH=mA), CV, C2V
+--hh-model hh_model_C2klkt_EFT.betamh_4c_model_default
+"""
+betamh_4c_model_default = create_model(
+    "betamh_4c_model_default",
+    HHModel=HHModel_BETAMH_4c,
+    ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+"""
 Model V (quartet scalar with Y = 1/2) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: B(β), MHE(mH), MA(mA), CV, C2V
 --hh-model hh_model_C2klkt_EFT.betamh_5_model_default
@@ -983,7 +1139,7 @@ betamh_5_model_default = create_model(
 
 """
 Model Vb (quartet scalar with Y = 1/2) [arXiv:1704.07851, arXiv:1412.8480
-Model Vb (quartet scalar with Y = 1/2) [arXiv:1704.07851, arXiv:1412.8480]]
+Model VIb (quartet scalar with Y = 1/2) [arXiv:1704.07851, arXiv:1412.8480]]
 POIs: kl, CV, C2V
 --hh-model hh_model_C2klkt_EFT.betamh_5b_model_default
 """
@@ -994,14 +1150,45 @@ betamh_5b_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+betamh_6b_model_default = create_model(
+    "betamh_6b_model_default",
+    HHModel=HHModel_BETAMH_6b,
+    ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+"""
+Model Vc (quartet scalar with Y = 1/2) [arXiv:1704.07851, arXiv:1412.8480]
+POIs: B(β), MHE(mH=mA), CV, C2V
+--hh-model hh_model_C2klkt_EFT.betamh_5c_model_default
+"""
+betamh_5c_model_default = create_model(
+    "betamh_5c_model_default",
+    HHModel=HHModel_BETAMH_5c,
+    ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 """
 Model VI (quartet scalar with Y = 3/2) [arXiv:1704.07851, arXiv:1412.8480]
 POIs: B(β), MHE(mH), MA(mA), CV, C2V
---hh-model hh_model_C2klkt_EFT.betamh_6_model_default@doProfileMA=flat (β/mH scan)
+--hh-model hh_model_C2klkt_EFT.betamh_6_model_default (β/mH scan)
 """
 betamh_6_model_default = create_model(
     "betamh_6_model_default",
     HHModel=HHModel_BETAMH_6,
+    ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+"""
+Model VIc (quartet scalar with Y = 3/2) [arXiv:1704.07851, arXiv:1412.8480]
+POIs: B(β), MHE(mH=mA), CV, C2V
+--hh-model hh_model_C2klkt_EFT.betamh_6c_model_default (β/mH scan)
+"""
+betamh_6c_model_default = create_model(
+    "betamh_6c_model_default",
+    HHModel=HHModel_BETAMH_6c,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
