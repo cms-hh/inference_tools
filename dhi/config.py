@@ -160,7 +160,7 @@ poi_data = DotDict(
     mhh=DotDict(range=(0.0, 3000.0), label=r"$m_{HH}$", unit="GeV"),
     A=DotDict(range=(0.0, 6.0), label=r"$\alpha$", sm_value=0.0),
     LA=DotDict(range=(-10.0, 10.0), label=r"$\lambda_{\alpha}$", sm_value=0.0),
-    LE=DotDict(range=(-10.0, 10.0), label=r"$\lambda_{eff}=\lambda_{\alpha}-\tan(\alpha)m_{2}/\nu$", sm_value=0.0),
+    LE=DotDict(range=(-10.0, 10.0), label=r"$\lambda_{eff}=\lambda_{\alpha}-\tan(\alpha)m_{2}/\nu$", sm_value=0.0),  # noqa
     M2=DotDict(range=(0.0, 3000.0), label=r"$m_{2}$", sm_value=0.0, unit="GeV"),
     B=DotDict(range=(0.0, 6.0), label=r"$\beta$", sm_value=0.0),
     MHE=DotDict(range=(0.0, 3000.0), label=r"$m_{H}$", sm_value=0.0, unit="GeV"),
