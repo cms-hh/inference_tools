@@ -1918,7 +1918,7 @@ def evaluate_likelihood_scan_2d(
     objective = lambda x: interp(*x)
     bounds1 = (poi1_values_min + 1e-4, poi1_values_max - 1e-4)
     bounds2 = (poi2_values_min + 1e-4, poi2_values_max - 1e-4)
-    res = scipy.optimize.minimize(objective, [(poi1_values_max-poi1_values_min)/2., (poi2_values_max-poi2_values_min)/2.], tol=1e-7, bounds=[bounds1, bounds2])
+    res = scipy.optimize.minimize(objective, [(poi1_values_max - poi1_values_min) / 2., (poi2_values_max - poi2_values_min) / 2.], tol=1e-7, bounds=[bounds1, bounds2])  # noqa
     if res.status != 0:
         if not xcheck:
             raise Exception("could not find minimum of nll2 interpolation: {}".format(res.message))
