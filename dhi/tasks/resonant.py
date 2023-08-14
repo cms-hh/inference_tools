@@ -2,6 +2,8 @@
 
 """
 Tasks related to upper limits on resonant scenarios.
+
+Inheritance structure: https://tinyurl.com/mr3yxf8v
 """
 
 import re
@@ -76,14 +78,6 @@ class ResonantBase(POITask):
 class ResonantLimits(ResonantBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     run_command_in_tmp = True
-
-    @classmethod
-    def modify_param_values(cls, params):
-        params = ResonantBase.modify_param_values.__func__.__get__(cls)(params)
-        params = CombineCommandTask.modify_param_values.__func__.__get__(cls)(params)
-        params = law.LocalWorkflow.modify_param_values.__func__.__get__(cls)(params)
-        params = HTCondorWorkflow.modify_param_values.__func__.__get__(cls)(params)
-        return params
 
     def create_branch_map(self):
         return [
@@ -314,12 +308,6 @@ class PlotResonantLimits(ResonantBase, POIPlotTask):
 class PlotMultipleResonantLimits(PlotResonantLimits, MultiDatacardTask):
 
     default_plot_function = "dhi.plots.limits.plot_limit_scans"
-
-    @classmethod
-    def modify_param_values(cls, params):
-        params = PlotResonantLimits.modify_param_values.__func__.__get__(cls)(params)
-        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
-        return params
 
     def group_datacards(self):
         cre = re.compile(self.datacard_pattern)

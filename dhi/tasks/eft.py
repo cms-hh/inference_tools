@@ -77,14 +77,6 @@ class EFTBenchmarkLimits(EFTBase, CombineCommandTask, law.LocalWorkflow, HTCondo
 
     run_command_in_tmp = True
 
-    @classmethod
-    def modify_param_values(cls, params):
-        params = EFTBase.modify_param_values.__func__.__get__(cls)(params)
-        params = CombineCommandTask.modify_param_values.__func__.__get__(cls)(params)
-        params = law.LocalWorkflow.modify_param_values.__func__.__get__(cls)(params)
-        params = HTCondorWorkflow.modify_param_values.__func__.__get__(cls)(params)
-        return params
-
     def create_branch_map(self):
         return [
             {"benchmark": benchmark, "cards": cards}
@@ -305,12 +297,6 @@ class PlotEFTBenchmarkLimits(EFTBase, POIPlotTask):
 class PlotMultipleEFTBenchmarkLimits(PlotEFTBenchmarkLimits, MultiDatacardTask):
 
     default_plot_function = "dhi.plots.eft.plot_multi_benchmark_limits"
-
-    @classmethod
-    def modify_param_values(cls, params):
-        params = PlotEFTBenchmarkLimits.modify_param_values.__func__.__get__(cls)(params)
-        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
-        return params
 
     def group_datacards(self):
         cre = re.compile(self.datacard_pattern)

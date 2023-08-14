@@ -160,10 +160,6 @@ class AnalysisTask(BaseTask):
     store_by_family = False
 
     @classmethod
-    def modify_param_values(cls, params):
-        return params
-
-    @classmethod
     def req_params(cls, inst, **kwargs):
         # always prefer certain parameters given as task family parameters (--TaskFamily-parameter)
         _prefer_cli = law.util.make_list(kwargs.get("_prefer_cli", []))

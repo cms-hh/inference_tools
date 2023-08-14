@@ -1123,8 +1123,11 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     @classmethod
     def modify_param_values(cls, params):
-        params = DatacardTask.modify_param_values.__func__.__get__(cls)(params)
-        # no call to ParameterValuesTask.modify_param_values as its functionality is replaced below
+        # hide parameter values so that the super ParameterValuesTask does nothing
+        parameter_values = params.pop("parameter_values", None)
+        params = super(POITask, cls).modify_param_values(params)
+        if parameter_values is not None:
+            params["parameter_values"] = parameter_values
 
         # sort pois
         if "pois" in params:
@@ -1439,12 +1442,6 @@ class POIScanTask(POITask, ParameterScanTask):
     force_scan_parameters_unequal_pois = False
     allow_parameter_values_in_scan_parameters = False
     allow_parameter_ranges_in_scan_parameters = False
-
-    @classmethod
-    def modify_param_values(cls, params):
-        params = POITask.modify_param_values.__func__.__get__(cls)(params)
-        params = ParameterScanTask.modify_param_values.__func__.__get__(cls)(params)
-        return params
 
     def __init__(self, *args, **kwargs):
         super(POIScanTask, self).__init__(*args, **kwargs)
