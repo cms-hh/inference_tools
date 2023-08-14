@@ -160,7 +160,7 @@ poi_data = DotDict(
     mhh=DotDict(range=(0.0, 3000.0), label=r"$m_{HH}$", unit="GeV"),
     A=DotDict(range=(0.0, 6.0), label=r"$\alpha$", sm_value=0.0),
     LA=DotDict(range=(-10.0, 10.0), label=r"$\lambda_{\alpha}$", sm_value=0.0),
-    LE=DotDict(range=(-10.0, 10.0), label=r"$\lambda_{eff}=\lambda_{\alpha}-\tan(\alpha)m_{2}/\nu$", sm_value=0.0),  # noqa
+    LE=DotDict(range=(-10.0, 10.0), label=r"$\lambda_{eff}=\lambda_{\alpha}-tan(\alpha)m_{2}/\nu$", sm_value=0.0),  # noqa
     M2=DotDict(range=(0.0, 3000.0), label=r"$m_{2}$", sm_value=0.0, unit="GeV"),
     B=DotDict(range=(0.0, 6.0), label=r"$\beta$", sm_value=0.0),
     MHE=DotDict(range=(0.0, 3000.0), label=r"$m_{H}$", sm_value=0.0, unit="GeV"),
@@ -169,7 +169,7 @@ poi_data = DotDict(
     Z6=DotDict(range=(0.0, 3000.0), label=r"$Z_6$", sm_value=0.0),
     LQ=DotDict(range=(-10.0, 10.0), label=r"$\lambda_{Q}$", sm_value=0.0),
     MQ=DotDict(range=(0.0, 3000.0), label=r"$m_{Q}$", sm_value=0.0, unit="GeV"),
-    XI=DotDict(range=(0.0, 1.0), label=r"$\Xi$", sm_value=0.0),
+    XI=DotDict(range=(0.0, 1.0), label=r"$\xi$", sm_value=0.0),
     kl_EFT=DotDict(range=(-30.0, 30.0), label=r"$\kappa_{\lambda}$", sm_value=1.0),
     kt_EFT=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
     C2_EFT=DotDict(range=(-2.0, 3.0), label=r"$C_{2}$", sm_value=0.0),

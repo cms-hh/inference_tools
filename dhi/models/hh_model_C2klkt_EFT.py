@@ -234,8 +234,8 @@ POI_R_GGHH = ("r_gghh", (1, -20, 20))
 POI_R_QQHH = ("r_qqhh", (1, -20, 20))
 
 POI_A = ("A", (0, 0, 6))
-POI_LA = ("LA", (0, -10, 10))
-POI_LE = ("LE", (0, -10, 10))
+POI_LA = ("LA", (0, -20, 20))
+POI_LE = ("LE", (0, -20, 20))
 POI_M2 = ("M2", (0, 0, 3000))
 POI_B = ("B", (0, 0, 6))
 POI_MHE = ("MHE", (1000, 100, 3000))  # Heavy Higgs (H)
@@ -391,6 +391,34 @@ class HHModel_Alpha_2b(HHModelEFTBase):
         self.make_expr("expr::kl('@0', kt_EFT)")
         self.make_expr("expr::kt('@0', kt_EFT)")
         self.make_expr("expr::C2('@0', kt_EFT-1)")
+
+
+"""
+Model IIc (real scalar singlet with spontaneous Z2 breaking) [arXiv:1704.07851]
+POIs: A(α), CV, C2V, LE (unused, here for 2D scan with model 1c)
+"""
+
+
+class HHModel_Alpha_2c(HHModelEFTBase):
+    h_br_scaler_cls = HBRScaler_Alpha
+
+    R_POIS = DEF_R_POIS
+    K_POIS = OrderedDict([
+        POI_A,
+        POI_LE,
+        POI_CV,
+        POI_C2V,
+    ])
+
+    """
+    kl = 1-3/2*tan(α)^2
+    kt = 1−tan(α)^2/2
+    C2 = −tan(α)^2/2
+    """
+    def make_eftconstraints(self):
+        self.make_expr("expr::kl('1-(3./2.)*pow(tan(@0),2)', A)")
+        self.make_expr("expr::C2('-pow(tan(@0),2)/2.', A)")
+        self.make_expr("expr::kt('1-pow(tan(@0),2)/2.', A)")
 
 
 """
@@ -1044,7 +1072,7 @@ POIs: A(α), LA(λ_α), M2(m_2), CV, C2V
 --hh-model hh_model_C2klkt_EFT.alpha_1_model_default
 """
 alpha_1_model_default = create_model(
-    "alpah_1_model_default",
+    "alpha_1_model_default",
     HHModel=HHModel_Alpha_1,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
@@ -1056,7 +1084,7 @@ POIs: kl_EFT(kl), kt_EFT(kt), CV, C2V
 --hh-model hh_model_C2klkt_EFT.alpha_1b_model_default
 """
 alpha_1b_model_default = create_model(
-    "alpah_1b_model_default",
+    "alpha_1b_model_default",
     HHModel=HHModel_Alpha_1b,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
@@ -1068,7 +1096,7 @@ POIs: A(α), LE(λ_eff = λ_α -tan(α)*m2/nu^2), CV, C2V
 --hh-model hh_model_C2klkt_EFT.alpha_1c_model_default
 """
 alpha_1c_model_default = create_model(
-    "alpah_1c_model_default",
+    "alpha_1c_model_default",
     HHModel=HHModel_Alpha_1c,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
@@ -1094,6 +1122,18 @@ POIs: kt_EFT (kt), CV, C2V
 alpha_2b_model_default = create_model(
     "alpha_2b_model_default",
     HHModel=HHModel_Alpha_2b,
+    ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+"""
+Model IIc (real scalar singlet with spontaneous Z2 breaking) [arXiv:1704.07851]
+POIs: A(α), CV, C2V, LE (unused, here for 2D scan with model 1c)
+--hh-model hh_model_C2klkt_EFT.alpha_2c_model_default
+"""
+alpha_2c_model_default = create_model(
+    "alpha_2c_model_default",
+    HHModel=HHModel_Alpha_2c,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
@@ -1268,7 +1308,7 @@ POIs: LQ(λ_Tt), MQ (MT), CV, C2V
 --hh-model hh_model_C2klkt_EFT.vlq_8_model_default
 """
 vlq_8_model_default = create_model(
-    "betamh_8_model_default",
+    "vlq_8_model_default",
     HHModel=HHModel_VLQ_8,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
@@ -1280,7 +1320,7 @@ POIs: kt_EFT (kt), CV, C2V
 --hh-model hh_model_C2klkt_EFT.vlq_8b_model_default
 """
 vlq_8b_model_default = create_model(
-    "betamh_8b_model_default",
+    "vlq_8b_model_default",
     HHModel=HHModel_VLQ_8b,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
@@ -1292,7 +1332,7 @@ POIs: LQ(λ_El), MQ (ME), CV, C2V
 --hh-model hh_model_C2klkt_EFT.vlq_9_model_default
 """
 vlq_9_model_default = create_model(
-    "betamh_9_model_default",
+    "vlq_9_model_default",
     HHModel=HHModel_VLQ_9,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
@@ -1304,7 +1344,7 @@ POIs: kt_EFT, CV, C2V
 --hh-model hh_model_C2klkt_EFT.vlq_9b_model_default
 """
 vlq_9b_model_default = create_model(
-    "betamh_9b_model_default",
+    "vlq_9b_model_default",
     HHModel=HHModel_VLQ_9b,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
