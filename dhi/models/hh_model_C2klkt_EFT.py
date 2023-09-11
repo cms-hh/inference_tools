@@ -195,6 +195,9 @@ class HBRScaler_BetaMHEMA(HBRScaler):
 class HBRScaler_BetaMHEZ6(HBRScaler):
     REQUIRED_POIS = ["B", "MHE", "Z6"]
 
+class HBRScaler_TBetaMHECBA(HBRScaler):
+    REQUIRED_POIS = ["TB", "MHE", "CBA"]
+
 
 class HBRScaler_BetaMHE(HBRScaler):
     REQUIRED_POIS = ["B", "MHE"]
@@ -237,13 +240,18 @@ POI_A = ("A", (0, 0, 6))
 POI_LA = ("LA", (0, -20, 20))
 POI_LE = ("LE", (0, -20, 20))
 POI_M2 = ("M2", (0, 0, 3000))
-POI_B = ("B", (0, 0, 6))
+POI_B = ("B", (0.0, 0, 6))
+POI_B_VII = ("B", (1.57, 0, 6)) # SM beta can not be 0 for VII as 1/tan(B)
 POI_MHE = ("MHE", (1000, 100, 3000))  # Heavy Higgs (H)
-POI_MHP = ("MHP", (100, 100, 3000))  # Charged Higgs (H+)
-POI_MA = ("MA", (100, 0, 3000))  # heavy higgs (A)
-POI_Z6 = ("Z6", (0., 0, 3000))
+POI_MHE_VII = ("MHE", (10000, 100, 10000))  # Heavy Higgs (H)
+POI_MHE_VIIc = ("MHE", (125, 100, 10000))  # Heavy Higgs (H)
+POI_MHP = ("MHP", (0, 0, 3000))  # Charged Higgs (H+)
+POI_MA = ("MA", (0, 0, 3000))  # heavy higgs (A)
+POI_Z6 = ("Z6", (0., -5, 5))
+POI_TB = ("TB", (1000., 0, 1000))
+POI_CBA = ("CBA", (0., 0., 1.))
 POI_LQ = ("LQ", (0., -10, 10))
-POI_MQ = ("MQ", (0., 0, 3000))
+POI_MQ = ("MQ", (1000., 100., 3000))
 POI_XI = ("XI", (0, 0, 1))
 POI_CV = ("CV", (1, -10, 10))
 POI_C2V = ("C2V", (1, -10, 10))
@@ -770,8 +778,8 @@ class HHModel_BETAMH_7(HHModelEFTBase):
     K_POIS = OrderedDict([
         POI_CV,
         POI_C2V,
-        POI_B,
-        POI_MHE,
+        POI_B_VII,
+        POI_MHE_VII,
         POI_Z6,
     ])
 
@@ -781,13 +789,14 @@ class HHModel_BETAMH_7(HHModelEFTBase):
     C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
     """
     def make_eftconstraints(self):
-        self.make_expr("expr::kl('1-(3*pow(@0,2)*pow(246,2))/(pow(@1,2)*pow(@2,2)/pow(246,2))',Z6, MH, MHE )")  # noqa
+        self.make_expr("expr::lSM('pow(@0,2)/(2*pow(246,2))',MH )")  # noqa
+        self.make_expr("expr::kl('1-3*pow(@0,2)*pow(246,2)/(2*@1*pow(@2,2))',Z6, lSM, MHE )")  # noqa
         self.make_expr("expr::kt('1-@0*pow(246,2)/(tan(@1)*pow(@2,2))',Z6, B, MHE )")
         self.make_expr("expr::C2('-3.*@0*pow(246,2)/(2.*tan(@1)*pow(@2,2))',Z6, B, MHE )")
 
 
 """
-Model VIb (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
+Model VIIb (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
 POIs: kl_EFT (kl), kt_EFT (kt) CV, C2V
 """
 
@@ -812,6 +821,38 @@ class HHModel_BETAMH_7b(HHModelEFTBase):
         self.make_expr("expr::kl('@0', kl_EFT)")
         self.make_expr("expr::kt('@0', kt_EFT)")
         self.make_expr("expr::C2('3*(@0-1)/2.', kt_EFT)")
+
+
+"""
+Model VIIc (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
+POIs: TB(tan(β)), MHE(mH), CBA (cos(β-α)), CV, C2V
+"""
+
+
+class HHModel_BETAMH_7c(HHModelEFTBase):
+    h_br_scaler_cls = HBRScaler_TBetaMHECBA
+
+    R_POIS = DEF_R_POIS
+    K_POIS = OrderedDict([
+        POI_CV,
+        POI_C2V,
+        POI_TB,
+        POI_MHE_VIIc,
+        POI_CBA,
+    ])
+
+    """
+    kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2), nu=246 GeV
+    kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
+    C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
+    Z6=-cos(β-α)*sin(β-α)*(MH^2-mh^2)/nu^2
+    """
+    def make_eftconstraints(self):
+        self.make_expr("expr::lSM('pow(@0,2)/(2*pow(246,2))',MH )")  # noqa
+        self.make_expr("expr::Z6('-@0*sin(acos(@0))*(pow(@1,2)-pow(@2,2))/pow(246,2)',CBA, MHE,MH )")
+        self.make_expr("expr::kl('1-3*pow(@0,2)*pow(246,2)/(2*@1*pow(@2,2))',Z6, lSM, MHE )")  # noqa
+        self.make_expr("expr::kt('1-@0*pow(246,2)/(@1*pow(@2,2))',Z6, TB, MHE )")
+        self.make_expr("expr::C2('-3.*@0*pow(246,2)/(2.*@1*pow(@2,2))',Z6, TB, MHE )")
 
 
 """
@@ -1298,6 +1339,18 @@ POIs: kl_EFT(kl), kt_EFT(kt), CV, C2V
 betamh_7b_model_default = create_model(
     "betamh_7b_model_default",
     HHModel=HHModel_BETAMH_7b,
+    ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+"""
+Model VIIc (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
+POIs: TB(tan(β)), MHE(mH), CBA (cos(β-α)), CV, C2V
+--hh-model hh_model_C2klkt_EFT.betamh_7c_model_default
+"""
+betamh_7c_model_default = create_model(
+    "betamh_7c_model_default",
+    HHModel=HHModel_BETAMH_7c,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )

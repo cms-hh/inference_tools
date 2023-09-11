@@ -60,8 +60,9 @@ class HHModelTask(AnalysisTask):
         "doProfilergghh", "doProfilerqqhh", "doProfilervhh",
         "doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V", "doProfileC2", "doProfileA",
         "doProdileLA", "doProdileLE", "doProfileM2", "doProfileB", "doProfileMHE",
-        "doProfileMHP", "doPrifileMA", "doProfileZ6", "doProfileLQ", "doProfileMQ",
-        "doProfileXi", "doProfilekl_EFT", "doProfilekt_EFT", "doProfileC2_EFT",
+        "doProfileMHP", "doPrifileMA", "doProfileZ6", "doProfileTB",
+        "doProfileCBA", "doProfileLQ","doProfileMQ", "doProfileXi", "doProfilekl_EFT",
+        "doProfilekt_EFT", "doProfileC2_EFT",
     }
 
     hh_model = luigi.Parameter(
@@ -167,6 +168,8 @@ class HHModelTask(AnalysisTask):
         set_opt("doProfileMHP", options.get("doProfileMHP"))
         set_opt("doProfileMA", options.get("doProfileMA"))
         set_opt("doProfileZ6", options.get("doProfileZ6"))
+        set_opt("doProfileTB", options.get("doProfileTB"))
+        set_opt("doProfileCBA", options.get("doProfileCBA"))
         set_opt("doProfileLQ", options.get("doProfileLQ"))
         set_opt("doProfileMQ", options.get("doProfileMQ"))
         set_opt("doProfileXI", options.get("doProfileXI"))
@@ -1150,7 +1153,7 @@ class POITask(DatacardTask, ParameterValuesTask):
     # instances will have potentially reduced sequences, depending on the physics model
     r_pois = ("r", "r_gghh", "r_qqhh", "r_vhh")
     k_pois = ("kl", "kt", "CV", "C2V", "C2", "A", "LA", "LE", "M2", "B", "MHE", "MHP",
-              "MA", "Z6", "LQ", "MQ", "XI", "kl_EFT", "kt_EFT", "C2_EFT")
+              "MA", "Z6", "TB", "CBA", "LQ", "MQ", "XI", "kl_EFT", "kt_EFT", "C2_EFT")
     all_pois = r_pois + k_pois
 
     pois = law.CSVParameter(

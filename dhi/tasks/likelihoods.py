@@ -466,6 +466,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         for inp in inputs:
             data = inp.load(allow_pickle=True, formatter="numpy")
             values.append(data["data"])
+            print(scan_parameter_names, data["poi_mins"])
             all_poi_mins.append([
                 (None if np.isnan(v) else v)
                 for v in (
