@@ -61,7 +61,7 @@ class HHModelTask(AnalysisTask):
         "doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V", "doProfileC2", "doProfileA",
         "doProdileLA", "doProdileLE", "doProfileM2", "doProfileB", "doProfileMHE",
         "doProfileMHP", "doPrifileMA", "doProfileZ6", "doProfileTB",
-        "doProfileCBA", "doProfileLQ","doProfileMQ", "doProfileXi", "doProfilekl_EFT",
+        "doProfileCBA", "doProfileLQ", "doProfileMQ", "doProfileXi", "doProfilekl_EFT",
         "doProfilekt_EFT", "doProfileC2_EFT",
     }
 

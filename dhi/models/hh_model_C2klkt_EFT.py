@@ -195,6 +195,7 @@ class HBRScaler_BetaMHEMA(HBRScaler):
 class HBRScaler_BetaMHEZ6(HBRScaler):
     REQUIRED_POIS = ["B", "MHE", "Z6"]
 
+
 class HBRScaler_TBetaMHECBA(HBRScaler):
     REQUIRED_POIS = ["TB", "MHE", "CBA"]
 
@@ -241,7 +242,7 @@ POI_LA = ("LA", (0, -20, 20))
 POI_LE = ("LE", (0, -20, 20))
 POI_M2 = ("M2", (0, 0, 3000))
 POI_B = ("B", (0.0, 0, 6))
-POI_B_VII = ("B", (1.57, 0, 6)) # SM beta can not be 0 for VII as 1/tan(B)
+POI_B_VII = ("B", (1.57, 0, 6))  # SM beta can not be 0 for VII as 1/tan(B)
 POI_MHE = ("MHE", (1000, 100, 3000))  # Heavy Higgs (H)
 POI_MHE_VII = ("MHE", (10000, 100, 10000))  # Heavy Higgs (H)
 POI_MHE_VIIc = ("MHE", (125, 100, 10000))  # Heavy Higgs (H)
