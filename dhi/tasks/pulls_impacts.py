@@ -666,12 +666,6 @@ class PlotMultiplePullsAndImpacts(PlotPullsAndImpacts, POIMultiTask, MultiDataca
 
     default_plot_function = "dhi.plots.pulls_impacts.plot_pulls_impacts"
 
-    @classmethod
-    def modify_param_values(cls, params):
-        params = PlotPullsAndImpacts.modify_param_values.__func__.__get__(cls)(params)
-        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
-        return params
-
     def requires(self):
         return {
             name: MergePullsAndImpacts.req(self, datacards=datacards, **kwargs)

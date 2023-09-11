@@ -302,12 +302,6 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
 
     default_plot_function = "dhi.plots.significances.plot_significance_scans_1d"
 
-    @classmethod
-    def modify_param_values(cls, params):
-        params = PlotSignificanceScan.modify_param_values.__func__.__get__(cls)(params)
-        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
-        return params
-
     def requires(self):
         return [
             [

@@ -413,7 +413,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         if self.check_enabled("eft_benchmark_limits"):
             reqs["eft_benchmark_limits"] = PlotEFTBenchmarkLimits.req(
                 self,
-                multi_datacards=(eft_bm_cards,),
+                datacards=eft_bm_cards,
                 unblinded=True,
                 xsec="fb",
                 y_log=True,
@@ -459,7 +459,7 @@ class TestPlots(six.with_metaclass(TestRegister, AnalysisTask)):
         if self.check_enabled("resonant_limits"):
             reqs["resonant_limits"] = PlotResonantLimits.req(
                 self,
-                multi_datacards=(res_cards,),
+                datacards=res_cards,
                 unblinded=False,
                 xsec="fb",
                 y_log=True,

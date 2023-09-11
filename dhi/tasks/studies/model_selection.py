@@ -45,12 +45,6 @@ class PlotMorphingScales(PlotTask, HHModelTask, ParameterScanTask, ParameterValu
 
     force_n_scan_parameters = 1
 
-    @classmethod
-    def modify_param_values(cls, params):
-        params = ParameterScanTask.modify_param_values.__func__.__get__(cls)(params)
-        params = ParameterValuesTask.modify_param_values.__func__.__get__(cls)(params)
-        return params
-
     def get_output_postfix(self, join=True):
         parts = ParameterScanTask.get_output_postfix(self, join=False)
         parts.extend(ParameterValuesTask.get_output_postfix(self, join=False))

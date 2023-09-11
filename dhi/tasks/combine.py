@@ -800,48 +800,6 @@ class MultiDatacardTask(DatacardTask):
         return parts
 
 
-class MultiDatacardTransposedTask(MultiDatacardTask):
-
-    exclude_params_index = {"datacard_names", "datacard_order"}
-
-    datacard_names = None
-    datacard_order = None
-    group_duplicate_cards = False
-
-    @classmethod
-    def extract_info_from_datacard_path(cls, datacard):
-        return os.path.splitext(os.path.basename(datacard).rsplit("_", 1)[-1])[0]
-
-    def __init__(self, *args, **kwargs):
-        super(MultiDatacardTransposedTask, self).__init__(*args, **kwargs)
-
-        # create a map of datacard info strings to lists of cards that contain it
-        self.multi_datacards_transposed = OrderedDict()
-        seen = set()
-        for datacards in self.multi_datacards:
-            contains_duplicate = any(datacard in seen for datacard in datacards)
-            groups = OrderedDict()
-            for datacard in datacards:
-                # extract the info string from the basename
-                info = self.extract_info_from_datacard_path(datacard)
-
-                if not self.group_duplicate_cards:
-                    # when not grouping, just add the card
-                    self.multi_datacards_transposed.setdefault(info, [[]])[0].append(datacard)
-                elif not contains_duplicate:
-                    # when the sequence contains only unseen cards, just add the card
-                    self.multi_datacards_transposed.setdefault(info, []).append([datacard])
-                else:
-                    # add it to groups for the current sequence
-                    groups.setdefault(info, []).append(datacard)
-                seen.add(datacard)
-
-            # add groups if any
-            if groups:
-                for info, group in groups.items():
-                    self.multi_datacards_transposed.setdefault(info, []).append(group)
-
-
 class ParameterValuesTask(AnalysisTask):
 
     parameter_values = ModelParameters(
@@ -1187,8 +1145,11 @@ class POITask(DatacardTask, ParameterValuesTask):
 
     @classmethod
     def modify_param_values(cls, params):
-        params = DatacardTask.modify_param_values.__func__.__get__(cls)(params)
-        # no call to ParameterValuesTask.modify_param_values as its functionality is replaced below
+        # hide parameter values so that the super ParameterValuesTask does nothing
+        parameter_values = params.pop("parameter_values", None)
+        params = super(POITask, cls).modify_param_values(params)
+        if parameter_values is not None:
+            params["parameter_values"] = parameter_values
 
         # sort pois
         if "pois" in params:
@@ -1503,12 +1464,6 @@ class POIScanTask(POITask, ParameterScanTask):
     force_scan_parameters_unequal_pois = False
     allow_parameter_values_in_scan_parameters = False
     allow_parameter_ranges_in_scan_parameters = False
-
-    @classmethod
-    def modify_param_values(cls, params):
-        params = POITask.modify_param_values.__func__.__get__(cls)(params)
-        params = ParameterScanTask.modify_param_values.__func__.__get__(cls)(params)
-        return params
 
     def __init__(self, *args, **kwargs):
         super(POIScanTask, self).__init__(*args, **kwargs)
@@ -1990,6 +1945,9 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         output_card.copy_to(output)
 
 
+_optimize_limits_default = law.util.flag_to_bool(os.getenv("DHI_WORKSPACE_OPTIMIZE_LIMITS", "0"))
+
+
 class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     no_bundle = luigi.BoolParameter(
@@ -1997,6 +1955,13 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
         description="when set, do not combine and bundle input datacards, but create the workspace "
         "on the single (!) input datacard; an error is raised when more than one datacard is used; "
         "default: False",
+    )
+    optimize_limits = luigi.BoolParameter(
+        default=_optimize_limits_default,
+        significant=False,
+        description="when set, additional options are used for the workspace creation that make "
+        "the AsymptoticLimits faster, but that do not work in FitDiagnostics; "
+        f"default: {_optimize_limits_default}",
     )
 
     priority = 90
@@ -2057,13 +2022,20 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
         # optimization options
         opt_args = ""
         if dhi_combine_version[:3] >= (9, 0, 0):
-            opt_args = (
-                " --no-wrappers"
-                " --optimize-simpdf-constraints cms"
-                " --X-pack-asympows"
-                " --X-optimizeMHDependency fixed"
-                " --use-histsum"
-            )
+            opt_args = "--optimize-simpdf-constraints cms"
+
+            # additional options for optimizing limits
+            if self.optimize_limits:
+                opt_args += (
+                    " --no-wrappers"
+                    " --X-pack-asympows"
+                    " --X-optimizeMHDependency fixed"
+                    " --use-histsum"
+                )
+                self.logger.warning(
+                    "workspaces created with --optimize-limits are optimized towards faster limit "
+                    "and likelihood computations, but are incompatible with FitDiagnostics",
+                )
 
         # get the datacard
         datacard = self.datacards[0] if self.no_bundle else self.input().path

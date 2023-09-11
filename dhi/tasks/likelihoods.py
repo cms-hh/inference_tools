@@ -550,12 +550,6 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
         "dhi.plots.likelihoods.plot_likelihood_scans_2d",
     ]
 
-    @classmethod
-    def modify_param_values(cls, params):
-        params = PlotLikelihoodScan.modify_param_values.__func__.__get__(cls)(params)
-        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
-        return params
-
     def requires(self):
         return [
             [

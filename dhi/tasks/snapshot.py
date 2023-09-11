@@ -10,6 +10,7 @@ import law
 import luigi
 
 from dhi.tasks.remote import HTCondorWorkflow
+from dhi.tasks.base import AnalysisTask
 from dhi.tasks.combine import (
     CombineCommandTask,
     POITask,
@@ -82,7 +83,7 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
         return cmd
 
 
-class SnapshotUser(object):
+class SnapshotUser(AnalysisTask):
 
     use_snapshot = luigi.BoolParameter(
         default=False,

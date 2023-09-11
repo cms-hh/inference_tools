@@ -41,7 +41,7 @@ class UpperLimitsBase(POITask, SnapshotUser):
 
     @classmethod
     def modify_param_values(cls, params):
-        params = POITask.modify_param_values.__func__.__get__(cls)(params)
+        params = super(UpperLimitsBase, cls).modify_param_values(params)
 
         # set default range and points
         if "from_grid" in params:
@@ -616,12 +616,6 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
     compare_multi_sequence = "multi_datacards"
 
     default_plot_function = "dhi.plots.limits.plot_limit_scans"
-
-    @classmethod
-    def modify_param_values(cls, params):
-        params = PlotUpperLimits.modify_param_values.__func__.__get__(cls)(params)
-        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
-        return params
 
     def requires(self):
         return [

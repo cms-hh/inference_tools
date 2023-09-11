@@ -2,6 +2,6 @@ The `ResonantLimits` task computes the limits each mass point passed in the `--m
 
 <div class="dhi_parameter_table">
 
---8<-- "content/snippets/parameters.md@-2,21,48,34,17,18,47"
+--8<-- "content/snippets/parameters.md@-2,20,100,48,34,17,18,47"
 
 </div>
