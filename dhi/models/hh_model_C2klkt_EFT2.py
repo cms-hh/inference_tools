@@ -153,7 +153,7 @@ class HHModelEFTBase(DefaultHHModel):
         # define nu and lambdaSM used in many EFT models
         self.make_var("{}[246.2]".format("NU"))
         self.get_var("NU").setConstant(True)
-        self.make_expr("expr::lSM('pow(@0,2)/(2*@1)',MH, NU)")  # noqa
+        self.make_expr("expr::lSM('pow(@0,2)/(2*pow(@1,2))', MH, NU)")  # noqa
         # Fix kF, we are not using it for the EFT model
         self.make_var("{}[1]".format("kF"))
         self.get_var("kF").setConstant(True)
