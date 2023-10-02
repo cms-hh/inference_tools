@@ -219,6 +219,9 @@ class MergeLikelihoodScan(LikelihoodBase):
             # store the value of that point
             data.append(scan_values + (nll0, nll, dnll, dnll2, fit_nll))
 
+        if not poi_mins:
+            poi_mins = np.array(self.n_pois * [np.nan])
+
         data = np.array(data, dtype=dtype)
         self.output().dump(data=data, poi_mins=poi_mins, formatter="numpy")
 
