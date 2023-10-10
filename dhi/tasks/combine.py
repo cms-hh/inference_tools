@@ -1829,6 +1829,11 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
     allow_workspace_input = False
     skip_inject_files = True
 
+    keepSHasSignal = luigi.BoolParameter(
+        default=False,
+        description="do not remove single higgs procs if they are set as signal and not part of the HH formula",
+    )
+
     def __init__(self, *args, **kwargs):
         super(DatacardTask, self).__init__(*args, **kwargs)
 
@@ -1915,7 +1920,11 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
                     if any(sample.matches_process(proc) for sample in formula.samples):
                         break
                 else:
-                    to_remove.add(proc)
+                    if self.keepSHasSignal:
+                        for p in ['ggH_', 'qqH_', 'ttH_', 'ZH_', 'WH_', 'VH_', 'tHW_', 'tHq_']:
+                            if p in proc: break
+                        else:
+                            to_remove.add(proc)
 
             # actual removal
             if to_remove:
