@@ -202,7 +202,7 @@ setup() {
     [ "$?" != "0" ] && ulimit -S -s unlimited
 
     # local stack
-    local sw_version="6"
+    local sw_version="7"
     local flag_file_sw="${DHI_SOFTWARE}/.sw_good"
 
     # reset software if requested
@@ -218,17 +218,16 @@ setup() {
             mkdir -p "${DHI_SOFTWARE}"
 
             # python packages
-            dhi_pip_install -U pip || return "$?"
-            dhi_pip_install 'six~=1.16' || return "$?"
-            dhi_pip_install 'luigi~=3.2' || return "$?"
-            dhi_pip_install 'scinum~=1.4' || return "$?"
-            dhi_pip_install 'tabulate~=0.8' || return "$?"
-            dhi_pip_install 'uproot~=5.0' || return "$?"
-            dhi_pip_install 'awkward~=2.1' || return "$?"
-            dhi_pip_install 'PyYAML~=6.0' || return "$?"
-            dhi_pip_install 'flake8~=5.0' || return "$?"
-            dhi_pip_install 'flake8-commas~=2.1' || return "$?"
-            dhi_pip_install 'flake8-quotes~=3.3' || return "$?"
+            dhi_pip_install 'six==1.16.0' || return "$?"
+            dhi_pip_install 'luigi==3.2.1' || return "$?"
+            dhi_pip_install 'scinum==2.0.2' || return "$?"
+            dhi_pip_install 'tabulate==0.9.0' || return "$?"
+            dhi_pip_install 'uproot==5.0.5' || return "$?"
+            dhi_pip_install 'awkward==2.1.1' || return "$?"
+            dhi_pip_install 'PyYAML==6.0' || return "$?"
+            dhi_pip_install 'flake8==5.0.4' || return "$?"
+            dhi_pip_install 'flake8-commas==2.1.0' || return "$?"
+            dhi_pip_install 'flake8-quotes==3.3.2' || return "$?"
 
             # optional packages, disabled at the moment
             # dhi_pip_install python-telegram-bot==12.3.0
