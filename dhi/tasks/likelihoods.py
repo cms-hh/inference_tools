@@ -181,7 +181,7 @@ class MergeLikelihoodScan(LikelihoodBase):
             # absolute nll value of the fit
             ("fit_nll", np.float32),
         ]
-        poi_mins = self.n_pois * [np.nan]
+        poi_mins = None
         branch_map = self.requires().branch_map
         for branch, inp in self.input()["collection"].targets.items():
             if not inp.exists():
@@ -199,14 +199,14 @@ class MergeLikelihoodScan(LikelihoodBase):
             dnll = float(dnll[1])
 
             # save the best fit values
-            if np.nan in poi_mins:
+            if poi_mins is None:
                 poi_mins = np.array(
                     tuple(f[p].array()[0] for p in self.scan_parameter_names),
                     dtype=[(p, float) for p in self.scan_parameter_names],
                 )
 
             # compute the dnll2 value
-            dnll2 = dnll * 2.
+            dnll2 = dnll * 2.0
 
             # get the raw nll and nll0 values
             nll0 = float(f["nll0"].array()[1])
@@ -217,6 +217,10 @@ class MergeLikelihoodScan(LikelihoodBase):
 
             # store the value of that point
             data.append(scan_values + (nll0, nll, dnll, dnll2, fit_nll))
+
+        # default poi mins
+        if poi_mins is None:
+            poi_mins = self.n_pois * [np.nan]
 
         data = np.array(data, dtype=dtype)
         self.output().dump(data=data, poi_mins=poi_mins, formatter="numpy")
