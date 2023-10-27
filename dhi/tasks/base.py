@@ -155,7 +155,7 @@ class AnalysisTask(BaseTask):
     # defaults for targets
     output_collection_cls = law.SiblingFileCollection
     default_store = "$DHI_STORE"
-    default_wlcg_fs = law.config.get_expanded("target", "default_wlcg_fs")
+    default_wlcg_fs = law.config.get_expanded("target", "default_wlcg_fs", "wlcg_fs")
     default_output_location = "config"
     store_by_family = False
 
@@ -255,7 +255,7 @@ class AnalysisTask(BaseTask):
         if isinstance(location, str):
             location = OutputLocation[location]
         if location == OutputLocation.config:
-            location = law.config.get_expanded("outputs", self.task_family, split_csv=True)
+            location = law.config.get_expanded("outputs", self.task_family, None, split_csv=True)
             if not location:
                 self.logger.debug(
                     "no option 'outputs::{}' found in law.cfg to obtain target "

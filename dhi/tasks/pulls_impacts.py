@@ -104,7 +104,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
 
         self._cache_branches = False
 
-    @law.cached_workflow_property(setter=False, empty_value=law.no_value)
+    @law.workflow_property(setter=False, empty_value=law.no_value, cache=True)
     def workspace_parameters(self):
         ws_input = CreateWorkspace.req(self, branch=0).output()
         if not ws_input.exists():
