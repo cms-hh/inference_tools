@@ -1112,7 +1112,8 @@ class POITask(DatacardTask, ParameterValuesTask):
     # instances will have potentially reduced sequences, depending on the physics model
     r_pois = ("r", "r_gghh", "r_qqhh", "r_vhh")
     k_pois = ("kl", "kt", "CV", "C2V", "C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP",
-              "MA", "Z6", "TB", "CBA", "LQ", "MQ", "XI", "kl_EFT", "kt_EFT", "C2_EFT")
+              "MA", "Z6", "TB", "CBA", "LQ", "MQ", "XI", "kl_EFT", "kt_EFT", "C2_EFT",
+              "cosbma", "tanbeta")
     all_pois = r_pois + k_pois
 
     pois = law.CSVParameter(
@@ -1925,6 +1926,8 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
                             if p in proc: break
                         else:
                             to_remove.add(proc)
+                    else:
+                        to_remove.add(proc)
 
             # actual removal
             if to_remove:
