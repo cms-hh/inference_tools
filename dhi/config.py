@@ -176,6 +176,8 @@ poi_data = DotDict(
     kl_EFT=DotDict(range=(-30.0, 30.0), label=r"$\kappa_{\lambda}$", sm_value=1.0),
     kt_EFT=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
     C2_EFT=DotDict(range=(-2.0, 3.0), label=r"$C_{2}$", sm_value=0.0),
+    cosbma=DotDict(range=(0.0, 10.0), label=r"$cos(\beta-\alpha)$", sm_value=0.0),
+    tanbeta=DotDict(range=(0.0, 10.), label=r"$tan(\beta)$", sm_value=10.0),
 )
 
 # colors

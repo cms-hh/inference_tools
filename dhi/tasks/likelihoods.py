@@ -29,6 +29,9 @@ from dhi.util import unique_recarray
 
 class LikelihoodBase(POIScanTask, SnapshotUser):
 
+    # switch to decide on a per task-level if an HH model is required or not
+    allow_empty_hh_model = True
+
     pois = copy.copy(POIScanTask.pois)
     pois._default = ("kl",)
 
