@@ -927,7 +927,8 @@ class HHModel_BETAMH_7_i(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kt)")
         self.make_expr("expr::kmu('@0', kt)")
         self.make_expr("expr::ktau('@0', kt)")
-        self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
         self.make_var("{}[1]".format("kZ"))
@@ -978,7 +979,8 @@ class HHModel_BETAMH_7_ii(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kb)")
         self.make_expr("expr::kmu('@0', kb)")
         self.make_expr("expr::ktau('@0', kb)")
-        self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
         self.make_var("{}[1]".format("kZ"))
@@ -1030,7 +1032,8 @@ class HHModel_BETAMH_7_iii(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kt)")
         self.make_expr("expr::kmu('@0', ktau)")
         self.make_expr("expr::kb('@0', kt)")
-        self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
         self.make_var("{}[1]".format("kZ"))
@@ -1082,7 +1085,8 @@ class HHModel_BETAMH_7_iv(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kb)")
         self.make_expr("expr::kmu('@0', kt)")
         self.make_expr("expr::ktau('@0', kt)")
-        self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
         self.make_var("{}[1]".format("kZ"))
@@ -1134,7 +1138,8 @@ class HHModel_BETAMH_7a_i(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kt)")
         self.make_expr("expr::kmu('@0', kt)")
         self.make_expr("expr::ktau('@0', kt)")
-        self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
         self.make_var("{}[1]".format("kZ"))
@@ -1187,7 +1192,8 @@ class HHModel_BETAMH_7a_ii(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kb)")
         self.make_expr("expr::kmu('@0', kb)")
         self.make_expr("expr::ktau('@0', kb)")
-        self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
         self.make_var("{}[1]".format("kZ"))
@@ -1241,7 +1247,8 @@ class HHModel_BETAMH_7a_iii(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kt)")
         self.make_expr("expr::kmu('@0', ktau)")
         self.make_expr("expr::kb('@0', kt)")
-        self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
         self.make_var("{}[1]".format("kZ"))
@@ -1295,7 +1302,8 @@ class HHModel_BETAMH_7a_iv(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kb)")
         self.make_expr("expr::kmu('@0', kt)")
         self.make_expr("expr::ktau('@0', kt)")
-        self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
         self.make_var("{}[1]".format("kZ"))
