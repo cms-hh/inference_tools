@@ -800,41 +800,40 @@ class TFileCache(object):
 
             return self._r_cache[abs_path]["tfile"]
 
-        else:
-            if abs_path not in self._w_cache:
-                if tmp:
-                    # determine a temporary location
-                    suffix = "_" + os.path.basename(abs_path)
-                    tmp_path = tempfile.mkstemp(suffix=suffix)[1]
-                    if os.path.exists(tmp_path):
-                        os.remove(tmp_path)
+        if abs_path not in self._w_cache:
+            if tmp:
+                # determine a temporary location
+                suffix = "_" + os.path.basename(abs_path)
+                tmp_path = tempfile.mkstemp(suffix=suffix)[1]
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
 
-                    # copy the file when existing
-                    if os.path.exists(abs_path):
-                        shutil.copy2(abs_path, tmp_path)
+                # copy the file when existing
+                if os.path.exists(abs_path):
+                    shutil.copy2(abs_path, tmp_path)
 
-                    # open the file
-                    tfile = ROOT.TFile(tmp_path, mode)
+                # open the file
+                tfile = ROOT.TFile(tmp_path, mode)
 
-                    self.logger.debug("opened tfile {} with mode {} in temporary location {}".format(
-                        abs_path, mode, tmp_path,
-                    ))
-                else:
-                    # open the file
-                    tfile = ROOT.TFile(abs_path, mode)
-                    tmp_path = None
+                self.logger.debug("opened tfile {} with mode {} in temporary location {}".format(
+                    abs_path, mode, tmp_path,
+                ))
+            else:
+                # open the file
+                tfile = ROOT.TFile(abs_path, mode)
+                tmp_path = None
 
-                    self.logger.debug("opened tfile {} with mode {}".format(abs_path, mode))
+                self.logger.debug("opened tfile {} with mode {}".format(abs_path, mode))
 
-                # store it
-                self._w_cache[abs_path] = {
-                    "tmp_path": tmp_path,
-                    "tfile": tfile,
-                    "write_objects": [],
-                    "delete_objects": [],
-                }
+            # store it
+            self._w_cache[abs_path] = {
+                "tmp_path": tmp_path,
+                "tfile": tfile,
+                "write_objects": [],
+                "delete_objects": [],
+            }
 
-            return self._w_cache[abs_path]["tfile"]
+        return self._w_cache[abs_path]["tfile"]
 
     def write_tobj(self, path, tobj, towner=None, name=None):
         ROOT = import_ROOT()
@@ -881,14 +880,18 @@ class TFileCache(object):
     def finalize(self, skip_write=False, skip_delete=False):
         if self._r_cache:
             # close files opened for reading
+            n = 0
             for abs_path, data in self._r_cache.items():
                 if data["tfile"] and data["tfile"].IsOpen():
                     data["tfile"].Close()
-            self.logger.debug(
-                "closed {} cached file(s) opened for reading".format(len(self._r_cache)),
-            )
+                    n += 1
+            if n:
+                self.logger.debug(f"closed {n} cached file(s) opened for reading")
 
-        if self._w_cache:
+        if (
+            self._w_cache and
+            any(data["write_objects"] or data["delete_objects"] for data in self._w_cache.values())
+        ):
             # close files opened for reading, write objects and move to actual location
             ROOT = import_ROOT()
             ignore_level_orig = ROOT.gROOT.ProcessLine("gErrorIgnoreLevel;")

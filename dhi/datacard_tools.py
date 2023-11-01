@@ -154,6 +154,13 @@ class DatacardRenamer(object):
 
     @property
     def sb(self):
+        # temporary exception since using the shapebuilder in combine 9.1.0, globally leads to
+        # broken ROOT files in >= 6.20
+        # TODO: track down error and report back to combine team
+        raise Exception(
+            "the use of the ShapeBuilder is temporarily disabled due to a bug in (most likely) "
+            "combine that leads to broken ROOT files as of version 6.20",
+        )
         if self._sb is None:
             self.dc
         return self._sb
@@ -189,7 +196,8 @@ class DatacardRenamer(object):
                 continue
             for bin_name, bin_syst_data in syst_data.items():
                 for process_name, syst_effect in bin_syst_data.items():
-                    if syst_effect and has_shape(bin_name, process_name, syst_name):
+                    # the final shape check is disabled for now, see the comment above at self.sb
+                    if syst_effect:  # and has_shape(bin_name, process_name, syst_name):
                         key = (bin_name, process_name)
                         if syst_name in shape_syst_names[key]:
                             self.logger.warning(
