@@ -246,10 +246,10 @@ class HTCondorWorkflow(AnalysisTask, law.htcondor.HTCondorWorkflow):
 
     def htcondor_job_config(self, config, job_num, branches):
         # add the user proxy when existing
-        voms_proxy_file = law.wlcg.get_voms_proxy_file()
-        if os.path.exists(voms_proxy_file):
-            config.input_files["voms_proxy_file"] = law.JobInputFile(
-                voms_proxy_file,
+        vomsproxy_file = law.wlcg.get_vomsproxy_file()
+        if os.path.exists(vomsproxy_file):
+            config.input_files["vomsproxy_file"] = law.JobInputFile(
+                vomsproxy_file,
                 share=True,
                 render=False,
             )

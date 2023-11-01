@@ -40,7 +40,7 @@ bootstrap_htcondor_standalone() {
     export DHI_LCG_DIR="{{dhi_lcg_dir}}"
     export DHI_ON_HTCONDOR="1"
     export DHI_REMOTE_JOB="1"
-    [ ! -z "{{voms_proxy_file}}" ] && export X509_USER_PROXY="${PWD}/{{voms_proxy_file}}"
+    [ ! -z "{{vomsproxy_file}}" ] && export X509_USER_PROXY="${PWD}/{{vomsproxy_file}}"
     [ ! -z "{{dhi_x509_cert_dir}}" ] && export X509_CERT_DIR="{{dhi_x509_cert_dir}}"
     [ ! -z "{{dhi_x509_voms_dir}}" ] && export X509_VOMS_DIR="{{dhi_x509_voms_dir}}"
 
