@@ -60,7 +60,7 @@ class DatacardRenamer(object):
         pairs = []
         for rule in rules:
             if rule.count("=") != 1:
-                raise ValueError("invalid rule {}, must contain exactly one '='".format(rule))
+                raise ValueError(f"invalid rule {rule}, must contain exactly one '='")
             pairs.append(rule.strip().split("=", 1))
 
         return pairs
@@ -73,9 +73,7 @@ class DatacardRenamer(object):
         self.datacard = real_path(datacard)
         self.rules = rules
         self.skip_shapes = skip_shapes
-        self.logger = logger or logging.getLogger(
-            "{}_{}".format(self.__class__.__name__, hex(id(self))),
-        )
+        self.logger = logger or logging.getLogger(f"{self.__class__.__name__}_{hex(id(self))}")
 
         # datacard and shape builder objects if required
         self._dc = None
@@ -119,22 +117,16 @@ class DatacardRenamer(object):
         for rule in rules:
             # rules must have length 2
             if len(rule) != 2:
-                raise ValueError(
-                    "translation rule {} invalid, must have length 2".format(rule),
-                )
+                raise ValueError(f"translation rule {rule} invalid, must have length 2")
             old_name, new_name = rule
 
             # old names must be unique
             if old_names.count(old_name) > 1:
-                raise ValueError(
-                    "old process name {} not unique in translationion rules".format(old_name),
-                )
+                raise ValueError(f"old process name {old_name} not unique in translationion rules")
 
             # new name must not be in old names
             if new_name in old_names:
-                raise ValueError(
-                    "new process name {} must not be in old process names".format(new_name),
-                )
+                raise ValueError(f"new process name {new_name} must not be in old process names")
 
         # sort such that the longest name is first to prevent replacing only parts of names
         rules.sort(key=lambda rule: -len(rule[0]))
@@ -143,7 +135,7 @@ class DatacardRenamer(object):
         return OrderedDict(map(tuple, rules))
 
     def _bundle_files(self, directory):
-        self.logger.info("bundle datacard files into directory {}".format(directory))
+        self.logger.info(f"bundle datacard files into directory {directory}")
         self.datacard = bundle_datacard(self.datacard, directory, skip_shapes=self.skip_shapes)
 
     @property
@@ -201,8 +193,8 @@ class DatacardRenamer(object):
                         key = (bin_name, process_name)
                         if syst_name in shape_syst_names[key]:
                             self.logger.warning(
-                                "shape systematic {} appears more than once for "
-                                "bin {} and process {}".format(syst_name, *key),
+                                f"shape systematic {syst_name} appears more than once for "
+                                f"bin {key[0]} and process {key[1]}",
                             )
                         else:
                             shape_syst_names[key].append(syst_name)
@@ -218,9 +210,7 @@ class DatacardRenamer(object):
 
         cache = self._tobj_input_cache if mode == "READ" else self._tobj_output_cache
         if obj_name not in cache[tfile]:
-            self.logger.debug(
-                "loading object {} from file {}".format(obj_name, tfile.GetPath().rstrip("/")),
-            )
+            self.logger.debug(f"loading object {obj_name} from file {tfile.GetPath().rstrip('/')}")
             cache[tfile][obj_name] = tfile.Get(obj_name)
 
         return cache[tfile][obj_name]
@@ -240,7 +230,7 @@ class DatacardRenamer(object):
                     elif expand == "parameters":
                         old_names = set(p["name"] for p in content["parameters"])
                     elif expand:
-                        raise Exception("unknown expand type '{}'".format(expand))
+                        raise Exception(f"unknown expand type '{expand}'")
 
                     # expand and validate rules
                     self.rules = self._expand_and_validate_rules(self.rules, old_names=old_names)
@@ -254,9 +244,7 @@ class DatacardRenamer(object):
 
         except BaseException as e:
             self.logger.error(
-                "an exception of type {} occurred while renaming the datacard".format(
-                    e.__class__.__name__,
-                ),
+                f"an exception of type {e.__class__.__name__} occurred while renaming the datacard",
             )
             raise
 
@@ -276,7 +264,7 @@ class ShapeLine(object):
         optional = ["syst_pattern"]
         for key in required:
             if key not in d:
-                raise Exception("shape line dict misses field '{}'".format(key))
+                raise Exception(f"shape line dict misses field '{key}'")
 
         return cls.parse_tuple([d.get(key) for key in required + optional])
 
@@ -284,7 +272,7 @@ class ShapeLine(object):
     def parse_tuple(cls, tpl):
         tpl = tuple(tpl)
         if len(tpl) < 4 or (len(tpl) == 4 and tpl[-1] != "FAKE"):
-            raise Exception("invalid shape line tuple {}".format(tpl))
+            raise Exception(f"invalid shape line tuple {tpl}")
 
         return (tpl + (None, None))[1:6]
 
@@ -292,10 +280,9 @@ class ShapeLine(object):
     def parse(cls, value):
         if isinstance(value, six.string_types):
             return cls.parse_line(value)
-        elif isinstance(value, dict):
+        if isinstance(value, dict):
             return cls.parse_dict(value)
-        else:
-            return cls.parse_tuple(value)
+        return cls.parse_tuple(value)
 
     def __init__(self, line, i):
         super(ShapeLine, self).__init__()
@@ -351,7 +338,7 @@ def create_datacard_instance(datacard, create_shape_builder=False, **kwargs):
     options = parser.parse_args([])[0]
 
     # forward kwargs as options with useful defaults
-    kwargs.setdefault("mass", 125.)
+    kwargs.setdefault("mass", 125.0)
     for key, value in kwargs.items():
         setattr(options, key, value)
 
@@ -405,7 +392,7 @@ def read_datacard_blocks(datacard):
         if line.startswith(("imax", "jmax", "kmax")):
             break
     else:
-        raise Exception("datacard {} contains no counter section (imax|jmax|kmax)".format(datacard))
+        raise Exception(f"datacard {datacard} contains no counter section (imax|jmax|kmax)")
     blocks["preamble"].extend(lines[:preamble_offset])
     del lines[:preamble_offset]
 
@@ -485,8 +472,8 @@ def read_datacard_structured(datacard):
     # check if all lists have the same lengths
     if not (len(bin_names) == len(process_names) == len(process_ids) == len(rates)):
         raise Exception(
-            "the number of bin names ({}), process names ({}), process ids ({}) and rates ({}) does "
-            "not match".format(len(bin_names), len(process_names), len(process_ids), len(rates)),
+            f"the number of bin names ({len(bin_names)}), process names ({len(process_names)}), "
+            f"process ids ({len(process_ids)}) and rates ({len(rates)}) does not match",
         )
 
     # store data
@@ -556,8 +543,8 @@ def read_datacard_structured(datacard):
             # when it is columnar, store effects per bin and process pair
             if len(param_spec) != len(bin_names):
                 raise Exception(
-                    "numbef of columns of parameter {} ({}) does not match number of "
-                    "bin-process pairs ({})".format(param_name, len(param_spec), len(bin_names)),
+                    f"numbef of columns of parameter {param_name} ({len(param_spec)}) does not "
+                    f"match number of bin-process pairs ({len(bin_names)})",
                 )
             _param_spec = OrderedDict()
             for bin_name, process_name, spec in zip(bin_names, process_names, param_spec):
@@ -928,19 +915,19 @@ def update_shape_name(towner, old_name, new_name):
     """
     if not towner:
         raise Exception(
-            "owner object is null pointer, cannot rename shape {} to {}".format(old_name, new_name),
+            f"owner object is null pointer, cannot rename shape {old_name} to {new_name}",
         )
 
-    elif towner.InheritsFrom("TDirectoryFile"):
+    if towner.InheritsFrom("TDirectoryFile"):
         # strategy: get the object, make a copy with the new name, delete all cycles of the old
         # object and write the new one
 
         # also consider intermediate tdirectories
         if old_name.count("/") != new_name.count("/"):
             raise Exception(
-                "when renamening shapes in a TDirectoryFile, the old name ({}) and new name ({}) "
-                "must have to same amount of '/' characters for the object to remain at the same "
-                "depth".format(old_name, new_name),
+                f"when renamening shapes in a TDirectoryFile, the old name ({old_name}) and new "
+                f"name ({new_name}) must have to same amount of '/' characters for the object to "
+                "remain at the same depth",
             )
 
         if "/" in old_name:
@@ -965,7 +952,7 @@ def update_shape_name(towner, old_name, new_name):
         # get the object and check if it's valid
         tobj_orig = towner.Get(old_name)
         if not tobj_orig:
-            raise Exception("no object named {} found in {}".format(old_name, towner))
+            raise Exception(f"no object named {old_name} found in {towner}")
 
         # stop here when the name does not change at all
         if new_name == old_name:
@@ -974,7 +961,7 @@ def update_shape_name(towner, old_name, new_name):
         # check if there is already an object with the new name
         tobj_clone = towner.Get(new_name)
         if tobj_clone:
-            raise Exception("object named {} already present in {}".format(new_name, towner))
+            raise Exception(f"object named {new_name} already present in {towner}")
 
         # go ahead and rename
         towner.cd()
@@ -985,12 +972,12 @@ def update_shape_name(towner, old_name, new_name):
 
         return tobj_clone
 
-    elif towner.InheritsFrom("RooWorkspace"):
+    if towner.InheritsFrom("RooWorkspace"):
         # strategy: get the data or pdf, and optional norm objects, simply rename them
         tdata = towner.data(old_name)
         tpdf = towner.pdf(old_name)
         if not tdata and not tpdf:
-            raise Exception("no pdf or data named {} found in {}".format(old_name, towner))
+            raise Exception(f"no pdf or data named {old_name} found in {towner}")
 
         # stop here when the name does not change at all
         if new_name == old_name:
@@ -1014,10 +1001,7 @@ def update_shape_name(towner, old_name, new_name):
 
         return tdata or tpdf
 
-    else:
-        raise NotImplementedError(
-            "cannot extract shape from {} object for updating".format(towner.ClassName()),
-        )
+    raise NotImplementedError(f"cannot extract shape from {towner.ClassName()} object for updating")
 
 
 def expand_variables(s, process=None, channel=None, systematic=None, mass=None):
@@ -1049,12 +1033,12 @@ def update_datacard_count(blocks, key, value, diff=False, logger=None):
                 new_value = None
                 if not diff:
                     new_value = value
-                    logger.info("set {} to {}".format(key, new_value))
+                    logger.info(f"set {key} to {new_value}")
                 elif parts[1] != "*":
                     new_value = value
                     old_value = int(parts[1])
                     new_value = old_value + value
-                    logger.info("set {} from {} to {}".format(key, old_value, new_value))
+                    logger.info(f"set {key} from {old_value} to {new_value}")
                 if new_value is not None:
                     parts[1] = str(new_value)
                     blocks["counts"][i] = " ".join(parts)
@@ -1176,8 +1160,8 @@ def get_workspace_parameters(
             continue
 
         # get the pdf type and (type-dependent) prefit values
-        pdf = w.pdf("{}_Pdf".format(param.GetName()))
-        gobs = w.var("{}_In".format(param.GetName()))
+        pdf = w.pdf(f"{param.GetName()}_Pdf")
+        gobs = w.var(f"{param.GetName()}_In")
         if pdf and gobs:
             prepare_prefit_var(param, pdf)
             nom = param.getVal()
