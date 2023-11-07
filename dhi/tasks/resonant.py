@@ -218,6 +218,7 @@ class PlotResonantLimits(ResonantBase, POIPlotTask):
         significant=False,
         description="show points of central limit values; default: False",
     )
+
     z_min = None
     z_max = None
 
@@ -307,6 +308,12 @@ class PlotResonantLimits(ResonantBase, POIPlotTask):
 
 class PlotMultipleResonantLimits(PlotResonantLimits, MultiDatacardTask):
 
+    external_limits = law.CSVParameter(
+        default=tuple(),
+        description="one or multiple json files that contain externally computed limit values to "
+        "be shown below the ones computed with actual datacards; default: empty",
+    )
+
     default_plot_function = "dhi.plots.limits.plot_limit_scans"
 
     def group_datacards(self):
@@ -347,6 +354,32 @@ class PlotMultipleResonantLimits(PlotResonantLimits, MultiDatacardTask):
             outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
+
+    def read_external_limits(self, scale=1.0):
+        """
+        Expected fields entry in external_limits paths:
+            - "name": name of the scan
+            - "factor": factor to mulitply limits with (e.g. lumi projection)
+            - "scan_parameter": name of the scan parameter
+            - "limits": single limit value or list of values (nominal, plus 1, minus 1)
+        """
+        import numpy as np
+
+        values = {}
+        for path in self.external_limits:
+            for entry in law.LocalFileTarget(path).load(formatter="json"):
+                show = str(entry.get("show", "true")).lower()
+                if show in ("false", "none"):
+                    continue
+                dtype = [(entry["scan_parameter"], np.float32), ("limit", np.float32)]
+                factor = entry.get("factor", 1.0)
+                data = [
+                    (float(k), (v[0] if isinstance(v, list) else v) * factor * scale)
+                    for k, v in entry["limits"].items()
+                ]
+                values[entry["name"]] = np.array(data, dtype=dtype)
+
+        return values
 
     @law.decorator.log
     @law.decorator.notify
@@ -393,6 +426,11 @@ class PlotMultipleResonantLimits(PlotResonantLimits, MultiDatacardTask):
         if self.datacard_order:
             limit_values = [limit_values[i] for i in self.datacard_order]
             names = [names[i] for i in self.datacard_order]
+
+        # load external limits
+        for name, external_values in self.read_external_limits(scale).items():
+            names.append(name)
+            limit_values.append(external_values)
 
         # call the plot function
         self.call_plot_func(
