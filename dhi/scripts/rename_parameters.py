@@ -229,7 +229,8 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
                                     old_name, new_name, process_name, bin_name,
                                 ),
                             )
-                            update_shape_name(towner, old_name, new_name)
+                            clone = update_shape_name(towner, old_name, new_name)
+                            renamer._tfile_cache.write_tobj(tfile, clone, towner)
 
 
 if __name__ == "__main__":

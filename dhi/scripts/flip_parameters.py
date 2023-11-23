@@ -171,8 +171,10 @@ def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass=
 
                             # roll names
                             update_shape_name(towner, tobj_name + "Up", tobj_name + "UpTMP")
-                            update_shape_name(towner, tobj_name + "Down", tobj_name + "Up")
-                            update_shape_name(towner, tobj_name + "UpTMP", tobj_name + "Down")
+                            clone = update_shape_name(towner, tobj_name + "Down", tobj_name + "Up")
+                            renamer._tfile_cache.write_tobj(tfile, clone, towner)
+                            clone = update_shape_name(towner, tobj_name + "UpTMP", tobj_name + "Down")  # noqa
+                            renamer._tfile_cache.write_tobj(tfile, clone, towner)
                             logger.debug(
                                 "flip effect of {} parameter {} in bin {} and process {} in shape "
                                 "file {} (entry '{}{{Up,Down}}')".format(
