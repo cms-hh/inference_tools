@@ -212,7 +212,7 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
 
                     # the bin process pair should have shape systematics to be changed
                     syst_names = shape_syst_names.get((bin_name, process_name), [])
-                    syst_names = filter(renamer.has_rule, syst_names)
+                    syst_names = list(filter(renamer.has_rule, syst_names))
                     if not syst_names:
                         continue
 

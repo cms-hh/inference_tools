@@ -562,8 +562,8 @@ class DatacardTask(HHModelTask):
             _paths = __paths
 
             # keep only existing cards and resolve them to get deterministic hashes later on
-            _paths = filter(os.path.exists, _paths)
-            _paths = map(os.path.realpath, _paths)
+            _paths = list(filter(os.path.exists, _paths))
+            _paths = list(map(os.path.realpath, _paths))
 
             # complain when no files matched
             if not _paths:
@@ -1881,7 +1881,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             # get all datacard processes
             blocks = read_datacard_blocks(output_card.path)
             procs = blocks["rates"][1].strip().split()[1:]
-            proc_ids = map(int, blocks["rates"][2].strip().split()[1:])
+            proc_ids = list(map(int, blocks["rates"][2].strip().split()[1:]))
             signal_procs = set(proc for proc, proc_id in zip(procs, proc_ids) if proc_id <= 0)
 
             # loop through model formulae and determine signal processes that are not covered

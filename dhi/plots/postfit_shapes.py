@@ -140,7 +140,7 @@ def plot_s_over_b(
 
     # select categories when set
     if categories:
-        bin_data = filter(lambda _bin: multi_match(_bin.category, categories), bin_data)
+        bin_data = list(filter(lambda _bin: multi_match(_bin.category, categories), bin_data))
 
     # warn about categories with missing signal or data contributions
     bad_signal_indices = set()
