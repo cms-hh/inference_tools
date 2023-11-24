@@ -202,7 +202,7 @@ setup() {
     [ "$?" != "0" ] && ulimit -S -s unlimited
 
     # local stack
-    local sw_version="7"
+    local sw_version="8"
     local flag_file_sw="${DHI_SOFTWARE}/.sw_good"
 
     # reset software if requested
@@ -224,6 +224,8 @@ setup() {
             dhi_pip_install 'tabulate==0.9.0' || return "$?"
             dhi_pip_install 'uproot==5.0.5' || return "$?"
             dhi_pip_install 'awkward==2.1.1' || return "$?"
+            dhi_pip_install 'mplhep==0.3.31' || return "$?"
+            dhi_pip_install 'cvxpy==1.4.1' || return "$?"
             dhi_pip_install 'PyYAML==6.0' || return "$?"
             dhi_pip_install 'flake8==5.0.4' || return "$?"
             dhi_pip_install 'flake8-commas==2.1.0' || return "$?"
