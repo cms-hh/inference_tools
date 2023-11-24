@@ -19,15 +19,6 @@ import law
 import luigi
 import six
 
-try:
-    from backports.functools_lru_cache import lru_cache
-except ImportError:
-    # empty decorator
-    def lru_cache(**kwargs):
-        def decorator(func):
-            return func
-        return decorator
-
 from dhi import dhi_combine_version
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
 from dhi.tasks.remote import HTCondorWorkflow
@@ -493,7 +484,9 @@ class DatacardTask(HHModelTask):
         return _path, bin_name, inject, store_dir
 
     @classmethod
-    @lru_cache(maxsize=None)
+    # disable lru caching for now as there is some interference with stateful class-level members
+    # that cannot be caputred by the cache for now
+    # @functools.lru_cache(maxsize=None, typed=True)
     def resolve_datacards(cls, patterns):
         paths = []
         bin_names = []
