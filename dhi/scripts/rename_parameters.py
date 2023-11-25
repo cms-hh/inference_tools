@@ -105,25 +105,25 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
                     expr1 = r".*\s+extArg\s+([^\s]+\.root)\:([^\s]+).*$"
                     expr2 = r".*\s+rateParam\s+[^\s]+\s+[^\s]+\s+([^\s]+\.root)\:([^\s]+).*$"
                     m = re.match(expr1, param_line) or re.match(expr2, param_line)
-                    if m:
-                        ws_file, ws_name = m.groups()
-                        ws_file = os.path.join(os.path.dirname(renamer.datacard), ws_file)
-                        ws = renamer.get_tobj(ws_file, ws_name, "UPDATE")
-                        if not ws:
-                            raise Exception(
-                                "workspace {} not found in file {} referenced by extArg {}".format(
-                                    ws_name, ws_file, old_name,
-                                ),
-                            )
-                        new_name = renamer.translate(old_name)
-                        targ = ws.arg(old_name)
-                        if targ:
-                            targ.SetName(new_name)
-                            targ.SetTitle(targ.GetTitle().replace(old_name, new_name))
-                        else:
-                            logger.warning("extArg {} not found in workspace {} in tfile {}".format(
-                                old_name, ws_name, ws_file,
-                            ))
+                    if not m:
+                        continue
+                    ws_file, ws_name = m.groups()
+                    ws_file = os.path.join(os.path.dirname(renamer.datacard), ws_file)
+                    ws = renamer.get_tobj(ws_file, ws_name, "UPDATE")
+                    if not ws:
+                        raise Exception(
+                            f"workspace {ws_name} not found in file {ws_file} referenced by "
+                            f"extArg {old_name}",
+                        )
+                    new_name = renamer.translate(old_name)
+                    targ = ws.arg(old_name)
+                    if targ:
+                        targ.SetName(new_name)
+                        targ.SetTitle(targ.GetTitle().replace(old_name, new_name))
+                    else:
+                        logger.warning(
+                            f"extArg {old_name} not found in workspace {ws_name} in {ws_file}",
+                        )
 
         # update them in group listings
         if blocks.get("groups"):
@@ -230,7 +230,12 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
                                 ),
                             )
                             clone = update_shape_name(towner, old_name, new_name)
-                            renamer._tfile_cache.write_tobj(tfile, clone, towner)
+                            write_args = (
+                                (tfile, towner)
+                                if towner.InheritsFrom("RooWorkspace")
+                                else (tfile, clone, towner)
+                            )
+                            renamer._tfile_cache.write_tobj(*write_args)
 
 
 if __name__ == "__main__":

@@ -164,7 +164,12 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                             ),
                         )
                         clone = update_shape_name(towner, old_name, new_name)
-                        renamer._tfile_cache.write_tobj(tfile, clone, towner)
+                        write_args = (
+                            (tfile, towner)
+                            if towner.InheritsFrom("RooWorkspace")
+                            else (tfile, clone, towner)
+                        )
+                        renamer._tfile_cache.write_tobj(*write_args)
 
                     # update the pattern in the shape line
                     if not process_is_wildcard:
@@ -183,7 +188,12 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                                         "bin {}".format(old_name, new_name, process_name, bin_name),
                                     )
                                     clone = update_shape_name(towner, old_name, new_name)
-                                    renamer._tfile_cache.write_tobj(tfile, clone, towner)
+                                    write_args = (
+                                        (tfile, towner)
+                                        if towner.InheritsFrom("RooWorkspace")
+                                        else (tfile, clone, towner)
+                                    )
+                                    renamer._tfile_cache.write_tobj(*write_args)
                                 if not process_is_wildcard:
                                     new_shape_line.syst_pattern = new_pattern
 
