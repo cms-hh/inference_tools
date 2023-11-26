@@ -434,8 +434,8 @@ def merge_parameters(
                         #     b, bin_name, process_name))
 
                     # write them to the file
-                    merged_d.Write()
-                    merged_u.Write()
+                    tcache.write_tobj(shape_file, merged_d, towner)
+                    tcache.write_tobj(shape_file, merged_u, towner)
 
                     # set the merged effect
                     merged_effect = 1 if sum(sum(eff, ())) else "-"
