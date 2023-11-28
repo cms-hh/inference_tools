@@ -101,8 +101,9 @@ def _get_limit_grid_interps(poi, scan_name):
     if key not in _limit_grid_interps:
         grid_file = os.path.join(_limit_grid_path, "limitscan_{}_{}.npz".format(*key))
         if not os.path.exists(grid_file):
-            raise Exception("limit grid file {1} not existing in directory {0}".format(
-                *os.path.split(grid_file)))
+            raise Exception(
+                "limit grid file {1} not existing at {0}".format(*os.path.split(grid_file)),
+            )
 
         f = np.load(grid_file)
         data = f["data"]
@@ -135,20 +136,24 @@ def define_limit_grid(task, scan_parameter_values, approx_points, debug=False):
     """
     # some checks
     if task.n_pois != 1:
-        raise Exception("define_limit_grid hook only supports 1 POI, got {}".format(task.n_pois))
+        raise Exception(f"define_limit_grid hook only supports 1 POI, got {task.n_pois}")
     poi = task.pois[0]
-    if poi not in ("r",):
-        raise Exception("define_limit_grid hook only supports POI r, got {}".format(poi))
+    if poi not in ("r", "r_gghh", "r_qqhh"):
+        raise Exception(f"define_limit_grid hook only supports POI r, r_gghh, r_qqhh, got {poi}")
     if len(scan_parameter_values) != 1:
-        raise Exception("define_limit_grid hook only supports 1 scan parameter, got {}".format(
-            len(scan_parameter_values)))
+        raise Exception(
+            "define_limit_grid hook only supports 1 scan parameter, "
+            f"got {len(scan_parameter_values)}",
+        )
     scan_value = scan_parameter_values[0]
     scan_name = task.scan_parameter_names[0]
     if any(v != 1 for v in task.parameter_values_dict.values()):
-        raise Exception("define_limit_grid hook does not support tasks with extra parameter "
-            "values that are not 1, got {}".format(task.parameter_values))
+        raise Exception(
+            "define_limit_grid hook does not support tasks with extra parameter "
+            f"values that are not 1, got {task.parameter_values}",
+        )
     if not os.path.exists(_limit_grid_path):
-        raise Exception("define_limit_grid hook cannot access {}".format(_limit_grid_path))
+        raise Exception(f"define_limit_grid hook cannot access {_limit_grid_path}")
 
     # detect if any combined datacard setup is used by comparing to environment variables that are
     # usually defined in the combination
@@ -162,70 +167,82 @@ def define_limit_grid(task, scan_parameter_values, approx_points, debug=False):
         if comb_cards == used_cards:
             break
     else:
-        raise Exception("define_limit_grid could not detect combined datacard variables {}".format(
-            ",".join(cards_vars)))
+        raise Exception(
+            f"define_limit_grid could not detect combined datacard variables {','.join(cards_vars)}",
+        )
 
     if debug:
-        print("defining limit grid for datacards '{}' on POI {} for scan over {} at {}".format(
-            cards_var, poi, scan_name, scan_value))
+        print(
+            f"defining limit grid for datacards '{cards_var}' on POI {poi} for scan over "
+            f"{scan_name} at {scan_value}",
+        )
 
-    from_grid = None
-    if (poi, scan_name) in (("r", "kl"), ("r", "C2V")):
-        # load the previous scan, interpolate limit values, extract a viable range and granularity
-        exp, up, down = [interp(scan_value) for interp in _get_limit_grid_interps(poi, scan_name)]
-        grid_max = (2 * up - exp) if up > exp else (up * 1.25)
-        grid_min = (2 * down - exp) if down < exp else (down * 0.75)
-        if grid_min >= grid_max:
-            raise Exception("define_limit_grid encountered unstable limit interpolation with "
-                "grid_min ({}) >= grid_max ({})".format(grid_min, grid_max))
+    allowed_scans = [
+        ("r", "kl"),
+        ("r", "C2V"),
+        ("r_gghh", "kl"),
+        ("r_qqhh", "kl"),
+        ("r_qqhh", "C2V"),
+    ]
+    if (poi, scan_name) not in allowed_scans:
+        raise NotImplementedError(
+            f"define_limit_grid hook does not support POI {poi} and scan parameter {scan_name}",
+        )
 
-        # when the minimum is close to 0, just start at 0
-        if grid_min < 5:
-            grid_min = 0.0
+    # load the previous scan, interpolate limit values, extract a viable range and granularity
+    exp, up, down = [interp(scan_value) for interp in _get_limit_grid_interps(poi, scan_name)]
+    grid_max = (2 * up - exp) if up > exp else (up * 1.25)
+    grid_min = (2 * down - exp) if down < exp else (down * 0.75)
+    if grid_min >= grid_max:
+        raise Exception(
+            "define_limit_grid encountered unstable limit interpolation with "
+            f"grid_min ({grid_min}) >= grid_max ({grid_max})",
+        )
 
-        # round edges to two significant digits
-        grid_min = round_digits(grid_min, 2, math.floor)
-        grid_max = round_digits(grid_max, 2, math.ceil)
-        approx_grid_range = grid_max - grid_min
+    # when the minimum is close to 0, just start at 0
+    if grid_min < 5:
+        grid_min = 0.0
 
-        # find a viable divider for the desired approximate step size
-        dividers = [1.0, 1.25, 2.0, 2.5, 3.125, 5.0, 6.25, 10.0]
-        # fewer fix points, but less adherence to approx_points:
-        # dividers = [1.0, 1.25, 2.0, 2.5, 5.0, 10.0]
-        approx_step_size = approx_grid_range / approx_points
-        exp = int(math.floor(math.log(approx_step_size, 10)))
-        raised_approx_step_size = approx_step_size / 10.0**exp
+    # round edges to two significant digits
+    grid_min = round_digits(grid_min, 2, math.floor)
+    grid_max = round_digits(grid_max, 2, math.ceil)
+    approx_grid_range = grid_max - grid_min
 
-        # algorithm 1: find the first divider that is larger than the approx step size
-        # for div in dividers:
-        #     if div >= raised_approx_step_size:
-        #         break
-        # else:
-        #     raise Exception("no valid divider found for grid between {} and {}".format(
-        #         grid_min, grid_max))
+    # find a viable divider for the desired approximate step size
+    dividers = [1.0, 1.25, 2.0, 2.5, 3.125, 5.0, 6.25, 10.0]
+    # fewer fix points, but less adherence to approx_points:
+    # dividers = [1.0, 1.25, 2.0, 2.5, 5.0, 10.0]
+    approx_step_size = approx_grid_range / approx_points
+    exp = int(math.floor(math.log(approx_step_size, 10)))
+    raised_approx_step_size = approx_step_size / 10.0**exp
 
-        # algorithm 2: find the closest divider
-        div = dividers[np.argmin(map((lambda d: abs(d - raised_approx_step_size)), dividers))]
+    # algorithm 1: find the first divider that is larger than the approx step size
+    # for div in dividers:
+    #     if div >= raised_approx_step_size:
+    #         break
+    # else:
+    #     raise Exception("no valid divider found for grid between {} and {}".format(
+    #         grid_min, grid_max))
 
-        # get the number of steps between points, compute the new grid_range and adjust edges
-        step_size = div * 10**exp
-        steps = int(math.ceil(approx_grid_range / step_size))
-        grid_range = steps * step_size
-        grid_max += grid_range - approx_grid_range
+    # algorithm 2: find the closest divider
+    div = dividers[np.argmin(map((lambda d: abs(d - raised_approx_step_size)), dividers))]
 
-        # ensure that grid edges do not have float uncertainties
-        safe_float = lambda f: float(Decimal(str(f)).quantize(Decimal(str(step_size))))
-        grid_min = safe_float(grid_min)
-        grid_max = safe_float(grid_max)
+    # get the number of steps between points, compute the new grid_range and adjust edges
+    step_size = div * 10**exp
+    steps = int(math.ceil(approx_grid_range / step_size))
+    grid_range = steps * step_size
+    grid_max += grid_range - approx_grid_range
 
-        # build the grid definition
-        from_grid = ((poi, grid_min, grid_max, steps + 1),)
-    else:
-        raise NotImplementedError("define_limit_grid hook does not support POI {} and scan "
-            "parameter {}".format(poi, scan_name))
+    # ensure that grid edges do not have float uncertainties
+    safe_float = lambda f: float(Decimal(str(f)).quantize(Decimal(str(step_size))))
+    grid_min = safe_float(grid_min)
+    grid_max = safe_float(grid_max)
+
+    # build the grid definition
+    from_grid = ((poi, grid_min, grid_max, steps + 1),)
 
     if debug:
-        print("defined {}".format(from_grid))
+        print(f"defined {from_grid}")
 
     return from_grid
 
@@ -248,18 +265,16 @@ def scale_multi_likelihoods(task, data):
     projection, r = "3000 fb^{-1}", 3000.0 / 138.0
     print("")
     print(" Run projection ".center(100, "-"))
-    print("name    : {}".format(projection))
-    print("r       : {}".format(r))
+    print(f"name    : {projection}")
+    print(f"r       : {r}")
     print("")
 
     # input checks
     if not task.n_pois == 1:
-        raise Exception("scale_multi_likelihoods hook only supports 1 POI, got {}".format(
-            task.n_pos))
+        raise Exception(f"scale_multi_likelihoods hook only supports 1 POI, got {task.n_pos}")
     poi = task.pois[0]
     if poi not in ["r", "kl", "C2V"]:
-        raise Exception("scale_multi_likelihoods hook only supports POIs r,kl,C2V, got {}".format(
-            poi))
+        raise Exception(f"scale_multi_likelihoods hook only supports POIs r,kl,C2V, got {poi}")
 
     # get values for all systematics and stat. only
     # as this point we must anticipate them on positions 0 and 1
@@ -275,8 +290,14 @@ def scale_multi_likelihoods(task, data):
     # helper to obtain scan information
     def get_scan(values, name):
         origin = "{}, poi {}, {}".format(projection, poi, name)
-        y, x = _preprocess_values(values["dnll2"], (poi, values[poi]), remove_nans=True,
-            shift_negative_values=True, min_is_external=True, origin=origin)
+        y, x = _preprocess_values(
+            values["dnll2"],
+            (poi, values[poi]),
+            remove_nans=True,
+            shift_negative_values=True,
+            min_is_external=True,
+            origin=origin,
+        )
         return evaluate_likelihood_scan_1d(x, y, origin=origin, poi_min=1.0)
 
     # get the full and stat. only scans
@@ -287,13 +308,14 @@ def scale_multi_likelihoods(task, data):
     # get errors that parametrize the scaling factor
     # when available, use 2 sigma estimators
     sigma_idx = 1 if None not in scan_all["summary"]["uncertainty"][1] else 0
-    print("\nbuilding scaling factor from +-{} sigma uncertainties".format(sigma_idx + 1))
+    print(f"\nbuilding scaling factor from +-{sigma_idx + 1} sigma uncertainties")
     err_all_u, err_all_d = scan_all["summary"]["uncertainty"][sigma_idx]
     err_stat_u, err_stat_d = scan_stat["summary"]["uncertainty"][sigma_idx]
     err_statexp_u, err_statexp_d = scan_statexp["summary"]["uncertainty"][sigma_idx]
     if None in [err_all_u, err_all_d, err_stat_u, err_stat_d, err_statexp_d, err_statexp_u]:
-        raise Exception("scale_multi_likelihoods hook encountered missing {} sigma interval".format(
-            sigma_idx + 1))
+        raise Exception(
+            f"scale_multi_likelihoods hook encountered missing {sigma_idx + 1} sigma interval",
+        )
 
     # build the scaling factors separately for both sides of the curve
     def add_projection(label, scale_stat, scale_exp, scale_thy):
@@ -357,25 +379,25 @@ def scale_multi_likelihoods(task, data):
         task.datacard_names += (label,)
 
     add_projection(
-        label="{}, #epsilon_{{exp}} = #epsilon_{{th}} = 1".format(projection),
+        label=f"{projection}, #epsilon_{{exp}} = #epsilon_{{th}} = 1",
         scale_stat=r**-0.5,
         scale_exp=1.0,
         scale_thy=1.0,
     )
     add_projection(
-        label="{}, #epsilon_{{exp}} = #epsilon_{{th}} = 0.5".format(projection),
+        label=f"{projection}, #epsilon_{{exp}} = #epsilon_{{th}} = 0.5",
         scale_stat=r**-0.5,
         scale_exp=0.5,
         scale_thy=0.5,
     )
     add_projection(
-        label="{}, #epsilon_{{exp}} = 1/#sqrt{{R}}, #epsilon_{{th}} = 0.5".format(projection),
+        label=f"{projection}, #epsilon_{{exp}} = 1/#sqrt{{R}}, #epsilon_{{th}} = 0.5",
         scale_stat=r**-0.5,
         scale_exp=r**-0.5,
         scale_thy=0.5,
     )
     add_projection(
-        label="{}, #epsilon_{{exp}} = #epsilon_{{th}} = 0".format(projection),
+        label=f"{projection}, #epsilon_{{exp}} = #epsilon_{{th}} = 0",
         scale_stat=r**-0.5,
         scale_exp=0.0,
         scale_thy=0.0,

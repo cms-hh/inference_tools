@@ -77,6 +77,7 @@ br_hh_names = DotDict(
     bbbb_boosted=r"bb bb, #scale[0.75]{high $m_{HH}$}",
     bbbb_boosted_ggf=r"bb bb #scale[0.75]{high $m_{HH}$, ggF}",
     bbbb_boosted_vbf=r"bb bb #scale[0.75]{high $m_{HH}$, VBF}",
+    bbbb_vhh=r"bb bb, #scale[0.75]{VHH}",
     bbbb_all=r"bb bb",
     bbvv=r"bb VV",
     bbww=r"bb WW",

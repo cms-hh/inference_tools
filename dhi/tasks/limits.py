@@ -323,12 +323,11 @@ class UpperLimitsGrid(UpperLimits):
         cmd = re.sub(r"^(.+--setParameters)\s+[^,]+,(.+)$", r"\1 \2", cmd)
 
         # 2. remove "--run expected"
-        # TODO: this used to work and should be re-evaluated once there is a combine update
         cmd = cmd.replace(" --run expected", "")
 
         # 3. add the grid point value as --singlePoint
         repl = "--singlePoint {self.branch_data[0]}".format(self=self)
-        cmd = re.sub(r"^(.+--redefineSignalPOIs\s+[^\s+]\s+)(.+)$", r"\1{} \2".format(repl), cmd)
+        cmd = re.sub(r"^(.+--redefineSignalPOIs\s+\S+\s+)(.+)$", r"\1{} \2".format(repl), cmd)
 
         return cmd
 
