@@ -22,7 +22,7 @@ import six
 from dhi import dhi_combine_version
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
 from dhi.tasks.remote import HTCondorWorkflow
-from dhi.config import poi_data, br_hh
+from dhi.config import poi_data, br_hh, single_higgs_processes
 from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path
 from dhi.datacard_tools import bundle_datacard, read_datacard_blocks
 
@@ -49,7 +49,11 @@ class HHModelTask(AnalysisTask):
     valid_hh_model_options = {
         "noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc",
         "doProfilergghh", "doProfilerqqhh", "doProfilervhh",
-        "doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V", "doProfileC2",
+        "doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V", "doProfileC2", "doProfileA",
+        "doProdileCA", "doProdileLA", "doProdileLE", "doProfileM2", "doProfileB", "doProfileMHE",
+        "doProfileMHP", "doPrifileMA", "doProfileZ6", "doProfileTB",
+        "doProfileCBA", "doProfileLQ", "doProfileMQ", "doProfileXi", "doProfilekl_EFT",
+        "doProfilekt_EFT", "doProfileC2_EFT",
     }
 
     hh_model = luigi.Parameter(
@@ -146,6 +150,24 @@ class HHModelTask(AnalysisTask):
         set_opt("doProfileCV", options.get("doProfileCV"))
         set_opt("doProfileC2V", options.get("doProfileC2V"))
         set_opt("doProfileC2", options.get("doProfileC2"))
+        set_opt("doProfileA", options.get("doProfileA"))
+        set_opt("doProfileCA", options.get("doProfileCA"))
+        set_opt("doProfileLA", options.get("doProfileLA"))
+        set_opt("doProfileLE", options.get("doProfileLE"))
+        set_opt("doProfileM2", options.get("doProfileM2"))
+        set_opt("doProfileB", options.get("doProfileB"))
+        set_opt("doProfileMHE", options.get("doProfileMHE"))
+        set_opt("doProfileMHP", options.get("doProfileMHP"))
+        set_opt("doProfileMA", options.get("doProfileMA"))
+        set_opt("doProfileZ6", options.get("doProfileZ6"))
+        set_opt("doProfileTB", options.get("doProfileTB"))
+        set_opt("doProfileCBA", options.get("doProfileCBA"))
+        set_opt("doProfileLQ", options.get("doProfileLQ"))
+        set_opt("doProfileMQ", options.get("doProfileMQ"))
+        set_opt("doProfileXI", options.get("doProfileXI"))
+        set_opt("doProfilekl_EFT", options.get("doProfilekl_EFT"))
+        set_opt("doProfilekt_EFT", options.get("doProfilekt_EFT"))
+        set_opt("doProfileC2_EFT", options.get("doProfileC2_EFT"))
 
         # reset pois
         model.reset_pois()
@@ -1082,7 +1104,9 @@ class POITask(DatacardTask, ParameterValuesTask):
     # class-level sequence of all available pois
     # instances will have potentially reduced sequences, depending on the physics model
     r_pois = ("r", "r_gghh", "r_qqhh", "r_vhh")
-    k_pois = ("kl", "kt", "CV", "C2V", "C2")
+    k_pois = ("kl", "kt", "CV", "C2V", "C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP",
+              "MA", "Z6", "TB", "CBA", "LQ", "MQ", "XI", "kl_EFT", "kt_EFT", "C2_EFT",
+              "cosbma", "tanbeta")
     all_pois = r_pois + k_pois
 
     pois = law.CSVParameter(
@@ -1799,6 +1823,12 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
     allow_workspace_input = False
     skip_inject_files = True
 
+    keep_sh_as_signal = luigi.BoolParameter(
+        default=False,
+        description="do not remove single higgs procs if they are set as signal"
+                    "and not part of the HH formula",
+    )
+
     def __init__(self, *args, **kwargs):
         super(DatacardTask, self).__init__(*args, **kwargs)
 
@@ -1880,12 +1910,24 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             # loop through model formulae and determine signal processes that are not covered
             to_remove = set()
             formulae = model.get_formulae().values()
+
             for proc in signal_procs:
-                for formula in formulae:
-                    if any(sample.matches_process(proc) for sample in formula.samples):
-                        break
-                else:
-                    to_remove.add(proc)
+                # keep signal if matched by at least one process in any formula
+                if any(
+                        any(sample.matches_process(proc) for sample in formula.samples)
+                        for formula in formulae
+                ):
+                    continue
+
+                # keep signal if single higgs and configured to do so
+                if all(
+                        self.keep_h_as_signal,
+                        any(proc.startswith(f"{p}_" for p in single_higgs_processes)),
+                ):
+                    continue
+
+                # remove it
+                to_remove.add(proc)
 
             # actual removal
             if to_remove:
