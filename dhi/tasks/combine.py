@@ -142,32 +142,10 @@ class HHModelTask(AnalysisTask):
         set_opt("doBRscaling", not options.get("noBRscaling", False))
         set_opt("doHscaling", not options.get("noHscaling", False))
         set_opt("doklDependentUnc", not options.get("noklDependentUnc", False))
-        set_opt("doProfilergghh", options.get("doProfilergghh"))
-        set_opt("doProfilerqqhh", options.get("doProfilerqqhh"))
-        set_opt("doProfilervhh", options.get("doProfilervhh"))
-        set_opt("doProfilekl", options.get("doProfilekl"))
-        set_opt("doProfilekt", options.get("doProfilekt"))
-        set_opt("doProfileCV", options.get("doProfileCV"))
-        set_opt("doProfileC2V", options.get("doProfileC2V"))
-        set_opt("doProfileC2", options.get("doProfileC2"))
-        set_opt("doProfileA", options.get("doProfileA"))
-        set_opt("doProfileCA", options.get("doProfileCA"))
-        set_opt("doProfileLA", options.get("doProfileLA"))
-        set_opt("doProfileLE", options.get("doProfileLE"))
-        set_opt("doProfileM2", options.get("doProfileM2"))
-        set_opt("doProfileB", options.get("doProfileB"))
-        set_opt("doProfileMHE", options.get("doProfileMHE"))
-        set_opt("doProfileMHP", options.get("doProfileMHP"))
-        set_opt("doProfileMA", options.get("doProfileMA"))
-        set_opt("doProfileZ6", options.get("doProfileZ6"))
-        set_opt("doProfileTB", options.get("doProfileTB"))
-        set_opt("doProfileCBA", options.get("doProfileCBA"))
-        set_opt("doProfileLQ", options.get("doProfileLQ"))
-        set_opt("doProfileMQ", options.get("doProfileMQ"))
-        set_opt("doProfileXI", options.get("doProfileXI"))
-        set_opt("doProfilekl_EFT", options.get("doProfilekl_EFT"))
-        set_opt("doProfilekt_EFT", options.get("doProfilekt_EFT"))
-        set_opt("doProfileC2_EFT", options.get("doProfileC2_EFT"))
+        # profiling options with identical names
+        for opt in cls.valid_hh_model_options:
+            if opt.startswith("doProfile"):
+                set_opt(opt, options.get(opt))
 
         # reset pois
         model.reset_pois()
@@ -1104,9 +1082,13 @@ class POITask(DatacardTask, ParameterValuesTask):
     # class-level sequence of all available pois
     # instances will have potentially reduced sequences, depending on the physics model
     r_pois = ("r", "r_gghh", "r_qqhh", "r_vhh")
-    k_pois = ("kl", "kt", "CV", "C2V", "C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP",
-              "MA", "Z6", "TB", "CBA", "LQ", "MQ", "XI", "kl_EFT", "kt_EFT", "C2_EFT",
-              "cosbma", "tanbeta")
+    k_pois = (
+        # SM-like
+        "kl", "kt", "CV", "C2V",
+        # EFT
+        "C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP", "MA", "Z6", "TB", "CBA", "LQ", "MQ",
+        "XI", "kl_EFT", "kt_EFT", "C2_EFT", "cosbma", "tanbeta",
+    )
     all_pois = r_pois + k_pois
 
     pois = law.CSVParameter(
@@ -1825,8 +1807,8 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 
     keep_sh_as_signal = luigi.BoolParameter(
         default=False,
-        description="do not remove single higgs procs if they are set as signal"
-                    "and not part of the HH formula",
+        description="do not remove single higgs processes if they are set as signal and not part "
+        "of the HH formula; default: False",
     )
 
     def __init__(self, *args, **kwargs):
@@ -1914,15 +1896,15 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             for proc in signal_procs:
                 # keep signal if matched by at least one process in any formula
                 if any(
-                        any(sample.matches_process(proc) for sample in formula.samples)
-                        for formula in formulae
+                    any(sample.matches_process(proc) for sample in formula.samples)
+                    for formula in formulae
                 ):
                     continue
 
                 # keep signal if single higgs and configured to do so
-                if all(
-                        self.keep_h_as_signal,
-                        any(proc.startswith(f"{p}_" for p in single_higgs_processes)),
+                if (
+                    self.keep_sh_as_signal and
+                    any(proc.startswith(f"{p}_" for p in single_higgs_processes))
                 ):
                     continue
 
