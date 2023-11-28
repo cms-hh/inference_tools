@@ -1832,7 +1832,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 
     keepSHasSignal = luigi.BoolParameter(
         default=False,
-        description="do not remove single higgs procs if they are set as signal and not part of the HH formula",
+        description="do not remove single higgs procs if they are set as signal and not part of the HH formula", # noqa
     )
 
     def __init__(self, *args, **kwargs):
@@ -1922,8 +1922,9 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
                         break
                 else:
                     if self.keepSHasSignal:
-                        for p in ['ggH_', 'qqH_', 'ttH_', 'ZH_', 'WH_', 'VH_', 'tHW_', 'tHq_']:
-                            if p in proc: break
+                        for p in ["ggH_", "qqH_", "ttH_", "ZH_", "WH_", "VH_", "tHW_", "tHq_"]:
+                            if p in proc:
+                                break
                         else:
                             to_remove.add(proc)
                     else:
