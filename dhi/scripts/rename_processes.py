@@ -163,7 +163,13 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                                 old_name, new_name, process_name, bin_name,
                             ),
                         )
-                        update_shape_name(towner, old_name, new_name)
+                        clone = update_shape_name(towner, old_name, new_name)
+                        write_args = (
+                            (tfile, towner)
+                            if towner.InheritsFrom("RooWorkspace")
+                            else (tfile, clone, towner)
+                        )
+                        renamer._tfile_cache.write_tobj(*write_args)
 
                     # update the pattern in the shape line
                     if not process_is_wildcard:
@@ -181,7 +187,13 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
                                         "renaming syst shape {} to {} for process {} in "
                                         "bin {}".format(old_name, new_name, process_name, bin_name),
                                     )
-                                    update_shape_name(towner, old_name, new_name)
+                                    clone = update_shape_name(towner, old_name, new_name)
+                                    write_args = (
+                                        (tfile, towner)
+                                        if towner.InheritsFrom("RooWorkspace")
+                                        else (tfile, clone, towner)
+                                    )
+                                    renamer._tfile_cache.write_tobj(*write_args)
                                 if not process_is_wildcard:
                                     new_shape_line.syst_pattern = new_pattern
 
@@ -191,6 +203,8 @@ def rename_processes(datacard, rules, directory=None, skip_shapes=False, mass="1
 
 if __name__ == "__main__":
     import argparse
+
+    default_directory = os.getenv("DHI_DATACARD_SCRIPT_DIRECTORY") or script_name
 
     # setup argument parsing
     parser = argparse.ArgumentParser(
@@ -217,9 +231,9 @@ if __name__ == "__main__":
         "--directory",
         "-d",
         nargs="?",
-        default=script_name,
+        default=default_directory,
         help="directory in which the updated datacard and shape files are stored; when empty or "
-        "'none', the input files are changed in-place; default: '{}'".format(script_name),
+        "'none', the input files are changed in-place; default: '{}'".format(default_directory),
     )
     parser.add_argument(
         "--no-shapes",

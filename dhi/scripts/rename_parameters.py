@@ -105,25 +105,25 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
                     expr1 = r".*\s+extArg\s+([^\s]+\.root)\:([^\s]+).*$"
                     expr2 = r".*\s+rateParam\s+[^\s]+\s+[^\s]+\s+([^\s]+\.root)\:([^\s]+).*$"
                     m = re.match(expr1, param_line) or re.match(expr2, param_line)
-                    if m:
-                        ws_file, ws_name = m.groups()
-                        ws_file = os.path.join(os.path.dirname(renamer.datacard), ws_file)
-                        ws = renamer.get_tobj(ws_file, ws_name, "UPDATE")
-                        if not ws:
-                            raise Exception(
-                                "workspace {} not found in file {} referenced by extArg {}".format(
-                                    ws_name, ws_file, old_name,
-                                ),
-                            )
-                        new_name = renamer.translate(old_name)
-                        targ = ws.arg(old_name)
-                        if targ:
-                            targ.SetName(new_name)
-                            targ.SetTitle(targ.GetTitle().replace(old_name, new_name))
-                        else:
-                            logger.warning("extArg {} not found in workspace {} in tfile {}".format(
-                                old_name, ws_name, ws_file,
-                            ))
+                    if not m:
+                        continue
+                    ws_file, ws_name = m.groups()
+                    ws_file = os.path.join(os.path.dirname(renamer.datacard), ws_file)
+                    ws = renamer.get_tobj(ws_file, ws_name, "UPDATE")
+                    if not ws:
+                        raise Exception(
+                            f"workspace {ws_name} not found in file {ws_file} referenced by "
+                            f"extArg {old_name}",
+                        )
+                    new_name = renamer.translate(old_name)
+                    targ = ws.arg(old_name)
+                    if targ:
+                        targ.SetName(new_name)
+                        targ.SetTitle(targ.GetTitle().replace(old_name, new_name))
+                    else:
+                        logger.warning(
+                            f"extArg {old_name} not found in workspace {ws_name} in {ws_file}",
+                        )
 
         # update them in group listings
         if blocks.get("groups"):
@@ -212,7 +212,7 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
 
                     # the bin process pair should have shape systematics to be changed
                     syst_names = shape_syst_names.get((bin_name, process_name), [])
-                    syst_names = filter(renamer.has_rule, syst_names)
+                    syst_names = list(filter(renamer.has_rule, syst_names))
                     if not syst_names:
                         continue
 
@@ -229,11 +229,19 @@ def rename_parameters(datacard, rules, directory=None, skip_shapes=False, mass="
                                     old_name, new_name, process_name, bin_name,
                                 ),
                             )
-                            update_shape_name(towner, old_name, new_name)
+                            clone = update_shape_name(towner, old_name, new_name)
+                            write_args = (
+                                (tfile, towner)
+                                if towner.InheritsFrom("RooWorkspace")
+                                else (tfile, clone, towner)
+                            )
+                            renamer._tfile_cache.write_tobj(*write_args)
 
 
 if __name__ == "__main__":
     import argparse
+
+    default_directory = os.getenv("DHI_DATACARD_SCRIPT_DIRECTORY") or script_name
 
     # setup argument parsing
     parser = argparse.ArgumentParser(
@@ -260,9 +268,9 @@ if __name__ == "__main__":
         "--directory",
         "-d",
         nargs="?",
-        default=script_name,
+        default=default_directory,
         help="directory in which the updated datacard and shape files are stored; when empty or "
-        "'none', the input files are changed in-place; default: '{}'".format(script_name),
+        "'none', the input files are changed in-place; default: '{}'".format(default_directory),
     )
     parser.add_argument(
         "--no-shapes",

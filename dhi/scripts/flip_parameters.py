@@ -171,8 +171,10 @@ def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass=
 
                             # roll names
                             update_shape_name(towner, tobj_name + "Up", tobj_name + "UpTMP")
-                            update_shape_name(towner, tobj_name + "Down", tobj_name + "Up")
-                            update_shape_name(towner, tobj_name + "UpTMP", tobj_name + "Down")
+                            clone = update_shape_name(towner, tobj_name + "Down", tobj_name + "Up")
+                            renamer._tfile_cache.write_tobj(tfile, clone, towner)
+                            clone = update_shape_name(towner, tobj_name + "UpTMP", tobj_name + "Down")  # noqa
+                            renamer._tfile_cache.write_tobj(tfile, clone, towner)
                             logger.debug(
                                 "flip effect of {} parameter {} in bin {} and process {} in shape "
                                 "file {} (entry '{}{{Up,Down}}')".format(
@@ -203,6 +205,8 @@ def flip_parameters(datacard, patterns, directory=None, skip_shapes=False, mass=
 if __name__ == "__main__":
     import argparse
 
+    default_directory = os.getenv("DHI_DATACARD_SCRIPT_DIRECTORY") or script_name
+
     # setup argument parsing
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -227,9 +231,9 @@ if __name__ == "__main__":
         "--directory",
         "-d",
         nargs="?",
-        default=script_name,
+        default=default_directory,
         help="directory in which the updated datacard and shape files are stored; when empty or "
-        "'none', the input files are changed in-place; default: '{}'".format(script_name),
+        "'none', the input files are changed in-place; default: '{}'".format(default_directory),
     )
     parser.add_argument(
         "--no-shapes",

@@ -19,15 +19,6 @@ import law
 import luigi
 import six
 
-try:
-    from backports.functools_lru_cache import lru_cache
-except ImportError:
-    # empty decorator
-    def lru_cache(**kwargs):
-        def decorator(func):
-            return func
-        return decorator
-
 from dhi import dhi_combine_version
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
 from dhi.tasks.remote import HTCondorWorkflow
@@ -515,7 +506,9 @@ class DatacardTask(HHModelTask):
         return _path, bin_name, inject, store_dir
 
     @classmethod
-    @lru_cache(maxsize=None)
+    # disable lru caching for now as there is some interference with stateful class-level members
+    # that cannot be caputred by the cache for now
+    # @functools.lru_cache(maxsize=None, typed=True)
     def resolve_datacards(cls, patterns):
         paths = []
         bin_names = []
@@ -584,8 +577,8 @@ class DatacardTask(HHModelTask):
             _paths = __paths
 
             # keep only existing cards and resolve them to get deterministic hashes later on
-            _paths = filter(os.path.exists, _paths)
-            _paths = map(os.path.realpath, _paths)
+            _paths = list(filter(os.path.exists, _paths))
+            _paths = list(map(os.path.realpath, _paths))
 
             # complain when no files matched
             if not _paths:
@@ -1910,7 +1903,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             # get all datacard processes
             blocks = read_datacard_blocks(output_card.path)
             procs = blocks["rates"][1].strip().split()[1:]
-            proc_ids = map(int, blocks["rates"][2].strip().split()[1:])
+            proc_ids = list(map(int, blocks["rates"][2].strip().split()[1:]))
             signal_procs = set(proc for proc, proc_id in zip(procs, proc_ids) if proc_id <= 0)
 
             # loop through model formulae and determine signal processes that are not covered

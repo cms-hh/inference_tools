@@ -283,6 +283,8 @@ def remove_parameters(datacard, patterns, directory=None, skip_shapes=False):
 if __name__ == "__main__":
     import argparse
 
+    default_directory = os.getenv("DHI_DATACARD_SCRIPT_DIRECTORY") or script_name
+
     # setup argument parsing
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -308,9 +310,9 @@ if __name__ == "__main__":
         "--directory",
         "-d",
         nargs="?",
-        default=script_name,
+        default=default_directory,
         help="directory in which the updated datacard and shape files are stored; when empty or "
-        "'none', the input files are changed in-place; default: '{}'".format(script_name),
+        "'none', the input files are changed in-place; default: '{}'".format(default_directory),
     )
     parser.add_argument(
         "--no-shapes",
