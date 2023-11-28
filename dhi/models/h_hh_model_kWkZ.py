@@ -8,6 +8,7 @@ Authors:
   - Luca Cadamuro
   - Fabio Monti
   - Marcel Rieger
+  - Torben Lange
 """
 
 __all__ = [

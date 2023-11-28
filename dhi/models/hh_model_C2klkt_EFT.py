@@ -19,11 +19,9 @@ from dhi.models.h_hh_model_kWkZ import ( # noqa
 # necessary imports
 from dhi.models.hh_model_C2klkt import (GGFSample, GGFFormula)
 
-"""
-Placeholder imports, if we want it, we need to reimplement the xs functions,
-if we only plan likelihoods, not really needed however.
-"""
 
+# Placeholder imports, if we want it, we need to reimplement the xs functions,
+# if we only plan likelihoods, not really needed however.
 from dhi.models.hh_model_C2klkt import ( # noqa
     create_ggf_xsec_func, create_hh_xsec_func,
     get_ggf_xsec, get_vbf_xsec, get_hh_xsec,
@@ -97,18 +95,14 @@ class HHModelEFTBase(DefaultHHModel):
             if self.opt("doProfile" + p.replace("_", ""), False):
                 del self.k_pois[p]
 
-    """
-    Dummy to customize eft constraints of a specific theory scenario.
-    Implemented by specific model.
-    """
     def make_eftconstraints(self):
+        """
+        Dummy to customize eft constraints of a specific theory scenario.
+        Implemented by specific model.
+        """
+        
         raise NotImplementedError
 
-    """
-    redo this as kl,kt C2 is now not a poi anymore but still needs to be set,
-    to be able to customize it, we add a hook "make_eftconstraints" to be
-    then implemented in a specific model for a specific theory scenario
-    """
     def doParametersOfInterest(self):
         """
         Hook called by the super class to add parameters (of interest) to the model.
@@ -116,6 +110,11 @@ class HHModelEFTBase(DefaultHHModel):
         Here, we add all r and k POIs depending on profiling options, define the POI group and
         re-initialize the MH parameter. By default, the main r POI will be the only floating one,
         whereas the others are either fixed or fully profiled.
+
+        ( Redefine this from parent class, as kl,kt C2 is now not a poi anymore but still needs to be set,
+        to be able to customize it, we add a hook "make_eftconstraints" to be
+        then implemented in a specific model for a specific theory scenario )
+
         """
         # first, add all known r and k POIs
         for p in self.R_POIS:
@@ -276,14 +275,13 @@ POI_C2 = ("C2_EFT", (1, -10, 10))
 DEF_R_POIS = OrderedDict([POI_R, POI_R_GGHH, POI_R_QQHH])
 
 
-"""
-Model I (real scalar singlet with explicit Z2 breaking) [arXiv:1704.07851, arXiv:1412.8480]
-POIs: A(α), LA(λ_α), M2(m_2), C2V
---hh-model hh_model_C2klkt_EFT2.alpha_1_model_default
-"""
-
-
 class HHModel_Alpha_1(HHModelEFTBase):
+    """
+    Model I (real scalar singlet with explicit Z2 breaking) [arXiv:1704.07851, arXiv:1412.8480]
+    POIs: A(α), LA(λ_α), M2(m_2), C2V
+    --hh-model hh_model_C2klkt_EFT2.alpha_1_model_default
+    """
+
     h_br_scaler_cls = HBRScaler_AlphaM2
 
     R_POIS = DEF_R_POIS
@@ -294,13 +292,13 @@ class HHModel_Alpha_1(HHModelEFTBase):
         POI_C2V,
     ])
 
-    """
-    kl = 1−3/2*tan(α)^2 + tan(α)^2 * (λ_α −tan(α)*(m2/nu))/λSM;
-    kt = 1−tan(α)^2/2
-    C2 = −tan(α)^2/2
-    ki=CV=kt
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1−3/2*tan(α)^2 + tan(α)^2 * (λ_α −tan(α)*(m2/nu))/λSM;
+        kt = 1−tan(α)^2/2
+        C2 = −tan(α)^2/2
+        ki=CV=kt
+        """
         self.make_expr("expr::kl('1-(3./2.)*pow(tan(@0),2)+pow(tan(@0),2)*(@1-tan(@0)*(@2/@4))/@3', A, LA, M2, lSM, NU)")  # noqa
         self.make_expr("expr::C2('-pow(tan(@0),2)/2.', A)")
         self.make_expr("expr::kt('1-pow(tan(@0),2)/2.', A)")
@@ -350,15 +348,14 @@ alpha_1_model_default = create_model(
 )
 
 
-"""
-Model Ib (real scalar singlet with explicit Z2 breaking) [arXiv:1704.07851, arXiv:1412.8480]
-(λ_eff , tan(α) reparametrisation)
-POIs: CA( cos(α) ), LE(λ_eff = λ_α -tan(α)*m2/nu^2), C2V
---hh-model hh_model_C2klkt_EFT2.alpha_1b_model_default
-"""
-
-
 class HHModel_Alpha_1b(HHModelEFTBase):
+    """
+    Model Ib (real scalar singlet with explicit Z2 breaking) [arXiv:1704.07851, arXiv:1412.8480]
+    (λ_eff , tan(α) reparametrisation)
+    POIs: CA( cos(α) ), LE(λ_eff = λ_α -tan(α)*m2/nu^2), C2V
+    --hh-model hh_model_C2klkt_EFT2.alpha_1b_model_default
+    """
+
     h_br_scaler_cls = HBRScaler_CosAlphaLeff
 
     R_POIS = DEF_R_POIS
@@ -368,13 +365,14 @@ class HHModel_Alpha_1b(HHModelEFTBase):
         POI_C2V,
     ])
 
-    """
-    kl = 1−3/2*tan(α)^2 + tan(α)^2 * (λ_α −tan(α)*(m2/nu))/λSM
-    kt = 1−tan(α)^2/2
-    C2 = −tan(α)^2/2
-    ki=CV=kt
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1−3/2*tan(α)^2 + tan(α)^2 * (λ_α −tan(α)*(m2/nu))/λSM
+        kt = 1−tan(α)^2/2
+        C2 = −tan(α)^2/2
+        ki=CV=kt
+        """
+
         self.make_expr("expr::TA('sin(acos(@0))/@0', CA)")
         self.make_expr("expr::kl('1-(3./2.)*pow(@0,2)+pow(@0,2)*(@1)/@2', TA, LE, lSM)")  # noqa
         self.make_expr("expr::C2('-pow(@0,2)/2.', TA)")
@@ -399,14 +397,13 @@ alpha_1b_model_default = create_model(
 )
 
 
-"""
-Model II (real scalar singlet with spontaneous Z2 breaking) [arXiv:1704.07851]
-POIs: A(α), C2V
---hh-model hh_model_C2klkt_EFT2.alpha_2_model_default
-"""
-
-
 class HHModel_Alpha_2(HHModelEFTBase):
+    """
+    Model II (real scalar singlet with spontaneous Z2 breaking) [arXiv:1704.07851]
+    POIs: A(α), C2V
+    --hh-model hh_model_C2klkt_EFT2.alpha_2_model_default
+    """
+
     h_br_scaler_cls = HBRScaler_Alpha
 
     R_POIS = DEF_R_POIS
@@ -415,13 +412,14 @@ class HHModel_Alpha_2(HHModelEFTBase):
         POI_C2V,
     ])
 
-    """
-    kl = 1-3/2*tan(α)^2
-    kt = 1−tan(α)^2/2
-    C2 = −tan(α)^2/2
-    ki=CV=kt
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1-3/2*tan(α)^2
+        kt = 1−tan(α)^2/2
+        C2 = −tan(α)^2/2
+        ki=CV=kt
+        """
+    
         self.make_expr("expr::kl('1-(3./2.)*pow(tan(@0),2)', A)")
         self.make_expr("expr::C2('-pow(tan(@0),2)/2.', A)")
         self.make_expr("expr::kt('1-pow(tan(@0),2)/2.', A)")
@@ -445,15 +443,14 @@ alpha_2_model_default = create_model(
 )
 
 
-"""
-Model IIb (real scalar singlet with spontaneous Z2 breaking) [arXiv:1704.07851]
-(λ_eff , tan(α) reparametrisation)
-POIs: TA(tan(α)), C2V
---hh-model hh_model_C2klkt_EFT2.alpha_2b_model_default
-"""
-
-
 class HHModel_Alpha_2b(HHModelEFTBase):
+    """
+    Model IIb (real scalar singlet with spontaneous Z2 breaking) [arXiv:1704.07851]
+    (λ_eff , tan(α) reparametrisation)
+    POIs: TA(tan(α)), C2V
+    --hh-model hh_model_C2klkt_EFT2.alpha_2b_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_CosAlpha
 
     R_POIS = DEF_R_POIS
@@ -463,13 +460,14 @@ class HHModel_Alpha_2b(HHModelEFTBase):
         POI_C2V,
     ])
 
-    """
-    kl = 1-3/2*tan(α)^2
-    kt = 1−tan(α)^2/2
-    C2 = −tan(α)^2/2
-    ki=CV=kt
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1-3/2*tan(α)^2
+        kt = 1−tan(α)^2/2
+        C2 = −tan(α)^2/2
+        ki=CV=kt
+        """
+    
         self.make_expr("expr::TA('sin(acos(@0))/@0', CA)")
         self.make_expr("expr::kl('1-(3./2.)*pow(@0,2)', TA)")
         self.make_expr("expr::C2('-pow(@0,2)/2.', TA)")
@@ -494,14 +492,13 @@ alpha_2b_model_default = create_model(
 )
 
 
-"""
-Model III (real scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
-POIs: B(β), MHE(mH), MHP(mH+), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_3_model_default
-"""
-
-
 class HHModel_BETAMH_3(HHModelEFTBase):
+    """
+    Model III (real scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
+    POIs: B(β), MHE(mH), MHP(mH+), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_3_model_default
+    """
+
     h_br_scaler_cls = HBRScaler_BetaMHEMHP
 
     R_POIS = DEF_R_POIS
@@ -512,15 +509,16 @@ class HHModel_BETAMH_3(HHModelEFTBase):
         POI_MHP,
     ])
 
-    """
-    kl = 1 + 4*sin(β)^2*(3+(mH+^2)/(nu^2*λSM))*(mH+^4)/(mH^4);
-    kt = 1
-    C2 = -2*sin(β)^2*(mH+^4)/(mH^4)
-    kq=kf=1
-    kW=sqrt(1+1.73*sin(β)^2mH+^4/(mH^4))
-    kZ=sqrt(1+5*sin(β)^2*mH+^4/(mH^4))
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1 + 4*sin(β)^2*(3+(mH+^2)/(nu^2*λSM))*(mH+^4)/(mH^4);
+        kt = 1
+        C2 = -2*sin(β)^2*(mH+^4)/(mH^4)
+        kq=kf=1
+        kW=sqrt(1+1.73*sin(β)^2mH+^4/(mH^4))
+        kZ=sqrt(1+5*sin(β)^2*mH+^4/(mH^4))
+        """
+    
         self.make_expr("expr::kl('1+4*pow(sin(@0),2)*(3+pow(@1,2)/(pow(@2,2)*@3))*pow(@1,4)/pow(@4,4)', B, MHP, NU, lSM, MHE)")  # noqa
         self.make_expr("expr::C2('-2*pow(sin(@0),2)*pow(@1,4)/pow(@2,4)',B, MHP, MHE)")
         self.make_var("{}[1]".format("kt"))
@@ -545,14 +543,13 @@ betamh_3_model_default = create_model(
 )
 
 
-"""
-Model IIIb (real scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
-POIs: B(β), MHE(mH=mH+), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_3b_model_default
-"""
-
-
 class HHModel_BETAMH_3b(HHModelEFTBase):
+    """
+    Model IIIb (real scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
+    POIs: B(β), MHE(mH=mH+), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_3b_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_BetaMHE
 
     R_POIS = DEF_R_POIS
@@ -562,15 +559,16 @@ class HHModel_BETAMH_3b(HHModelEFTBase):
         POI_MHE,
     ])
 
-    """
-    kl = 1 + 4*sin(β)^2*(3+(mH+^2)/(nu^2*λSM))
-    kt = 1
-    C2 = -2*sin(β)^2
-    kq=kf=1
-    kW=sqrt(1+1.73*sin(β)^2)
-    kZ=sqrt(1+5*sin(β)^2)
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1 + 4*sin(β)^2*(3+(mH+^2)/(nu^2*λSM))
+        kt = 1
+        C2 = -2*sin(β)^2
+        kq=kf=1
+        kW=sqrt(1+1.73*sin(β)^2)
+        kZ=sqrt(1+5*sin(β)^2)
+        """
+    
         self.make_expr("expr::kl('1+4*pow(sin(@0),2)*(3+pow(@1,2)/(pow(@2,2)*@3))', B, MHE, NU, lSM)")  # noqa
         self.make_expr("expr::C2('-2*pow(sin(@0),2)',B)")
         self.make_var("{}[1]".format("kt"))
@@ -595,14 +593,13 @@ betamh_3b_model_default = create_model(
 )
 
 
-"""
-Model IV (complex scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
-POIs: B(β), MHE(mH), MA(mA), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_4_model_default
-"""
-
-
 class HHModel_BETAMH_4(HHModelEFTBase):
+    """
+    Model IV (complex scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
+    POIs: B(β), MHE(mH), MA(mA), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_4_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_BetaMHEMA
 
     R_POIS = DEF_R_POIS
@@ -613,15 +610,16 @@ class HHModel_BETAMH_4(HHModelEFTBase):
         POI_MA,
     ])
 
-    """
-    kl = 1 + 2*sin(β)^2*(3+4*(mA^2)/(nu^2*λSM))*(mA^4)/(mH^4);
-    kt = 1-2*sin(β)^2(mA^4)/(mH^4)
-    C2 = -4*sin(β)^2*(mA^4)/(mH^4)
-    kq=klep=1
-    kW=sqrt(1+10.27*sin(β)^2mA^4/(mH^4))
-    kZ=sqrt(1+7*sin(β)^2*mA^4/(mH^4))
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1 + 2*sin(β)^2*(3+4*(mA^2)/(nu^2*λSM))*(mA^4)/(mH^4);
+        kt = 1-2*sin(β)^2(mA^4)/(mH^4)
+        C2 = -4*sin(β)^2*(mA^4)/(mH^4)
+        kq=klep=1
+        kW=sqrt(1+10.27*sin(β)^2mA^4/(mH^4))
+        kZ=sqrt(1+7*sin(β)^2*mA^4/(mH^4))
+        """
+    
         self.make_expr("expr::kl('1 + 2*pow(sin(@0),2)*(3+4*pow(@1,2)/(pow(@2,2)*@3))*pow(@1,4)/pow(@4,4)', B, MA, NU, lSM, MHE)")  # noqa
         self.make_expr("expr::kt('1-2*pow(sin(@0),2)*pow(@1,4)/pow(@2,4)',B,MA,MHE)")
         self.make_expr("expr::C2('-4*pow(sin(@0),2)*pow(@1,4)/pow(@2,4)',B, MA, MHE)")
@@ -645,14 +643,13 @@ betamh_4_model_default = create_model(
 )
 
 
-"""
-Model IVb (complex scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
-POIs: B(β), MHE(mH=mA), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_4b_model_default
-"""
-
-
 class HHModel_BETAMH_4b(HHModelEFTBase):
+    """
+    Model IVb (complex scalar triplet) [arXiv:1704.07851, arXiv:1412.8480]
+    POIs: B(β), MHE(mH=mA), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_4b_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_BetaMHE
 
     R_POIS = DEF_R_POIS
@@ -662,15 +659,16 @@ class HHModel_BETAMH_4b(HHModelEFTBase):
         POI_MHE,
     ])
 
-    """
-    kl = 1 + 2*sin(β)^2*(3+4*(mA^2)/(nu^2*λSM));
-    kt = 1-2*sin(β)^2
-    C2 = -4*sin(β)^2
-    kq=kf=1
-    kW=sqrt(1+10.27*sin(β)^2mA^4/(mH^4))
-    kZ=sqrt(1+7*sin(β)^2*mA^4/(mH^4))
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1 + 2*sin(β)^2*(3+4*(mA^2)/(nu^2*λSM));
+        kt = 1-2*sin(β)^2
+        C2 = -4*sin(β)^2
+        kq=kf=1
+        kW=sqrt(1+10.27*sin(β)^2mA^4/(mH^4))
+        kZ=sqrt(1+7*sin(β)^2*mA^4/(mH^4))
+        """
+    
         self.make_expr("expr::kl('1 + 2*pow(sin(@0),2)*(3+4*pow(@1,2)/(pow(@2,2)*@3))', B, MHE, NU, lSM)")  # noqa
         self.make_expr("expr::kt('1-2*pow(sin(@0),2)', B, MHE)")
         self.make_expr("expr::C2('-4*pow(sin(@0),2)',B, MHE)")
@@ -694,14 +692,13 @@ betamh_4b_model_default = create_model(
 )
 
 
-"""
-Model V (quartet scalar with Y = 1/2) [arXiv:1704.07851, arXiv:1412.8480]
-POIs: B(β), MHE(mH), MA(mA), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_5_model_default
-"""
-
-
 class HHModel_BETAMH_5(HHModelEFTBase):
+    """
+    Model V (quartet scalar with Y = 1/2) [arXiv:1704.07851, arXiv:1412.8480]
+    POIs: B(β), MHE(mH), MA(mA), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_5_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_BetaMHEMA
 
     R_POIS = DEF_R_POIS
@@ -712,13 +709,14 @@ class HHModel_BETAMH_5(HHModelEFTBase):
         POI_MA,
     ])
 
-    """
-    kl = 1+24/7*tan(β)^2*(mA^4)/(mH^2*nu^2*λSM);
-    kt = 1
-    C2 = 0
-    kq=kl=CV=1
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1+24/7*tan(β)^2*(mA^4)/(mH^2*nu^2*λSM);
+        kt = 1
+        C2 = 0
+        kq=kl=CV=1
+        """
+    
         self.make_expr("expr::kl('1 + (24./7.)*pow(tan(@0),2)*pow(@1,4)/(pow(@2*@3,2)*@4)', B, MA, MHE, NU, lSM)")  # noqa
         self.make_var("{}[1]".format("kt"))
         self.get_var("kt").setConstant(True)
@@ -744,14 +742,13 @@ betamh_5_model_default = create_model(
 )
 
 
-"""
-Model Vb (quartet scalar with Y = 1/2) [arXiv:1704.07851, arXiv:1412.8480]
-POIs: B(β), MHE(mH=mA), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_5b_model_default
-"""
-
-
 class HHModel_BETAMH_5b(HHModelEFTBase):
+    """
+    Model Vb (quartet scalar with Y = 1/2) [arXiv:1704.07851, arXiv:1412.8480]
+    POIs: B(β), MHE(mH=mA), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_5b_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_BetaMHE
 
     R_POIS = DEF_R_POIS
@@ -761,13 +758,14 @@ class HHModel_BETAMH_5b(HHModelEFTBase):
         POI_MHE,
     ])
 
-    """
-    kl = 1+24/7*tan(β)^2*(mH^2)/(nu^2*λSM);
-    kt = 1
-    C2 = 0
-    kq=kl=CV=1
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1+24/7*tan(β)^2*(mH^2)/(nu^2*λSM);
+        kt = 1
+        C2 = 0
+        kq=kl=CV=1
+        """
+    
         self.make_expr("expr::kl('1 + (24./7.)*pow(tan(@0),2)*pow(@1,2)/(@2*pow(@3,2))', B, MHE, lSM, NU)")  # noqa
         self.make_var("{}[1]".format("kt"))
         self.get_var("kt").setConstant(True)
@@ -793,14 +791,13 @@ betamh_5b_model_default = create_model(
 )
 
 
-"""
-Model VI (quartet scalar with Y = 3/2) [arXiv:1704.07851, arXiv:1412.8480]
-POIs: B(β), MHE(mH), MA(mA), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_6_model_default
-"""
-
-
 class HHModel_BETAMH_6(HHModelEFTBase):
+    """
+    Model VI (quartet scalar with Y = 3/2) [arXiv:1704.07851, arXiv:1412.8480]
+    POIs: B(β), MHE(mH), MA(mA), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_6_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_BetaMHEMA
 
     R_POIS = DEF_R_POIS
@@ -811,13 +808,14 @@ class HHModel_BETAMH_6(HHModelEFTBase):
         POI_MA,
     ])
 
-    """
-    kl = 1+8/3*tan(β)^2*(mA^4)/(mH^2*nu^2*λSM)
-    kt = 1
-    C2 = 0
-    kq=kl=CV=1
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1+8/3*tan(β)^2*(mA^4)/(mH^2*nu^2*λSM)
+        kt = 1
+        C2 = 0
+        kq=kl=CV=1
+        """
+    
         self.make_expr("expr::kl('1 + (8./3.)*pow(tan(@0),2)*pow(@1,4)/(pow(@2*@3,2)*@4)', B, MA, MHE, NU, lSM)")  # noqa
         self.make_var("{}[1]".format("kt"))
         self.get_var("kt").setConstant(True)
@@ -843,14 +841,13 @@ betamh_6_model_default = create_model(
 )
 
 
-"""
-Model VIb (quartet scalar with Y = 3/2) [arXiv:1704.07851, arXiv:1412.8480]
-POIs: B(β), MHE(mH=mA), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_6b_model_default
-"""
-
-
 class HHModel_BETAMH_6b(HHModelEFTBase):
+    """
+    Model VIb (quartet scalar with Y = 3/2) [arXiv:1704.07851, arXiv:1412.8480]
+    POIs: B(β), MHE(mH=mA), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_6b_model_default
+    """
+
     h_br_scaler_cls = HBRScaler_BetaMHE
 
     R_POIS = DEF_R_POIS
@@ -861,12 +858,13 @@ class HHModel_BETAMH_6b(HHModelEFTBase):
         POI_MA,
     ])
 
-    """
-    kl = 1+8/3*tan(β)^2*(mH^2)/(nu^2*λSM)
-    kt = 1
-    C2 = 0
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1+8/3*tan(β)^2*(mH^2)/(nu^2*λSM)
+        kt = 1
+        C2 = 0
+        """
+    
         self.make_expr("expr::kl('1 + (8./3.)*pow(tan(@0),2)*pow(@1,2)/(pow(@2,2)*@3)', B, MHE, NU, lSM)")  # noqa        
         self.make_var("{}[1]".format("kt"))
         self.get_var("kt").setConstant(True)
@@ -892,15 +890,14 @@ betamh_6b_model_default = create_model(
 )
 
 
-"""
-Model VII-i (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
-(Type-I 2HDM)
-POIs: B(β), MHE(mH), Z6(Z6), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_7i_model_default
-"""
-
-
 class HHModel_BETAMH_7_i(HHModelEFTBase):
+    """
+    Model VII-i (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
+    (Type-I 2HDM)
+    POIs: B(β), MHE(mH), Z6(Z6), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_7i_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_BetaMHEZ6
 
     R_POIS = DEF_R_POIS
@@ -911,14 +908,15 @@ class HHModel_BETAMH_7_i(HHModelEFTBase):
         POI_Z6,
     ])
 
-    """
-    kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
-    kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
-    C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
-    kf=kt (type 1 all charged fermions receive changes)
-    CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
+        kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
+        C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
+        kf=kt (type 1 all charged fermions receive changes)
+        CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
+        """
+    
         self.make_expr("expr::kl('1-3*pow(@0,2)*pow(@1,2)/(2*@2*pow(@3,2))',Z6, NU, lSM, MHE )")  # noqa
         self.make_expr("expr::kt('1-@0*pow(@1,2)/(tan(@2)*pow(@3,2))',Z6, NU, B, MHE )")
         self.make_expr("expr::C2('-3.*@0*pow(@1,2)/(2.*tan(@2)*pow(@3,2))',Z6, NU, B, MHE )")
@@ -927,7 +925,9 @@ class HHModel_BETAMH_7_i(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kt)")
         self.make_expr("expr::kmu('@0', kt)")
         self.make_expr("expr::ktau('@0', kt)")
+        # CV from Florians paper
         # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # CV from old 2016 model
         self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
@@ -943,15 +943,14 @@ betamh_7i_model_default = create_model(
 )
 
 
-"""
-Model VII-ii (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
-(Type-II 2HDM)
-POIs: B(β), MHE(mH), Z6(Z6), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_7ii_model_default
-"""
-
-
 class HHModel_BETAMH_7_ii(HHModelEFTBase):
+    """
+    Model VII-ii (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
+    (Type-II 2HDM)
+    POIs: B(β), MHE(mH), Z6(Z6), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_7ii_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_BetaMHEZ6
 
     R_POIS = DEF_R_POIS
@@ -962,15 +961,16 @@ class HHModel_BETAMH_7_ii(HHModelEFTBase):
         POI_Z6,
     ])
 
-    """
-    kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
-    kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
-    C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
-    (type 2 all up-type)
-    kb=ktau=1-tan(β)^2(kt-1)
-    CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
+        kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
+        C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
+        (type 2 all up-type)
+        kb=ktau=1-tan(β)^2(kt-1)
+        CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
+        """
+    
         self.make_expr("expr::kl('1-3*pow(@0,2)*pow(@1,2)/(2*@2*pow(@3,2))',Z6, NU, lSM, MHE )")  # noqa
         self.make_expr("expr::kt('1-@0*pow(@1,2)/(tan(@2)*pow(@3,2))',Z6, NU, B, MHE )")
         self.make_expr("expr::C2('-3.*@0*pow(@1,2)/(2.*tan(@2)*pow(@3,2))',Z6, NU, B, MHE )")
@@ -979,7 +979,9 @@ class HHModel_BETAMH_7_ii(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kb)")
         self.make_expr("expr::kmu('@0', kb)")
         self.make_expr("expr::ktau('@0', kb)")
+        # CV from Florians paper
         # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # CV from old 2016 model
         self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
@@ -995,15 +997,14 @@ betamh_7ii_model_default = create_model(
 )
 
 
-"""
-Model VII-iii (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
-(Type-X 2HDM)
-POIs: B(β), MHE(mH), Z6(Z6), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_7iii_model_default
-"""
-
-
 class HHModel_BETAMH_7_iii(HHModelEFTBase):
+    """
+    Model VII-iii (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
+    (Type-X 2HDM)
+    POIs: B(β), MHE(mH), Z6(Z6), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_7iii_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_BetaMHEZ6
 
     R_POIS = DEF_R_POIS
@@ -1014,16 +1015,17 @@ class HHModel_BETAMH_7_iii(HHModelEFTBase):
         POI_Z6,
     ])
 
-    """
-    kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
-    kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
-    C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
-    (type X lepton specific)
-    kl=ktau=1-tan(β)^2(kt-1)
-    kq=kt
-    CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
+        kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
+        C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
+        (type X lepton specific)
+        kl=ktau=1-tan(β)^2(kt-1)
+        kq=kt
+        CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
+        """
+    
         self.make_expr("expr::kl('1-3*pow(@0,2)*pow(@1,2)/(2*@2*pow(@3,2))',Z6, NU, lSM, MHE )")  # noqa
         self.make_expr("expr::kt('1-@0*pow(@1,2)/(tan(@2)*pow(@3,2))',Z6, NU, B, MHE )")
         self.make_expr("expr::C2('-3.*@0*pow(@1,2)/(2.*tan(@2)*pow(@3,2))',Z6, NU, B, MHE )")
@@ -1032,7 +1034,9 @@ class HHModel_BETAMH_7_iii(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kt)")
         self.make_expr("expr::kmu('@0', ktau)")
         self.make_expr("expr::kb('@0', kt)")
+        # CV from Florians paper
         # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # CV from old 2016 model
         self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
@@ -1048,15 +1052,14 @@ betamh_7iii_model_default = create_model(
 )
 
 
-"""
-Model VII-iv (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
-(Type-Y 2HDM)
-POIs: B(β), MHE(mH), Z6(Z6), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_7iv_model_default
-"""
-
-
 class HHModel_BETAMH_7_iv(HHModelEFTBase):
+    """
+    Model VII-iv (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
+    (Type-Y 2HDM)
+    POIs: B(β), MHE(mH), Z6(Z6), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_7iv_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_BetaMHEZ6
 
     R_POIS = DEF_R_POIS
@@ -1067,16 +1070,17 @@ class HHModel_BETAMH_7_iv(HHModelEFTBase):
         POI_Z6,
     ])
 
-    """
-    kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
-    kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
-    C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
-    (type Y flipped uptype/leptons)
-    kt=kc=ktau=kmu
-    kb=ks=1-tan(β)^2(kt-1)
-    CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
+        kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
+        C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
+        (type Y flipped uptype/leptons)
+        kt=kc=ktau=kmu
+        kb=ks=1-tan(β)^2(kt-1)
+        CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
+        """
+    
         self.make_expr("expr::kl('1-3*pow(@0,2)*pow(@1,2)/(2*@2*pow(@3,2))',Z6, NU, lSM, MHE )")  # noqa
         self.make_expr("expr::kt('1-@0*pow(@1,2)/(tan(@2)*pow(@3,2))',Z6, NU, B, MHE )")
         self.make_expr("expr::C2('-3.*@0*pow(@1,2)/(2.*tan(@2)*pow(@3,2))',Z6, NU, B, MHE )")
@@ -1085,7 +1089,9 @@ class HHModel_BETAMH_7_iv(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kb)")
         self.make_expr("expr::kmu('@0', kt)")
         self.make_expr("expr::ktau('@0', kt)")
+        # CV from Florians paper
         # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # CV from old 2016 model
         self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
@@ -1101,15 +1107,14 @@ betamh_7iv_model_default = create_model(
 )
 
 
-"""
-Model VIIa-i (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
-(Type-I 2HDM)
-POIs: TB(tan(β)), MHE(mH), CBA (cos(β-α)), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_7ai_model_default
-"""
-
-
 class HHModel_BETAMH_7a_i(HHModelEFTBase):
+    """
+    Model VIIa-i (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
+    (Type-I 2HDM)
+    POIs: TB(tan(β)), MHE(mH), CBA (cos(β-α)), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_7ai_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_TBetaMHECBA
 
     R_POIS = DEF_R_POIS
@@ -1120,15 +1125,16 @@ class HHModel_BETAMH_7a_i(HHModelEFTBase):
         POI_CBA,
     ])
 
-    """
-    Z6=-cos(β-α)*sin(β-α)*(MH^2-mh^2)/nu^2
-    kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
-    kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
-    C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
-    kf=kt (type 1 all charged fermions receive changes)
-    CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
-    """
     def make_eftconstraints(self):
+        """
+        Z6=-cos(β-α)*sin(β-α)*(MH^2-mh^2)/nu^2
+        kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
+        kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
+        C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
+        kf=kt (type 1 all charged fermions receive changes)
+        CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
+        """
+    
         self.make_expr("expr::Z6('-@0*sin(acos(@0))*(pow(@1,2)-pow(@2,2))/pow(@3,2)',CBA, MHE, MH, NU )")  # noqa
         self.make_expr("expr::kl('1-3*pow(@0,2)*pow(@1,2)/(2*@2*pow(@3,2))',Z6, NU, lSM, MHE )")  # noqa
         self.make_expr("expr::kt('1-@0*pow(@1,2)/(@2*pow(@3,2))',Z6, NU, TB, MHE )")
@@ -1138,7 +1144,9 @@ class HHModel_BETAMH_7a_i(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kt)")
         self.make_expr("expr::kmu('@0', kt)")
         self.make_expr("expr::ktau('@0', kt)")
+        # CV from Florians paper
         # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # CV from old 2016 model
         self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
@@ -1154,15 +1162,14 @@ betamh_7ai_model_default = create_model(
 )
 
 
-"""
-Model VIIa-ii (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
-(Type-II 2HDM)
-POIs: TB(tan(β)), MHE(mH), CBA (cos(β-α)), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_7aii_model_default
-"""
-
-
 class HHModel_BETAMH_7a_ii(HHModelEFTBase):
+    """
+    Model VIIa-ii (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
+    (Type-II 2HDM)
+    POIs: TB(tan(β)), MHE(mH), CBA (cos(β-α)), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_7aii_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_TBetaMHECBA
 
     R_POIS = DEF_R_POIS
@@ -1173,16 +1180,17 @@ class HHModel_BETAMH_7a_ii(HHModelEFTBase):
         POI_CBA,
     ])
 
-    """
-    Z6=-cos(β-α)*sin(β-α)*(MH^2-mh^2)/nu^2
-    kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
-    kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
-    C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
-    (type 2 all up-type)
-    kb=ktau=1-tan(β)^2(kt-1)
-    CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
-    """
     def make_eftconstraints(self):
+        """
+        Z6=-cos(β-α)*sin(β-α)*(MH^2-mh^2)/nu^2
+        kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
+        kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
+        C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
+        (type 2 all up-type)
+        kb=ktau=1-tan(β)^2(kt-1)
+        CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
+        """
+    
         self.make_expr("expr::Z6('-@0*sin(acos(@0))*(pow(@1,2)-pow(@2,2))/pow(@3,2)',CBA, MHE, MH, NU )")  # noqa
         self.make_expr("expr::kl('1-3*pow(@0,2)*pow(@1,2)/(2*@2*pow(@3,2))',Z6, NU, lSM, MHE )")  # noqa
         self.make_expr("expr::kt('1-@0*pow(@1,2)/(@2*pow(@3,2))',Z6, NU, TB, MHE )")
@@ -1192,7 +1200,9 @@ class HHModel_BETAMH_7a_ii(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kb)")
         self.make_expr("expr::kmu('@0', kb)")
         self.make_expr("expr::ktau('@0', kb)")
+        # CV from Florians paper
         # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # CV from old 2016 model
         self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
@@ -1208,15 +1218,14 @@ betamh_7aii_model_default = create_model(
 )
 
 
-"""
-Model VIIa-iii (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
-(Type-X 2HDM)
-POIs: TB(tan(β)), MHE(mH), CBA (cos(β-α)), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_7aiii_model_default
-"""
-
-
 class HHModel_BETAMH_7a_iii(HHModelEFTBase):
+    """
+    Model VIIa-iii (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
+    (Type-X 2HDM)
+    POIs: TB(tan(β)), MHE(mH), CBA (cos(β-α)), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_7aiii_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_TBetaMHECBA
 
     R_POIS = DEF_R_POIS
@@ -1227,17 +1236,18 @@ class HHModel_BETAMH_7a_iii(HHModelEFTBase):
         POI_CBA,
     ])
 
-    """
-    Z6=-cos(β-α)*sin(β-α)*(MH^2-mh^2)/nu^2
-    kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
-    kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
-    C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
-    (type X lepton specific)
-    kl=ktau=1-tan(β)^2(kt-1)
-    kq=kt
-    CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
-    """
     def make_eftconstraints(self):
+        """
+        Z6=-cos(β-α)*sin(β-α)*(MH^2-mh^2)/nu^2
+        kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
+        kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
+        C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
+        (type X lepton specific)
+        kl=ktau=1-tan(β)^2(kt-1)
+        kq=kt
+        CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
+        """
+    
         self.make_expr("expr::Z6('-@0*sin(acos(@0))*(pow(@1,2)-pow(@2,2))/pow(@3,2)',CBA, MHE, MH, NU )")  # noqa
         self.make_expr("expr::kl('1-3*pow(@0,2)*pow(@1,2)/(2*@2*pow(@3,2))',Z6, NU, lSM, MHE )")  # noqa
         self.make_expr("expr::kt('1-@0*pow(@1,2)/(@2*pow(@3,2))',Z6, NU, TB, MHE )")
@@ -1247,7 +1257,9 @@ class HHModel_BETAMH_7a_iii(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kt)")
         self.make_expr("expr::kmu('@0', ktau)")
         self.make_expr("expr::kb('@0', kt)")
+        # CV from Florians paper
         # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # CV from old 2016 model
         self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
@@ -1263,15 +1275,14 @@ betamh_7aiii_model_default = create_model(
 )
 
 
-"""
-Model VIIa-iv (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
-(Type-Y 2HDM)
-POIs: TB(tan(β)), MHE(mH), CBA (cos(β-α)), C2V
---hh-model hh_model_C2klkt_EFT2.betamh_7aiv_model_default
-"""
-
-
 class HHModel_BETAMH_7a_iv(HHModelEFTBase):
+    """
+    Model VIIa-iv (2HDM (addtl. scalars heavy + Z2)) [arXiv:1611.01112]
+    (Type-Y 2HDM)
+    POIs: TB(tan(β)), MHE(mH), CBA (cos(β-α)), C2V
+    --hh-model hh_model_C2klkt_EFT2.betamh_7aiv_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_TBetaMHECBA
 
     R_POIS = DEF_R_POIS
@@ -1282,17 +1293,18 @@ class HHModel_BETAMH_7a_iv(HHModelEFTBase):
         POI_CBA,
     ])
 
-    """
-    Z6=-cos(β-α)*sin(β-α)*(MH^2-mh^2)/nu^2
-    kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
-    kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
-    C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
-    (type Y flipped uptype/leptons)
-    kt=kc=ktau=kmu
-    kb=ks=1-tan(β)^2(kt-1)
-    CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
-    """
     def make_eftconstraints(self):
+        """
+        Z6=-cos(β-α)*sin(β-α)*(MH^2-mh^2)/nu^2
+        kl = 1 - 3*(Z6^2*nu^2)/(2*λSM*mH^2); λSM=mh^2/(2*nu^2)
+        kt = 1-(Z6*nu^2)/(tan(β)*mH^2)
+        C2 = 1-(3*Z6*nu^2)/(2*tan(β)*mH^2)
+        (type Y flipped uptype/leptons)
+        kt=kc=ktau=kmu
+        kb=ks=1-tan(β)^2(kt-1)
+        CV=1-0.5*(1-Sqrt(1-((2*Nu^2*Z6)/(mH^2-mh^2))^2))
+        """
+    
         self.make_expr("expr::Z6('-@0*sin(acos(@0))*(pow(@1,2)-pow(@2,2))/pow(@3,2)',CBA, MHE, MH, NU )")  # noqa
         self.make_expr("expr::kl('1-3*pow(@0,2)*pow(@1,2)/(2*@2*pow(@3,2))',Z6, NU, lSM, MHE )")  # noqa
         self.make_expr("expr::kt('1-@0*pow(@1,2)/(@2*pow(@3,2))',Z6, NU, TB, MHE )")
@@ -1302,7 +1314,9 @@ class HHModel_BETAMH_7a_iv(HHModelEFTBase):
         self.make_expr("expr::ks('@0', kb)")
         self.make_expr("expr::kmu('@0', kt)")
         self.make_expr("expr::ktau('@0', kt)")
+        # CV from Florians paper
         # self.make_expr("expr::CV('1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2)))', NU,Z6, MHE, MH )")  # noqa
+        # CV from old 2016 model
         self.make_expr("expr::CV('sqrt(1-0.5*(1-sqrt(1-pow( (2*pow(@0,2)*@1)/(pow(@2,2)-pow(@3,2)),2))))', NU,Z6, MHE, MH )")  # noqa
         self.make_var("{}[1]".format("kW"))
         self.get_var("kW").setConstant(True)
@@ -1318,14 +1332,13 @@ betamh_7aiv_model_default = create_model(
 )
 
 
-"""
-Model VIII (vector-like quark: T) [arXiv:hep-ph/0007316]
-POIs: LQ(λ_Tt), MQ (MT), CV, C2V
---hh-model hh_model_C2klkt_EFT2.vlq_8_model_default
-"""
-
-
 class HHModel_VLQ_8(HHModelEFTBase):
+    """
+    Model VIII (vector-like quark: T) [arXiv:hep-ph/0007316]
+    POIs: LQ(λ_Tt), MQ (MT), CV, C2V
+    --hh-model hh_model_C2klkt_EFT2.vlq_8_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_VLQ
 
     R_POIS = DEF_R_POIS
@@ -1335,13 +1348,14 @@ class HHModel_VLQ_8(HHModelEFTBase):
         POI_MQ,
     ])
 
-    """
-    kl = 1
-    kt = 1-Vtb * (|λ_Tt|^2 nu^2)/(2*MT^2)  ; |Vtb| =1.009 (LHC+Tevatron average)
-    C2 = -3*Vtb * (|λ_Tt|^2 nu^2)/(4*MT^2) ; |Vtb| =1.009 (LHC+Tevatron average)
-    kb=ktau=kc=ks=kmu=CV=1
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1
+        kt = 1-Vtb * (|λ_Tt|^2 nu^2)/(2*MT^2)  ; |Vtb| =1.009 (LHC+Tevatron average)
+        C2 = -3*Vtb * (|λ_Tt|^2 nu^2)/(4*MT^2) ; |Vtb| =1.009 (LHC+Tevatron average)
+        kb=ktau=kc=ks=kmu=CV=1
+        """
+    
         self.make_var("{}[1]".format("kl"))
         self.get_var("kl").setConstant(True)
         self.make_expr("expr::kt('1-1.009*pow(@0*@2,2)/(2*pow(@1,2))', LQ, MQ, NU )")
@@ -1366,14 +1380,13 @@ vlq_8_model_default = create_model(
 )
 
 
-"""
-Model IX (vector-like quark: E) [arXiv:0803.4008]
-POIs: LQ(λ_El), MQ (ME), CV, C2V
---hh-model hh_model_C2klkt_EFT2.vlq_9_model_default
-"""
-
-
 class HHModel_VLQ_9(HHModelEFTBase):
+    """
+    Model IX (vector-like quark: E) [arXiv:0803.4008]
+    POIs: LQ(λ_El), MQ (ME), CV, C2V
+    --hh-model hh_model_C2klkt_EFT2.vlq_9_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_VLQ
 
     R_POIS = DEF_R_POIS
@@ -1384,13 +1397,14 @@ class HHModel_VLQ_9(HHModelEFTBase):
         POI_MQ,
     ])
 
-    """
-    kl = 1 + (|λ_El|^2 * nu^2) / (4*ME^2)
-    kq = 1 + (|λ_El|^2 * nu^2) / (4*ME^2)
-    klep = 1 - (|λ_El|^2 * nu^2) / (4*ME^2)
-    C2 = 0
-    """
     def make_eftconstraints(self):
+        """
+        kl = 1 + (|λ_El|^2 * nu^2) / (4*ME^2)
+        kq = 1 + (|λ_El|^2 * nu^2) / (4*ME^2)
+        klep = 1 - (|λ_El|^2 * nu^2) / (4*ME^2)
+        C2 = 0
+        """
+    
         self.make_var("{}[0]".format("C2"))
         self.get_var("C2").setConstant(True)
         self.make_expr("expr::kl('1+pow(@0*@2,2)/(4*pow(@1,2))', LQ, MQ, NU )")
@@ -1414,14 +1428,13 @@ vlq_9_model_default = create_model(
 )
 
 
-"""
-Model X (MCHM5) [arXiv:hep-ph/0703164, arXiv:1012.1562, arXiv:1303.3876, arXiv:1005.4269]
-POIs: XI(ξ)
---hh-model hh_model_C2klkt_EFT2.xi_10_model_default
-"""
-
-
 class HHModel_XI_10(HHModelEFTBase):
+    """
+    Model X (MCHM5) [arXiv:hep-ph/0703164, arXiv:1012.1562, arXiv:1303.3876, arXiv:1005.4269]
+    POIs: XI(ξ)
+    --hh-model hh_model_C2klkt_EFT2.xi_10_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_Xi
 
     R_POIS = DEF_R_POIS
@@ -1430,13 +1443,14 @@ class HHModel_XI_10(HHModelEFTBase):
         POI_XI,
     ])
 
-    """
-    kl = (1-2*ξ)/sqrt(1-ξ)
-    kq=klep = (1-2*ξ)/sqrt(1-ξ)
-    C2 = -2*ξ
-    CV = sqrt(1-ξ)
-    """
     def make_eftconstraints(self):
+        """
+        kl = (1-2*ξ)/sqrt(1-ξ)
+        kq=klep = (1-2*ξ)/sqrt(1-ξ)
+        C2 = -2*ξ
+        CV = sqrt(1-ξ)
+        """
+    
         self.make_expr("expr::kl('(1-2*@0)/sqrt(1-@0)', XI )")
         self.make_expr("expr::kt('(1-2*@0)/sqrt(1-@0)', XI )")
         self.make_expr("expr::C2('-2*@0', XI )")
@@ -1460,14 +1474,13 @@ xi_10_model_default = create_model(
 )
 
 
-"""
-Model XI (MCHM4) [arXiv:hep-ph/0703164, arXiv:1012.1562, arXiv:1303.3876, arXiv:1005.4269]
-POIs: XI(ξ)
---hh-model hh_model_C2klkt_EFT2.xi_11_model_default
-"""
-
-
 class HHModel_XI_11(HHModelEFTBase):
+    """
+    Model XI (MCHM4) [arXiv:hep-ph/0703164, arXiv:1012.1562, arXiv:1303.3876, arXiv:1005.4269]
+    POIs: XI(ξ)
+    --hh-model hh_model_C2klkt_EFT2.xi_11_model_default
+    """
+    
     h_br_scaler_cls = HBRScaler_Xi
 
     R_POIS = DEF_R_POIS
@@ -1476,13 +1489,13 @@ class HHModel_XI_11(HHModelEFTBase):
         POI_XI,
     ])
 
-    """
-    kl = sqrt(1-ξ)
-    kq=klep=CV = sqrt(1-ξ)
-    C2 = -0.5*ξ
-    """
     def make_eftconstraints(self):
-        # model 1
+        """
+        kl = sqrt(1-ξ)
+        kq=klep=CV = sqrt(1-ξ)
+        C2 = -0.5*ξ
+        """
+
         self.make_expr("expr::kl('sqrt(1-@0)', XI )")
         self.make_expr("expr::kt('sqrt(1-@0)', XI )")
         self.make_expr("expr::C2('-0.5*@0', XI )")
