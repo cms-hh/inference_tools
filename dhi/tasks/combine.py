@@ -22,7 +22,7 @@ import six
 from dhi import dhi_combine_version
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
 from dhi.tasks.remote import HTCondorWorkflow
-from dhi.config import poi_data, br_hh
+from dhi.config import poi_data, br_hh, single_higgs_processes
 from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path
 from dhi.datacard_tools import bundle_datacard, read_datacard_blocks
 
@@ -1823,9 +1823,10 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
     allow_workspace_input = False
     skip_inject_files = True
 
-    keepSHasSignal = luigi.BoolParameter(
+    keep_sh_as_signal = luigi.BoolParameter(
         default=False,
-        description="do not remove single higgs procs if they are set as signal and not part of the HH formula", # noqa
+        description="do not remove single higgs procs if they are set as signal"
+                    "and not part of the HH formula",
     )
 
     def __init__(self, *args, **kwargs):
@@ -1909,19 +1910,24 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             # loop through model formulae and determine signal processes that are not covered
             to_remove = set()
             formulae = model.get_formulae().values()
+
             for proc in signal_procs:
-                for formula in formulae:
-                    if any(sample.matches_process(proc) for sample in formula.samples):
-                        break
-                else:
-                    if self.keepSHasSignal:
-                        for p in ["ggH_", "qqH_", "ttH_", "ZH_", "WH_", "VH_", "tHW_", "tHq_"]:
-                            if p in proc:
-                                break
-                        else:
-                            to_remove.add(proc)
-                    else:
-                        to_remove.add(proc)
+                # keep signal if matched by at least one process in any formula
+                if any(
+                        any(sample.matches_process(proc) for sample in formula.samples)
+                        for formula in formulae
+                ):
+                    continue
+
+                # keep signal if single higgs and configured to do so
+                if all(
+                        self.keep_h_as_signal,
+                        any(proc.startswith(f"{p}_" for p in single_higgs_processes)),
+                ):
+                    continue
+
+                # remove it
+                to_remove.add(proc)
 
             # actual removal
             if to_remove:
