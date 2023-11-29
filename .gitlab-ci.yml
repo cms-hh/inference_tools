@@ -115,8 +115,8 @@ lint:
     - eval "${TEST_CMD}"
     - eval "${TEST_CMD} --fetch-output 0,a,plots"
     - mkdir png
-    - mkdir pdf
     - mv plots/*.png png
+    - mkdir pdf
     - mv plots/*.pdf pdf
   cache:
     key: "${CI_COMMIT_REF_SLUG}"
