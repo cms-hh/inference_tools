@@ -1087,7 +1087,7 @@ class ParameterScanTask(AnalysisTask):
             return r[2]
 
         return list(itertools.product(*[
-            linspace(r[0], r[1], get_points(r, step_size))
+            linspace(r[0], r[1], int(get_points(r, step_size)))
             for r, step_size in zip(ranges, step_sizes)
         ]))
 

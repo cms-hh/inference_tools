@@ -314,7 +314,7 @@ def linspace(start, stop, steps, precision=7):
     """
     import numpy as np
 
-    return np.linspace(start, stop, steps).round(precision).tolist()
+    return np.linspace(start, stop, int(steps)).round(precision).tolist()
 
 
 def round_digits(v, n, round_fn=round):
