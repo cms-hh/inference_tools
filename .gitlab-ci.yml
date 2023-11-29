@@ -58,6 +58,7 @@ variables:
   stage: build
   tags:
     - cvmfs
+  image: gitlab-registry.cern.ch/ci-tools/ci-worker:cc7
   before_script:
     - >
       if [ ! -d data/examplecards ]; then
@@ -104,6 +105,7 @@ lint:
   timeout: 2h
   tags:
     - cvmfs
+  image: gitlab-registry.cern.ch/ci-tools/ci-worker:cc7
   script:
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
     - export DHI_LCG_DIR="/NOTEXISTING"
