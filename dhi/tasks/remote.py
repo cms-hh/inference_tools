@@ -38,7 +38,7 @@ class BundleRepo(UserTask, law.git.BundleGitRepository, law.tasks.TransferLocalF
 
     def single_output(self):
         repo_base = os.path.basename(self.get_repo_path())
-        return self.target("{}.{}.tgz".format(repo_base, self.checksum))
+        return self.target(f"{repo_base}.{self.checksum}.tgz")
 
     def get_file_pattern(self):
         path = os.path.expandvars(os.path.expanduser(self.single_output().path))
@@ -141,7 +141,7 @@ class BundleCMSSW(UserTask, law.cms.BundleCMSSW, law.tasks.TransferLocalFile):
         return os.environ["CMSSW_BASE"]
 
     def single_output(self):
-        path = "{}.{}.tgz".format(os.path.basename(self.get_cmssw_path()), self.checksum)
+        path = f"{os.path.basename(self.get_cmssw_path())}.{self.checksum}.tgz"
         return self.target(path)
 
     def get_file_pattern(self):
@@ -256,12 +256,15 @@ class HTCondorWorkflow(AnalysisTask, law.htcondor.HTCondorWorkflow):
             config.render_variables["dhi_x509_cert_dir"] = os.getenv("X509_CERT_DIR", "")
             config.render_variables["dhi_x509_voms_dir"] = os.getenv("X509_VOMS_DIR", "")
 
-        # use cc7 at CERN (http://batchdocs.web.cern.ch/batchdocs/local/submit.html#os-choice)
-        # and NAF
-        if self.htcondor_flavor in ("cern", "naf"):
+        if self.htcondor_flavor == "cern":
+            # use el7 at CERN
+            # https://batchdocs.web.cern.ch/local/submit.html#os-selection-via-containers
+            config.custom_content.append(("MY.WantOS", "el7"))
+        elif self.htcondor_flavor == "naf":
+            # use cc7 at NAF
             config.custom_content.append(("requirements", '(OpSysAndVer =?= "CentOS7")'))
         # architecture at INFN
-        if self.htcondor_flavor == "infn":
+        elif self.htcondor_flavor == "infn":
             config.custom_content.append((
                 "requirements",
                 'TARGET.OpSys == "LINUX" && (TARGET.Arch != "DUMMY")',

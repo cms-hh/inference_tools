@@ -39,7 +39,7 @@ version = split_version(__version__)
 # environment flags
 dhi_remote_job = str(os.getenv("DHI_REMOTE_JOB", "0")).lower() in ("1", "true", "yes")
 dhi_has_gfal = str(os.getenv("DHI_HAS_GFAL", "0")).lower() in ("1", "true", "yes")
-dhi_htcondor_flavor = os.getenv("DHI_HTCONDOR_FLAVOR", "cern")
+dhi_htcondor_flavor = os.getenv("DHI_HTCONDOR_FLAVOR", "cern").lower()
 dhi_combine_version = split_version(os.environ["DHI_COMBINE_VERSION"])
 
 # law contrib packages
