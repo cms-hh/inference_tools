@@ -150,7 +150,7 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
         legend_entries = []
 
         # prepare ranges
-        y_min_value = min([0.] + [ROOT.TMath.MinElement(g.GetN(), g.GetY()) for g in graphs])
+        y_min_value = min([0.0] + [ROOT.TMath.MinElement(g.GetN(), g.GetY()) for g in graphs])
         y_max_value = max(ROOT.TMath.MaxElement(g.GetN(), g.GetY()) for g in graphs)
         y_min, y_max, _ = get_y_range(
             y_min_value,
@@ -171,7 +171,7 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
         draw_objs.append((h_dummy, "HIST"))
 
         # dashed line at 1
-        if y_min < 1. <= y_max:
+        if y_min < 1.0 <= y_max:
             line_sm = ROOT.TLine(self.x_min, 1, self.x_max, 1)
             r.setup_line(line_sm, props={"NDC": False, "LineStyle": 2}, color=12)
             draw_objs.append(line_sm)

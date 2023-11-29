@@ -577,15 +577,15 @@ class HBRScaler(object):
                 if not STXSprocname.startswith(p):
                     continue
                 print("Building scaling for " + STXSprocname)
-                d = {"proc": p, "prod": str(STXSprocname), "ecm": ecm, "cxs": klcoeffs[str(STXSprocname)]["C1"], "ewk": klcoeffs[str(STXSprocname)]["EWK"], "dzh": dZH}  # noqa 
-                self.make_expr("expr::kappa_XSscal_{prod}_{ecm}('(@1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, Scaling_{proc}_{ecm})".format(**d))  # noqa 
-                self.make_expr("expr::kappa_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', kappa_XSscal_{prod}_{ecm})".format(**d))  # noqa 
+                d = {"proc": p, "prod": str(STXSprocname), "ecm": ecm, "cxs": klcoeffs[str(STXSprocname)]["C1"], "ewk": klcoeffs[str(STXSprocname)]["EWK"], "dzh": dZH}  # noqa
+                self.make_expr("expr::kappa_XSscal_{prod}_{ecm}('(@1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, Scaling_{proc}_{ecm})".format(**d))  # noqa
+                self.make_expr("expr::kappa_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', kappa_XSscal_{prod}_{ecm})".format(**d))  # noqa
                 self.h_scalings.append("kappa_pos_XSscal_{prod}_{ecm}".format(**d))
 
         for p in ["ggZH", "tHW"]:
             print("Building scaling for " + p)
             d = {"prod": p, "ecm": ecm}
-            self.make_expr("expr::kappa_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', Scaling_{prod}_{ecm})".format(**d))  # noqa 
+            self.make_expr("expr::kappa_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', Scaling_{prod}_{ecm})".format(**d))  # noqa
             self.h_scalings.append("kappa_pos_XSscal_{prod}_{ecm}".format(**d))
 
         for p in ["bbH"]:
@@ -599,14 +599,14 @@ class HBRScaler(object):
                 if not STXSprocname.startswith(p):
                     continue
                 print("Building scaling for " + str(STXSprocname))
-                d = {"prod": str(STXSprocname), "ecm": ecm, "cxs": klcoeffs[str(STXSprocname)]["C1"], "ewk": klcoeffs[str(STXSprocname)]["EWK"], "dzh": dZH}  # noqa 
+                d = {"prod": str(STXSprocname), "ecm": ecm, "cxs": klcoeffs[str(STXSprocname)]["C1"], "ewk": klcoeffs[str(STXSprocname)]["EWK"], "dzh": dZH}  # noqa
                 if p == "ZH":
-                    self.make_expr("expr::kappa_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, CVtimeskZ)".format(**d))  # noqa 
+                    self.make_expr("expr::kappa_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, CVtimeskZ)".format(**d))  # noqa
                 elif p == "WH":
-                    self.make_expr("expr::kappa_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, CVtimeskW)".format(**d))  # noqa 
+                    self.make_expr("expr::kappa_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, CVtimeskW)".format(**d))  # noqa
                 else:
-                    self.make_expr("expr::kappa_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, CV)".format(**d))  # noqa 
-                self.make_expr("expr::kappa_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', kappa_XSscal_{prod}_{ecm})".format(**d))  # noqa 
+                    self.make_expr("expr::kappa_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, CV)".format(**d))  # noqa
+                self.make_expr("expr::kappa_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', kappa_XSscal_{prod}_{ecm})".format(**d))  # noqa
                 self.h_scalings.append("kappa_pos_XSscal_{prod}_{ecm}".format(**d))
 
         for p in ["ttH"]:
@@ -614,9 +614,9 @@ class HBRScaler(object):
                 if not STXSprocname.startswith(p):
                     continue
                 print("Building scaling for " + str(STXSprocname))
-                d = {"prod": str(STXSprocname), "ecm": ecm, "cxs": klcoeffs[str(STXSprocname)]["C1"], "ewk": klcoeffs[str(STXSprocname)]["EWK"], "dzh": dZH}  # noqa 
-                self.make_expr("expr::kappa_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, kttimeskF)".format(**d))  # noqa 
-                self.make_expr("expr::kappa_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', kappa_XSscal_{prod}_{ecm})".format(**d))  # noqa 
+                d = {"prod": str(STXSprocname), "ecm": ecm, "cxs": klcoeffs[str(STXSprocname)]["C1"], "ewk": klcoeffs[str(STXSprocname)]["EWK"], "dzh": dZH}  # noqa
+                self.make_expr("expr::kappa_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, kttimeskF)".format(**d))  # noqa
+                self.make_expr("expr::kappa_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', kappa_XSscal_{prod}_{ecm})".format(**d))  # noqa
                 self.h_scalings.append("kappa_pos_XSscal_{prod}_{ecm}".format(**d))
 
     def find_br_scalings(self, process, bin=None):
@@ -1385,7 +1385,7 @@ class HHModel(HHModelBase):
 
         # at this point we are dealing with a background process that is also not single-H-scaled,
         # so it is safe to return 1 since any misconfiguration should have been raised already
-        return 1.
+        return 1.0
 
 
 def create_model(name, ggf=None, vbf=None, vhh=None, **kwargs):
@@ -1508,13 +1508,13 @@ def create_ggf_xsec_func(ggf_formula):
 
         get_ggf_xsec = create_ggf_xsec_func()
 
-        print(get_ggf_xsec(kl=2.))
+        print(get_ggf_xsec(kl=2.0))
         # -> 0.013803...
 
-        print(get_ggf_xsec(kl=2., ggf_nnlo=False))
+        print(get_ggf_xsec(kl=2.0, ggf_nnlo=False))
         # -> 0.013852...
 
-        print(get_ggf_xsec(kl=2., unc="up"))
+        print(get_ggf_xsec(kl=2.0, unc="up"))
         # -> 0.014305...
 
     Formulae are taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?rev=70.
@@ -1553,7 +1553,7 @@ def create_ggf_xsec_func(ggf_formula):
         if unc.lower() not in ("up", "down"):
             raise ValueError("unc must be 'up' or 'down', got '{}'".format(unc))
         scale_func = {"up": xsec_nnlo_scale_up, "down": xsec_nnlo_scale_down}[unc.lower()]  # noqa
-        xsec_nom_sm = xsec_func(kl, 1., *(sample.xs for sample in ggf_formula.samples))[0, 0]
+        xsec_nom_sm = xsec_func(kl, 1.0, *(sample.xs for sample in ggf_formula.samples))[0, 0]
         xsec_unc = (scale_func(kl) - xsec_nom_sm) / xsec_nom_sm
 
         # combine with flat 3% PDF uncertainty, preserving the sign
@@ -1561,7 +1561,7 @@ def create_ggf_xsec_func(ggf_formula):
         xsec_unc = unc_sign * (xsec_unc**2 + 0.03**2)**0.5
 
         # compute the shifted absolute value
-        xsec = xsec_nom * (1. + xsec_unc)
+        xsec = xsec_nom * (1.0 + xsec_unc)
 
         return xsec
 
@@ -1605,7 +1605,7 @@ def create_vbf_xsec_func(vbf_formula):
 
         get_vbf_xsec = create_vbf_xsec_func()
 
-        print(get_vbf_xsec(C2V=2.))
+        print(get_vbf_xsec(C2V=2.0))
         # -> 0.014218... (or similar)
 
     Uncertainties taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=70.
@@ -1615,7 +1615,7 @@ def create_vbf_xsec_func(vbf_formula):
     xsec_func = sympy.lambdify(sympy.symbols(symbol_names), vbf_formula.sigma)
 
     # wrap into another function to apply defaults
-    def wrapper(C2V=1., CV=1., kl=1., unc=None):
+    def wrapper(C2V=1.0, CV=1.0, kl=1.0, unc=None):
         xsec = xsec_func(C2V, CV, kl, *(sample.xs for sample in vbf_formula.samples))[0, 0]
 
         # apply uncertainties?
@@ -1650,7 +1650,7 @@ def create_vhh_xsec_func(vhh_formula):
 
         get_vhh_xsec = create_vhh_xsec_func()
 
-        print(get_vhh_xsec(C2V=2.))
+        print(get_vhh_xsec(C2V=2.0))
         # -> 0.005316... (or similar)
     """
     # create the lambdify'ed evaluation function
@@ -1693,20 +1693,20 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None, vhh_formula=None):
 
         get_hh_xsec = create_hh_xsec_func()
 
-        print(get_hh_xsec(kl=2.))
+        print(get_hh_xsec(kl=2.0))
         # -> 0.015226...
 
-        print(get_hh_xsec(kl=2., ggf_nnlo=False))
+        print(get_hh_xsec(kl=2.0, ggf_nnlo=False))
         # -> 0.015275...
 
-        print(get_hh_xsec(kl=2., unc="up"))
+        print(get_hh_xsec(kl=2.0, unc="up"))
         # -> 0.015702...
     """
     if not any([ggf_formula, vbf_formula, vhh_formula]):
         raise ValueError("at least one of the cross section formulae is required")
 
     # default function for a disabled process
-    no_xsec = lambda *args, **kwargs: 0.
+    no_xsec = lambda *args, **kwargs: 0.0
 
     # get the particular wrappers of the components
     get_ggf_xsec = create_ggf_xsec_func(ggf_formula) if ggf_formula else no_xsec
@@ -1729,7 +1729,7 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None, vhh_formula=None):
             # vbf uncertainty
             vbf_unc = get_vbf_xsec(C2V=C2V, CV=CV, kl=kl, unc=unc) - vbf_xsec
             # vhh uncertainty
-            vhh_unc = 0.
+            vhh_unc = 0.0
             # combine
             sign = 1 if unc.lower() == "up" else -1
             unc = sign * (ggf_unc**2 + vbf_unc**2 + vhh_unc**2)**0.5

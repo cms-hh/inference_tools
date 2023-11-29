@@ -249,14 +249,14 @@ def get_y_range(
         if y_min is None:
             y_min = (0.75 * y_min_value) if y_min_value > 0 else y_min_log
         if y_max is None:
-            y_max = y_min * 10**(math.log10(y_max_value / y_min) * (1. + top_margin))
-        y_max_vis = y_min * 10**(math.log10(y_max / y_min) / (1. + visible_margin))
+            y_max = y_min * 10**(math.log10(y_max_value / y_min) * (1.0 + top_margin))
+        y_max_vis = y_min * 10**(math.log10(y_max / y_min) / (1.0 + visible_margin))
     else:
         if y_min is None:
-            y_min = 0. if y_min_value is None else y_min_value
+            y_min = 0.0 if y_min_value is None else y_min_value
         if y_max is None:
-            y_max = y_min + (y_max_value - y_min) * (1. + top_margin)
-        y_max_vis = y_max / (1. + visible_margin) + y_min
+            y_max = y_min + (y_max_value - y_min) * (1.0 + top_margin)
+        y_max_vis = y_max / (1.0 + visible_margin) + y_min
 
     return y_min, y_max, y_max_vis
 
@@ -676,7 +676,7 @@ def invert_graph(
     corners = [tr, br, bl, tl]
 
     # find the corner that is closest to the graph start point
-    dist = lambda x, y: ((x - x_values[0])**2. + (y - y_values[0])**2.)**0.5
+    dist = lambda x, y: ((x - x_values[0])**2 + (y - y_values[0])**2)**0.5
     start_index = min(list(range(4)), key=lambda i: dist(corners[i][0], corners[i][1]))
 
     # to invert the graph, create a new graph whose points start with an outer frame consisting of
@@ -712,7 +712,7 @@ def get_text_extent(t, text_size=None, text_font=None):
     ROOT = import_ROOT()
 
     # convert to a tlatex if t is a string, otherwise clone
-    t = ROOT.TLatex(0., 0., t) if isinstance(t, six.string_types) else t.Clone()
+    t = ROOT.TLatex(0.0, 0.0, t) if isinstance(t, six.string_types) else t.Clone()
 
     # set size and font when set
     if text_size is not None:
@@ -829,7 +829,7 @@ def locate_contour_labels(
 
         # get the best position by checking the distance to other labels and the roration
         # use idx1 when no position was found
-        rot = 0.
+        rot = 0.0
         for idx2 in np.append(adist, idx1):
             # rotation
             ind = (idx2 * block_size + hb_size) % n_points
@@ -841,7 +841,7 @@ def locate_contour_labels(
                 # ensure that the rotation is between -90 and 90 deg
                 rot = (rot + 90) % 180 - 90
             else:
-                rot = 0.
+                rot = 0.0
 
             # position
             x, y = xx[idx2, hb_size], yy[idx2, hb_size]

@@ -353,12 +353,12 @@ def remove_shape_bins(datacard, rules, directory=None, mass="125"):
                                     ]
                                 elif procs[0] == "SOB":
                                     bin_values = [
-                                        0. if s == 0 else (1.e7 if b == 0 else (s / b))
+                                        0.0 if s == 0 else (1e7 if b == 0 else (s / b))
                                         for s, b in zip(bin_values_s, bin_values_b)
                                     ]
                                 else:  # "STN"
                                     bin_values = [
-                                        0. if s == 0 else (1.e7 if b == 0 else (s / b**0.5))
+                                        0.0 if s == 0 else (1e7 if b == 0 else (s / b**0.5))
                                         for s, b in zip(bin_values_s, bin_values_b)
                                     ]
                             else:
@@ -474,7 +474,7 @@ def drop_shape_bins(hist, name, drop_indices, owner):
     title = ";".join([hist.GetTitle(), x_axis.GetTitle(), y_axis.GetTitle()])
 
     # prepare the binning
-    binning = (len(bin_mapping), 0., float(len(bin_mapping)))
+    binning = (len(bin_mapping), 0.0, float(len(bin_mapping)))
 
     # create the new histogram with same type
     owner.cd()

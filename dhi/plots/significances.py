@@ -178,7 +178,7 @@ def plot_significance_scan_1d(
         if show_p_values:
             # convert y to a value relative to the pad height
             label_y = math.log(y / y_min) / math.log(y_max / y_min)
-            label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
+            label_y *= 1.0 - pad.GetTopMargin() - pad.GetBottomMargin()
             label_y += pad.GetBottomMargin() + 0.005
             sig_label = r.routines.create_top_left_label(
                 "{}#sigma".format(sig),
@@ -366,7 +366,7 @@ def plot_significance_scans_1d(
         if show_p_values:
             # convert y to a value relative to the pad height
             label_y = math.log(y / y_min) / math.log(y_max / y_min)
-            label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
+            label_y *= 1.0 - pad.GetTopMargin() - pad.GetBottomMargin()
             label_y += pad.GetBottomMargin() + 0.005
             # from IPython import embed; embed()
             sig_label = r.routines.create_top_left_label(
@@ -379,7 +379,7 @@ def plot_significance_scans_1d(
             draw_objs.insert(1, sig_label)
 
     # legend
-    legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
+    legend_cols = min(int(math.ceil(len(legend_entries) / 4.0)), 3)
     legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
     legend = r.routines.create_legend(
         pad=pad,
@@ -409,7 +409,7 @@ def plot_significance_scans_1d(
     if model_parameters:
         param_kwargs = {}
         if legend_cols == 3:
-            param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+            param_kwargs["y_offset"] = 1.0 - 0.25 * pad.GetTopMargin() - legend.GetY1()
         draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
@@ -576,8 +576,8 @@ def plot_significance_scan_2d(
             draw_objs.append((g, "SAME,C"))
 
     # draw contour labels at automatic positions
-    pad_width = canvas.GetWindowWidth() * (1. - pad.GetLeftMargin() - pad.GetRightMargin())
-    pad_height = canvas.GetWindowHeight() * (1. - pad.GetTopMargin() - pad.GetBottomMargin())
+    pad_width = canvas.GetWindowWidth() * (1.0 - pad.GetLeftMargin() - pad.GetRightMargin())
+    pad_height = canvas.GetWindowHeight() * (1.0 - pad.GetTopMargin() - pad.GetBottomMargin())
     px_to_x = (x_max - x_min) / pad_width
     py_to_y = (y_max - y_min) / pad_height
     all_positions = []
@@ -607,7 +607,7 @@ def plot_significance_scan_2d(
 
         # draw them
         for x, y, rot in label_positions:
-            xsec_label = ROOT.TLatex(0., 0., text)
+            xsec_label = ROOT.TLatex(0.0, 0.0, text)
             r.setup_latex(
                 xsec_label,
                 props={

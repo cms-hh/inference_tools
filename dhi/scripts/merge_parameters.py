@@ -222,9 +222,9 @@ def merge_parameters(
 
         # parse effects
         empty_value = {
-            "lnN": 1.,
-            "lnU": 1.,
-            "shape": 0.,
+            "lnN": 1.0,
+            "lnU": 1.0,
+            "shape": 0.0,
         }[new_type]
         effects = [
             [parse_effect(line[col + 2], empty_value) for line in removed_param_lines]
@@ -320,8 +320,8 @@ def merge_parameters(
                         shape_u = get_shape(syst_shape_name + "Up").Clone()
 
                         # subtract the nominal shape
-                        shape_d.Add(shape_n, -1.)
-                        shape_u.Add(shape_n, -1.)
+                        shape_d.Add(shape_n, -1.0)
+                        shape_u.Add(shape_n, -1.0)
 
                         # possibly scale the effect
                         if f != 1:
@@ -368,8 +368,8 @@ def merge_parameters(
                             continue
 
                         # determine the merged effect that is to be added on top of the nominal one
-                        diff_d = 0.
-                        diff_u = 0.
+                        diff_d = 0.0
+                        diff_u = 0.0
 
                         if auto_shape_envelope:
                             # when building the envelope, just pick the maximum / minimum values
@@ -411,10 +411,10 @@ def merge_parameters(
                                 logger.warning(msg + ", averaging is experimental")
 
                             # merge components separately
-                            diff_d_n = -sum((v**2. for v in diffs_d_n), 0)**0.5
-                            diff_d_p = sum((v**2. for v in diffs_d_p), 0)**0.5
-                            diff_u_n = -sum((v**2. for v in diffs_u_n), 0)**0.5
-                            diff_u_p = sum((v**2. for v in diffs_u_p), 0)**0.5
+                            diff_d_n = -sum((v**2 for v in diffs_d_n), 0)**0.5
+                            diff_d_p = sum((v**2 for v in diffs_d_p), 0)**0.5
+                            diff_u_n = -sum((v**2 for v in diffs_u_n), 0)**0.5
+                            diff_u_p = sum((v**2 for v in diffs_u_p), 0)**0.5
 
                             # combine components by averaging if necessary
                             diff_d = (
@@ -442,8 +442,8 @@ def merge_parameters(
 
                 elif new_type in ("lnN", "lnU"):
                     # helpers to convert a value in lnN/U format to a signed uncertainty and back
-                    ln2unc = lambda v: v - 1.
-                    unc2ln = lambda v: 1. + v
+                    ln2unc = lambda v: v - 1.0
+                    unc2ln = lambda v: 1.0 + v
                     rnd = lambda v: "{{:.{}f}}".format(digits).format(v)
 
                     # consider the merged effect to be symmetric when all effets have only one entry
@@ -541,9 +541,9 @@ def merge_parameters(
 
                                 max_value = d if max(abs(d), abs(u)) == abs(d) else u
                                 if max_value > 0:
-                                    add_unc(d=0., u=max_value)
+                                    add_unc(d=0.0, u=max_value)
                                 else:
-                                    add_unc(d=max_value, u=0.)
+                                    add_unc(d=max_value, u=0.0)
                                 logger.warning(
                                     "automatically built envelope of down ({}) and up ({}) "
                                     "variations of parameter {} in bin {} and process {}".format(
@@ -554,8 +554,8 @@ def merge_parameters(
                         # create the merged effect with relative signs inferred from the first value
                         sign_d = -1 if comb_d[0] < 0 else 1
                         sign_u = -1 if comb_u[0] < 0 else 1
-                        unc_d = sign_d * sum(d**2. for d in comb_d)**0.5
-                        unc_u = sign_u * sum(u**2. for u in comb_u)**0.5
+                        unc_d = sign_d * sum(d**2 for d in comb_d)**0.5
+                        unc_u = sign_u * sum(u**2 for u in comb_u)**0.5
                         merged_effect_d = rnd(unc2ln(unc_d))
                         merged_effect_u = rnd(unc2ln(unc_u))
                         if float(merged_effect_d) == 1 and float(merged_effect_u == 1):

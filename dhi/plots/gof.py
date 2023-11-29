@@ -92,7 +92,7 @@ def plot_gof_distribution(
     legend_entries.append((h_toys, "{} toys ({})".format(len(toys), algorithm), "L"))
 
     # set limits
-    y_min, y_max, y_max_line = get_y_range(0., y_max_value, y_min, y_max)
+    y_min, y_max, y_max_line = get_y_range(0.0, y_max_value, y_min, y_max)
     h_dummy.SetMinimum(y_min)
     h_dummy.SetMaximum(y_max)
 
@@ -117,8 +117,8 @@ def plot_gof_distribution(
     # calculate p-value and uncertainty due to limited number of toys
     na = (np.array(toys) >= data).sum()
     nb = len(toys) - na
-    prob = 100. * na / (na + nb)
-    prob_unc = 100. * (na * nb * (na + nb)**-3.0)**0.5
+    prob = 100.0 * na / (na + nb)
+    prob_unc = 100.0 * (na * nb * (na + nb)**-3.0)**0.5
     if round(prob, 1):
         prob_text = "p = {:.1f} #pm {:.1f} %".format(prob, prob_unc)
     else:
@@ -175,8 +175,8 @@ def plot_gofs(
     data,
     algorithm,
     n_bins=30,
-    x_min=-3.,
-    x_max=3.,
+    x_min=-3.0,
+    x_max=3.0,
     pad_width=None,
     left_margin=None,
     right_margin=None,
@@ -260,9 +260,9 @@ def plot_gofs(
 
     # default x range
     if x_min is None:
-        x_min = -3.
+        x_min = -3.0
     if x_max is None:
-        x_max = 3.
+        x_max = 3.0
 
     # dummy histogram to control axes
     h_dummy = ROOT.TH1F(
@@ -337,8 +337,8 @@ def plot_gofs(
         # calculate p-value and uncertainty due to limited number of toys
         na = (np.array(d["toys"]) >= d["data"]).sum()
         nb = len(d["toys"]) - na
-        prob = 100. * na / (na + nb)
-        prob_unc = 100. * (na * nb * (na + nb)**-3.0)**0.5
+        prob = 100.0 * na / (na + nb)
+        prob_unc = 100.0 * (na * nb * (na + nb)**-3.0)**0.5
         if round(prob, 1):
             prob_text = "p = {:.1f} #pm {:.1f} %".format(prob, prob_unc)
         else:
@@ -410,7 +410,7 @@ def remove_nans(toys):
     return valid_toys
 
 
-def remove_outliers(toys, sigma_outlier=10.):
+def remove_outliers(toys, sigma_outlier=10.0):
     # remove outliers using distances from normalized medians
     median = np.median(toys)
     diffs = [abs(t - median) for t in toys]

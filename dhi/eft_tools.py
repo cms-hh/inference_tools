@@ -33,7 +33,7 @@ class EFTCrossSectionProvider(object):
 
         self.ggf_xsec_sm_nnlo = 0.03105  # pb
 
-    def get_ggf_xsec_nlo(self, kl=1., kt=1., c2=0., cg=0., c2g=0., coeffs=None):
+    def get_ggf_xsec_nlo(self, kl=1.0, kt=1.0, c2=0.0, cg=0.0, c2g=0.0, coeffs=None):
         if coeffs is None:
             coeffs = self.coeffs_ggf_nlo_13tev
 
@@ -63,10 +63,10 @@ class EFTCrossSectionProvider(object):
             coeffs[22] * cg**2 * c2g
         )
 
-    def get_ggf_xsec_nnlo(self, kl=1., kt=1., c2=0., cg=0., c2g=0., coeffs=None):
+    def get_ggf_xsec_nnlo(self, kl=1.0, kt=1.0, c2=0.0, cg=0.0, c2g=0.0, coeffs=None):
         xsec_bsm_nlo = self.get_ggf_xsec_nlo(kl=kl, kt=kt, c2=c2, cg=cg, c2g=c2g, coeffs=coeffs)
 
-        xsec_sm_nlo = self.get_ggf_xsec_nlo(kl=1., kt=1., c2=0., cg=0., c2g=0., coeffs=coeffs)
+        xsec_sm_nlo = self.get_ggf_xsec_nlo(kl=1.0, kt=1.0, c2=0.0, cg=0.0, c2g=0.0, coeffs=coeffs)
         k_factor = self.ggf_xsec_sm_nnlo / xsec_sm_nlo
 
         return xsec_bsm_nlo * k_factor

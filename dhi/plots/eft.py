@@ -51,8 +51,8 @@ def plot_benchmark_limits(
             paths=["plot.pdf", "plot.png"],
             data=[
                 {
-                    "expected": (40., 50., 28., 58., 18.),
-                    "observed": 45.,
+                    "expected": (40.0, 50.0, 28.0, 58.0, 18.0),
+                    "observed": 45.0,
                     "name": "1",
                 }, {
                     ...
@@ -170,10 +170,10 @@ def plot_benchmark_limits(
 
     # helper to read values into graphs
     def create_graph(key="expected", sigma=None):
-        args = x, y, x_err_d, x_err_u, y_err_d, y_err_u = [n * [0.] for _ in range(6)]
+        args = x, y, x_err_d, x_err_u, y_err_d, y_err_u = [n * [0.0] for _ in range(6)]
         for i, d in enumerate(data):
             if key not in d:
-                y[i] = -1.e5
+                y[i] = -1e5
                 continue
             x[i] = i - 0.5 * style.bar_width
             x_err_u[i] = style.bar_width
@@ -444,7 +444,7 @@ def plot_multi_benchmark_limits(
         args = x, y, x_err_d, x_err_u, y_err_d, y_err_u = [n * [0.] for _ in range(6)]
         for i, d in enumerate(data):
             if key not in d:
-                y[i] = -1.e5
+                y[i] = -1e5
                 continue
             x[i] = i - 0.5
             x_err_u[i] = 1.0

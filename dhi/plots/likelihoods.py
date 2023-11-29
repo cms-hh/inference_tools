@@ -259,7 +259,7 @@ def plot_likelihood_scans_1d(
                 sig_label_y = math.log(dnll2 / y_min) / math.log(y_max / y_min)
             else:
                 sig_label_y = dnll2 / (y_max - y_min)
-            sig_label_y *= 1. - pad.GetTopMargin() - pad.GetBottomMargin()
+            sig_label_y *= 1.0 - pad.GetTopMargin() - pad.GetBottomMargin()
             sig_label_y += pad.GetBottomMargin() + 0.00375
             if is_cl:
                 sig_label = "{:f}".format(sig * 100).rstrip("0").rstrip(".") + "%"
@@ -398,7 +398,7 @@ def plot_likelihood_scans_1d(
             )
 
     # legend
-    legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
+    legend_cols = min(int(math.ceil(len(legend_entries) / 4.0)), 3)
     legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
     legend = r.routines.create_legend(
         pad=pad,
@@ -428,7 +428,7 @@ def plot_likelihood_scans_1d(
     if model_parameters:
         param_kwargs = {}
         if legend_cols == 3:
-            param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+            param_kwargs["y_offset"] = 1.0 - 0.25 * pad.GetTopMargin() - legend.GetY1()
         draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
@@ -764,8 +764,8 @@ def plot_likelihood_scan_2d(
     # significance contours
     if show_significances:
         # conversion factor from pixel to x-axis range
-        pad_width = canvas.GetWindowWidth() * (1. - pad.GetLeftMargin() - pad.GetRightMargin())
-        pad_height = canvas.GetWindowHeight() * (1. - pad.GetTopMargin() - pad.GetBottomMargin())
+        pad_width = canvas.GetWindowWidth() * (1.0 - pad.GetLeftMargin() - pad.GetRightMargin())
+        pad_height = canvas.GetWindowHeight() * (1.0 - pad.GetTopMargin() - pad.GetBottomMargin())
         px_to_x = (x_max - x_min) / pad_width
         py_to_y = (y_max - y_min) / pad_height
 
@@ -809,7 +809,7 @@ def plot_likelihood_scan_2d(
 
             # draw them
             for x, y, rot in label_positions:
-                sig_label = ROOT.TLatex(0., 0., text)
+                sig_label = ROOT.TLatex(0.0, 0.0, text)
                 r.setup_latex(
                     sig_label,
                     props={
@@ -1226,7 +1226,7 @@ def plot_likelihood_scans_2d(
             legend_entries.insert(3 - n_empty, (h_dummy, " ", "L"))
 
     # legend with actual entries in different colors
-    legend_cols = int(math.ceil(len(legend_entries) / 3.))
+    legend_cols = int(math.ceil(len(legend_entries) / 3.0))
     legend_rows = min(len(legend_entries), 3)
     legend = r.routines.create_legend(
         pad=pad,
@@ -1256,7 +1256,7 @@ def plot_likelihood_scans_2d(
     if model_parameters:
         param_kwargs = {}
         if legend_cols == 3:
-            param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+            param_kwargs["y_offset"] = 1.0 - 0.25 * pad.GetTopMargin() - legend.GetY1()
         draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
@@ -1289,8 +1289,8 @@ def plot_nuisance_likelihood_scans(
     show_diff=False,
     labels=None,
     scan_points=401,
-    x_min=-2.,
-    x_max=2,
+    x_min=-2.0,
+    x_max=2.0,
     y_min=None,
     y_max=None,
     y_log=False,
@@ -1378,7 +1378,7 @@ def plot_nuisance_likelihood_scans(
     width = float(x_max - x_min) / (scan_points - 1)
     scan_values = np.linspace(x_min - 10 * width, x_max + 10 * width, scan_points + 20).tolist()
     if 0 not in scan_values:
-        scan_values = sorted(scan_values + [0.])
+        scan_values = sorted(scan_values + [0.0])
 
     # get nll curve values for all parameters before plotting to be able to sort
     curve_data = {}
@@ -1448,7 +1448,7 @@ def plot_nuisance_likelihood_scans(
         _y_min = y_min
         _y_max = y_max
         _y_min, _y_max, y_max_line = get_y_range(
-            0. if y_log else y_min_value,
+            0.0 if y_log else y_min_value,
             y_max_value,
             y_min,
             y_max,
@@ -1473,7 +1473,7 @@ def plot_nuisance_likelihood_scans(
         # horizontal and vertical guidance lines
         if (_y_min < 1 < y_max_line) and (y_log or y_max_line < 100):
             # horizontal
-            line = ROOT.TLine(x_min, 1., x_max, 1.)
+            line = ROOT.TLine(x_min, 1.0, x_max, 1.0)
             r.setup_line(
                 line,
                 props={"LineColor": 12, "LineStyle": 2, "NDC": False},
@@ -1482,7 +1482,7 @@ def plot_nuisance_likelihood_scans(
 
             # vertical
             for x in [-1, 1]:
-                line = ROOT.TLine(x, _y_min, x, min(1., y_max_line))
+                line = ROOT.TLine(x, _y_min, x, min(1.0, y_max_line))
                 r.setup_line(
                     line,
                     props={"LineColor": 12, "LineStyle": 2, "NDC": False},
@@ -1506,7 +1506,7 @@ def plot_nuisance_likelihood_scans(
                 legend_entries.append((g_nll, label, "L"))
 
         # legend
-        legend_cols = min(int(math.ceil(len(legend_entries) / 4.)), 3)
+        legend_cols = min(int(math.ceil(len(legend_entries) / 4.0)), 3)
         legend_rows = int(math.ceil(len(legend_entries) / float(legend_cols)))
         legend_kwargs = dict(width=legend_cols * 210, n=legend_rows)
         if show_derivatives:
@@ -1538,7 +1538,7 @@ def plot_nuisance_likelihood_scans(
         if model_parameters:
             param_kwargs = {}
             if legend_cols == 3:
-                param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+                param_kwargs["y_offset"] = 1.0 - 0.25 * pad.GetTopMargin() - legend.GetY1()
             draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
         # campaign label
@@ -1917,8 +1917,8 @@ def evaluate_likelihood_scan_2d(
     objective = lambda x: interp(*x)
     bounds1 = (poi1_values_min + 1e-4, poi1_values_max - 1e-4)
     bounds2 = (poi2_values_min + 1e-4, poi2_values_max - 1e-4)
-    poi1_center = (poi1_values_max - poi1_values_min) / 2.
-    poi2_center = (poi2_values_max - poi2_values_min) / 2.
+    poi1_center = (poi1_values_max - poi1_values_min) / 2.0
+    poi2_center = (poi2_values_max - poi2_values_min) / 2.0
     res = scipy.optimize.minimize(
         objective,
         [poi1_center, poi2_center],

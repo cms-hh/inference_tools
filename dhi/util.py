@@ -730,11 +730,11 @@ def convert_dnll2(dnll2, n=1):
     # the precision of pdf/ppf can't handle very high dnll2 (== low p-values)
     # so using (inverse) survival function instead
     alpha = stats.chi2.sf(dnll2, n)  # same as 1 - chi2.cdf(dnll2)
-    p_value = alpha / 2.
+    p_value = alpha / 2.0
     sig = stats.norm.isf(p_value)  # same as chi2.ppf(1 - p_value)
 
     # replace values where dnll2 is <= 0 by 0 (probably nan)
-    sig[dnll2 <= 0] = 0.
+    sig[dnll2 <= 0] = 0.0
 
     # optionally convert back to a single value
     if single_value:

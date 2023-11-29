@@ -220,13 +220,13 @@ def create_ggf_xsec_func(ggf_formula):
 
         get_ggf_xsec = create_ggf_xsec_func()
 
-        print(get_ggf_xsec(kl=2.))
+        print(get_ggf_xsec(kl=2.0))
         # -> 0.013803...
 
-        print(get_ggf_xsec(kl=2., ggf_nnlo=False))
+        print(get_ggf_xsec(kl=2.0, ggf_nnlo=False))
         # -> 0.013852...
 
-        print(get_ggf_xsec(kl=2., unc="up"))
+        print(get_ggf_xsec(kl=2.0, unc="up"))
         # -> 0.014305...
 
     Formulae are taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?rev=70.
@@ -264,8 +264,8 @@ def create_ggf_xsec_func(ggf_formula):
         # compute the relative, signed scale+mtop uncertainty
         if unc.lower() not in ("up", "down"):
             raise ValueError("unc must be 'up' or 'down', got '{}'".format(unc))
-        scale_func = {"up": xsec_nnlo_scale_up, "down": xsec_nnlo_scale_down}[unc.lower()]  # noqa
-        xsec_nom_sm = xsec_func(kl, 1., 0., *(sample.xs for sample in ggf_formula.samples))[0, 0]
+        scale_func = {"up": xsec_nnlo_scale_up, "down": xsec_nnlo_scale_down}[unc.lower()]
+        xsec_nom_sm = xsec_func(kl, 1.0, 0.0, *(sample.xs for sample in ggf_formula.samples))[0, 0]
         xsec_unc = (scale_func(kl) - xsec_nom_sm) / xsec_nom_sm
 
         # combine with flat 3% PDF uncertainty, preserving the sign
@@ -273,7 +273,7 @@ def create_ggf_xsec_func(ggf_formula):
         xsec_unc = unc_sign * (xsec_unc**2 + 0.03**2)**0.5
 
         # compute the shifted absolute value
-        xsec = xsec_nom * (1. + xsec_unc)
+        xsec = xsec_nom * (1.0 + xsec_unc)
 
         return xsec
 
@@ -324,20 +324,20 @@ def create_hh_xsec_func(ggf_formula=None, vbf_formula=None):
 
         get_hh_xsec = create_hh_xsec_func()
 
-        print(get_hh_xsec(kl=2.))
+        print(get_hh_xsec(kl=2.0))
         # -> 0.015226...
 
-        print(get_hh_xsec(kl=2., ggf_nnlo=False))
+        print(get_hh_xsec(kl=2.0, ggf_nnlo=False))
         # -> 0.015275...
 
-        print(get_hh_xsec(kl=2., unc="up"))
+        print(get_hh_xsec(kl=2.0, unc="up"))
         # -> 0.015702...
     """
     if not any([ggf_formula, vbf_formula]):
         raise ValueError("at least one of the cross section formulae is required")
 
     # default function for a disabled process
-    no_xsec = lambda *args, **kwargs: 0.
+    no_xsec = lambda *args, **kwargs: 0.0
 
     # get the particular wrappers of the components
     get_ggf_xsec = create_ggf_xsec_func(ggf_formula) if ggf_formula else no_xsec

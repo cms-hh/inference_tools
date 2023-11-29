@@ -96,7 +96,7 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
         for p, ranges in self.scan_parameters_dict.items():
             # gather data
             start, stop, points = ranges[0]
-            sm_value = poi_data.get(p, {}).get("sm_value", 1.)
+            sm_value = poi_data.get(p, {}).get("sm_value", 1.0)
             step_size = (float(stop - start) / (points - 1)) if points > 1 else 1
             assert step_size > 0
             # decrease the starting point until the sm value is fully contained
@@ -531,7 +531,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         #     if not all((a <= v <= b) for v, (_, a, b, _) in zip(_poi_mins, scan_parameters)):
         #         continue
         #     # compute the merged step size
-        #     step_size = sum((b - a) / (n - 1.) for (_, a, b, n) in scan_parameters)
+        #     step_size = sum((b - a) / (n - 1.0) for (_, a, b, n) in scan_parameters)
         #     # store
         #     if step_size < min_step_size:
         #         min_step_size = step_size

@@ -213,7 +213,7 @@ def plot_pulls_impacts(
                     impact_range = _impact_range
                     break
             else:
-                impact_range = 1.
+                impact_range = 1.0
                 print("{}: could not determine an automatic impact range for maximum impact {} and "
                     "pull_range {}, using 1 instead".format(
                         colored("WARNING", "red"), max_impact, pull_range,
@@ -268,7 +268,7 @@ def plot_pulls_impacts(
             x2_axis,
             pad,
             props={
-                "Title": x2_title, "TickLength": 0., "LabelOffset": r.pixel_to_coord(canvas, y=-24),
+                "Title": x2_title, "TickLength": 0.0, "LabelOffset": r.pixel_to_coord(canvas, y=-24),
                 "TitleOffset": -1.2,
             },
         )
@@ -329,7 +329,7 @@ def plot_pulls_impacts(
             if not (x_min < x < x_max):
                 continue
             l = ROOT.TLine(x, 0, x, y_max)
-            c = colors.dark_grey_trans_30 if x % 1. else colors.dark_grey
+            c = colors.dark_grey_trans_30 if x % 1.0 else colors.dark_grey
             r.setup_line(l, props={"NDC": False, "LineWidth": 1, "LineColor": c, "LineStyle": 3})
             draw_objs.append(l)
 
@@ -345,8 +345,8 @@ def plot_pulls_impacts(
             arr([n - i - 0.5 for i in range(n)]),
             arr([-param.pull[0] for param in _params]),
             arr([param.pull[2] for param in _params]),
-            arr(n * [0.]),
-            arr(n * [0.]),
+            arr(n * [0.0]),
+            arr(n * [0.0]),
         )
         r.setup_graph(g_pull, props={"MarkerStyle": 20, "MarkerSize": 1.2, "LineWidth": 1})
         draw_objs.append((g_pull, "PEZ"))

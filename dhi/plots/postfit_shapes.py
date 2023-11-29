@@ -35,8 +35,8 @@ def plot_s_over_b(
     bins=8,
     order_without_sqrt=False,
     signal_superimposed=False,
-    signal_scale=1.,
-    signal_scale_ratio=1.,
+    signal_scale=1.0,
+    signal_scale_ratio=1.0,
     show_signal=True,
     show_uncertainty=True,
     show_best_fit=True,
@@ -174,12 +174,12 @@ def plot_s_over_b(
         )
 
     # compute prefit log(s/b) where possible
-    x_min = 1.e5
-    x_max = -1.e5
+    x_min = 1e5
+    x_max = -1e5
     for _bin in bin_data:
         if _bin.pre_signal > 0:
-            f = 1. if order_without_sqrt else 0.5
-            _bin["pre_s_over_b"] = math.log(_bin.pre_signal / _bin.pre_background**f, 10.)
+            f = 1.0 if order_without_sqrt else 0.5
+            _bin["pre_s_over_b"] = math.log(_bin.pre_signal / _bin.pre_background**f, 10.0)
             x_min = min(x_min, _bin.pre_s_over_b)
             x_max = max(x_max, _bin.pre_s_over_b)
 
@@ -383,16 +383,16 @@ def plot_s_over_b(
         b_safe = b or 1e15
         # bottom signal + background histogram and mask
         sb = b + s * signal_scale_ratio
-        hist_sb2.SetBinContent(i + 1, max(sb / b_safe, 1.))
-        hist_mask2.SetBinContent(i + 1, min(sb / b_safe, 1.) if show_signal else 1.)
+        hist_sb2.SetBinContent(i + 1, max(sb / b_safe, 1.0))
+        hist_mask2.SetBinContent(i + 1, min(sb / b_safe, 1.0) if show_signal else 1.0)
         # data points at the top
         graph_d1.SetPoint(i, x, d)
-        graph_d1.SetPointError(i, 0., 0., d_err_down, d_err_up)
+        graph_d1.SetPointError(i, 0.0, 0.0, d_err_down, d_err_up)
         # data points in the ratio
         graph_d2.SetPoint(i, x, d / b_safe)
-        graph_d2.SetPointError(i, 0., 0., d_err_down / b_safe, d_err_up / b_safe)
+        graph_d2.SetPointError(i, 0.0, 0.0, d_err_down / b_safe, d_err_up / b_safe)
         # uncertainty in the ratio
-        graph_b_err2.SetPoint(i, x, 1.)
+        graph_b_err2.SetPoint(i, x, 1.0)
         graph_b_err2.SetPointError(i, 0.5 * w, 0.5 * w, b_err_down / b_safe, b_err_up / b_safe)
 
     # set y ranges in both pads
@@ -434,7 +434,7 @@ def plot_s_over_b(
         hist_b1_frame.SetFillStyle(0)
         draw_objs1.insert(-3, (hist_b1_frame, "SAME,HIST"))
 
-        legend_cols = min(int(math.ceil(len(legend_entries_procs) / 4.)), 3)
+        legend_cols = min(int(math.ceil(len(legend_entries_procs) / 4.0)), 3)
         legend_rows = int(math.ceil(len(legend_entries_procs) / float(legend_cols)))
         legend_procs = r.routines.create_legend(
             pad=pad1,

@@ -427,7 +427,7 @@ def create_shape_plot(
             y_max = y_min * 10**(math.log10(y_max_value / y_min) * 1.38)
     else:
         if y_min is None:
-            y_min = 0.
+            y_min = 0.0
         if y_max is None:
             y_max = (y_max_value - y_min) * 1.38
 
@@ -481,7 +481,7 @@ def create_shape_plot(
         label_d, label_u = "Down", "Up"
         if hist_n.Integral():
             def fmt(v):
-                sign = 1. if v > 0 else -1.
+                sign = 1.0 if v > 0 else -1.0
                 prefix = "" if round(v, 2) else {1: "< ", -1: "> "}[sign]
                 return prefix + "{:+.2f}".format({1: max, -1: min}[sign](v, 0.01 * sign))
             change_d = 100 * (hist_d.Integral() - hist_n.Integral()) / hist_n.Integral()
@@ -512,9 +512,9 @@ def create_shape_plot(
     if plot_syst:
         # clone histograms and normalize
         def norm(h):
-            h.Add(hist_n_trans, -1.)
+            h.Add(hist_n_trans, -1.0)
             h.Divide(hist_n_trans)
-            h.Scale(100.)
+            h.Scale(100.0)
 
         hist_n_trans2 = hist_n_trans.Clone(hist_n_trans.GetName() + "2")
         hist_d_trans2 = hist_d_trans.Clone(hist_d_trans.GetName() + "2")
@@ -530,13 +530,13 @@ def create_shape_plot(
                 min(h.GetBinContent(b) - h.GetBinErrorLow(b) for b in range(1, h.GetNbinsX() + 1))
                 for h in [hist_d_trans2, hist_u_trans2, hist_n_trans2]
             )
-            y_min2 = min(-0.059, max(-59., y_min2 * 1.2))
+            y_min2 = min(-0.059, max(-59.0, y_min2 * 1.2))
         if y_max2 is None:
             y_max2 = max(
                 max(h.GetBinContent(b) + h.GetBinErrorUp(b) for b in range(1, h.GetNbinsX() + 1))
                 for h in [hist_d_trans2, hist_u_trans2, hist_n_trans2]
             )
-            y_max2 = max(0.059, min(59., y_max2 * 1.2))
+            y_max2 = max(0.059, min(59.0, y_max2 * 1.2))
         # when no limit was requested, ensure it is symmetric
         if no_yrange2_set:
             y_min2 = min(y_min2, -y_max2)

@@ -332,7 +332,7 @@ def plot_exclusion_and_bestfit_1d(
     # theory prediction
     if x_min < 1:
         sm_value = poi_data[scan_parameter].sm_value
-        line_thy = ROOT.TLine(sm_value, 0., sm_value, n)
+        line_thy = ROOT.TLine(sm_value, 0.0, sm_value, n)
         r.setup_line(line_thy, props={"NDC": False, "LineStyle": 1}, color=colors.red)
         draw_objs.insert(-1, line_thy)
         legend_entries.append((line_thy, "Theory prediction", "l"))
@@ -552,8 +552,8 @@ def plot_exclusion_and_bestfit_2d(
     draw_objs = []
 
     # conversion factor from pixel to x-axis range
-    pad_width = canvas.GetWindowWidth() * (1. - pad.GetLeftMargin() - pad.GetRightMargin())
-    pad_height = canvas.GetWindowHeight() * (1. - pad.GetTopMargin() - pad.GetBottomMargin())
+    pad_width = canvas.GetWindowWidth() * (1.0 - pad.GetLeftMargin() - pad.GetRightMargin())
+    pad_height = canvas.GetWindowHeight() * (1.0 - pad.GetTopMargin() - pad.GetBottomMargin())
     px_to_x = (x_max - x_min) / pad_width
     py_to_y = (y_max - y_min) / pad_height
 
@@ -576,7 +576,7 @@ def plot_exclusion_and_bestfit_2d(
             expected_limits[scan_parameter1],
             expected_limits[scan_parameter2],
             expected_limits[key],
-            levels=[1.],
+            levels=[1.0],
             frame_kwargs=[{"mode": "edge"}] + [{"mode": "contour+"}],
             interpolation=interpolation_method,
         )[0]
@@ -660,7 +660,7 @@ def plot_exclusion_and_bestfit_2d(
 
             # draw them
             for x, y, rot in label_positions:
-                xsec_label = ROOT.TLatex(0., 0., text)
+                xsec_label = ROOT.TLatex(0.0, 0.0, text)
                 r.setup_latex(
                     xsec_label,
                     props={
@@ -692,7 +692,7 @@ def plot_exclusion_and_bestfit_2d(
             observed_limits[scan_parameter1],
             observed_limits[scan_parameter2],
             observed_limits["limit"],
-            levels=[1.],
+            levels=[1.0],
             frame_kwargs=[{"mode": "edge"}] + [{"mode": "contour+"}],
             interpolation=interpolation_method,
         )[0]

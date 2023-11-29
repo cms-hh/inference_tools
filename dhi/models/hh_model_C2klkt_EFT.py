@@ -254,18 +254,18 @@ POI_CA = ("CA", (1, 0, 1))
 POI_LA = ("LA", (0, -20, 20))
 POI_LE = ("LE", (0, -20, 20))
 POI_M2 = ("M2", (0, 0, 3000))
-POI_B = ("B", (0.0, 0, 6))
+POI_B = ("B", (0, 0, 6))
 POI_B_VII = ("B", (1.57, 0, 6))  # SM beta can not be 0 for VII as 1/tan(B)
 POI_MHE = ("MHE", (1000, 100, 3000))  # Heavy Higgs (H)
 POI_MHE_VII = ("MHE", (10000, 100, 10000))  # Heavy Higgs (H)
 POI_MHE_VIIa = ("MHE", (125, 100, 10000))  # Heavy Higgs (H)
 POI_MHP = ("MHP", (0, 0, 3000))  # Charged Higgs (H+)
 POI_MA = ("MA", (0, 0, 3000))  # heavy higgs (A)
-POI_Z6 = ("Z6", (0., -5, 5))
-POI_TB = ("TB", (1000., 0, 1000))
-POI_CBA = ("CBA", (0., -1., 1.))
-POI_LQ = ("LQ", (0., -10, 10))
-POI_MQ = ("MQ", (1000., 100., 3000))
+POI_Z6 = ("Z6", (0, -5, 5))
+POI_TB = ("TB", (1000, 0, 1000))
+POI_CBA = ("CBA", (0, -1, 1))
+POI_LQ = ("LQ", (0, -10, 10))
+POI_MQ = ("MQ", (1000, 100, 3000))
 POI_XI = ("XI", (0, 0, 1))
 POI_CV = ("CV", (1, -10, 10))
 POI_C2V = ("C2V", (1, -10, 10))
@@ -866,7 +866,7 @@ class HHModel_BETAMH_6b(HHModelEFTBase):
         C2 = 0
         """
 
-        self.make_expr("expr::kl('1 + (8./3.)*pow(tan(@0),2)*pow(@1,2)/(pow(@2,2)*@3)', B, MHE, NU, lSM)")  # noqa        
+        self.make_expr("expr::kl('1 + (8./3.)*pow(tan(@0),2)*pow(@1,2)/(pow(@2,2)*@3)', B, MHE, NU, lSM)")  # noqa
         self.make_var("{}[1]".format("kt"))
         self.get_var("kt").setConstant(True)
         self.make_var("{}[0]".format("C2"))

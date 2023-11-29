@@ -899,7 +899,7 @@ def plot_limit_scans(
     if model_parameters:
         param_kwargs = {}
         if legend_cols == 3:
-            param_kwargs["y_offset"] = 1. - 0.25 * pad.GetTopMargin() - legend.GetY1()
+            param_kwargs["y_offset"] = 1.0 - 0.25 * pad.GetTopMargin() - legend.GetY1()
         draw_objs.extend(create_model_parameters(model_parameters, pad, **param_kwargs))
 
     # campaign label
@@ -966,9 +966,9 @@ def plot_limit_points(
             paths=["plot.pdf", "plot.png"],
             poi="r",
             data=[{
-                "expected": (40., 50., 28., 58., 18.),
-                "observed": 45.,
-                "theory": (38., 40., 36.),
+                "expected": (40.0, 50.0, 28.0, 58.0, 18.0),
+                "observed": 45.0,
+                "theory": (38.0, 40.0, 36.0),
                 "name": "bbXX",
                 "label": "CMS-HIG-XX-YYY",
             }, {
@@ -1063,7 +1063,7 @@ def plot_limit_points(
     # set default ranges
     if x_min is None:
         if not xsec_unit:
-            x_min = 0.75 if x_log else 0.
+            x_min = 0.75 if x_log else 0.0
         else:
             x_min = 0.75 * x_min_value
     if x_max is None:
@@ -1466,31 +1466,31 @@ def plot_limit_scan_2d(
         joined_expected_limits[scan_parameter1],
         joined_expected_limits[scan_parameter2],
         joined_expected_limits["limit"],
-        levels=[1.],
-        frame_kwargs=[{"mode": "edge", "width": 1.}],
+        levels=[1.0],
+        frame_kwargs=[{"mode": "edge", "width": 1.0}],
     )[0]
     if has_unc:
         exp_p1_contours = get_contours(
             joined_expected_limits[scan_parameter1],
             joined_expected_limits[scan_parameter2],
             joined_expected_limits["limit_p1"],
-            levels=[1.],
-            frame_kwargs=[{"mode": "edge", "width": 1.}],
+            levels=[1.0],
+            frame_kwargs=[{"mode": "edge", "width": 1.0}],
         )[0]
         exp_m1_contours = get_contours(
             joined_expected_limits[scan_parameter1],
             joined_expected_limits[scan_parameter2],
             joined_expected_limits["limit_m1"],
-            levels=[1.],
-            frame_kwargs=[{"mode": "edge", "width": 1.}],
+            levels=[1.0],
+            frame_kwargs=[{"mode": "edge", "width": 1.0}],
         )[0]
     if has_obs:
         obs_contours = get_contours(
             joined_observed_limits[scan_parameter1],
             joined_observed_limits[scan_parameter2],
             joined_observed_limits["limit"],
-            levels=[1.],
-            frame_kwargs=[{"mode": "edge", "width": 1.}],
+            levels=[1.0],
+            frame_kwargs=[{"mode": "edge", "width": 1.0}],
         )[0]
 
     # start plotting
@@ -1499,9 +1499,9 @@ def plot_limit_scan_2d(
     pad.cd()
 
     # custom palette, requires that the z range is symmetrical around 1
-    rvals = np.array([ROOT.gROOT.GetColor(colors.red).GetRed(), 1., 0.])
-    gvals = np.array([0., 1., 0.])
-    bvals = np.array([0., 1., ROOT.gROOT.GetColor(colors.blue).GetBlue()])
+    rvals = np.array([ROOT.gROOT.GetColor(colors.red).GetRed(), 1.0, 0.0])
+    gvals = np.array([0.0, 1.0, 0.0])
+    bvals = np.array([0.0, 1.0, ROOT.gROOT.GetColor(colors.blue).GetBlue()])
     lvals = np.array([0.0, 0.5, 1.0])
     ROOT.TColor.CreateGradientColorTable(len(lvals), lvals, rvals, gvals, bvals, 100)
 
@@ -1722,7 +1722,7 @@ def evaluate_limit_scan_1d(
         if n_nans:
             print("WARNING: found {} NaN(s) in xsec values for 1d evaluation".format(n_nans))
     else:
-        xsec_interp = lambda x: 1.
+        xsec_interp = lambda x: 1.0
 
     # interpolated difference between of limit and prediction (== cross section or 1)
     diff_interp = lambda x: interp(x) - xsec_interp(x)

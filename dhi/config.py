@@ -169,7 +169,7 @@ poi_data = DotDict(
     MHP=DotDict(range=(0.0, 3000.0), label=r"$m_{H+}$", sm_value=0.0, unit="GeV"),
     MA=DotDict(range=(0.0, 3000.0), label=r"$m_{A}$", sm_value=0.0, unit="GeV"),
     Z6=DotDict(range=(-5.0, 5.0), label=r"$Z_{6}$", sm_value=0.0),
-    TB=DotDict(range=(0.0, 1000.), label=r"$tan(\beta)$", sm_value=1000.0),
+    TB=DotDict(range=(0.0, 1000.0), label=r"$tan(\beta)$", sm_value=1000.0),
     CBA=DotDict(range=(0.0, 1.0), label=r"$cos(\beta-\alpha)$", sm_value=0.0),
     LQ=DotDict(range=(-10.0, 10.0), label=r"$\lambda_{Q}$", sm_value=0.0),
     MQ=DotDict(range=(0.0, 3000.0), label=r"$m_{Q}$", sm_value=1000.0, unit="GeV"),
@@ -178,7 +178,7 @@ poi_data = DotDict(
     kt_EFT=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
     C2_EFT=DotDict(range=(-2.0, 3.0), label=r"$C_{2}$", sm_value=0.0),
     cosbma=DotDict(range=(0.0, 10.0), label=r"$cos(\beta-\alpha)$", sm_value=0.0),
-    tanbeta=DotDict(range=(0.0, 10.), label=r"$tan(\beta)$", sm_value=10.0),
+    tanbeta=DotDict(range=(0.0, 10.0), label=r"$tan(\beta)$", sm_value=10.0),
 )
 
 # colors
@@ -254,7 +254,7 @@ br_hh_colors.root["bbbb_low"] = br_hh_colors.root.bbbb
 #     2: {1: 2.296, 2: 6.180},
 #     ...
 # }
-get_gaus_interval = lambda sigma: 2 * sp.stats.norm.cdf(sigma) - 1.
+get_gaus_interval = lambda sigma: 2 * sp.stats.norm.cdf(sigma) - 1.0
 get_chi2_level = lambda sigma, ndof: sp.stats.chi2.ppf(get_gaus_interval(sigma), ndof)
 get_chi2_level_from_cl = lambda cl, ndof: sp.stats.chi2.ppf(cl, ndof)
 chi2_levels = {
