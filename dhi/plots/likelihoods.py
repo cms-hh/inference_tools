@@ -15,8 +15,8 @@ import scipy.optimize
 from scinum import Number
 
 from dhi.config import (
-    poi_data, br_hh_names, br_hh_colors, campaign_labels, chi2_levels, colors, color_sequence,
-    marker_sequence, get_chi2_level, get_chi2_level_from_cl,
+    poi_data, br_hh_colors, campaign_labels, chi2_levels, colors, color_sequence, marker_sequence,
+    get_chi2_level, get_chi2_level_from_cl,
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match, convert_rooargset,
@@ -25,7 +25,7 @@ from dhi.util import (
 from dhi.plots.util import (
     use_style, create_model_parameters, fill_hist_from_points, get_contours, get_y_range,
     infer_binning_from_grid, get_contour_box, make_parameter_label_map, get_text_extent,
-    locate_contour_labels, Style,
+    locate_contour_labels, Style, expand_hh_channel_label,
 )
 import dhi.hepdata_tools as hdt
 
@@ -313,7 +313,7 @@ def plot_likelihood_scans_1d(
         g_nlls.append(g_nll)
 
         # legend entry with optional best fit value
-        g_label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
+        g_label = expand_hh_channel_label(d["name"])
         if scan and show_best_fit:
             if show_best_fit_error:
                 bf_label = scan.num_min.str(
@@ -1192,7 +1192,7 @@ def plot_likelihood_scans_2d(
         for g2 in cont2:
             r.setup_graph(g2, props={"LineWidth": 2, "LineStyle": 2, "LineColor": colors[col]})
             draw_objs.append((g2, "SAME,C"))
-        name = to_root_latex(br_hh_names.get(d["name"], d["name"]))
+        name = expand_hh_channel_label(d["name"])
         if g1:
             legend_entries.append((g1, name, "L"))
 

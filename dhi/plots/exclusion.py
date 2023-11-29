@@ -8,14 +8,14 @@ import math
 
 import numpy as np
 
-from dhi.config import poi_data, campaign_labels, colors, br_hh_names, hh_references
+from dhi.config import poi_data, campaign_labels, colors, hh_references
 from dhi.plots.limits import evaluate_limit_scan_1d, _print_excluded_ranges
 from dhi.plots.likelihoods import (
     _preprocess_values, evaluate_likelihood_scan_1d, evaluate_likelihood_scan_2d,
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, invert_graph, get_contours, get_text_extent,
-    locate_contour_labels, Style,
+    locate_contour_labels, Style, expand_hh_channel_label,
 )
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, try_int, make_list, warn
 
@@ -351,7 +351,7 @@ def plot_exclusion_and_bestfit_1d(
     label_tmpl_summary = "#splitline{%s}{#splitline{#scale[0.75]{%s = %s}}{#scale[0.65]{%s}}}"
     for i, (d, scan) in enumerate(zip(data, scans)):
         # name labels
-        label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
+        label = expand_hh_channel_label(d["name"])
         if scan:
             tmpl = label_tmpl_scan
             args = (

@@ -16,8 +16,7 @@ import scipy.interpolate
 from scinum import Number
 
 from dhi.config import (
-    poi_data, br_hh_names, br_hh_colors, campaign_labels, colors, color_sequence, marker_sequence,
-    hh_references,
+    poi_data, br_hh_colors, campaign_labels, colors, color_sequence, marker_sequence, hh_references,
 )
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, create_tgraph, colored, minimize_1d, unique_recarray,
@@ -26,7 +25,7 @@ from dhi.util import (
 from dhi.plots.util import (
     use_style, create_model_parameters, create_hh_xsbr_label, determine_limit_digits,
     get_graph_points, get_y_range, get_contours, fill_hist_from_points, infer_binning_from_grid,
-    fill_legend_column, Style,
+    fill_legend_column, Style, expand_hh_channel_label,
 )
 import dhi.hepdata_tools as hdt
 
@@ -669,7 +668,7 @@ def plot_limit_scans(
         draw_objs.append((g_exp, "SAME,CP" if show_points and not has_obs else "SAME,C"))
         legend_entries.append((
             g_exp,
-            to_root_latex(br_hh_names.get(name, name)),
+            expand_hh_channel_label(name),
             "LP" if show_points and not has_obs else "L",
         ))
         g_exps.append(g_exp)
@@ -715,7 +714,7 @@ def plot_limit_scans(
             draw_objs.append((g_obs, "SAME,CP" if show_points else "SAME,C"))
             legend_entries[-1] = (
                 g_obs,
-                to_root_latex(br_hh_names.get(name, name)),
+                expand_hh_channel_label(name),
                 "LP" if show_points else "L",
             )
             g_obss[-1] = g_obs
@@ -1247,7 +1246,7 @@ def plot_limit_points(
     h_dummy.GetYaxis().SetBinLabel(1, "")
     for i, d in enumerate(data):
         # name labels
-        label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
+        label = expand_hh_channel_label(d["name"])
         label = make_y_label(label, d["expected"][0], d.get("observed"))
         label_x = r.get_x(10, canvas)
         label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)
@@ -1286,7 +1285,10 @@ def plot_limit_points(
         hdt.create_independent_variable(
             "Measurement",
             parent=hep_data,
-            values=[hdt.create_value(br_hh_names.get(d["name"], d["name"])) for d in data],
+            values=[
+                hdt.create_value(expand_hh_channel_label(d["name"], to_root=False))
+                for d in data
+            ],
         )
 
         # theory prediction

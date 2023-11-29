@@ -180,6 +180,22 @@ def create_hh_xsbr_label(poi="r", br=None):
     return r"$\sigma$({}){}".format(create_hh_process_label(poi), br_label)
 
 
+def expand_hh_channel_label(name, to_root=True, allow_prefix=True):
+    prefix = ""
+    if allow_prefix:
+        m = re.match(r"^(\+|-)(.+)$", name)
+        if m:
+            prefix, name = m.groups()
+            prefix += " "
+
+    label = prefix + br_hh_names.get(name, name)
+
+    if to_root:
+        label = to_root_latex(label)
+
+    return label
+
+
 def determine_limit_digits(limit, is_xsec=False):
     digits = 0
     if is_xsec:

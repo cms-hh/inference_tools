@@ -9,9 +9,11 @@ import math
 import numpy as np
 import scipy.stats
 
-from dhi.config import campaign_labels, colors, br_hh_names
+from dhi.config import campaign_labels, colors
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, make_list
-from dhi.plots.util import use_style, create_model_parameters, get_y_range, Style
+from dhi.plots.util import (
+    use_style, create_model_parameters, get_y_range, Style, expand_hh_channel_label,
+)
 
 
 colors = colors.root
@@ -345,7 +347,7 @@ def plot_gofs(
             prob_text = "p = {:.1f} %".format(prob)
 
         # name labels on the y-axis
-        label = to_root_latex(br_hh_names.get(d["name"], d["name"]))
+        label = expand_hh_channel_label(d["name"])
         label = y_label_tmpl % (label, prob_text)
         label_x = r.get_x(10, canvas)
         label_y = r.get_y(bottom_margin + int((n - i - 1.3) * entry_height), pad)

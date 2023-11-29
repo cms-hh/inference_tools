@@ -11,7 +11,7 @@ import scipy as sp
 import scipy.stats
 
 from dhi.config import (
-    poi_data, br_hh_names, br_hh_colors, campaign_labels, colors, color_sequence, marker_sequence,
+    poi_data, br_hh_colors, campaign_labels, colors, color_sequence, marker_sequence,
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, make_list, unique_recarray, dict_to_recarray,
@@ -19,7 +19,7 @@ from dhi.util import (
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, get_y_range, infer_binning_from_grid, get_contours,
-    fill_hist_from_points, get_text_extent, locate_contour_labels, Style,
+    fill_hist_from_points, get_text_extent, locate_contour_labels, Style, expand_hh_channel_label,
 )
 
 
@@ -340,7 +340,7 @@ def plot_significance_scans_1d(
         )
         draw_objs.append((g_exp, "SAME,CP" if show_points else "SAME,C"))
         legend_entries.append(
-            (g_exp, to_root_latex(br_hh_names.get(name, name)), "LP" if show_points else "L"),
+            (g_exp, expand_hh_channel_label(name), "LP" if show_points else "L"),
         )
         y_max_value = max(y_max_value, max(y_vals))
         y_min_value = min(y_min_value, min(y_vals))

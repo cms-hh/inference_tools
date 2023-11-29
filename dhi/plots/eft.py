@@ -7,11 +7,12 @@ Limit plots using ROOT.
 import math
 from collections import OrderedDict
 
-from dhi.config import (
-    br_hh_names, br_hh_colors, campaign_labels, colors, color_sequence, bm_labels,
-)
+from dhi.config import br_hh_colors, campaign_labels, colors, color_sequence, bm_labels
 from dhi.util import import_ROOT, to_root_latex, create_tgraph, make_list, make_tuple
-from dhi.plots.util import use_style, create_hh_xsbr_label, get_y_range, fill_legend_column, Style
+from dhi.plots.util import (
+    use_style, create_hh_xsbr_label, get_y_range, fill_legend_column, Style,
+    expand_hh_channel_label,
+)
 
 
 colors = colors.root
@@ -461,7 +462,7 @@ def plot_multi_benchmark_limits(
             props={"LineWidth": 2, "LineStyle": 2},
         )
         draw_objs.append((g_exp, "SAME,EZ"))
-        legend_entries.append((g_exp, to_root_latex(br_hh_names.get(name, name)), "L"))
+        legend_entries.append((g_exp, expand_hh_channel_label(name), "L"))
 
         # observed values
         if has_obs:
