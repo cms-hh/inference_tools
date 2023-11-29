@@ -268,7 +268,7 @@ def plot_likelihood_scans_1d(
             sig_label = r.routines.create_top_right_label(
                 sig_label,
                 pad=pad,
-                x_offset=5,
+                x_offset=12,
                 y=sig_label_y,
                 props={"TextSize": 18, "TextColor": colors.grey, "TextAlign": 31},
             )

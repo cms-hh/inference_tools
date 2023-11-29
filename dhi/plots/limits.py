@@ -1147,6 +1147,7 @@ def plot_limit_points(
         y = np.arange(n, dtype=np.float32)[::-1]
         x_err_u, x_err_d = zeros, zeros
         if key == "observed":
+            limits[np.isnan(limits)] = x_max_value * 1e6
             y = np.arange(n, dtype=np.float32)[::-1] + 0.5
             y_err_u, y_err_d = zeros + 0.5, zeros + 0.5
         else:
