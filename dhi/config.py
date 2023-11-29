@@ -95,6 +95,7 @@ br_hh_names = DotDict(
     zzzz=r"ZZ ZZ",
     wwzz=r"WW ZZ",
     wwgg=r"WW $\gamma\gamma$",
+    ggtt=r"$\gamma\gamma$ $\tau\tau$",
     multilepton="Multilepton",
 )
 # aliases
@@ -106,19 +107,19 @@ br_hh_names["bbzz4l"] = br_hh_names.bbzzllll
 # HH references
 hh_references = DotDict(
     bbbb=r"Not yet",
-    bbbb_low=r"CMS-PAS-HIG-20-005",
-    bbbb_boosted=r"CMS-PAS-B2G-21-001",
+    bbbb_low=r"Phys. Rev. Lett. 129 (2022) 081802",
+    bbbb_boosted=r"Phys. Rev. Lett. 131 (2023) 041803",
     bbbb_boosted_ggf=r"CMS-PAS-B2G-21-001",
     bbbb_boosted_vbf=r"CMS-PAS-B2G-21-001",
     bbbb_all=r"Not yet",
     bbvv=r"Not yet",
-    bbww=r"Not yet",
+    bbww=r"CMS-PAS-HIG-21-005",
     bbwwqqlv=r"Not yet",
     bbwwlvlv=r"Not yet",
     bbzz=r"Not yet",
     bbzzqqll=r"Not yet",
-    bbzzllll=r"CMS-PAS-HIG-20-004",
-    bbtt=r"CMS-PAS-HIG-20-010",
+    bbzzllll=r"JHEP 06 (2023) 130",
+    bbtt=r"Phys. Lett. B 842 (2023) 137531",
     bbgg=r"JHEP 03 (2021) 257",
     ttww=r"Not yet",
     ttzz=r"Not yet",
@@ -126,7 +127,8 @@ hh_references = DotDict(
     wwww=r"Not yet",
     zzzz=r"Not yet",
     wwzz=r"Not yet",
-    wwgg=r"Not yet",
+    wwgg=r"CMS-PAS-HIG-21-014",
+    ggtt=r"CMS-PAS-HIG-22-012",
     multilepton="CMS-PAS-HIG-21-002",
 )
 hh_references["bbzz4l"] = hh_references.bbzzllll
