@@ -227,6 +227,7 @@ setup() {
             dhi_pip_install 'mplhep==0.3.31' || return "$?"
             dhi_pip_install 'cvxpy==1.4.1' || return "$?"
             dhi_pip_install 'PyYAML==6.0' || return "$?"
+            dhi_pip_install 'mermaidmro==0.2.1' || return "$?"
             dhi_pip_install 'flake8==5.0.4' || return "$?"
             dhi_pip_install 'flake8-commas==2.1.0' || return "$?"
             dhi_pip_install 'flake8-quotes==3.3.2' || return "$?"

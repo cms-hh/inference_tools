@@ -785,7 +785,7 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
                     self,
                     hh_model=hh_model,
                     scan_parameters=scan_parameters,
-                    **kwargs  # noqa
+                    **kwargs,
                 )
                 for scan_parameters in self.get_scan_parameter_combinations()
             ]
@@ -810,19 +810,17 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
 
         # ranges
         if self.save_ranges:
-            outputs["ranges"] = self.target("ranges__{}.json".format(
-                self.get_output_postfix(),
-            ))
+            outputs["ranges"] = self.target(f"ranges__{self.get_output_postfix()}.json")
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
-            outputs["hep_data"] = self.target("{}.yaml".format(name))
+            outputs["hep_data"] = self.target(f"{name}.yaml")
 
         # plot data
         if self.save_plot_data:
             name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
-            outputs["plot_data"] = self.target("{}.pkl".format(name))
+            outputs["plot_data"] = self.target(f"{name}.pkl")
 
         return outputs
 

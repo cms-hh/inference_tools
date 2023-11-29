@@ -49,8 +49,8 @@ class FitDiagnostics(
         default=("r",),
         unique=True,
         sort=True,
-        choices=POITask.r_pois,
-        description="names of POIs; choices: {}; default: (r,)".format(",".join(POITask.r_pois)),
+        choices=POITask.R_POIS,
+        description="names of POIs; choices: {}; default: (r,)".format(",".join(POITask.R_POIS)),
     )
     skip_b_only = luigi.BoolParameter(
         default=True,

@@ -23,7 +23,7 @@ from dhi import dhi_combine_version
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
 from dhi.tasks.remote import HTCondorWorkflow
 from dhi.config import poi_data, br_hh, single_higgs_processes
-from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path
+from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path, make_unique
 from dhi.datacard_tools import bundle_datacard, read_datacard_blocks
 
 
@@ -46,14 +46,26 @@ class HHModelTask(AnalysisTask):
     DEFAULT_HH_MODULE = "hh_model"
     DEFAULT_HH_MODEL = "model_default"
 
+    # class-level sequence of all known pois
+    # instances can potentially have reduced sets (lower case attributes), depending on the model
+    R_POIS = ("r", "r_gghh", "r_qqhh", "r_vhh")
+    K_POIS = (
+        # SM-like
+        "kl", "kt", "CV", "C2V",
+        # EFT
+        "C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP", "MA", "Z6", "TB", "CBA", "LQ", "MQ",
+        "XI", "kl_EFT", "kt_EFT", "C2_EFT", "cosbma", "tanbeta",
+    )
+    ALL_POIS = R_POIS + K_POIS
+
     valid_hh_model_options = {
         "noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc",
         "doProfilergghh", "doProfilerqqhh", "doProfilervhh",
-        "doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V", "doProfileC2", "doProfileA",
-        "doProdileCA", "doProdileLA", "doProdileLE", "doProfileM2", "doProfileB", "doProfileMHE",
-        "doProfileMHP", "doPrifileMA", "doProfileZ6", "doProfileTB",
-        "doProfileCBA", "doProfileLQ", "doProfileMQ", "doProfileXi", "doProfilekl_EFT",
-        "doProfilekt_EFT", "doProfileC2_EFT",
+        "doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V",
+        "doProfileC2", "doProfileA", "doProdileCA", "doProdileLA", "doProdileLE", "doProfileM2",
+        "doProfileB", "doProfileMHE", "doProfileMHP", "doPrifileMA", "doProfileZ6", "doProfileTB",
+        "doProfileCBA", "doProfileLQ", "doProfileMQ", "doProfileXi",
+        "doProfilekl_EFT", "doProfilekt_EFT", "doProfileC2_EFT",
     }
 
     hh_model = luigi.Parameter(
@@ -74,8 +86,10 @@ class HHModelTask(AnalysisTask):
         if self.hh_model_empty and not self.allow_empty_hh_model:
             raise Exception("{!r}: hh_model is not allowed to be empty".format(self))
 
-        # cached hh model instance
+        # cached hh model instance and model pois
         self._cached_model = None
+        self._r_pois = None
+        self._k_pois = None
 
     @property
     def hh_model_empty(self):
@@ -154,7 +168,7 @@ class HHModelTask(AnalysisTask):
 
     @classmethod
     def _create_xsec_func(cls, hh_model, r_poi, unit, br=None, safe_signature=True):
-        if r_poi not in cls.r_pois:
+        if r_poi not in cls.R_POIS:
             raise ValueError("cross section conversion not supported for POI {}".format(r_poi))
         if unit not in ["fb", "pb"]:
             raise ValueError("cross section conversion not supported for unit {}".format(unit))
@@ -302,6 +316,29 @@ class HHModelTask(AnalysisTask):
             self._cached_model = self._load_hh_model(self.hh_model)
         return self._cached_model
 
+    def load_model_pois(self):
+        if self._r_pois is not None and self._k_pois is not None:
+            return
+
+        # store available pois on task level and potentially update them according to the model
+        if self.hh_model_empty:
+            self._r_pois = tuple(self.R_POIS)
+            self._k_pois = tuple(self.K_POIS)
+        else:
+            model = self.load_hh_model()[1]
+            self._r_pois = tuple(model.r_pois)
+            self._k_pois = tuple(model.k_pois)
+
+    @property
+    def r_pois(self):
+        self.load_model_pois()
+        return self._r_pois
+
+    @property
+    def k_pois(self):
+        self.load_model_pois()
+        return self._k_pois
+
     @require_hh_model
     def create_xsec_func(self, *args, **kwargs):
         return self._create_xsec_func(self.hh_model, *args, **kwargs)
@@ -386,6 +423,23 @@ class MultiHHModelTask(HHModelTask):
                 "{!r}: when hh_model_order is set, its length ({}) must match that of "
                 "hh_models ({})".format(self, len(self.hh_model_order), len(self.hh_models)),
             )
+
+        # cached models
+        self._cached_models = None
+
+    def load_hh_models(self):
+        if self._cached_models is None:
+            self._cached_models = [self._load_hh_model(hh_model) for hh_model in self.hh_models]
+        return self._cached_models
+
+    def load_model_pois(self):
+        if self._r_pois is not None and self._k_pois is not None:
+            return
+
+        # store available pois on task level and potentially update them according to the models,
+        # which is done by taking the union of all pois
+        self._r_pois = make_unique(sum((tuple(m.r_pois) for _, m in self.load_hh_models()), ()))
+        self._k_pois = make_unique(sum((tuple(m.k_pois) for _, m in self.load_hh_models()), ()))
 
     def store_parts(self):
         parts = AnalysisTask.store_parts(self)
@@ -983,9 +1037,7 @@ class ParameterScanTask(AnalysisTask):
         # only valid when this is a workflow branch
         if not isinstance(self, law.BaseWorkflow) or self.is_workflow():
             raise AttributeError(
-                "{!r}: has no attribute '{}' when not a workflow branch".format(
-                    self, "joined_scan_values",
-                ),
+                f"{self!r}: has no attribute 'joined_scan_values' when not a workflow branch",
             )
 
         return ",".join(
@@ -1079,23 +1131,11 @@ class ParameterScanTask(AnalysisTask):
 
 class POITask(DatacardTask, ParameterValuesTask):
 
-    # class-level sequence of all available pois
-    # instances will have potentially reduced sequences, depending on the physics model
-    r_pois = ("r", "r_gghh", "r_qqhh", "r_vhh")
-    k_pois = (
-        # SM-like
-        "kl", "kt", "CV", "C2V",
-        # EFT
-        "C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP", "MA", "Z6", "TB", "CBA", "LQ", "MQ",
-        "XI", "kl_EFT", "kt_EFT", "C2_EFT", "cosbma", "tanbeta",
-    )
-    all_pois = r_pois + k_pois
-
     pois = law.CSVParameter(
         default=("r",),
         unique=True,
-        choices=all_pois,
-        description="names of POIs; choices: {}; default: (r,)".format(",".join(all_pois)),
+        choices=DatacardTask.ALL_POIS,
+        description="names of POIs; choices: {}; default: (r,)".format(",".join(DatacardTask.ALL_POIS)),
     )
     unblinded = luigi.BoolParameter(
         default=False,
@@ -1138,7 +1178,7 @@ class POITask(DatacardTask, ParameterValuesTask):
             parameter_values = []
             for p in params["parameter_values"]:
                 name, value = p
-                if name in cls.all_pois and float(value) == poi_data[name].sm_value:
+                if name in cls.ALL_POIS and float(value) == poi_data[name].sm_value:
                     continue
                 parameter_values.append(p)
             if cls.sort_parameter_values:
@@ -1151,7 +1191,7 @@ class POITask(DatacardTask, ParameterValuesTask):
             if not multi:
                 params["frozen_parameters"] = (params["frozen_parameters"],)
             params["frozen_parameters"] = tuple(
-                tuple(sorted(p for p in fp if p not in cls.all_pois))
+                tuple(sorted(p for p in fp if p not in cls.ALL_POIS))
                 for fp in params["frozen_parameters"]
             )
             if not multi:
@@ -1171,13 +1211,7 @@ class POITask(DatacardTask, ParameterValuesTask):
     def __init__(self, *args, **kwargs):
         super(POITask, self).__init__(*args, **kwargs)
 
-        # store available pois on task level and potentially update them according to the model
-        if self.hh_model_empty:
-            self.r_pois, self.k_pois = self.get_empty_hh_model_pois()
-        else:
-            model = self.load_hh_model()[1]
-            self.r_pois = tuple(model.r_pois)
-            self.k_pois = tuple(model.k_pois)
+        # store all available pois on task level and potentially update them according to the model
         self.all_pois = self.r_pois + self.k_pois
 
         # check again of the chosen pois are available
@@ -1218,11 +1252,6 @@ class POITask(DatacardTask, ParameterValuesTask):
                     self, self.unblinded,
                 ),
             )
-
-    def get_empty_hh_model_pois(self):
-        # hook that can be implemented to configure the r (and possibly k) POIs to be used
-        # when not hh model is configured
-        return tuple(self.__class__.r_pois), tuple(self.__class__.k_pois)
 
     def store_parts(self):
         parts = super(POITask, self).store_parts()
