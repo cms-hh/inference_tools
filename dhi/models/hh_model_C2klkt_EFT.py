@@ -14,7 +14,7 @@ from collections import OrderedDict
 from dhi.models.h_hh_model_kWkZ import ( # noqa
     VBFSample, HHModel as DefaultHHModel, vbf_samples, create_ggf_xsec_str,
     ggf_k_factor, _create_add_sample_func, create_vbf_xsec_func, HBRScaler,
-) # noqa
+)
 
 # necessary imports
 from dhi.models.hh_model_C2klkt import (GGFSample, GGFFormula)
@@ -74,7 +74,6 @@ class HHModelEFTBase(DefaultHHModel):
 
     # overwrite to not remove new POIs
     def reset_pois(self):
-
         # r pois
         self.r_pois = OrderedDict()
         for p, v in self.R_POIS.items():
@@ -100,7 +99,6 @@ class HHModelEFTBase(DefaultHHModel):
         Dummy to customize eft constraints of a specific theory scenario.
         Implemented by specific model.
         """
-
         raise NotImplementedError
 
     def doParametersOfInterest(self):
@@ -115,7 +113,6 @@ class HHModelEFTBase(DefaultHHModel):
         but still needs to be set, to be able to customize it,
         we add a hook "make_eftconstraints" to be then implemented
         in a specific model for a specific theory scenario )
-
         """
         # first, add all known r and k POIs
         for p in self.R_POIS:

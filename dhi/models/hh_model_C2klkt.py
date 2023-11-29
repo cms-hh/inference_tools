@@ -14,7 +14,6 @@ from collections import OrderedDict
 
 import sympy
 
-# we need a wildcard import to have everything accessible through this module
 # specific imports for linting
 from dhi.models.hh_model import (
     GGFSample as DefaultGGFSample, GGFFormula as DefaultGGFFormula, VBFSample,

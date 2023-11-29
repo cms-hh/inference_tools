@@ -12,12 +12,12 @@ Authors:
 
 from collections import OrderedDict
 
-# we need a wildcard import to have everything accessible through this module
 # specific imports for linting
-from dhi.models.hh_model import (
+from dhi.models.hh_model import (  # noqa
     GGFSample as DefaultGGFSample, VBFSample as DefaultVBFSample, VHHSample,
     GGFFormula as DefaultGGFFormula, VBFFormula as DefaultVBFFormula, HHModel as DefaultHHModel,
     ggf_samples, vbf_samples, vhh_samples, _create_add_sample_func, model_default_vhh,
+    create_vbf_xsec_func,
 )
 
 
@@ -64,12 +64,12 @@ add_boosted_vbf_sample(CV=1.0, C2V=2.0, kl=1.0, xs=0.0142178, label="boosted_qqH
 add_boosted_vbf_sample(CV=0.5, C2V=1.0, kl=1.0, xs=0.0108237, label="boosted_qqHH_CV_0p5_C2V_1_kl_1")
 add_boosted_vbf_sample(CV=1.5, C2V=1.0, kl=1.0, xs=0.0660185, label="boosted_qqHH_CV_1p5_C2V_1_kl_1")
 # additional base points for stabilizing signal pdfs
-add_boosted_vbf_sample(CV=1.0, C2V=2.0, kl=-10.0, xs=0.1149221, label="boosted_qqHH_CV_1_C2V_2_kl_m10")  # noqa
+add_boosted_vbf_sample(CV=1.0, C2V=2.0, kl=-10.0, xs=0.1149221, label="boosted_qqHH_CV_1_C2V_2_kl_m10")
 add_boosted_vbf_sample(CV=1.0, C2V=2.0, kl=20.0, xs=0.5754886, label="boosted_qqHH_CV_1_C2V_2_kl_20")
-add_boosted_vbf_sample(CV=1.0, C2V=0.0, kl=-10.0, xs=0.2735665, label="boosted_qqHH_CV_1_C2V_0_kl_m10")  # noqa
+add_boosted_vbf_sample(CV=1.0, C2V=0.0, kl=-10.0, xs=0.2735665, label="boosted_qqHH_CV_1_C2V_0_kl_m10")
 add_boosted_vbf_sample(CV=1.0, C2V=0.0, kl=20.0, xs=0.3365450, label="boosted_qqHH_CV_1_C2V_0_kl_20")
-add_boosted_vbf_sample(CV=1.0, C2V=1.5, kl=-15.0, xs=0.3059198, label="boosted_qqHH_CV_1_C2V_1p5_kl_m15")  # noqa
-add_boosted_vbf_sample(CV=1.0, C2V=0.5, kl=25.0, xs=0.6348751, label="boosted_qqHH_CV_1_C2V_0p5_kl_25")  # noqa
+add_boosted_vbf_sample(CV=1.0, C2V=1.5, kl=-15.0, xs=0.3059198, label="boosted_qqHH_CV_1_C2V_1p5_kl_m15")
+add_boosted_vbf_sample(CV=1.0, C2V=0.5, kl=25.0, xs=0.6348751, label="boosted_qqHH_CV_1_C2V_0p5_kl_25")
 add_boosted_vbf_sample(CV=1.0, C2V=1.0, kl=-3.0, xs=0.0287358, label="boosted_qqHH_CV_1_C2V_1_kl_m3")
 
 
@@ -149,7 +149,7 @@ def create_model(name, ggf=None, vbf=None, vhh=None, boosted_ggf=None, boosted_v
         vhh_samples=get_samples(vhh, vhh_samples, VHHSample),
         boosted_ggf_samples=get_samples(boosted_ggf, boosted_ggf_samples, BoostedGGFSample),
         boosted_vbf_samples=get_samples(boosted_vbf, boosted_vbf_samples, BoostedVBFSample),
-        **kwargs  # noqa
+        **kwargs,
     )
 
 
