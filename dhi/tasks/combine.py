@@ -31,7 +31,7 @@ def require_hh_model(func):
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         if self.hh_model_empty:
-            raise Exception("calls to {}() are invalid with empty hh_model".format(func.__name__))
+            raise Exception(f"calls to {func._name__}() are invalid with empty hh_model")
         return func(self, *args, **kwargs)
 
     return wrapper
@@ -84,7 +84,7 @@ class HHModelTask(AnalysisTask):
         super(HHModelTask, self).__init__(*args, **kwargs)
 
         if self.hh_model_empty and not self.allow_empty_hh_model:
-            raise Exception("{!r}: hh_model is not allowed to be empty".format(self))
+            raise Exception(f"{self!r}: hh_model is not allowed to be empty")
 
         # cached hh model instance and model pois
         self._cached_model = None
@@ -102,7 +102,7 @@ class HHModelTask(AnalysisTask):
 
         # when there is no "." in the string, assume it to be the default module
         if "." not in hh_model:
-            hh_model = "{}.{}".format(cls.DEFAULT_HH_MODULE, hh_model)
+            hh_model = f"{cls.DEFAULT_HH_MODULE}.{hh_model}"
 
         # split into module, model name and options
         front, options = hh_model.split("@", 1) if "@" in hh_model else (hh_model, "")
@@ -119,9 +119,9 @@ class HHModelTask(AnalysisTask):
             # strip potential values
             key, value = opt.split("=", 1) if "=" in opt else (opt, True)
             if key not in cls.valid_hh_model_options:
-                raise Exception("invalid HH model option '{}', valid options are {}".format(
-                    key, ",".join(cls.valid_hh_model_options),
-                ))
+                raise Exception(
+                    f"invalid HH model option '{key}', valid options are {','.join(cls.valid_hh_model_options)}",
+                )
             opts[key] = value
 
         return module_id, model_name, opts
@@ -169,18 +169,18 @@ class HHModelTask(AnalysisTask):
     @classmethod
     def _create_xsec_func(cls, hh_model, r_poi, unit, br=None, safe_signature=True):
         if r_poi not in cls.R_POIS:
-            raise ValueError("cross section conversion not supported for POI {}".format(r_poi))
+            raise ValueError(f"cross section conversion not supported for POI {r_poi}")
         if unit not in ["fb", "pb"]:
-            raise ValueError("cross section conversion not supported for unit {}".format(unit))
+            raise ValueError(f"cross section conversion not supported for unit {unit}")
         if br and br != law.NO_STR and br not in br_hh:
-            raise ValueError("unknown decay channel name {}".format(br))
+            raise ValueError(f"unknown decay channel name {br}")
 
         # get the module and the hh model object
         module, model = cls._load_hh_model(hh_model)
 
         # check that the r POI is handled by the model
         if r_poi not in model.r_pois:
-            raise ValueError("r POI {} is not covered by the HH model {}".format(r_poi, hh_model))
+            raise ValueError(f"r POI {r_poi} is not covered by the HH model {hh_model}")
 
         # get the proper xsec getter, based on poi
         if r_poi == "r_gghh":
@@ -347,10 +347,10 @@ class HHModelTask(AnalysisTask):
     def convert_to_xsecs(self, *args, **kwargs):
         if kwargs.get("br") and self.load_hh_model()[1].opt("doBRscaling"):
             self.logger.warning(
-                "the computation of cross sections involving the branching ratio '{}' does not "
-                "consider any kappa dependence of the branching ratio itself; this is, however, "
-                "part of the configured physics model '{}' and is therefore used internally by "
-                "combine".format(kwargs.get("br"), self.hh_model),
+                f"the computation of cross sections involving the branching ratio '{kwargs.get('br')}' does not "
+                f"consider any kappa dependence of the branching ratio itself; this is, however, "
+                f"part of the configured physics model '{self.hh_model}' and is therefore used internally by "
+                f"combine",
             )
 
         return self._convert_to_xsecs(self.hh_model, *args, **kwargs)
@@ -364,7 +364,7 @@ class HHModelTask(AnalysisTask):
 
         if not self.hh_model_empty:
             module_id, model_name, options = self.split_hh_model()
-            part = "{}__{}".format(module_id.replace(".", "_"), model_name)
+            part = f"{module_id.replace('.', '_')}__{model_name}"
             if options:
                 def fmt(k, v):
                     if isinstance(v, six.string_types):
@@ -415,13 +415,13 @@ class MultiHHModelTask(HHModelTask):
         # the lengths of names and order indices must match hh_models when given
         if len(self.hh_model_names) not in (0, len(self.hh_models)):
             raise Exception(
-                "{!r}: when hh_model_names is set, its length ({}) must match that of "
-                "hh_models ({})".format(self, len(self.hh_model_names), len(self.hh_models)),
+                f"{self!r}: when hh_model_names is set, its length ({len(self.hh_model_names)}) must match that of "
+                f"hh_models ({len(self.hh_models)})",
             )
         if len(self.hh_model_order) not in (0, len(self.hh_models)):
             raise Exception(
-                "{!r}: when hh_model_order is set, its length ({}) must match that of "
-                "hh_models ({})".format(self, len(self.hh_model_order), len(self.hh_models)),
+                f"{self!r}: when hh_model_order is set, its length ({len(self.hh_model_order)}) must match that of "
+                f"hh_models ({len(self.hh_models)})",
             )
 
         # cached models
@@ -615,9 +615,9 @@ class DatacardTask(HHModelTask):
             # complain when no files matched
             if not _paths:
                 if law.util.is_pattern(pattern):
-                    raise Exception("no matching datacards found for pattern {}".format(pattern))
+                    raise Exception(f"no matching datacards found for pattern {pattern}")
                 else:
-                    raise Exception("datacard {} does not exist".format(pattern))
+                    raise Exception(f"datacard {pattern} does not exist")
 
             # add datacard path and optional bin name
             for path in _paths:
@@ -681,9 +681,7 @@ class DatacardTask(HHModelTask):
         # complain when the input is a workspace and it's not allowed
         if not self.allow_workspace_input and self.input_is_workspace:
             raise Exception(
-                "{!r}: input {} is a workspace which is not allowed".format(
-                    self, self.split_datacard_path(self.datacards[0])[0],
-                ),
+                f"{self!r}: input {self.split_datacard_path(self.datacards[0])[0]} is a workspace which is not allowed",
             )
 
         # generic hook to change task parameters in a customizable way
@@ -701,7 +699,7 @@ class DatacardTask(HHModelTask):
             elif self.datacards_store_dir != law.NO_STR:
                 value = self.datacards_store_dir
             elif self.hash_datacards_in_repr:
-                value = "hash:{}".format(law.util.create_hash(value))
+                value = f"hash:{law.util.create_hash(value)}"
             kwargs["serialize"] = False
         return super(DatacardTask, self)._repr_param(name, value, **kwargs)
 
@@ -713,13 +711,13 @@ class DatacardTask(HHModelTask):
             parts["inputs"] = self.datacards_store_dir
         else:
             prefix = "workspace" if self.input_is_workspace else "datacards"
-            parts["inputs"] = "{}_{}".format(prefix, law.util.create_hash(self.datacards))
+            parts["inputs"] = f"{prefix}_{law.util.create_hash(self.datacards)}"
 
         # append inject paths
         if self.workspace_inject_files:
             parts["inputs"] += "__inject_" + law.util.create_hash(self.workspace_inject_files)
 
-        parts["mass"] = "m{}".format(self.mass)
+        parts["mass"] = f"m{self.mass}"
 
         return parts
 
@@ -794,21 +792,16 @@ class MultiDatacardTask(DatacardTask):
             for i, datacards in enumerate(self.multi_datacards):
                 if len(datacards) != m:
                     raise Exception(
-                        "datacard sequence at index {} contains {} datacards whereas {} are "
-                        "expected".format(i, len(datacards), m),
+                        f"datacard sequence at index {i} contains {len(datacards)} datacards whereas {m} are expected",
                     )
             if self.compare_sequence_length:
                 n = m
 
         # the lengths of names and order indices must match multi_datacards when given
         if self.datacard_names and len(self.datacard_names) != n:
-            raise Exception("found {} entries in datacard_names whereas {} are expected".format(
-                len(self.datacard_names), n,
-            ))
+            raise Exception(f"found {len(self.datacard_names)} entries in datacard_names whereas {n} are expected")
         if self.datacard_order and len(self.datacard_order) != n:
-            raise Exception("found {} entries in datacard_order whereas {} are expected".format(
-                len(self.datacard_order), n,
-            ))
+            raise Exception(f"found {len(self.datacard_order)} entries in datacard_order whereas {n} are expected")
 
     @property
     def n_datacard_entries(self):
@@ -816,13 +809,13 @@ class MultiDatacardTask(DatacardTask):
 
     def _repr_param(self, name, value, **kwargs):
         if self.hash_datacards_in_repr and name == "multi_datacards":
-            value = "hash:{}".format(law.util.create_hash(value))
+            value = f"hash:{law.util.create_hash(value)}"
             kwargs["serialize"] = False
         return super(MultiDatacardTask, self)._repr_param(name, value, **kwargs)
 
     def store_parts(self):
         parts = super(MultiDatacardTask, self).store_parts()
-        parts["inputs"] = "multidatacards_{}".format(law.util.create_hash(self.multi_datacards))
+        parts["inputs"] = f"multidatacards_{law.util.create_hash(self.multi_datacards)}"
         return parts
 
 
@@ -874,14 +867,14 @@ class ParameterValuesTask(AnalysisTask):
         self.parameter_values_dict = OrderedDict()
         for p in self.parameter_values:
             if p[0] in self.parameter_values_dict:
-                raise ValueError("{!r}: duplicate parameter value '{}'".format(self, p[0]))
+                raise ValueError(f"{self!r}: duplicate parameter value '{p[0]}'")
             self.parameter_values_dict[p[0]] = float(p[1])
 
         # store parameter ranges in a dict, check for duplicates
         self.parameter_ranges_dict = OrderedDict()
         for p in self.parameter_ranges:
             if p[0] in self.parameter_ranges_dict:
-                raise ValueError("{!r}: duplicate parameter range '{}'".format(self, p[0]))
+                raise ValueError(f"{self!r}: duplicate parameter range '{p[0]}'")
             self.parameter_ranges_dict[p[0]] = (float(p[1]), float(p[2]))
 
     def get_output_postfix(self, join=True):
@@ -946,18 +939,16 @@ class ParameterScanTask(AnalysisTask):
                 elif len(p) == 4:
                     name, start, stop, points = p[0], float(p[1]), float(p[2]), int(p[3])
                 else:
-                    raise ValueError("invalid scan parameter format '{}'".format(",".join(p)))
+                    raise ValueError(f"invalid scan parameter format '{','.join(p)}'")
 
-                # check if the parameter name was already used
-                if name in names and not cls.allow_multiple_scan_ranges:
-                    raise Exception("scan parameter {} configured more than once".format(name))
+                    # check if the parameter name was already used
+                    if name in names and not cls.allow_multiple_scan_ranges:
+                        raise Exception(f"scan parameter {name} configured more than once")
 
-                # get range defaults
-                if start is None or stop is None:
-                    if name not in poi_data:
-                        raise Exception(
-                            "cannot infer default range of scan parameter {}".format(name),
-                        )
+                    # get range defaults
+                    if start is None or stop is None:
+                        if name not in poi_data:
+                            raise Exception(f"cannot infer default range of scan parameter {name}")
                     start, stop = poi_data[name].range
 
                 # get default points
@@ -981,7 +972,7 @@ class ParameterScanTask(AnalysisTask):
         self.scan_parameters_dict = OrderedDict()
         for p in self.scan_parameters:
             if len(p) < 4:
-                raise Exception("invalid scan parameter size '{}'".format(p))
+                raise Exception(f"invalid scan parameter size '{p}'")
             self.scan_parameters_dict.setdefault(p[0], []).append(p[1:])
 
         # check the number of scan parameters if restricted
@@ -989,16 +980,12 @@ class ParameterScanTask(AnalysisTask):
         if isinstance(n, six.integer_types):
             if self.n_scan_parameters != n:
                 raise Exception(
-                    "exactly {} scan parameters required but got '{}'".format(
-                        n, self.joined_scan_parameter_names,
-                    ),
+                    f"exactly {n} scan parameters required but got '{self.joined_scan_parameter_names}'",
                 )
         elif isinstance(n, tuple) and len(n) == 2:
             if not (n[0] <= self.n_scan_parameters <= n[1]):
                 raise Exception(
-                    "between {} and {} scan parameters required but got '{}'".format(
-                        n[0], n[1], self.joined_scan_parameter_names,
-                    ),
+                    f"between {n[0]} and {n[1]} scan parameters required but got '{self.joined_scan_parameter_names}'",
                 )
 
     def has_multiple_scan_ranges(self):
@@ -1008,8 +995,8 @@ class ParameterScanTask(AnalysisTask):
         for name, ranges in self.scan_parameters_dict.items():
             if len(ranges) > 1:
                 raise Exception(
-                    "{} is only available for scan parameters with one range, "
-                    "but {} has {} ranges".format(attr, name, len(ranges)),
+                    f"{attr} is only available for scan parameters with one range, "
+                    f"but {name} has {len(ranges)} ranges",
                 )
 
     def get_output_postfix(self, join=True):
@@ -1063,11 +1050,7 @@ class ParameterScanTask(AnalysisTask):
         if not isinstance(step_sizes, (list, tuple)):
             step_sizes = len(ranges) * [step_sizes]
         elif len(step_sizes) != len(ranges):
-            raise Exception(
-                "number of step_sizes {} must match number of ranges {}".format(
-                    len(step_sizes), len(ranges),
-                ),
-            )
+            raise Exception(f"number of step_sizes {len(step_sizes)} must match number of ranges {len(ranges)}")
 
         def get_points(r, step_size):
             # when step_size is set, use this value to define the resolution between points
@@ -1076,11 +1059,7 @@ class ParameterScanTask(AnalysisTask):
             if step_size:
                 points = (stop - start) / float(step_size) + 1
                 if points % 1 != 0:
-                    raise Exception(
-                        "step size {} does not equally divide range [{}, {}]".format(
-                            step_size, start, stop,
-                        ),
-                    )
+                    raise Exception(f"step size {step_size} does not equally divide range [{start}, {stop}]")
                 return points
             if len(r) < 3:
                 return int(stop - start + 1)
@@ -1114,9 +1093,7 @@ class ParameterScanTask(AnalysisTask):
             n_patches = len(self.scan_parameters) / float(n_params)
             is_int = lambda n: int(n) == n
             if is_int(n_patches) and names == int(n_patches) * tuple(self.scan_parameter_names):
-                self.logger.debug(
-                    "identified {} patches in scan parameter ranges".format(int(n_patches)),
-                )
+                self.logger.debug(f"identified {int(n_patches)} patches in scan parameter ranges")
                 return [
                     self.scan_parameters[i * n_params:(i + 1) * n_params]
                     for i in range(int(n_patches))
@@ -1135,7 +1112,7 @@ class POITask(DatacardTask, ParameterValuesTask):
         default=("r",),
         unique=True,
         choices=DatacardTask.ALL_POIS,
-        description="names of POIs; choices: {}; default: (r,)".format(",".join(DatacardTask.ALL_POIS)),
+        description=f"names of POIs; choices: {','.join(DatacardTask.ALL_POIS)}; default: (r,)",
     )
     unblinded = luigi.BoolParameter(
         default=False,
@@ -1218,7 +1195,7 @@ class POITask(DatacardTask, ParameterValuesTask):
         for p in self.pois:
             if p not in self.all_pois:
                 raise Exception(
-                    "{!r}: parameter {} is not a POI in model {}".format(self, p, self.hh_model),
+                    f"{self!r}: parameter {p} is not a POI in model {self.hh_model}",
                 )
 
         # check the number of pois if restricted
@@ -1226,14 +1203,12 @@ class POITask(DatacardTask, ParameterValuesTask):
         if isinstance(n, six.integer_types):
             if self.n_pois != n:
                 raise Exception(
-                    "{!r}: exactly {} POIs required but got '{}'".format(self, n, self.joined_pois),
+                    f"{self!r}: exactly {n} POIs required but got '{self.joined_pois}'",
                 )
         elif isinstance(n, tuple) and len(n) == 2:
             if not (n[0] <= self.n_pois <= n[1]):
                 raise Exception(
-                    "{!r}: between {} and {} POIs required but got '{}'".format(
-                        self, n[0], n[1], self.joined_pois,
-                    ),
+                    f"{self!r}: between {n[0]} and {n[1]} POIs required but got '{self.joined_pois}'",
                 )
 
         # check if parameter values are allowed in pois
@@ -1241,16 +1216,13 @@ class POITask(DatacardTask, ParameterValuesTask):
             for p in self.parameter_values_dict:
                 if p in self.pois:
                     raise Exception(
-                        "{!r}: parameter values are not allowed to be in POIs, but "
-                        "found '{}'".format(self, p),
+                        f"{self!r}: parameter values are not allowed to be in POIs, but found '{p}'",
                     )
 
         # check the type of the unblinded parameter (for downstream extensibility)
         if self.unblinded is not None and not isinstance(self.unblinded, (bool, tuple)):
             raise TypeError(
-                "{!r}: unblinded must refer to a bool or tuple, but found '{}'".format(
-                    self, self.unblinded,
-                ),
+                f"{self!r}: unblinded must refer to a bool or tuple, but found '{self.unblinded}'",
             )
 
     def store_parts(self):
@@ -1272,7 +1244,7 @@ class POITask(DatacardTask, ParameterValuesTask):
             if all(self.unblinded):
                 parts.append(["unblinded"])
             elif any(self.unblinded):
-                parts.append(["unblinded_{}".format("".join(map(str, map(int, self.unblinded))))])
+                parts.append([f"unblinded_{''.join(map(str, map(int, self.unblinded)))}"])
 
         # add pois
         parts.append(["poi"] + list(self.pois))
@@ -1412,28 +1384,23 @@ class POIMultiTask(POITask):
         n = len(getattr(self, self.compare_multi_sequence))
         if self.unblinded is not None and len(self.unblinded) not in (1, n):
             raise Exception(
-                "{!r}: the number of --unblinded values ({}) must be one or match "
-                "that of {} ({})".format(
-                    self, len(self.unblinded), self.compare_multi_sequence, n,
-                ),
+                f"{self!r}: the number of --unblinded values ({len(self.unblinded)}) must be one "
+                f"or match that of {self.compare_multi_sequence} ({n})",
             )
 
         # check frozen_parameters
         if self.frozen_parameters is not None and len(self.frozen_parameters) not in (0, 1, n):
             raise Exception(
-                "{!r}: the number of --frozen-parameters sequences ({}) must be zero, "
-                "one or match that of {} ({})".format(
-                    self, len(self.frozen_parameters), self.compare_multi_sequence, n,
-                ),
+                f"{self!r}: the number of --frozen-parameters sequences "
+                f"({len(self.frozen_parameters)}) must be zero, one or match that of "
+                f"{self.compare_multi_sequence} ({n})",
             )
 
         # check frozen_groups
         if self.frozen_groups is not None and len(self.frozen_groups) not in (0, 1, n):
             raise Exception(
-                "{!r}: the number of --frozen-groups sequences ({}) must be zero, "
-                "one or match that of {} ({})".format(
-                    self, len(self.frozen_groups), self.compare_multi_sequence, n,
-                ),
+                f"{self!r}: the number of --frozen-groups sequences ({len(self.frozen_groups)}) "
+                f"must be zero, one or match that of {self.compare_multi_sequence} ({n})",
             )
 
     @abstractproperty
@@ -1470,6 +1437,8 @@ class POIScanTask(POITask, ParameterScanTask):
     force_scan_parameters_unequal_pois = False
     allow_parameter_values_in_scan_parameters = False
     allow_parameter_ranges_in_scan_parameters = False
+    warn_if_scan_range_exceeds_param_range = True
+    warn_if_scan_range_exceeds_model_range = True
 
     def __init__(self, *args, **kwargs):
         super(POIScanTask, self).__init__(*args, **kwargs)
@@ -1479,25 +1448,22 @@ class POIScanTask(POITask, ParameterScanTask):
             missing = set(self.pois) - set(self.scan_parameter_names)
             if missing:
                 raise Exception(
-                    "scan parameters {} must match POIs {} and vice versa".format(
-                        self.joined_scan_parameter_names, self.joined_pois,
-                    ),
+                    f"scan parameters {self.joined_scan_parameter_names} must match POIs "
+                    f"{self.joined_pois} and vice versa",
                 )
             unknown = set(self.scan_parameter_names) - set(self.pois)
             if unknown:
                 raise Exception(
-                    "scan parameters {} must match POIs {} and vice versa".format(
-                        self.joined_scan_parameter_names, self.joined_pois,
-                    ),
+                    f"scan parameters {self.joined_scan_parameter_names} must match POIs "
+                    f"{self.joined_pois} and vice versa",
                 )
 
         # check if scan parameters and pois diverge
         if self.force_scan_parameters_unequal_pois:
             if set(self.pois).intersection(set(self.scan_parameter_names)):
                 raise Exception(
-                    "scan parameters {} and POIs {} must not overlap".format(
-                        self.joined_scan_parameter_names, self.joined_pois,
-                    ),
+                    f"scan parameters {self.joined_scan_parameter_names} and POIs "
+                    f"{self.joined_pois} must not overlap",
                 )
 
         # check if parameter values are in scan parameters
@@ -1505,8 +1471,7 @@ class POIScanTask(POITask, ParameterScanTask):
             for p in self.parameter_values_dict:
                 if p in self.scan_parameter_names:
                     raise Exception(
-                        "parameter values are not allowed to be in scan parameters, "
-                        "but found {}".format(p),
+                        f"parameter values are not allowed to be in scan parameters, but found {p}",
                     )
 
         # check if no scan parameter is in custom parameter ranges
@@ -1514,8 +1479,7 @@ class POIScanTask(POITask, ParameterScanTask):
             for p in self.scan_parameter_names:
                 if p in self.parameter_ranges_dict:
                     raise Exception(
-                        "scan parameters are not allowed to be in parameter ranges, "
-                        "but found {}".format(p),
+                        f"scan parameters are not allowed to be in parameter ranges, but found {p}",
                     )
 
         # print a warning when a scan range exceeds the valid parameter range
@@ -1529,32 +1493,32 @@ class POIScanTask(POITask, ParameterScanTask):
             for p, ranges in self.scan_parameters_dict.items():
                 for s, e, _ in ranges:
                     # check parameter ranges first
-                    if p in self.parameter_ranges_dict:
+                    if self.warn_if_scan_range_exceeds_param_range and p in self.parameter_ranges_dict:
                         _s, _e = self.parameter_ranges_dict[p][0:2]
                         if s < _s:
                             self.logger.warning_once(
-                                "exceeded_start_{}_{}".format(p, s),
+                                f"exceeded_start_{p}_{s}",
                                 msg.format(p=p, where="start", value=s, allowed=_s),
                             )
                         if e > _e:
                             self.logger.warning_once(
-                                "exceeded_stop_{}_{}".format(p, e),
+                                f"exceeded_stop_{p}_{e}",
                                 msg.format(p=p, where="stop", value=e, allowed=_e),
                             )
                         continue
 
                     # check model poi ranges
                     model_ranges = law.util.merge_dicts({}, model.r_pois, model.k_pois)
-                    if p in model_ranges:
+                    if self.warn_if_scan_range_exceeds_model_range and p in model_ranges:
                         _s, _e = model_ranges[p][1:3]
                         if s < _s:
                             self.logger.warning_once(
-                                "exceeded_start_{}_{}".format(p, s),
+                                f"exceeded_start_{p}_{s}",
                                 msg.format(p=p, where="start", value=s, allowed=_s),
                             )
                         if e > _e:
                             self.logger.warning_once(
-                                "exceeded_start_{}_{}".format(p, e),
+                                f"exceeded_start_{p}_{e}",
                                 msg.format(p=p, where="stop", value=e, allowed=_e),
                             )
 
@@ -1700,16 +1664,16 @@ class CombineCommandTask(CommandTask):
 
         if not skip_default:
             algo, subalgo, strat, tol = parse(self.minimizer[0])
-            args += " --cminDefaultMinimizerType {}".format(algo)
-            args += " --cminDefaultMinimizerStrategy {}".format(strat)
-            args += " --cminDefaultMinimizerTolerance {}".format(tol)
+            args += f" --cminDefaultMinimizerType {algo}"
+            args += f" --cminDefaultMinimizerStrategy {strat}"
+            args += f" --cminDefaultMinimizerTolerance {tol}"
             if subalgo:
-                args += " --cminDefaultMinimizerAlgo {}".format(subalgo)
+                args += f" --cminDefaultMinimizerAlgo {subalgo}"
 
         for m in self.minimizer[(0 if skip_default else 1):]:
             algo, subalgo, strat, tol = parse(m)
             subalgo = ("," + subalgo) if subalgo else ""
-            args += " --cminFallbackAlgo {}{},{}:{}".format(algo, subalgo, strat, tol)
+            args += f" --cminFallbackAlgo {algo}{subalgo},{strat}:{tol}"
 
         return args
 
@@ -1846,8 +1810,8 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
         # complain when no datacard paths are given but the store path does not exist yet
         if not self.datacards and not self.local_target(dir=True).exists():
             raise Exception(
-                "{!r}: store directory {} does not exist which is required when no "
-                "datacard paths are provided".format(self, self.local_target(dir=True).path),
+                f"{self!r}: store directory {self.local_target(dir=True).path} does not exist which is required when no "
+                "datacard paths are provided",
             )
 
     def requires(self):
@@ -1868,16 +1832,9 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             len(input_cards) == 1 and
             not re.match(r"^[^\/]+=.+$", input_cards[0])
         ):
-            return "cp {} {}".format(
-                input_cards[0],
-                output_card,
-            )
+            return f"cp {input_cards[0]} {output_card}"
 
-        return "combineCards.py {} {} > {}".format(
-            self.custom_args,
-            " ".join(input_cards),
-            output_card,
-        )
+        return f"combineCards.py {self.custom_args} {' '.join(input_cards)} > {output_card}"
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -1944,21 +1901,19 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             if to_remove:
                 from dhi.scripts.remove_processes import remove_processes
                 self.logger.info(
-                    "trying to remove processe(s) '{}' from the combined datacard as "
-                    "they are not part of the phyics model {}".format(
-                        ",".join(to_remove), self.hh_model,
-                    ),
+                    f"trying to remove processe(s) '{','.join(to_remove)}' from the combined datacard as "
+                    f"they are not part of the phyics model {self.hh_model}",
                 )
-                remove_processes(output_card.path, map("{}*".format, to_remove))
+                remove_processes(output_card.path, map("{0}*".format, to_remove))
 
-            # remove the THU_HH nuisance if not added (probably in listed in nuisances group)
-            if not model.opt("doklDependentUnc"):
-                from dhi.scripts.remove_parameters import remove_parameters
-                self.logger.info(
-                    "trying to remove '{}' from the combined datacard as the model "
-                    "does not add it".format(model.ggf_kl_dep_unc),
-                )
-                remove_parameters(output_card.path, [model.ggf_kl_dep_unc])
+                # remove the THU_HH nuisance if not added (probably in listed in nuisances group)
+                if not model.opt("doklDependentUnc"):
+                    from dhi.scripts.remove_parameters import remove_parameters
+                    self.logger.info(
+                        f"trying to remove '{model.ggf_kl_dep_unc}' from the combined datacard "
+                        "as the model does not add it",
+                    )
+                    remove_parameters(output_card.path, [model.ggf_kl_dep_unc])
 
         # copy shape files and the datacard to the output location
         output = self.output()
@@ -2038,10 +1993,10 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
         model_args = []
         if not self.hh_model_empty:
             model = self.load_hh_model()[1]
-            model_args.append("--physics-model {model.__module__}:{model.name}".format(model=model))
+            model_args.append(f"--physics-model {model.__module__}:{model.name}")
             # add options
             for name, opt in model.hh_options.items():
-                model_args.append("--physics-option {}={}".format(name, opt["value"]))
+                model_args.append(f"--physics-option {name}={opt['value']}")
 
         # optimization options
         opt_args = ""
@@ -2081,10 +2036,10 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
 
         # add optional workspace injection commands
         for path in self.workspace_inject_files:
-            cmd += " && inject_fit_result.py {} workspace.root w".format(path)
+            cmd += f" && inject_fit_result.py {path} workspace.root w"
 
-        # add the move command
-        cmd += " && mv workspace.root {}".format(self.output().path)
+            # add the move command
+            cmd += f" && mv workspace.root {self.output().path}"
 
         return cmd
 
@@ -2094,13 +2049,13 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
     def run(self):
         if self.input_is_workspace:
             raise Exception(
-                "{!r}: the input is a workspace which should already exist before this task is "
-                "executed",
+                f"{self.__class__.__name__}: the input is a workspace which should already exist "
+                "before this task is executed",
             )
 
         # check if inject files exist
         for path in self.workspace_inject_files:
             if not os.path.exists(path):
-                raise Exception("workspace inject file {} does not exist".format(path))
+                raise Exception(f"workspace inject file {path} does not exist")
 
         return super(CreateWorkspace, self).run()

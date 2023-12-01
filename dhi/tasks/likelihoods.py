@@ -34,6 +34,7 @@ class LikelihoodBase(POIScanTask, SnapshotUser):
 
     force_scan_parameters_equal_pois = True
     allow_parameter_values_in_pois = True
+    warn_if_scan_range_exceeds_model_range = False
 
     def get_output_postfix(self, join=True):
         parts = super(LikelihoodBase, self).get_output_postfix(join=False)

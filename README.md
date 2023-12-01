@@ -1,6 +1,6 @@
 # HH Inference Tools
 
-[![Unit tests](https://gitlab.cern.ch/hh/tools/inference/badges/master/pipeline.svg)](https://gitlab.cern.ch/hh/tools/inference/-/commits/master) [![Documentation badge](https://img.shields.io/badge/Documentation-passing-brightgreen)](http://cms-hh.web.cern.ch/cms-hh/tools/inference/index.html)
+[![Unit tests](https://gitlab.cern.ch/hh/tools/inference/badges/master/pipeline.svg)](https://gitlab.cern.ch/hh/tools/inference/-/pipelines) [![Documentation badge](https://img.shields.io/badge/Documentation-passed-brightgreen)](http://cms-hh.web.cern.ch/cms-hh/tools/inference/index.html)
 
 
 ## Cloning the repository
