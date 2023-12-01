@@ -941,14 +941,14 @@ class ParameterScanTask(AnalysisTask):
                 else:
                     raise ValueError(f"invalid scan parameter format '{','.join(p)}'")
 
-                    # check if the parameter name was already used
-                    if name in names and not cls.allow_multiple_scan_ranges:
-                        raise Exception(f"scan parameter {name} configured more than once")
+                # check if the parameter name was already used
+                if name in names and not cls.allow_multiple_scan_ranges:
+                    raise Exception(f"scan parameter {name} configured more than once")
 
-                    # get range defaults
-                    if start is None or stop is None:
-                        if name not in poi_data:
-                            raise Exception(f"cannot infer default range of scan parameter {name}")
+                # get range defaults
+                if start is None or stop is None:
+                    if name not in poi_data:
+                        raise Exception(f"cannot infer default range of scan parameter {name}")
                     start, stop = poi_data[name].range
 
                 # get default points
@@ -1906,14 +1906,14 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
                 )
                 remove_processes(output_card.path, map("{0}*".format, to_remove))
 
-                # remove the THU_HH nuisance if not added (probably in listed in nuisances group)
-                if not model.opt("doklDependentUnc"):
-                    from dhi.scripts.remove_parameters import remove_parameters
-                    self.logger.info(
-                        f"trying to remove '{model.ggf_kl_dep_unc}' from the combined datacard "
-                        "as the model does not add it",
-                    )
-                    remove_parameters(output_card.path, [model.ggf_kl_dep_unc])
+            # remove the THU_HH nuisance if not added (probably in listed in nuisances group)
+            if not model.opt("doklDependentUnc"):
+                from dhi.scripts.remove_parameters import remove_parameters
+                self.logger.info(
+                    f"trying to remove '{model.ggf_kl_dep_unc}' from the combined datacard "
+                    "as the model does not add it",
+                )
+                remove_parameters(output_card.path, [model.ggf_kl_dep_unc])
 
         # copy shape files and the datacard to the output location
         output = self.output()
@@ -2038,8 +2038,8 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
         for path in self.workspace_inject_files:
             cmd += f" && inject_fit_result.py {path} workspace.root w"
 
-            # add the move command
-            cmd += f" && mv workspace.root {self.output().path}"
+        # add the move command
+        cmd += f" && mv workspace.root {self.output().path}"
 
         return cmd
 
