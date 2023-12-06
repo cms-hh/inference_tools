@@ -98,11 +98,7 @@ class PullsAndImpactsBase(POITask, SnapshotUser):
 class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     run_command_in_tmp = True
-
-    def __init__(self, *args, **kwargs):
-        super(PullsAndImpacts, self).__init__(*args, **kwargs)
-
-        self._cache_branches = False
+    cache_branch_map_default = False
 
     @law.workflow_property(setter=False, empty_value=law.no_value, cache=True)
     def workspace_parameters(self):
@@ -124,7 +120,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
                 branches.extend(params)
 
                 # mark that the branch map is cached from now on
-                self._cache_branches = True
+                self.cache_branch_map = True
 
         return branches
 

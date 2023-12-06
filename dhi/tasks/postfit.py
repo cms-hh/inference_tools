@@ -102,7 +102,7 @@ class FitDiagnostics(
         if not self.skip_b_only:
             parts.append("withBOnly")
         if self.skip_save:
-            parts.append(map("not{}".format, sorted(self.skip_save)))
+            parts.append(list(map("not{}".format, sorted(self.skip_save))))
 
         name = lambda prefix: self.join_postfix([prefix, self.get_output_postfix(), parts])
         return {

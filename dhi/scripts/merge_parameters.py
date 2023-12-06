@@ -516,7 +516,7 @@ def merge_parameters(
                                             "the signs of down ({}) and up ({}) variations of "
                                             "parameter {} with effect {} in bin {} and process {} "
                                             "are mixed and automatic flipping is not enabled".format(
-                                                d, u, name, f, bin_name, process_name,
+                                                d, u, name, eff, bin_name, process_name,
                                             ),
                                         )
 
@@ -535,7 +535,7 @@ def merge_parameters(
                                         "the down ({}) and up ({}) variations of parameter {} with "
                                         "effect {} in bin {} and process {} are one-sided and "
                                         "automatic maximum selection is not enabled".format(
-                                            d, u, name, f, bin_name, process_name,
+                                            d, u, name, eff, bin_name, process_name,
                                         ),
                                     )
 
