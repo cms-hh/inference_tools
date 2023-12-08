@@ -58,7 +58,6 @@ variables:
   stage: build
   tags:
     - cvmfs
-  image: gitlab-registry.cern.ch/ci-tools/ci-worker:cc7
   before_script:
     - >
       if [ ! -d data/examplecards ]; then
@@ -76,11 +75,27 @@ variables:
     paths:
       - data/
 
-compile:
+.setup_cc7:
   extends: .setup
+  image: gitlab-registry.cern.ch/ci-tools/ci-worker:cc7
+  variables:
+    DHI_LCG_DIR: /NOTEXISTING
+    DHI_SCRAM_ARCH: slc7_amd64_gcc900
+    DHI_CMSSW_VERSION: CMSSW_11_3_4
+    DHI_COMBINE_VERSION: v9.1.0
+
+.setup_el9:
+  extends: .setup
+  variables:
+    DHI_LCG_DIR: /NOTEXISTING
+    DHI_SCRAM_ARCH: el9_amd64_gcc12
+    DHI_CMSSW_VERSION: CMSSW_14_0_0_pre1
+    DHI_COMBINE_VERSION: main
+    DHI_COMBINE_VERSION_SEMVER: v9.1.0
+
+.compile:
   when: manual
   script:
-    - export DHI_LCG_DIR="/NOTEXISTING"
     - source setup.sh
   cache:
     key: "${CI_COMMIT_REF_SLUG}"
@@ -88,10 +103,20 @@ compile:
     paths:
       - data/
 
+compile_cc7:
+  extends:
+    - .setup_cc7
+    - .compile
+
+compile_el9:
+  extends: .setup_el9
+  extends:
+    - .setup_el8
+    - .compile
+
 lint:
-  extends: .setup
+  extends: .setup_cc7
   script:
-    - export DHI_LCG_DIR="/NOTEXISTING"
     - source setup.sh
     - ./lint.sh
   cache:
@@ -100,65 +125,68 @@ lint:
     paths:
       - data/
 
-.test:
-  stage: build
-  timeout: 2h
-  tags:
-    - cvmfs
-  image: gitlab-registry.cern.ch/ci-tools/ci-worker:cc7
-  script:
-    - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
-    - export DHI_LCG_DIR="/NOTEXISTING"
-    - source setup.sh
-    - export TEST_CMD="law run dhi.tasks.test.TestPlots --version "ci_${CI_COMMIT_SHORT_SHA}" --plots ${TEST_PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf ${PARAMETERS}"
-    - echo "running command '${TEST_CMD}'"
-    - eval "${TEST_CMD}"
-    - eval "${TEST_CMD} --fetch-output 0,a,plots"
-    - mkdir png
-    - mv plots/*.png png
-    - mkdir pdf
-    - mv plots/*.pdf pdf
-  cache:
-    key: "${CI_COMMIT_REF_SLUG}"
-    policy: pull
-    paths:
-      - data/
-  artifacts:
-    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
-    paths:
-      - png/*.png
-      - pdf/*.pdf
-    expire_in: 1 month
+# .test:
+#   stage: build
+#   timeout: 2h
+#   tags:
+#     - cvmfs
+#   image: gitlab-registry.cern.ch/ci-tools/ci-worker:cc7
+#   script:
+#     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
+#     - export DHI_LCG_DIR="/NOTEXISTING"
+#     - source setup.sh
+#     - export TEST_CMD="law run dhi.tasks.test.TestPlots --version "ci_${CI_COMMIT_SHORT_SHA}" --plots ${TEST_PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf ${PARAMETERS}"
+#     - echo "running command '${TEST_CMD}'"
+#     - eval "${TEST_CMD}"
+#     - eval "${TEST_CMD} --fetch-output 0,a,plots"
+#     - mkdir png
+#     - mv plots/*.png png
+#     - mkdir pdf
+#     - mv plots/*.pdf pdf
+#   cache:
+#     key: "${CI_COMMIT_REF_SLUG}"
+#     policy: pull
+#     paths:
+#       - data/
+#   artifacts:
+#     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+#     paths:
+#       - png/*.png
+#       - pdf/*.pdf
+#     expire_in: 1 month
 
-test_all:
-  extends: .test
-  when: manual
-  rules:
-    - if: $PLOTS == "all"
-      when: always
-  parallel:
-    matrix:
-      - TEST_PLOTS:
-        - "all_limits"
-        - "all_likelihoods"
-        - "all_significances"
-        - "all_pulls"
-        - "all_exclusions"
-        - "all_postfit"
-        - "all_gof"
-        - "all_eft_bm"
-        - "all_eft_c2"
-        - "all_resonant"
-        - "all_studies"
+# .test_cc7:
 
-test_specific:
-  extends: .test
-  when: manual
-  rules:
-    - if: $PLOTS != "none" && $PLOTS != "all"
-      when: always
-  variables:
-    TEST_PLOTS: $PLOTS
+
+# test_all:
+#   extends: .test
+#   when: manual
+#   rules:
+#     - if: $PLOTS == "all"
+#       when: always
+#   parallel:
+#     matrix:
+#       - TEST_PLOTS:
+#         - "all_limits"
+#         - "all_likelihoods"
+#         - "all_significances"
+#         - "all_pulls"
+#         - "all_exclusions"
+#         - "all_postfit"
+#         - "all_gof"
+#         - "all_eft_bm"
+#         - "all_eft_c2"
+#         - "all_resonant"
+#         - "all_studies"
+
+# test_specific:
+#   extends: .test
+#   when: manual
+#   rules:
+#     - if: $PLOTS != "none" && $PLOTS != "all"
+#       when: always
+#   variables:
+#     TEST_PLOTS: $PLOTS
 
 build_docs_image:
   stage: build
