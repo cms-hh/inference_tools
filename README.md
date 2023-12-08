@@ -2,6 +2,9 @@
 
 [![Unit tests](https://gitlab.cern.ch/hh/tools/inference/badges/master/pipeline.svg)](https://gitlab.cern.ch/hh/tools/inference/-/pipelines) [![Documentation badge](https://img.shields.io/badge/Documentation-passed-brightgreen)](http://cms-hh.web.cern.ch/cms-hh/tools/inference/index.html)
 
+- Original repository at [CERN GitLab](https://gitlab.cern.ch/hh/tools/inference)
+- Mirror at [GitHub](https://github.com/cms-hh/inference_tools)
+
 
 ## Cloning the repository
 
