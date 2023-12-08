@@ -1966,11 +1966,12 @@ def evaluate_likelihood_scan_2d(
 
         def minimize(bounds):
             # cap the farther bound using a simple scan
+            bounds = list(bounds)
             for x in np.linspace(bounds[0], bounds[1], 50):
-                if _interp(x) > v * 1.05:
-                    bounds[1] = x
+                if ((x - bounds[0]) / (bounds[1] - bounds[0])) > 0.05 and float(_interp(x)) > v * 1.05:
+                    bounds[1] = float(x)
                     break
-            bounds.sort()
+            bounds = sorted(bounds)
 
             # minimize
             objective = lambda x: abs(_interp(x) - v)

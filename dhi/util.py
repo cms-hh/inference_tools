@@ -386,9 +386,13 @@ def minimize_1d(objective, bounds, start=None, **kwargs):
     minimizer_kwargs = kwargs.setdefault("minimizer_kwargs", {})
     minimizer_kwargs["bounds"] = [bounds]
     minimizer_kwargs.setdefault("tol", 0.00001)
-    res = scipy.optimize.basinhopping(objective, start, **kwargs)
+    res = scipy.optimize.basinhopping(objective, start, **kwargs).lowest_optimization_result
 
-    return res.lowest_optimization_result
+    # some scipy versions miss the status attribute when starting point is the minimum already
+    if getattr(res, "status", None) is None:
+        setattr(res, "status", 0 if getattr(res, "success", False) else 1)
+
+    return res
 
 
 def minimize_2d(objective, bounds, start=None, **kwargs):
@@ -415,9 +419,13 @@ def minimize_2d(objective, bounds, start=None, **kwargs):
     minimizer_kwargs = kwargs.setdefault("minimizer_kwargs", {})
     minimizer_kwargs["bounds"] = bounds
     minimizer_kwargs.setdefault("tol", 0.00001)
-    res = scipy.optimize.basinhopping(objective, start, **kwargs)
+    res = scipy.optimize.basinhopping(objective, start, **kwargs).lowest_optimization_result
 
-    return res.lowest_optimization_result
+    # some scipy versions miss the status attribute when starting point is the minimum already
+    if getattr(res, "status", None) is None:
+        setattr(res, "status", 0 if getattr(res, "success", False) else 1)
+
+    return res
 
 
 def create_tgraph(n, *args, **kwargs):
