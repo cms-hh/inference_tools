@@ -56,6 +56,7 @@ variables:
 
 .vars_cc7:
   variables:
+    DHI_CI_RELEASE: cc7
     DHI_LCG_DIR: /cvmfs/sft.cern.ch/lcg
     DHI_SCRAM_ARCH: slc7_amd64_gcc900
     DHI_CMSSW_VERSION: CMSSW_11_3_4
@@ -63,6 +64,7 @@ variables:
 
 .vars_el9:
   variables:
+    DHI_CI_RELEASE: el8
     DHI_LCG_DIR: /NOTEXISTING
     DHI_SCRAM_ARCH: el9_amd64_gcc12
     DHI_CMSSW_VERSION: CMSSW_14_0_0_pre1
@@ -108,7 +110,7 @@ variables:
   script:
     - bash -c "source setup.sh"
   cache:
-    key: "${CI_COMMIT_REF_SLUG}"
+    key: "${CI_COMMIT_REF_SLUG}-${DHI_CI_RELEASE}"
     policy: push
     paths:
       - data/
@@ -129,7 +131,7 @@ lint:
   script:
     - bash -c "source setup.sh && ./lint.sh"
   cache:
-    key: "${CI_COMMIT_REF_SLUG}"
+    key: "${CI_COMMIT_REF_SLUG}-${DHI_CI_RELEASE}"
     policy: pull-push
     paths:
       - data/
@@ -153,12 +155,12 @@ lint:
     - mkdir pdf
     - mv plots/*.pdf pdf
   cache:
-    key: "${CI_COMMIT_REF_SLUG}"
+    key: "${CI_COMMIT_REF_SLUG}-${DHI_CI_RELEASE}"
     policy: pull
     paths:
       - data/
   artifacts:
-    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME-$DHI_CI_RELEASE"
     paths:
       - png/*.png
       - pdf/*.pdf

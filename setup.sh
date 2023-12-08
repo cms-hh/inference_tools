@@ -264,15 +264,16 @@ setup() {
         >&2 echo ""
     fi
 
-    # gfal2 bindings (optional)
+    # gfal2 bindings, disabled until we need full gfal2 support
+    # however, DHI_LCG_DIR is needed by remote bootstrap script to fetch software bundles
     export DHI_HAS_GFAL="0"
     export DHI_LCG_DIR="${DHI_LCG_DIR:-/cvmfs/grid.cern.ch/centos7-ui-200122}"
-    if [ ! -d "${DHI_LCG_DIR}" ]; then
-        >&2 echo "lcg directory ${DHI_LCG_DIR} not existing, skip gfal2 bindings setup"
-    else
-        source "${DHI_LCG_DIR}/etc/profile.d/setup-c7-ui-python3-example.sh" "" || return "$?"
-        export DHI_HAS_GFAL="1"
-    fi
+    # if [ ! -d "${DHI_LCG_DIR}" ]; then
+    #     >&2 echo "lcg directory ${DHI_LCG_DIR} not existing, skip gfal2 bindings setup"
+    # else
+    #     source "${DHI_LCG_DIR}/etc/profile.d/setup-c7-ui-python3-example.sh" "" || return "$?"
+    #     export DHI_HAS_GFAL="1"
+    # fi
 
 
     #
