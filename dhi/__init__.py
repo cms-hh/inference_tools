@@ -38,9 +38,13 @@ version = split_version(__version__)
 
 # environment flags
 dhi_remote_job = str(os.getenv("DHI_REMOTE_JOB", "0")).lower() in ("1", "true", "yes")
-dhi_has_gfal = str(os.getenv("DHI_HAS_GFAL", "0")).lower() in ("1", "true", "yes")
 dhi_htcondor_flavor = os.getenv("DHI_HTCONDOR_FLAVOR", "cern").lower()
-dhi_combine_version = split_version(os.environ["DHI_COMBINE_VERSION"])
+dhi_scram_arch = os.environ["DHI_SCRAM_ARCH"]
+dhi_combine_version = split_version(os.getenv("DHI_COMBINE_VERSION_SEMVER", os.environ["DHI_COMBINE_VERSION"]))
+dhi_has_gfal = (
+    str(os.getenv("DHI_HAS_GFAL", "0")).lower() in ("1", "true", "yes") and
+    not dhi_scram_arch.startswith(("el9", "alma9", "al9"))
+)
 
 # law contrib packages
 law.contrib.load(
