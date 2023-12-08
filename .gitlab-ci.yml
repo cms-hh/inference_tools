@@ -89,7 +89,7 @@ variables:
   image: gitlab-registry.cern.ch/linuxsupport/rpmci/builder-al9:latest
   variables:
     DHI_LCG_DIR: /NOTEXISTING
-    DHI_SCRAM_ARCH: al9_amd64_gcc12
+    DHI_SCRAM_ARCH: el9_amd64_gcc12
     DHI_CMSSW_VERSION: CMSSW_14_0_0_pre1
     DHI_COMBINE_VERSION: main
     DHI_COMBINE_VERSION_SEMVER: v9.1.0
