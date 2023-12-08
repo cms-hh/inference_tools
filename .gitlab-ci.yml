@@ -159,11 +159,7 @@ lint:
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
     - >
       bash -c "\
-        yum install -y which && \
-        which python3 && \
         source setup.sh && \
-        which law && \
-        python3 -c 'import law; print(law)' && \
         export TEST_CMD=\"law run dhi.tasks.test.TestPlots --version ci_${CI_COMMIT_SHORT_SHA} --plots ${TEST_PLOTS} --campaign 'CI ${CI_COMMIT_SHORT_SHA}' --file-types png,pdf ${PARAMETERS}\" && \
         echo running command: \${TEST_CMD} && \
         eval \"\${TEST_CMD}\" && \
@@ -185,26 +181,38 @@ lint:
       - pdf/*.pdf
     expire_in: 1 month
 
-# test_all:
-#   extends: .test
-#   when: manual
-#   rules:
-#     - if: $PLOTS == "all"
-#       when: always
-#   parallel:
-#     matrix:
-#       - TEST_PLOTS:
-#         - "all_limits"
-#         - "all_likelihoods"
-#         - "all_significances"
-#         - "all_pulls"
-#         - "all_exclusions"
-#         - "all_postfit"
-#         - "all_gof"
-#         - "all_eft_bm"
-#         - "all_eft_c2"
-#         - "all_resonant"
-#         - "all_studies"
+.test_all:
+  extends: .test
+  when: manual
+  rules:
+    - if: ($RELEASE == $DHI_CI_RELEASE || $RELEASE == "all") && $PLOTS == "all"
+      when: always
+  parallel:
+    matrix:
+      - TEST_PLOTS:
+        - "all_limits"
+        - "all_likelihoods"
+        - "all_significances"
+        - "all_pulls"
+        - "all_exclusions"
+        - "all_postfit"
+        - "all_gof"
+        - "all_eft_bm"
+        - "all_eft_c2"
+        - "all_resonant"
+        - "all_studies"
+
+test_all_cc7:
+  extends:
+    - .vars_cc7
+    - .image_cc7
+    - .test_all
+
+test_all_el9:
+  extends:
+    - .vars_el9
+    - .image_el9
+    - .test_all
 
 .test_specific:
   extends: .test
