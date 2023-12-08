@@ -62,6 +62,10 @@ variables:
     value: ""
     description: "Additional parameters to be passed to the command."
 
+#
+# variable templates
+#
+
 .vars_cc7:
   variables:
     DHI_CI_RELEASE: cc7
@@ -79,11 +83,19 @@ variables:
     DHI_COMBINE_VERSION: main
     DHI_COMBINE_VERSION_SEMVER: v9.1.0
 
+#
+# image templates
+#
+
 .image_cc7:
   image: registry.hub.docker.com/cmssw/cc7:x86_64
 
 .image_el9:
   image: registry.hub.docker.com/cmssw/el9:x86_64
+
+#
+# setup and compile templates
+#
 
 .setup:
   stage: build
@@ -107,18 +119,6 @@ variables:
     paths:
       - data/
 
-.setup_cc7:
-  extends:
-    - .vars_cc7
-    - .image_cc7
-    - .setup
-
-.setup_el9:
-  extends:
-    - .vars_el9
-    - .image_el9
-    - .setup
-
 .compile:
   when: manual
   script:
@@ -129,19 +129,33 @@ variables:
     paths:
       - data/
 
+#
+# actual compile jobs
+#
+
 compile_cc7:
   extends:
-    - .setup_cc7
+    - .vars_cc7
+    - .image_cc7
+    - .setup
     - .compile
 
 compile_el9:
-  extends: .setup_el9
   extends:
-    - .setup_el9
+    - .vars_el9
+    - .image_el9
+    - .setup
     - .compile
 
+#
+# linting jobs
+#
+
 lint:
-  extends: .setup_cc7
+  extends:
+    - .vars_cc7
+    - .image_cc7
+    - .setup
   script:
     - bash -c "source setup.sh && ./lint.sh"
   cache:
@@ -149,6 +163,10 @@ lint:
     policy: pull-push
     paths:
       - data/
+
+#
+# testing templates
+#
 
 .test:
   stage: build
@@ -202,6 +220,19 @@ lint:
         - "all_resonant"
         - "all_studies"
 
+.test_specific:
+  extends: .test
+  when: manual
+  rules:
+    - if: ($RELEASE == $DHI_CI_RELEASE || $RELEASE == "all") && $PLOTS != "none" && $PLOTS != "all"
+      when: always
+  variables:
+    TEST_PLOTS: $PLOTS
+
+#
+# actual test jobs
+#
+
 test_all_cc7:
   extends:
     - .vars_cc7
@@ -214,15 +245,6 @@ test_all_el9:
     - .image_el9
     - .test_all
 
-.test_specific:
-  extends: .test
-  when: manual
-  rules:
-    - if: ($RELEASE == $DHI_CI_RELEASE || $RELEASE == "all") && $PLOTS != "none" && $PLOTS != "all"
-      when: always
-  variables:
-    TEST_PLOTS: $PLOTS
-
 test_specific_cc7:
   extends:
     - .vars_cc7
@@ -234,6 +256,10 @@ test_specific_el9:
     - .vars_el9
     - .image_el9
     - .test_specific
+
+#
+# documentation jobs
+#
 
 build_docs_image:
   stage: build
