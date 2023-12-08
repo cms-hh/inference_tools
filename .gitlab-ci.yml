@@ -83,7 +83,7 @@ variables:
   tags:
     - cvmfs
   before_script:
-    - yum install -y which
+    - bash -c "yum install -y which"
     - >
       if [ ! -d data/examplecards ]; then
         yum install -y sshpass && \
@@ -149,9 +149,11 @@ lint:
   tags:
     - cvmfs
   script:
+    - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
+    - echo $DHI_CI_RELEASE
+    - echo $DHI_COMBINE_VERSION
     - >
       bash -c "\
-        export DHI_EXAMPLE_CARDS_BASE=\${PWD}/data/examplecards && \
         source setup.sh && \
         export TEST_CMD=\"law run dhi.tasks.test.TestPlots --version ci_${CI_COMMIT_SHORT_SHA} --plots ${TEST_PLOTS} --campaign 'CI ${CI_COMMIT_SHORT_SHA}' --file-types png,pdf ${PARAMETERS}\" && \
         echo running command \${TEST_CMD} && \
