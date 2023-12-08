@@ -154,7 +154,9 @@ lint:
     - >
       bash -c "\
         yum install -y which && \
+        which python3 && \
         source setup.sh && \
+        which law && \
         export TEST_CMD=\"law run dhi.tasks.test.TestPlots --version ci_${CI_COMMIT_SHORT_SHA} --plots ${TEST_PLOTS} --campaign 'CI ${CI_COMMIT_SHORT_SHA}' --file-types png,pdf ${PARAMETERS}\" && \
         echo running command: \${TEST_CMD} && \
         eval \"\${TEST_CMD}\" && \
