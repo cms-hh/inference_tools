@@ -148,15 +148,16 @@ lint:
   timeout: 3h
   tags:
     - cvmfs
-  # image: gitlab-registry.cern.ch/ci-tools/ci-worker:cc7
   script:
-    - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
-    # - export DHI_LCG_DIR="/NOTEXISTING"
-    - source setup.sh
-    - export TEST_CMD="law run dhi.tasks.test.TestPlots --version "ci_${CI_COMMIT_SHORT_SHA}" --plots ${TEST_PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf ${PARAMETERS}"
-    - echo "running command '${TEST_CMD}'"
-    - eval "${TEST_CMD}"
-    - eval "${TEST_CMD} --fetch-output 0,a,plots"
+    - >
+      bash -c "
+        export DHI_EXAMPLE_CARDS_BASE=${PWD}/data/examplecards &&
+        source setup.sh &&
+        export TEST_CMD=\"law run dhi.tasks.test.TestPlots --version ci_${CI_COMMIT_SHORT_SHA} --plots ${TEST_PLOTS} --campaign 'CI ${CI_COMMIT_SHORT_SHA}' --file-types png,pdf ${PARAMETERS}\" &&
+        echo \"running command '${TEST_CMD}'\" &&
+        eval \"${TEST_CMD}\" &&
+        eval \"${TEST_CMD} --fetch-output 0,a,plots\"
+      "
     - mkdir png
     - mv plots/*.png png
     - mkdir pdf
