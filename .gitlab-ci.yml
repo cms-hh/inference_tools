@@ -84,11 +84,12 @@ variables:
     DHI_CMSSW_VERSION: CMSSW_11_3_4
     DHI_COMBINE_VERSION: v9.1.0
 
-.setup_el9:
+.setup_al9:
   extends: .setup
+  image: gitlab-registry.cern.ch/linuxsupport/rpmci/builder-al9:latest
   variables:
     DHI_LCG_DIR: /NOTEXISTING
-    DHI_SCRAM_ARCH: el9_amd64_gcc12
+    DHI_SCRAM_ARCH: al9_amd64_gcc12
     DHI_CMSSW_VERSION: CMSSW_14_0_0_pre1
     DHI_COMBINE_VERSION: main
     DHI_COMBINE_VERSION_SEMVER: v9.1.0
@@ -96,7 +97,7 @@ variables:
 .compile:
   when: manual
   script:
-    - source setup.sh
+    - bash -c "source setup.sh"
   cache:
     key: "${CI_COMMIT_REF_SLUG}"
     policy: push
@@ -108,17 +109,16 @@ compile_cc7:
     - .setup_cc7
     - .compile
 
-compile_el9:
-  extends: .setup_el9
+compile_al9:
+  extends: .setup_al9
   extends:
-    - .setup_el9
+    - .setup_al9
     - .compile
 
 lint:
   extends: .setup_cc7
   script:
-    - source setup.sh
-    - ./lint.sh
+    - bash -c "source setup.sh && ./lint.sh"
   cache:
     key: "${CI_COMMIT_REF_SLUG}"
     policy: pull-push
