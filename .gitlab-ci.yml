@@ -87,7 +87,7 @@ variables:
 
 .setup_al9:
   extends: .setup
-  image: /cvmfs/unpacked.cern.ch/registry.hub.docker.com/cmssw/el9:x86_64
+  image: registry.hub.docker.com/cmssw/el9:x86_64
   variables:
     DHI_LCG_DIR: /NOTEXISTING
     DHI_SCRAM_ARCH: el9_amd64_gcc12
