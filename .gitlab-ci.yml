@@ -50,6 +50,13 @@ variables:
       - "all_studies"
     description: "A specific plot to produce (see test.TestPlots for more info)."
 
+  RELEASE:
+    value: "cc7"
+    options:
+      - "cc7"
+      - "el9"
+    description: "The release to use."
+
   PARAMETERS:
     value: ""
     description: "Additional parameters to be passed to the command."
@@ -64,7 +71,7 @@ variables:
 
 .vars_el9:
   variables:
-    DHI_CI_RELEASE: el8
+    DHI_CI_RELEASE: el9
     DHI_LCG_DIR: /NOTEXISTING
     DHI_SCRAM_ARCH: el9_amd64_gcc12
     DHI_CMSSW_VERSION: CMSSW_14_0_0_pre1
@@ -191,7 +198,7 @@ lint:
   extends: .test
   when: manual
   rules:
-    - if: $PLOTS != "none" && $PLOTS != "all"
+    - if: $RELEASE == $DHI_CI_RELEASE && $PLOTS != "none" && $PLOTS != "all"
       when: always
   variables:
     TEST_PLOTS: $PLOTS
@@ -199,6 +206,11 @@ lint:
 test_specific_cc7:
   extends:
     - .vars_cc7
+    - .test_specific
+
+test_specific_el9:
+  extends:
+    - .vars_el9
     - .test_specific
 
 build_docs_image:
