@@ -59,8 +59,8 @@ variables:
   tags:
     - cvmfs
   before_script:
+    - yum install -y which
     - >
-      yum install -y which
       if [ ! -d data/examplecards ]; then
         yum install -y sshpass && \
         mkdir -p data/examplecards && \
