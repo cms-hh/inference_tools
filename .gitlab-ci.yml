@@ -55,6 +55,7 @@ variables:
     options:
       - "cc7"
       - "el9"
+      - "all"
     description: "The release to use."
 
   PARAMETERS:
@@ -64,7 +65,7 @@ variables:
 .vars_cc7:
   variables:
     DHI_CI_RELEASE: cc7
-    DHI_LCG_DIR: /cvmfs/sft.cern.ch/lcg
+    DHI_LCG_DIR: /NOTEXISTING
     DHI_SCRAM_ARCH: slc7_amd64_gcc900
     DHI_CMSSW_VERSION: CMSSW_11_3_4
     DHI_COMBINE_VERSION: v9.1.0
@@ -150,13 +151,12 @@ lint:
     - cvmfs
   script:
     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
-    - echo $DHI_CI_RELEASE
-    - echo $DHI_COMBINE_VERSION
     - >
       bash -c "\
+        yum install -y which && \
         source setup.sh && \
         export TEST_CMD=\"law run dhi.tasks.test.TestPlots --version ci_${CI_COMMIT_SHORT_SHA} --plots ${TEST_PLOTS} --campaign 'CI ${CI_COMMIT_SHORT_SHA}' --file-types png,pdf ${PARAMETERS}\" && \
-        echo running command \${TEST_CMD} && \
+        echo running command: \${TEST_CMD} && \
         eval \"\${TEST_CMD}\" && \
         eval \"\${TEST_CMD} --fetch-output 0,a,plots\"
       "
@@ -201,7 +201,7 @@ lint:
   extends: .test
   when: manual
   rules:
-    - if: $RELEASE == $DHI_CI_RELEASE && $PLOTS != "none" && $PLOTS != "all"
+    - if: ($RELEASE == $DHI_CI_RELEASE || $RELEASE == "all") && $PLOTS != "none" && $PLOTS != "all"
       when: always
   variables:
     TEST_PLOTS: $PLOTS
