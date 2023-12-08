@@ -111,7 +111,7 @@ compile_cc7:
 compile_el9:
   extends: .setup_el9
   extends:
-    - .setup_el8
+    - .setup_el9
     - .compile
 
 lint:
