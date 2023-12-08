@@ -54,6 +54,21 @@ variables:
     value: ""
     description: "Additional parameters to be passed to the command."
 
+.vars_cc7:
+  variables:
+    DHI_LCG_DIR: /cvmfs/sft.cern.ch/lcg
+    DHI_SCRAM_ARCH: slc7_amd64_gcc900
+    DHI_CMSSW_VERSION: CMSSW_11_3_4
+    DHI_COMBINE_VERSION: v9.1.0
+
+.vars_el9:
+  variables:
+    DHI_LCG_DIR: /NOTEXISTING
+    DHI_SCRAM_ARCH: el9_amd64_gcc12
+    DHI_CMSSW_VERSION: CMSSW_14_0_0_pre1
+    DHI_COMBINE_VERSION: main
+    DHI_COMBINE_VERSION_SEMVER: v9.1.0
+
 .setup:
   stage: build
   tags:
@@ -77,23 +92,16 @@ variables:
       - data/
 
 .setup_cc7:
-  extends: .setup
-  image: gitlab-registry.cern.ch/ci-tools/ci-worker:cc7
-  variables:
-    DHI_LCG_DIR: /NOTEXISTING
-    DHI_SCRAM_ARCH: slc7_amd64_gcc900
-    DHI_CMSSW_VERSION: CMSSW_11_3_4
-    DHI_COMBINE_VERSION: v9.1.0
+  extends:
+    - .vars_cc7
+    - .setup
+  image: registry.hub.docker.com/cmssw/cc7:x86_64
 
-.setup_al9:
-  extends: .setup
+.setup_el9:
+  extends:
+    - .vars_el9
+    - .setup
   image: registry.hub.docker.com/cmssw/el9:x86_64
-  variables:
-    DHI_LCG_DIR: /NOTEXISTING
-    DHI_SCRAM_ARCH: el9_amd64_gcc12
-    DHI_CMSSW_VERSION: CMSSW_14_0_0_pre1
-    DHI_COMBINE_VERSION: main
-    DHI_COMBINE_VERSION_SEMVER: v9.1.0
 
 .compile:
   when: manual
@@ -110,10 +118,10 @@ compile_cc7:
     - .setup_cc7
     - .compile
 
-compile_al9:
-  extends: .setup_al9
+compile_el9:
+  extends: .setup_el9
   extends:
-    - .setup_al9
+    - .setup_el9
     - .compile
 
 lint:
@@ -126,38 +134,35 @@ lint:
     paths:
       - data/
 
-# .test:
-#   stage: build
-#   timeout: 2h
-#   tags:
-#     - cvmfs
-#   image: gitlab-registry.cern.ch/ci-tools/ci-worker:cc7
-#   script:
-#     - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
-#     - export DHI_LCG_DIR="/NOTEXISTING"
-#     - source setup.sh
-#     - export TEST_CMD="law run dhi.tasks.test.TestPlots --version "ci_${CI_COMMIT_SHORT_SHA}" --plots ${TEST_PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf ${PARAMETERS}"
-#     - echo "running command '${TEST_CMD}'"
-#     - eval "${TEST_CMD}"
-#     - eval "${TEST_CMD} --fetch-output 0,a,plots"
-#     - mkdir png
-#     - mv plots/*.png png
-#     - mkdir pdf
-#     - mv plots/*.pdf pdf
-#   cache:
-#     key: "${CI_COMMIT_REF_SLUG}"
-#     policy: pull
-#     paths:
-#       - data/
-#   artifacts:
-#     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
-#     paths:
-#       - png/*.png
-#       - pdf/*.pdf
-#     expire_in: 1 month
-
-# .test_cc7:
-
+.test:
+  stage: build
+  timeout: 3h
+  tags:
+    - cvmfs
+  # image: gitlab-registry.cern.ch/ci-tools/ci-worker:cc7
+  script:
+    - export DHI_EXAMPLE_CARDS_BASE="${PWD}/data/examplecards"
+    # - export DHI_LCG_DIR="/NOTEXISTING"
+    - source setup.sh
+    - export TEST_CMD="law run dhi.tasks.test.TestPlots --version "ci_${CI_COMMIT_SHORT_SHA}" --plots ${TEST_PLOTS} --campaign \"CI ${CI_COMMIT_SHORT_SHA}\" --file-types png,pdf ${PARAMETERS}"
+    - echo "running command '${TEST_CMD}'"
+    - eval "${TEST_CMD}"
+    - eval "${TEST_CMD} --fetch-output 0,a,plots"
+    - mkdir png
+    - mv plots/*.png png
+    - mkdir pdf
+    - mv plots/*.pdf pdf
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    policy: pull
+    paths:
+      - data/
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+    paths:
+      - png/*.png
+      - pdf/*.pdf
+    expire_in: 1 month
 
 # test_all:
 #   extends: .test
@@ -180,14 +185,19 @@ lint:
 #         - "all_resonant"
 #         - "all_studies"
 
-# test_specific:
-#   extends: .test
-#   when: manual
-#   rules:
-#     - if: $PLOTS != "none" && $PLOTS != "all"
-#       when: always
-#   variables:
-#     TEST_PLOTS: $PLOTS
+.test_specific:
+  extends: .test
+  when: manual
+  rules:
+    - if: $PLOTS != "none" && $PLOTS != "all"
+      when: always
+  variables:
+    TEST_PLOTS: $PLOTS
+
+test_specific_cc7:
+  extends:
+    - .vars_cc7
+    - .test_specific
 
 build_docs_image:
   stage: build
