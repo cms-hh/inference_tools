@@ -23,7 +23,7 @@ from dhi.tasks.combine import (
     CreateWorkspace,
 )
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
-from dhi.util import unique_recarray, real_path
+from dhi.util import unique_recarray, real_path, round_scientific
 from dhi.config import br_hh, poi_data
 
 
@@ -111,7 +111,7 @@ class UpperLimitsBase(POITask, SnapshotUser):
         indices = {0.5: 0, 0.84: 1, 0.16: 2, 0.975: 3, 0.025: 4}
         values = [np.nan] * len(indices)
         for l, q in list(zip(limits, quantiles))[:len(indices)]:
-            q = round(float(q), 3)
+            q = round_scientific(float(q), 3)
             if q in indices:
                 values[indices[q]] = l
 

@@ -24,7 +24,7 @@ import law
 from dhi.config import poi_data, br_hh_names
 from dhi.util import (
     import_ROOT, import_file, try_int, to_root_latex, make_list, make_tuple, InterExtrapolator,
-    GridDataInterpolator, DotDict,
+    GridDataInterpolator, DotDict, round_scientific,
 )
 
 
@@ -471,11 +471,11 @@ def infer_binning_from_grid(x_values, y_values):
     # infer the number of bins
     x_bins = (x_max - x_min) / x_width
     y_bins = (y_max - y_min) / y_width
-    if round(x_bins, 3) != int(x_bins):
+    if round_scientific(x_bins, 3) != int(x_bins):
         raise Exception("x axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
             x_min, x_max, x_width,
         ))
-    if round(y_bins, 3) != int(y_bins):
+    if round_scientific(y_bins, 3) != int(y_bins):
         raise Exception("y axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
             y_min, y_max, y_width,
         ))
@@ -812,7 +812,7 @@ def locate_contour_labels(
         # compute the line contour and number of blocks
         line_contour = np.array([x_values, y_values]).T
         n_blocks = int(np.ceil(n_points / label_width)) if label_width > 1 else 1
-        block_size = n_points if n_blocks == 1 else int(round(label_width))
+        block_size = n_points if n_blocks == 1 else int(round_scientific(label_width))
 
         # split contour into blocks of length block_size, filling the last block by cycling the
         # contour start (per np.resize semantics)
