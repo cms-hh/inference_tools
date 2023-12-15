@@ -20,7 +20,7 @@ from dhi.config import (
 )
 from dhi.util import (
     import_ROOT, DotDict, to_root_latex, create_tgraph, colored, minimize_1d, unique_recarray,
-    make_list, try_int, dict_to_recarray, prepare_output,
+    make_list, try_int, dict_to_recarray, prepare_output, round_scientific,
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, create_hh_xsbr_label, determine_limit_digits,
@@ -1235,10 +1235,7 @@ def plot_limit_points(
     y_label_tmpl_obs = "#splitline{%s}{#scale[0.75]{#splitline{Expected: %s}{Observed: %s}}}"
 
     def make_y_label(name, exp, obs=None):
-        if xsec_unit:
-            fmt = lambda v: "{{:.{}f}} {{}}".format(get_digits(v)).format(v, xsec_unit)
-        else:
-            fmt = lambda v: "{{:.{}f}}".format(get_digits(v)).format(v)
+        fmt = lambda v: round_scientific(v, get_digits(v), return_str=True) + (f" {xsec_unit}" if xsec_unit else "")
         if obs is None or np.isnan(obs[0]):
             return y_label_tmpl % (label, fmt(exp))
         return y_label_tmpl_obs % (label, fmt(exp), fmt(obs[0]))

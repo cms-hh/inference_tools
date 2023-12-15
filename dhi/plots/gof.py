@@ -10,7 +10,7 @@ import numpy as np
 import scipy.stats
 
 from dhi.config import campaign_labels, colors
-from dhi.util import import_ROOT, to_root_latex, create_tgraph, make_list
+from dhi.util import import_ROOT, to_root_latex, create_tgraph, make_list, round_scientific
 from dhi.plots.util import (
     use_style, create_model_parameters, get_y_range, Style, expand_hh_channel_label,
 )
@@ -121,7 +121,7 @@ def plot_gof_distribution(
     nb = len(toys) - na
     prob = 100.0 * na / (na + nb)
     prob_unc = 100.0 * (na * nb * (na + nb)**-3.0)**0.5
-    if round(prob, 1):
+    if round_scientific(prob, 1):
         prob_text = "p = {:.1f} #pm {:.1f} %".format(prob, prob_unc)
     else:
         prob_text = "p = {:.1f} %".format(prob)
@@ -341,7 +341,7 @@ def plot_gofs(
         nb = len(d["toys"]) - na
         prob = 100.0 * na / (na + nb)
         prob_unc = 100.0 * (na * nb * (na + nb)**-3.0)**0.5
-        if round(prob, 1):
+        if round_scientific(prob, 1):
             prob_text = "p = {:.1f} #pm {:.1f} %".format(prob, prob_unc)
         else:
             prob_text = "p = {:.1f} %".format(prob)

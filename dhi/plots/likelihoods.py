@@ -20,7 +20,7 @@ from dhi.config import (
 )
 from dhi.util import (
     import_ROOT, to_root_latex, create_tgraph, DotDict, minimize_1d, multi_match, convert_rooargset,
-    make_list, unique_recarray, dict_to_recarray, warn, prepare_output,
+    make_list, unique_recarray, dict_to_recarray, warn, prepare_output, round_scientific,
 )
 from dhi.plots.util import (
     use_style, create_model_parameters, fill_hist_from_points, get_contours, get_y_range,
@@ -225,7 +225,7 @@ def plot_likelihood_scans_1d(
                 dnll2 = get_chi2_level_from_cl(sig, 1)
             else:
                 # convert significance to dnll2 value
-                sig = int(round(sig))
+                sig = int(round_scientific(sig))
                 dnll2 = get_chi2_level(sig, 1)
 
             # do not show when vertically out of range

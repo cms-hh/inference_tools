@@ -34,7 +34,7 @@ import six
 from dhi.datacard_tools import ShapeLine, manipulate_datacard, expand_variables, expand_file_lines
 from dhi.util import (
     TFileCache, import_ROOT, create_console_logger, patch_object, multi_match, make_unique,
-    to_root_latex, prepare_output,
+    to_root_latex, prepare_output, round_scientific,
 )
 from dhi.plots.util import use_style
 from dhi.config import colors, cms_postfix
@@ -482,7 +482,7 @@ def create_shape_plot(
         if hist_n.Integral():
             def fmt(v):
                 sign = 1.0 if v > 0 else -1.0
-                prefix = "" if round(v, 2) else {1: "< ", -1: "> "}[sign]
+                prefix = "" if round_scientific(v, 2) else {1: "< ", -1: "> "}[sign]
                 return prefix + "{:+.2f}".format({1: max, -1: min}[sign](v, 0.01 * sign))
             change_d = 100 * (hist_d.Integral() - hist_n.Integral()) / hist_n.Integral()
             change_u = 100 * (hist_u.Integral() - hist_n.Integral()) / hist_n.Integral()

@@ -20,6 +20,7 @@ from collections import OrderedDict
 import numpy as np
 import scipy.interpolate
 from law.util import no_value, multi_match, make_unique, make_list, make_tuple  # noqa
+import scinum as sn
 import six
 
 # modules and objects from lazy imports
@@ -205,6 +206,20 @@ def real_path(path):
     Takes a *path* and returns its real, absolute location with all variables expanded.
     """
     return os.path.realpath(expand_path(path))
+
+
+def round_scientific(v, ndigits=None, return_str=False):
+    """
+    Rounds a number *v* to a certain number of *ndigits* in the usual scientific notation. That is, considering
+    *ndigits* is *None* or 0, 2.5 and 3.5 would be rounded up to 3 and 4, unlike Python's default "round-half-to-even"
+    behavior that would result in 2 and 4 (this was different in Python 2).
+
+    When *return_str* is *True*, the result is returned as a string, potentially including trailing zeros, or otherwise
+    as a float or int.
+    """
+    ref = 1 if not ndigits else 10**(-ndigits)
+    s = sn.match_precision(v, ref)
+    return s if return_str else (float if ndigits else int)(s)
 
 
 def common_leading_substring(a, b):
