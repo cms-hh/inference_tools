@@ -154,6 +154,15 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             ext_point=ext_point,
         )
 
+        # hack for setting lumiscale correctly...
+        if "lumi" in self.datacards[0] and "lumiscale" in self.joined_parameter_values:
+            lumi_tmp = self.datacards[0][self.datacards[0].find("lumi_"):]
+            lumi_tmp = lumi_tmp.strip("/datacard.txt").strip("lumi_")
+            lumi_tmp = float(lumi_tmp)
+            lumiscale_tmp = lumi_tmp/138.
+            lumiscalestring = "lumiscale="+str(lumiscale_tmp)
+            cmd = cmd.replace("lumiscale=1.0",lumiscalestring)
+
         return cmd
 
 
