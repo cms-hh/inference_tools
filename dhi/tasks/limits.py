@@ -130,12 +130,6 @@ class UpperLimitsScanBase(UpperLimitsBase, POIScanTask):
 
 
 class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
-    test_timming = luigi.BoolParameter(
-        default=False,
-        significant=False,
-        description="when set, a log file along with the result root file with the limit with timming and memory usage "
-        "; default: False",
-    )
 
     run_command_in_tmp = True
 
@@ -231,11 +225,8 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
                 " --noFitAsimov"
             ).format(self=self)
 
-        test_timming_options = test_timming_options_base(self.output().path, self.test_timming)
-
         # build the command
         cmd = (
-            "{test_timming_options} "
             "combine -M AsymptoticLimits {workspace}"
             " {self.custom_args}"
             " --verbose 1"
@@ -258,7 +249,6 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
             grid_args=grid_args,
             blinded_args=blinded_args,
             snapshot_args=snapshot_args,
-            test_timming_options=test_timming_options,
         )
 
         return cmd

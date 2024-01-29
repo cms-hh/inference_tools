@@ -535,13 +535,6 @@ def plot_likelihood_scan_2d(
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/likelihood.html#2d
     """
-
-    # transformations
-    if paper :
-        show_best_fit = True
-        show_best_fit_error = False
-        show_significances=(1, 2)
-
     import plotlib.root as r
     ROOT = import_ROOT()
 
@@ -767,7 +760,6 @@ def plot_likelihood_scan_2d(
             draw_objs.append((h, "SAME,COLZ"))
             # for debugging purposes
             # draw_objs.append((h, "SAME,TEXT"))
->>>>>>> 5635379e34e6d338a66076fd79b5fc6e16614c57
 
     # significance contours
     if show_significances:
@@ -779,15 +771,9 @@ def plot_likelihood_scan_2d(
 
         # cache for label positions
         all_positions = []
-<<<<<<< HEAD
-        for graphs, level, col, ss in zip(contours, contour_levels, contour_colors[:len(contours)], contour_style):
-            for g in graphs:
-                r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors(col), "LineStyle": ss})
-=======
         for graphs, level, col, ls in zip(contours, contour_levels, contour_colors, contour_styles):
             for g in graphs:
                 r.setup_graph(g, props={"LineWidth": 2, "LineColor": colors(col), "LineStyle": ls})
->>>>>>> 5635379e34e6d338a66076fd79b5fc6e16614c57
                 draw_objs.append((g, "SAME,C"))
 
             # stop here when only drawing contours
@@ -795,15 +781,14 @@ def plot_likelihood_scan_2d(
                 continue
 
             # get the approximate label width
-            if not paper :
-                is_cl = isinstance(level, float) and level < 1
-                if is_cl:
-                    text = "{:f}".format(level * 100).rstrip("0").rstrip(".") + "%"
-                else:
-                    text = "{}#sigma".format(level)
-                label_width, label_height = get_text_extent(text, 18, 43)
-                label_width *= px_to_x
-                label_height *= py_to_y
+            is_cl = isinstance(level, float) and level < 1
+            if is_cl:
+                text = "{:f}".format(level * 100).rstrip("0").rstrip(".") + "%"
+            else:
+                text = "{}#sigma".format(level)
+            label_width, label_height = get_text_extent(text, 18, 43)
+            label_width *= px_to_x
+            label_height *= py_to_y
 
             # calculate and store the position
             label_positions = locate_contour_labels(
@@ -869,7 +854,6 @@ def plot_likelihood_scan_2d(
                 props={"MarkerStyle": 33, "MarkerSize": 1.4},
             )
             draw_objs.append((g_sm2, "P"))
->>>>>>> 5635379e34e6d338a66076fd79b5fc6e16614c57
 
     # central best fit point
     if show_best_fit and scan:
@@ -881,15 +865,11 @@ def plot_likelihood_scan_2d(
         if scan.num2_min.uncertainties and show_best_fit_error:
             g_fit.SetPointEYhigh(0, scan.num2_min.u(direction="up"))
             g_fit.SetPointEYlow(0, scan.num2_min.u(direction="down"))
-<<<<<<< HEAD
-        props = {} if show_best_fit_error else {"MarkerStyle": 34, "MarkerSize": 2}
-=======
         props = {"MarkerStyle": 43, "MarkerSize": 2}
         if show_best_fit_error:
             props = {}
         elif style.matches("contours*"):
             props = {"MarkerStyle": 34, "MarkerSize": 2}
->>>>>>> 5635379e34e6d338a66076fd79b5fc6e16614c57
         r.setup_graph(g_fit, props=props, color=colors.black)
         draw_objs.append((g_fit, "PEZ" if show_best_fit_error else "PZ"))
 
@@ -996,7 +976,6 @@ def plot_likelihood_scan_2d(
             legend_kwargs["props"] = {"NColumns": 2}
             legend_kwargs["width"] = 400 if style == "contours_hcomb" else 260
         legend = r.routines.create_legend(**legend_kwargs)
->>>>>>> 5635379e34e6d338a66076fd79b5fc6e16614c57
         r.fill_legend(legend, legend_entries)
         draw_objs.append(legend)
 
@@ -1070,8 +1049,6 @@ def plot_likelihood_scans_2d(
     style=None,
 ):
     """
-
-      --show-best-fit True  --show-best-fit-error False
     Creates the likelihood contour plots of multiple 2D scans of two POIs *poi1* and *poi2*, and
     saves it at *paths*. All information should be passed as a list *data*. Entries must be
     dictionaries with the following content:
