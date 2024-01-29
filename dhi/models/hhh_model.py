@@ -9,7 +9,8 @@ Authors:
   - Kajari Mazumdar
 
 Developments to come:
-
+- make model return the formula to inference draw
+- implement reset_pois and get_formulae (if necessary)
 - implement r_hhh
 - add kt in description (might need mode samples)
 - retest the basis stability
@@ -27,6 +28,23 @@ from sympy import Matrix
 from HiggsAnalysis.CombinedLimit.PhysicsModel import *
 from collections import OrderedDict, defaultdict
 
+__all__ = [
+    # samples
+    #"HHSample", "GGFSample", "VBFSample", "VHHSample", "ggf_samples", "vbf_samples", "vhh_samples",
+    # formulae
+    #"HHFormula", "GGFFormula", "VBFFormula", "VHHFormula",
+    # br and h scaling
+    #"SM_HIGG_DECAYS", "SM_HIGG_PROD", "coeffs_br", "cxs_13", "ewk_13", "dzh", "HBRScaler",
+    # model
+    #"HHModelBase", "HHModel", "create_model", "model_all", "model_default", "model_default_vhh",
+    # xsec helpers
+    #"ggf_k_factor", "ggf_kl_coeffs", "create_ggf_xsec_str", "create_ggf_xsec_func",
+    #"create_vbf_xsec_func", "create_vhh_xsec_func", 
+    "create_hh_xsec_func", 
+    #"get_ggf_xsec",
+    #"get_vbf_xsec", "get_vhh_xsec", "get_hh_xsec",
+]
+
 class HHHSample:
     def __init__(self, val_c3, val_d4, val_xs, label):
         self.val_c3  = val_c3
@@ -41,6 +59,19 @@ class HHHFormula:
         self.build_matrix()
         self.sigmaEval=None
         self.calculatecoeffients()
+
+    def _create_hh_xsec_func(self, *args, **kwargs):
+        # forward to the modul-level implementation
+        return create_hh_xsec_func(*args, **kwargs)
+
+    def create_hh_xsec_func(self, **kwargs):
+        """
+        Returns a function that can be used to compute cross sections, based on all formulae
+        returned by :py:meth:`get_formulae` with *xs_only* set to *True*.
+        """
+        _kwargs = self.get_formulae(xs_only=True)
+        _kwargs.update(kwargs)
+        return self._create_hh_xsec_func(**_kwargs)
 
     def build_matrix(self):
         """ create the matrix M in this object """
@@ -163,7 +194,16 @@ class HHHModel(PhysicsModel):
         self.ggHHH_formula = HHHFormula(ggHHH_sample_list)
         self.dump_inputs()
         self.hh_options = OrderedDict() # placeholder
-        self.reset_pois = None #placeholder
+
+        # actual r and k pois, depending on used formulae and profiling options, set in reset_pois
+        self.r_pois = OrderedDict([
+        ("r", (1, -20, 20)),
+        ])
+
+        self.k_pois = OrderedDict([
+        ("c3", (1, -30, 30)),
+        ("d4", (1, -10, 10)),
+    ])
 
     def check_validity_ggf( self, ggf_sample_list ):
         if len(ggf_sample_list) != 9:
