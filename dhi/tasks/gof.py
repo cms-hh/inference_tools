@@ -7,7 +7,8 @@ Tasks related to significance calculation.
 import law
 import luigi
 
-from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, view_output_plots
+from dhi.tasks.base import BoxPlotTask, view_output_plots
+from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     MultiDatacardTask,
     CombineCommandTask,
@@ -28,7 +29,7 @@ class GoodnessOfFitBase(POITask, SnapshotUser):
     toys_per_branch = luigi.IntParameter(
         default=1,
         description="the number of toys to generate per branch task; the number of tasks in this "
-        "workflow is the number of total toys divided by this number; default: 1"
+        "workflow is the number of total toys divided by this number; default: 1",
     )
     algorithm = luigi.ChoiceParameter(
         default="saturated",
@@ -79,9 +80,11 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
 
         # print a warning when the saturated algorithm is use without frequentist toys
         if self.algorithm == "saturated" and not self.frequentist_toys:
-            self.logger.warning("it is recommended for goodness-of-fit tests with the "
+            self.logger.warning(
+                "it is recommended for goodness-of-fit tests with the "
                 "'saturated' algorithm to use frequentiest toys, so please consider adding "
-                "--frequentist-toys to the {} task".format(self.__class__.__name__))
+                "--frequentist-toys to the {} task".format(self.__class__.__name__),
+            )
 
     def create_branch_map(self):
         # the branch map refers to indices of toys in that branch, with 0 meaning the test on data
@@ -92,9 +95,9 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
     def workflow_requires(self):
         reqs = super(GoodnessOfFit, self).workflow_requires()
         if self.use_snapshot:
-            reqs["snapshot"] = Snapshot.req(self, _exclude={"toys"})
+            reqs["snapshot"] = Snapshot.req_different_branching(self, _exclude={"toys"})
         else:
-            reqs["workspace"] = CreateWorkspace.req(self)
+            reqs["workspace"] = CreateWorkspace.req_different_branching(self)
         return reqs
 
     def requires(self):
@@ -110,12 +113,14 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
         if self.branch == 0:
             parts.append("b0_data")
         else:
-            parts.append("b{}_toy{}To{}".format(self.branch, self.branch_data[0], self.branch_data[-1]))
+            parts.append("b{}_toy{}To{}".format(
+                self.branch, self.branch_data[0], self.branch_data[-1],
+            ))
 
         name = self.join_postfix(["gof", self.get_output_postfix(), parts])
-        return self.local_target(name + ".root")
+        return self.target(name + ".root")
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         # get the workspace to use and define snapshot args
         if self.use_snapshot:
             workspace = self.input()["snapshot"].path
@@ -159,9 +164,11 @@ class GoodnessOfFit(GoodnessOfFitBase, CombineCommandTask, law.LocalWorkflow, HT
 
         return cmd
 
-    def htcondor_output_postfix(self):
-        postfix = super(GoodnessOfFit, self).htcondor_output_postfix()
-        return "{}__{}".format(postfix, self.toys_postfix)
+    def control_output_postfix(self):
+        return "{}__{}".format(
+            super(GoodnessOfFit, self).control_output_postfix(),
+            self.toys_postfix,
+        )
 
 
 class MergeGoodnessOfFit(GoodnessOfFitBase):
@@ -171,7 +178,7 @@ class MergeGoodnessOfFit(GoodnessOfFitBase):
 
     def output(self):
         name = self.join_postfix(["gofs", self.get_output_postfix(), self.toys_postfix])
-        return self.local_target(name + ".json")
+        return self.target(name + ".json")
 
     @law.decorator.log
     @law.decorator.safe_output
@@ -182,11 +189,12 @@ class MergeGoodnessOfFit(GoodnessOfFitBase):
         # load values
         for branch, inp in self.input()["collection"].targets.items():
             if not inp.exists():
-                self.logger.warning("input of branch {} at {} does not exist".format(
-                    branch, inp.path))
+                self.logger.warning(
+                    "input of branch {} at {} does not exist".format(branch, inp.path),
+                )
                 continue
 
-            values = inp.load(formatter="uproot")["limit"].array("limit")
+            values = inp.load(formatter="uproot")["limit"].arrays(["limit"])["limit"]
             if branch == 0:
                 data["data"] = float(values[0])
             else:
@@ -206,33 +214,44 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
 
     z_min = None
     z_max = None
-    save_hep_data = None
+    save_hep_data = False
 
     sort_pois = False
+
+    default_plot_function = "dhi.plots.gof.plot_gof_distribution"
 
     def requires(self):
         return MergeGoodnessOfFit.req(self)
 
     def output(self):
+        outputs = {}
+
         names = self.create_plot_names(["gofs", self.get_output_postfix(), self.toys_postfix])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix(), self.toys_postfix])
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load input data
         gof_data = self.input().load(formatter="json")
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.gof.plot_gof_distribution",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             data=gof_data["data"],
             toys=gof_data["toys"],
             algorithm=self.algorithm,
@@ -243,7 +262,9 @@ class PlotGoodnessOfFit(GoodnessOfFitBase, POIPlotTask):
             y_max=self.get_axis_limit("y_max"),
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
+            style=self.style,
+            dump_target=outputs.get("plot_data"),
         )
 
 
@@ -269,6 +290,8 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
 
     compare_multi_sequence = "multi_datacards"
 
+    default_plot_function = "dhi.plots.gof.plot_gofs"
+
     def __init__(self, *args, **kwargs):
         super(PlotMultipleGoodnessOfFits, self).__init__(*args, **kwargs)
 
@@ -277,15 +300,21 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
         if len(self.toys) == 1:
             self.toys *= n_seqs
         elif len(self.toys) != n_seqs:
-            raise ValueError("{!r}: number of toy values must either be one or match the amount "
+            raise ValueError(
+                "{!r}: number of toy values must either be one or match the amount "
                 "of datacard sequences in --multi-datacards ({}), but got {}".format(
-                    self, n_seqs, len(self.toys)))
+                    self, n_seqs, len(self.toys),
+                ),
+            )
         if len(self.toys_per_branch) == 1:
             self.toys_per_branch *= n_seqs
         elif len(self.toys_per_branch) != n_seqs:
-            raise ValueError("{!r}: number of toys_per_branch values must either be one or match "
+            raise ValueError(
+                "{!r}: number of toys_per_branch values must either be one or match "
                 "the amount of datacard sequences in --multi-datacards ({}), but got {}".format(
-                    self, n_seqs, len(self.toys_per_branch)))
+                    self, n_seqs, len(self.toys_per_branch),
+                ),
+            )
 
     @property
     def toys_postfix(self):
@@ -307,17 +336,27 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
         ]
 
     def output(self):
+        outputs = {}
+
         names = self.create_plot_names(["multigofs", self.get_output_postfix(), self.toys_postfix])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix(), self.toys_postfix])
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load input data
         data = []
@@ -340,8 +379,7 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.gof.plot_gofs",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             data=data,
             algorithm=self.algorithm,
             n_bins=self.n_bins,
@@ -354,5 +392,7 @@ class PlotMultipleGoodnessOfFits(PlotGoodnessOfFit, POIMultiTask, MultiDatacardT
             label_size=None if self.label_size == law.NO_INT else self.label_size,
             model_parameters=self.get_shown_parameters(),
             campaign=self.campaign if self.campaign != law.NO_STR else None,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
+            style=self.style,
+            dump_target=outputs.get("plot_data"),
         )

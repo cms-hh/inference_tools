@@ -70,21 +70,22 @@ br_hh["bbwwllvv"] = br_hh.bbwwlvlv
 br_hh["bbwwsl"] = br_hh.bbwwqqlv
 br_hh["bbzz4l"] = br_hh.bbzzllll
 
-# HH branching names (TODO: find prettier abbreviations)
+# HH branching names
 br_hh_names = DotDict(
-    bbbb=r"4b",
-    bbbb_low=r"4b, low $m_{HH}$",
-    bbbb_boosted=r"4b, high $m_{HH}$",
-    bbbb_boosted_ggf=r"4b #scale[0.75]{high $m_{HH}$, ggF}",
-    bbbb_boosted_vbf=r"4b #scale[0.75]{high $m_{HH}$, VBF}",
+    bbbb=r"bb bb",
+    bbbb_low=r"bb bb, #scale[0.75]{low $m_{HH}$}",
+    bbbb_boosted=r"bb bb, #scale[0.75]{high $m_{HH}$}",
+    bbbb_boosted_ggf=r"bb bb #scale[0.75]{high $m_{HH}$, ggF}",
+    bbbb_boosted_vbf=r"bb bb #scale[0.75]{high $m_{HH}$, VBF}",
+    bbbb_vhh=r"bb bb, #scale[0.75]{VHH}",
     bbbb_all=r"bb bb",
     bbvv=r"bb VV",
-    bbww=r"b bWW",
+    bbww=r"bb WW",
     bbwwqqlv=r"bb WW, qql$\nu$",
     bbwwlvlv=r"bb WW, 2l2$\nu$",
     bbzz=r"bb ZZ",
     bbzzqqll=r"bb ZZ, qqll",
-    bbzzllll=r"bb ZZ",
+    bbzzllll=r"bb ZZ, 4l",
     bbtt=r"bb $\tau\tau$",
     bbgg=r"bb $\gamma\gamma$",
     ttww=r"WW $\tau\tau",
@@ -94,6 +95,7 @@ br_hh_names = DotDict(
     zzzz=r"ZZ ZZ",
     wwzz=r"WW ZZ",
     wwgg=r"WW $\gamma\gamma$",
+    ggtt=r"$\gamma\gamma$ $\tau\tau$",
     multilepton="Multilepton",
 )
 # aliases
@@ -101,6 +103,35 @@ br_hh_names["bbwwdl"] = br_hh_names.bbwwlvlv
 br_hh_names["bbwwllvv"] = br_hh_names.bbwwlvlv
 br_hh_names["bbwwsl"] = br_hh_names.bbwwqqlv
 br_hh_names["bbzz4l"] = br_hh_names.bbzzllll
+
+# HH references
+hh_references = DotDict(
+    bbbb=r"Not yet",
+    bbbb_low=r"Phys. Rev. Lett. 129 (2022) 081802",
+    bbbb_boosted=r"Phys. Rev. Lett. 131 (2023) 041803",
+    bbbb_boosted_ggf=r"CMS-PAS-B2G-21-001",
+    bbbb_boosted_vbf=r"CMS-PAS-B2G-21-001",
+    bbbb_all=r"Not yet",
+    bbvv=r"Not yet",
+    bbww=r"CMS-PAS-HIG-21-005",
+    bbwwqqlv=r"Not yet",
+    bbwwlvlv=r"Not yet",
+    bbzz=r"Not yet",
+    bbzzqqll=r"Not yet",
+    bbzzllll=r"JHEP 06 (2023) 130",
+    bbtt=r"Phys. Lett. B 842 (2023) 137531",
+    bbgg=r"JHEP 03 (2021) 257",
+    ttww=r"Not yet",
+    ttzz=r"Not yet",
+    tttt=r"Not yet",
+    wwww=r"Not yet",
+    zzzz=r"Not yet",
+    wwzz=r"Not yet",
+    wwgg=r"CMS-PAS-HIG-21-014",
+    ggtt=r"CMS-PAS-HIG-22-012",
+    multilepton="CMS-PAS-HIG-21-002",
+)
+hh_references["bbzz4l"] = hh_references.bbzzllll
 
 # campaign labels, extended by combinations with HH branching names
 # lumi values from https://twiki.cern.ch/twiki/bin/view/CMS/TWikiLUM?rev=163
@@ -129,6 +160,27 @@ poi_data = DotDict(
     C2=DotDict(range=(-2.0, 3.0), label=r"$C_{2}$", sm_value=0.0),
     CG=DotDict(range=(-2.0, 2.0), label=r"$C_{g}$", sm_value=0.0),
     C2G=DotDict(range=(-2.0, 2.0), label=r"$C_{2g}$", sm_value=0.0),
+    mhh=DotDict(range=(0.0, 3000.0), label=r"$m_{HH}$", unit="GeV"),
+    A=DotDict(range=(0.0, 6.0), label=r"$\alpha$", sm_value=0.0),
+    CA=DotDict(range=(0.0, 1.0), label=r"$|cos(\alpha)|$", sm_value=1.0),
+    LA=DotDict(range=(-10.0, 10.0), label=r"$\lambda_{\alpha}$", sm_value=0.0),
+    LE=DotDict(range=(-10.0, 10.0), label=r"$\lambda_{eff}=\lambda_{\alpha}-tan(\alpha)m_{2}/\nu$", sm_value=0.0),
+    M2=DotDict(range=(0.0, 3000.0), label=r"$m_{2}$", sm_value=0.0, unit="GeV"),
+    B=DotDict(range=(0.0, 6.0), label=r"$\beta$", sm_value=0.1),
+    MHE=DotDict(range=(100.0, 3000.0), label=r"$m_{H}$", sm_value=125.01, unit="GeV"),
+    MHP=DotDict(range=(0.0, 3000.0), label=r"$m_{H+}$", sm_value=0.0, unit="GeV"),
+    MA=DotDict(range=(0.0, 3000.0), label=r"$m_{A}$", sm_value=0.0, unit="GeV"),
+    Z6=DotDict(range=(-5.0, 5.0), label=r"$Z_{6}$", sm_value=0.0),
+    TB=DotDict(range=(0.0, 1000.0), label=r"$tan(\beta)$", sm_value=1000.0),
+    CBA=DotDict(range=(0.0, 1.0), label=r"$cos(\beta-\alpha)$", sm_value=0.0),
+    LQ=DotDict(range=(-10.0, 10.0), label=r"$\lambda_{Q}$", sm_value=0.0),
+    MQ=DotDict(range=(0.0, 3000.0), label=r"$m_{Q}$", sm_value=1000.0, unit="GeV"),
+    XI=DotDict(range=(0.0, 1.0), label=r"$\xi$", sm_value=0.0),
+    kl_EFT=DotDict(range=(-30.0, 30.0), label=r"$\kappa_{\lambda}$", sm_value=1.0),
+    kt_EFT=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
+    C2_EFT=DotDict(range=(-2.0, 3.0), label=r"$C_{2}$", sm_value=0.0),
+    cosbma=DotDict(range=(0.0, 10.0), label=r"$cos(\beta-\alpha)$", sm_value=0.0),
+    tanbeta=DotDict(range=(0.0, 10.0), label=r"$tan(\beta)$", sm_value=10.0),
 )
 
 # colors
@@ -147,6 +199,7 @@ colors = DotDict(
         dark_grey_trans_30=(13, 0.3),
         red=628,
         red_trans_50=(628, 0.5),
+        bright_red=632,
         blue=214,
         green=418,
         light_green=413,
@@ -203,7 +256,7 @@ br_hh_colors.root["bbbb_low"] = br_hh_colors.root.bbbb
 #     2: {1: 2.296, 2: 6.180},
 #     ...
 # }
-get_gaus_interval = lambda sigma: 2 * sp.stats.norm.cdf(sigma) - 1.
+get_gaus_interval = lambda sigma: 2 * sp.stats.norm.cdf(sigma) - 1.0
 get_chi2_level = lambda sigma, ndof: sp.stats.chi2.ppf(get_gaus_interval(sigma), ndof)
 get_chi2_level_from_cl = lambda cl, ndof: sp.stats.chi2.ppf(cl, ndof)
 chi2_levels = {
@@ -211,5 +264,21 @@ chi2_levels = {
     for ndof in range(1, 3 + 1)
 }
 
-# postfix after "CMS" labels in plots, shwon when the --paper flag is not used
+# default postfix after "CMS" labels in plots
 cms_postfix = os.getenv("DHI_CMS_POSTFIX", "Work in progress")
+
+# shorthands for EFT benchmark labels and groups
+bm_labels = DotDict()
+# JHEP04
+for bm in ["1", "2", "3", "4", "5", "6", "7", "8", "8a", "9", "10", "11", "12"]:
+    bm_labels["JHEP04BM{}".format(bm)] = (bm, "JHEP04")
+# JHEP03
+for bm in ["1", "2", "3", "4", "5", "6", "7"]:
+    bm_labels["JHEP03BM{}".format(bm)] = (bm, "JHEP03")
+# others
+bm_labels["SM"] = ("SM", "")
+
+# SH procs
+single_higgs_processes = [
+    "ggH", "qqH", "ttH", "ZH", "WH", "VH", "tHW", "tHq",
+]

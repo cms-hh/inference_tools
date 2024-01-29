@@ -9,8 +9,8 @@ import copy
 import law
 import luigi
 
-from dhi.util import test_timming_options_base
-from dhi.tasks.base import HTCondorWorkflow
+from dhi.tasks.remote import HTCondorWorkflow
+from dhi.tasks.base import AnalysisTask
 from dhi.tasks.combine import (
     CombineCommandTask,
     POITask,
@@ -33,7 +33,7 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
     allow_parameter_values_in_pois = True
     run_command_in_tmp = True
 
-    exclude_params_req_get = {"start_branch", "end_branch", "branches", "workflow"}
+    exclude_params_req_get = {"branches", "workflow"}
     prefer_params_cli = {
         "toys", "frozen_parameters", "frozen_groups", "minimizer", "parameter_values",
         "parameter_ranges", "workflow", "max_runtime",
@@ -45,7 +45,7 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
 
     def workflow_requires(self):
         reqs = super(Snapshot, self).workflow_requires()
-        reqs["workspace"] = CreateWorkspace.req(self)
+        reqs["workspace"] = CreateWorkspace.req_different_branching(self)
         return reqs
 
     def requires(self):
@@ -53,9 +53,9 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
 
     def output(self):
         name = self.join_postfix(["snapshot", self.get_output_postfix()]) + ".root"
-        return self.local_target(name)
+        return self.target(name)
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         # args for blinding / unblinding
         if self.unblinded:
             blinded_args = "--seed {self.branch}".format(self=self)
@@ -93,7 +93,7 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
         return cmd
 
 
-class SnapshotUser(object):
+class SnapshotUser(AnalysisTask):
 
     use_snapshot = luigi.BoolParameter(
         default=False,

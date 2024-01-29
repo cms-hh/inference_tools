@@ -10,7 +10,8 @@ import law
 import luigi
 import numpy as np
 
-from dhi.tasks.base import HTCondorWorkflow, BoxPlotTask, view_output_plots
+from dhi.tasks.base import BoxPlotTask, view_output_plots
+from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     CombineCommandTask, POITask, POIPlotTask, CreateWorkspace, MultiDatacardTask,
     POIMultiTask,
@@ -41,11 +42,24 @@ class PullsAndImpactsBase(POITask, SnapshotUser):
         description="when True, calculate pulls and impacts for MC stats nuisances as well; "
         "default: False",
     )
+    retry_no_analytic = luigi.BoolParameter(
+        default=False,
+        significant=False,
+        description="when True, retry failed fits with option '--X-rtd MINIMIZER_no_analytic'; "
+        "only available for the 'default' method; default: False",
+    )
 
     mc_stats_patterns = ["*prop_bin*"]
 
     force_n_pois = 1
     allow_parameter_values_in_pois = True
+
+    def __init__(self, *args, **kwargs):
+        super(PullsAndImpactsBase, self).__init__(*args, **kwargs)
+
+        if self.retry_no_analytic and self.method != "default":
+            self.logger.warning("disabling retry_no_analytic feature since method is not 'default'")
+            self.retry_no_analytic = False
 
     def get_output_postfix(self, join=True):
         parts = super(PullsAndImpactsBase, self).get_output_postfix(join=False)
@@ -84,18 +98,15 @@ class PullsAndImpactsBase(POITask, SnapshotUser):
 class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow):
 
     run_command_in_tmp = True
+    cache_branch_map_default = False
 
-    def __init__(self, *args, **kwargs):
-        super(PullsAndImpacts, self).__init__(*args, **kwargs)
-
-        self._cache_branches = False
-
-    @law.cached_workflow_property(setter=False, empty_value=law.no_value)
+    @law.workflow_property(setter=False, empty_value=law.no_value, cache=True)
     def workspace_parameters(self):
         ws_input = CreateWorkspace.req(self, branch=0).output()
         if not ws_input.exists():
             return law.no_value
-        return get_workspace_parameters(ws_input.path)
+        with ws_input.localize("r") as tmp:
+            return get_workspace_parameters(tmp.path)
 
     def create_branch_map(self):
         # the first branch (index 0) is the nominal fit of the poi
@@ -109,15 +120,15 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
                 branches.extend(params)
 
                 # mark that the branch map is cached from now on
-                self._cache_branches = True
+                self.cache_branch_map = True
 
         return branches
 
     def workflow_requires(self):
         reqs = super(PullsAndImpacts, self).workflow_requires()
-        reqs["workspace"] = CreateWorkspace.req(self)
+        reqs["workspace"] = CreateWorkspace.req_different_branching(self)
         if self.use_snapshot:
-            reqs["snapshot"] = Snapshot.req(self)
+            reqs["snapshot"] = Snapshot.req_different_branching(self)
         return reqs
 
     def requires(self):
@@ -131,21 +142,25 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
         name = lambda prefix: self.join_postfix([prefix, self.get_output_postfix(), parts]) + ".root"
 
         # the default fit result
-        outputs = {"result": self.local_target(name("fit"))}
+        outputs = {"result": self.target(name("fit"))}
 
         # additional output files, depending on method and branch
         if self.method == "default":
             if self.branch == 0:
-                outputs["multidimfit"] = self.local_target(name("multidimfit"))
+                outputs["multidimfit"] = self.target(name("multidimfit"))
         elif self.method == "hesse":
-            outputs["multidimfit"] = self.local_target(name("multidimfit"))
+            outputs["multidimfit"] = self.target(name("multidimfit"))
         elif self.method == "robust":
-            outputs["robusthesse"] = self.local_target(name("robusthesse"))
-            outputs["hessian"] = self.local_target(name("hessian"))
+            outputs["robusthesse"] = self.target(name("robusthesse"))
+            outputs["hessian"] = self.target(name("hessian"))
 
         return outputs
 
-    def build_command(self):
+    def allow_fallback_command(self, errors):
+        # potentially retry once
+        return self.retry_no_analytic and len(errors) <= 1
+
+    def build_command(self, fallback_level):
         outputs = self.output()
 
         # get the workspace to use and define snapshot args
@@ -161,6 +176,11 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             blinded_args = "--seed {self.branch}".format(self=self)
         else:
             blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
+
+        # fallback arguments
+        fallback_args = ""
+        if fallback_level == 1:
+            fallback_args = "--X-rtd MINIMIZER_no_analytic"
 
         # define output files as (src, dst, optional) to be moved after command execution
         mv_files = [(
@@ -230,6 +250,7 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --saveNLL"
             " {self.combine_optimization_args}"
+            " {fallback_args}"
             " {branch_opts}"
             " && "
             "{mv_cmd}"
@@ -238,14 +259,16 @@ class PullsAndImpacts(PullsAndImpactsBase, CombineCommandTask, law.LocalWorkflow
             workspace=workspace,
             snapshot_args=snapshot_args,
             blinded_args=blinded_args,
+            fallback_args=fallback_args,
             branch_opts=branch_opts,
             mv_cmd=mv_cmd,
         )
 
         return cmd
 
-    def htcondor_output_postfix(self):
-        postfix = super(PullsAndImpacts, self).htcondor_output_postfix()
+    def control_output_postfix(self):
+        # hook defined by law.RemoteWorkflow
+        postfix = super(PullsAndImpacts, self).control_output_postfix()
 
         if self.mc_stats:
             postfix += "_mcstats"
@@ -278,7 +301,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
             parts.append("skip_" + law.util.create_hash(sorted(self.skip_parameters)))
 
         name = self.join_postfix(["pulls_impacts", self.get_output_postfix(), parts]) + ".json"
-        return self.local_target(name)
+        return self.target(name)
 
     @law.decorator.log
     def run(self):
@@ -302,7 +325,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
                 # load the result
                 values = self.load_default_fit(inp, poi, name, keep_failures=self.keep_failures)
-                if values:
+                if values is not None:
                     fit_results[name] = values
                 else:
                     fail_info.append((b, name, inp.path))
@@ -322,9 +345,19 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
                 msg += " You can try to remove the corresponding output files via\n\n"
                 for _, _, path in fail_info:
                     msg += "       rm {}\n".format(path)
-                msg += "\n     and then add different options such as\n\n"
-                msg += c("       --PullsAndImpacts-custom-args='--X-rtd MINIMIZER_no_analytic'\n",
-                    style="bright")
+                msg += "\n     and then add different fit options "
+                if self.retry_no_analytic:
+                    msg += "via\n\n"
+                    msg += c(
+                        "       --PullsAndImpacts-custom-args='CUSTOM_FIT_OPTIONS'\n",
+                        style="bright",
+                    )
+                else:
+                    msg += "such as\n\n"
+                    msg += c(
+                        "       --PullsAndImpacts-custom-args='--X-rtd MINIMIZER_no_analytic'\n",
+                        style="bright",
+                    )
                 msg += "\n     to your 'law run ...' command.\n\n"
                 msg += "  " + c("2.", "magenta")
                 msg += " You can proceed with the converging fits only by adding\n\n"
@@ -335,13 +368,19 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
 
         elif self.method == "hesse":
             # load all parameter fits from the mdf result
-            fit_results = self.load_hesse_fits(inputs[0]["multidimfit"], poi,
-                self.get_selected_parameters(params))
+            fit_results = self.load_hesse_fits(
+                inputs[0]["multidimfit"],
+                poi,
+                self.get_selected_parameters(params),
+            )
 
         elif self.method == "robust":
             # load all parameter fits from the robustHesse result
-            fit_results = self.load_robust_fits(inputs[0]["robusthesse"], poi,
-                self.get_selected_parameters(params))
+            fit_results = self.load_robust_fits(
+                inputs[0]["robusthesse"],
+                poi,
+                self.get_selected_parameters(params),
+            )
 
         else:
             raise NotImplementedError
@@ -381,7 +420,7 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
                 poi: [
                     d[poi][1] - d[poi][0],
                     d[poi][2] - d[poi][1],
-                ]
+                ],
             }
             # maximum impact on that POI
             d["impact_" + poi] = max(map(abs, d["impacts"][poi]))
@@ -396,10 +435,10 @@ class MergePullsAndImpacts(PullsAndImpactsBase):
         values = tree.arrays([poi] if param == poi else [poi, param])
 
         # the fit converged when there are 3 values in the parameter array
-        converged = values[param].size == 3
+        converged = len(values[param].tolist()) == 3
         if converged:
-            return values
-        elif keep_failures:
+            return values.to_numpy()
+        if keep_failures:
             return {
                 poi: np.array([np.nan, np.nan, np.nan]),
                 param: np.array([np.nan, np.nan, np.nan]),
@@ -528,18 +567,22 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
     z_max = None
     save_hep_data = None
 
+    default_plot_function = "dhi.plots.pulls_impacts.plot_pulls_impacts"
+
     def __init__(self, *args, **kwargs):
         super(PlotPullsAndImpacts, self).__init__(*args, **kwargs)
 
         # complain when parameters_per_page is set for non pdf file types
         if self.parameters_per_page > 0 and self.page < 0 and "pdf" not in self.file_types:
-            self.logger.warning("parameters_per_page is only supported for file_type 'pdf', but "
-                "got {}".format(self.file_types))
+            self.logger.warning(
+                "parameters_per_page is only supported for file_type 'pdf', but "
+                "got {}".format(self.file_types),
+            )
             self.parameters_per_page = -1
 
-        # show a warning when unblinded, not in paper mode and not hiding the best fit value
-        if self.unblinded and not self.paper and self.show_best_fit:
-            self.logger.warning("running unblinded but not hiding the best fit value")
+        # show a warning when unblinded and not hiding the best fit value
+        if self.unblinded and self.show_best_fit:
+            self.logger.warning("running unblinded without hiding the best fit value")
 
     def requires(self):
         return MergePullsAndImpacts.req(self)
@@ -556,25 +599,34 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
         if self.page >= 0:
             parts.append("page{}".format(self.page))
 
+        outputs = {}
+
         names = self.create_plot_names(["pulls_impacts", self.get_output_postfix(), parts])
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # load input data
         data = self.input().load(formatter="json")
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.pulls_impacts.plot_pulls_impacts",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             data=data,
             parameters_per_page=self.parameters_per_page,
             selected_page=self.page,
@@ -592,7 +644,9 @@ class PlotPullsAndImpacts(PullsAndImpactsBase, POIPlotTask, BoxPlotTask):
             right_margin=None if self.right_margin == law.NO_INT else self.right_margin,
             entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
+            style=self.style,
+            dump_target=outputs.get("plot_data"),
         )
 
 
@@ -606,11 +660,7 @@ class PlotMultiplePullsAndImpacts(PlotPullsAndImpacts, POIMultiTask, MultiDataca
 
     compare_multi_sequence = "multi_datacards"
 
-    @classmethod
-    def modify_param_values(cls, params):
-        params = PlotPullsAndImpacts.modify_param_values.__func__.__get__(cls)(params)
-        params = MultiDatacardTask.modify_param_values.__func__.__get__(cls)(params)
-        return params
+    default_plot_function = "dhi.plots.pulls_impacts.plot_pulls_impacts"
 
     def requires(self):
         return {
@@ -624,10 +674,11 @@ class PlotMultiplePullsAndImpacts(PlotPullsAndImpacts, POIMultiTask, MultiDataca
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         inp = self.input()
         # load input data
@@ -663,8 +714,7 @@ class PlotMultiplePullsAndImpacts(PlotPullsAndImpacts, POIMultiTask, MultiDataca
 
         # abuse and call the plot function
         self.call_plot_func(
-            "dhi.plots.pulls_impacts.plot_pulls_impacts",
-            paths=[outp.path for outp in outputs],
+            paths=[outp.path for outp in outputs["plots"]],
             data=data,
             parameters_per_page=len(self.datacard_names),
             selected_page=self.page,
@@ -682,5 +732,7 @@ class PlotMultiplePullsAndImpacts(PlotPullsAndImpacts, POIMultiTask, MultiDataca
             right_margin=None if self.right_margin == law.NO_INT else self.right_margin,
             entry_height=None if self.entry_height == law.NO_INT else self.entry_height,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
+            style=self.style,
+            dump_target=outputs.get("plot_data"),
         )

@@ -8,19 +8,19 @@ import copy
 import enum
 
 import json
-from shutil import copyfile
 import os
 import law
 import luigi
 
-from dhi.tasks.base import HTCondorWorkflow, view_output_plots
+from dhi.tasks.base import view_output_plots
+from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import CombineCommandTask, POITask, POIPlotTask, CreateWorkspace
-from dhi.scripts.postfit_plots import create_postfit_plots_binned, load_and_save_plot_dict_locally, loop_eras, get_full_path
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
 from dhi.tasks.limits import UpperLimits
 from dhi.tasks.pulls_impacts import PlotPullsAndImpacts
 from dhi.config import poi_data
 from dhi.util import real_path
+
 
 class SAVEFLAGS(str, enum.Enum):
 
@@ -37,14 +37,20 @@ class SAVEFLAGS(str, enum.Enum):
         return list(map(lambda x: x.value, cls))
 
 
-class FitDiagnostics(POITask, CombineCommandTask, SnapshotUser, law.LocalWorkflow, HTCondorWorkflow):
+class FitDiagnostics(
+    POITask,
+    CombineCommandTask,
+    SnapshotUser,
+    law.LocalWorkflow,
+    HTCondorWorkflow,
+):
 
     pois = law.CSVParameter(
         default=("r",),
         unique=True,
         sort=True,
-        choices=POITask.r_pois,
-        description="names of POIs; choices: {}; default: (r,)".format(",".join(POITask.r_pois)),
+        choices=POITask.R_POIS,
+        description="names of POIs; choices: {}; default: (r,)".format(",".join(POITask.R_POIS)),
     )
     skip_b_only = luigi.BoolParameter(
         default=True,
@@ -70,9 +76,9 @@ class FitDiagnostics(POITask, CombineCommandTask, SnapshotUser, law.LocalWorkflo
     def workflow_requires(self):
         reqs = super(FitDiagnostics, self).workflow_requires()
         if self.use_snapshot:
-            reqs["snapshot"] = Snapshot.req(self)
+            reqs["snapshot"] = Snapshot.req_different_branching(self)
         else:
-            reqs["workspace"] = CreateWorkspace.req(self)
+            reqs["workspace"] = CreateWorkspace.req_different_branching(self)
         return reqs
 
     def requires(self):
@@ -96,15 +102,15 @@ class FitDiagnostics(POITask, CombineCommandTask, SnapshotUser, law.LocalWorkflo
         if not self.skip_b_only:
             parts.append("withBOnly")
         if self.skip_save:
-            parts.append(map("not{}".format, sorted(self.skip_save)))
+            parts.append(list(map("not{}".format, sorted(self.skip_save))))
 
         name = lambda prefix: self.join_postfix([prefix, self.get_output_postfix(), parts])
         return {
-            "result": self.local_target(name("result") + ".root"),
-            "diagnostics": self.local_target(name("fitdiagnostics") + ".root"),
+            "result": self.target(name("result") + ".root"),
+            "diagnostics": self.target(name("fitdiagnostics") + ".root"),
         }
 
-    def build_command(self):
+    def build_command(self, fallback_level):
         # get the workspace to use and define snapshot args
         if self.use_snapshot:
             workspace = self.input()["snapshot"].path
@@ -257,6 +263,8 @@ class PlotPostfitSOverB(PostfitPlotBase):
 
     force_n_pois = 1
 
+    default_plot_function = "dhi.plots.postfit_shapes.plot_s_over_b"
+
     def __init__(self, *args, **kwargs):
         super(PlotPostfitSOverB, self).__init__(*args, **kwargs)
 
@@ -287,8 +295,11 @@ class PlotPostfitSOverB(PostfitPlotBase):
                 (p, v) for p, v in self.parameter_values_dict.items()
                 if p != self.pseudo_scan_parameter
             )
-            reqs["limit"] = UpperLimits.req(self, scan_parameters=(scan_parameter,),
-                parameter_values=parameter_values)
+            reqs["limit"] = UpperLimits.req(
+                self,
+                scan_parameters=(scan_parameter,),
+                parameter_values=parameter_values,
+            )
 
         return reqs
 
@@ -305,12 +316,17 @@ class PlotPostfitSOverB(PostfitPlotBase):
         # plots
         name = "prefitsoverb" if self.prefit else "postfitsoverb"
         names = self.create_plot_names([name, self.get_output_postfix()] + parts)
-        outputs["plots"] = [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
 
         # hep data
         if self.save_hep_data:
             name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
-            outputs["hep_data"] = self.local_target("{}.yaml".format(name))
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
 
@@ -318,6 +334,7 @@ class PlotPostfitSOverB(PostfitPlotBase):
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
@@ -336,7 +353,6 @@ class PlotPostfitSOverB(PostfitPlotBase):
 
         # call the plot function
         self.call_plot_func(
-            "dhi.plots.postfit_shapes.plot_s_over_b",
             paths=[outp.path for outp in outputs["plots"]],
             poi=self.pois[0],
             fit_diagnostics_path=fit_diagnostics_path,
@@ -360,7 +376,9 @@ class PlotPostfitSOverB(PostfitPlotBase):
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             prefit=self.prefit,
             unblinded=self.unblinded,
-            paper=self.paper,
+            cms_postfix=self.cms_postfix,
+            style=self.style,
+            dump_target=outputs.get("plot_data"),
         )
 
 
@@ -415,8 +433,11 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
     file_types = ("pdf",)
     z_min = None
     z_max = None
+    save_hep_data = False
 
     force_n_pois = 1
+
+    default_plot_function = "dhi.plots.likelihoods.plot_nuisance_likelihood_scans"
 
     def __init__(self, *args, **kwargs):
         super(PlotNuisanceLikelihoodScans, self).__init__(*args, **kwargs)
@@ -442,17 +463,27 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
         if self.sort_max:
             parts.append("sorted")
 
+        outputs = {}
+
         names = self.create_plot_names(parts)
-        return [self.local_target(name) for name in names]
+        outputs["plots"] = [self.target(name) for name in names]
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
+
+        return outputs
 
     @law.decorator.log
     @law.decorator.notify
     @view_output_plots
     @law.decorator.safe_output
+    @law.decorator.localize(input=False)
     def run(self):
         # prepare the output
         outputs = self.output()
-        outputs[0].parent.touch()
+        outputs["plots"][0].parent.touch()
 
         # get input targets
         inputs = self.input()
@@ -474,8 +505,7 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
 
             # call the plot function
             self.call_plot_func(
-                "dhi.plots.likelihoods.plot_nuisance_likelihood_scans",
-                paths=[outp.path for outp in outputs],
+                paths=[outp.path for outp in outputs["plots"]],
                 poi=self.pois[0],
                 workspace=w,
                 dataset=dataset,
@@ -494,9 +524,12 @@ class PlotNuisanceLikelihoodScans(PostfitPlotBase):
                 y_log=self.y_log,
                 model_parameters=self.get_shown_parameters(),
                 campaign=self.campaign if self.campaign != law.NO_STR else None,
-                paper=self.paper,
                 show_derivatives=self.show_derivatives,
+                cms_postfix=self.cms_postfix,
+                style=self.style,
+                dump_target=outputs.get("plot_data"),
             )
+
 
 class PlotDistributionsAndTables(POIPlotTask):
     verbose = luigi.BoolParameter(
@@ -544,6 +577,8 @@ class PlotDistributionsAndTables(POIPlotTask):
     @view_output_plots
     @law.decorator.safe_output
     def run(self):
+        from dhi.scripts.postfit_plots import create_postfit_plots_binned, load_and_save_plot_dict_locally, loop_eras, get_full_path
+
         # prepare the output
         outputs = self.output()
         outputs[0].parent.touch()
@@ -576,7 +611,7 @@ class PlotDistributionsAndTables(POIPlotTask):
             plot_options_dict = get_full_path(channel["plot_options"])
             options_dat       = os.path.normpath(plot_options_dict)
 
-            base_command = "python dhi/scripts/postfit_plots.py  "
+            base_command = "python3 dhi/scripts/postfit_plots.py  "
             file_output = open(outputs[0].path, 'a')
 
             # to save the locally with the plot the options to reproduce it

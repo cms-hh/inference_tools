@@ -33,7 +33,7 @@ class EFTCrossSectionProvider(object):
 
         self.ggf_xsec_sm_nnlo = 0.03105  # pb
 
-    def get_ggf_xsec_nlo(self, kl=1., kt=1., c2=0., cg=0., c2g=0., coeffs=None):
+    def get_ggf_xsec_nlo(self, kl=1.0, kt=1.0, c2=0.0, cg=0.0, c2g=0.0, coeffs=None):
         if coeffs is None:
             coeffs = self.coeffs_ggf_nlo_13tev
 
@@ -63,10 +63,10 @@ class EFTCrossSectionProvider(object):
             coeffs[22] * cg**2 * c2g
         )
 
-    def get_ggf_xsec_nnlo(self, kl=1., kt=1., c2=0., cg=0., c2g=0., coeffs=None):
+    def get_ggf_xsec_nnlo(self, kl=1.0, kt=1.0, c2=0.0, cg=0.0, c2g=0.0, coeffs=None):
         xsec_bsm_nlo = self.get_ggf_xsec_nlo(kl=kl, kt=kt, c2=c2, cg=cg, c2g=c2g, coeffs=coeffs)
 
-        xsec_sm_nlo = self.get_ggf_xsec_nlo(kl=1., kt=1., c2=0., cg=0., c2g=0., coeffs=coeffs)
+        xsec_sm_nlo = self.get_ggf_xsec_nlo(kl=1.0, kt=1.0, c2=0.0, cg=0.0, c2g=0.0, coeffs=coeffs)
         k_factor = self.ggf_xsec_sm_nnlo / xsec_sm_nlo
 
         return xsec_bsm_nlo * k_factor
@@ -84,24 +84,24 @@ get_eft_ggf_xsec_nnlo = eft_xsec_provider.get_ggf_xsec_nnlo
 
 def sort_eft_benchmark_names(names):
     """
-    Example order: 1, 2, 3, 3a, 3b, 4, 5, a_string, other_string, z_string
+    Input format: <TYPE>BM<NUM><POSTFIX>, or just <TYPE>
     """
     names = make_list(names)
 
-    # split into names being a number or starting with one, and pure strings
-    # store numeric names as tuples as sorted() will do exactly what we want
-    num_names, str_names = [], []
+    # split names
+    parts = []
+    rest = []
     for name in names:
-        m = re.match(r"^(\d+)(.*)$", name)
+        m = re.match(r"^((.+)BM|)(\d+)(.*)$", name)
         if m:
-            num_names.append((int(m.group(1)), m.group(2)))
+            parts.append((m.group(1), int(m.group(3)), m.group(4)))
         else:
-            str_names.append(name)
+            rest.append(name)
 
-    # sort and add
-    num_names.sort()
-    str_names.sort()
-    return ["{}{}".format(*pair) for pair in num_names] + str_names
+    # sort parts and rebuilt names
+    parts.sort()
+
+    return ["{}{}{}".format(*tpl) for tpl in parts] + rest
 
 
 def extract_eft_scan_parameter(name):

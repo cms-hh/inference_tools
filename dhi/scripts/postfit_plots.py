@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 """
@@ -6,6 +6,7 @@ Script to extract and plot shapes from a ROOT file create by combine's FitDiagno
 """
 
 import os
+import ctypes
 from collections import OrderedDict
 import json
 from shutil import copyfile
@@ -374,7 +375,7 @@ def create_postfit_plots_binned(
     y0 = bin["cats_labels_height"]
 
     hist_template = template.Clone()
-    for ii in xrange(1, hist_template.GetNbinsX() + 1):
+    for ii in range(1, hist_template.GetNbinsX() + 1):
         hist_template.SetBinContent(ii, 0)
 
     for kk, key in enumerate(dprocs.keys()):
@@ -840,7 +841,7 @@ def loop_eras(bin) :
 
 def GetNonZeroBins(template):
     nbins = 0
-    for ii in xrange(1, template.GetXaxis().GetNbins() + 1):
+    for ii in range(1, template.GetXaxis().GetNbins() + 1):
         binContent_original = template.GetBinContent(ii)
         if binContent_original > 0:
             nbins += 1
@@ -853,12 +854,12 @@ def process_data_histo(
     dataTGraph = fin.Get(readFrom)
     if verbose : print("adding", readFrom)
     allbins = catbin
-    for ii in xrange(0, allbins):
+    for ii in range(0, allbins):
         bin_width = 1.0
         if divideByBinWidth:
             bin_width = histtotal.GetXaxis().GetBinWidth(ii + 1)
-        xp = ROOT.Double()
-        yp = ROOT.Double()
+        xp = ctypes.c_double()
+        yp = ctypes.c_double()
         dataTGraph.GetPoint(ii, xp, yp)
 
         # do noot draw erroor bars on empty bins
@@ -876,7 +877,7 @@ def process_data_histo(
         dataTGraph1.SetPointEXlow(ii + lastbin, template.GetBinWidth(ii + 1) / 2.0)
         dataTGraph1.SetPointEXhigh(ii + lastbin, template.GetBinWidth(ii + 1) / 2.0)
 
-        data_cat += yp
+        data_cat += yp.value
     del dataTGraph
     dataTGraph1.SetMarkerColor(1)
     dataTGraph1.SetMarkerStyle(20)
@@ -931,7 +932,7 @@ def process_total_histo(
         if verbose : print("Total band taken from %s" % total_hist_name)
         hist.SetMinimum(minY)
         hist.SetMaximum(maxY)
-    for ii in xrange(1, allbins + 1):
+    for ii in range(1, allbins + 1):
         bin_width = 1.0
         if divideByBinWidth:
             bin_width = total_hist.GetXaxis().GetBinWidth(ii)
@@ -956,12 +957,12 @@ def process_total_histo(
     hist.GetYaxis().SetLabelSize(0.050)
     #return allbins
 
-    error_hist =  ROOT.Double()
+    error_hist =  ctypes.c_double()
     integral_histo = total_hist.IntegralAndError(0, total_hist.GetNbinsX()+1, error_hist, "")
     return {
         "allbins"   : allbins,
         "yield_cat" : integral_histo,
-        "yield_cat_err" : error_hist
+        "yield_cat_err" : error_hist.value,
     }
 
 
@@ -1044,12 +1045,12 @@ def stack_histo(
         # make empty hist to fill the row of distributions
         total_hist = fin.Get(str("%s/%s" % (folder, name_total)))
         hist = total_hist.Clone()
-        for ii in xrange(1, hist.GetNbinsX() + 1):
+        for ii in range(1, hist.GetNbinsX() + 1):
             hist.SetBinError(ii , 0.0)
             hist.SetBinContent(ii , 0.0)
     if not firstHisto.Integral() > 0:
         firstHisto = hist.Clone()
-        for ii in xrange(1, firstHisto.GetNbinsX() + 1):
+        for ii in range(1, firstHisto.GetNbinsX() + 1):
             firstHisto.SetBinError(ii, 0.001)
             firstHisto.SetBinContent(ii, 0.001)
     hist_rebin_local.SetMarkerSize(0)
@@ -1062,7 +1063,7 @@ def stack_histo(
         hist_rebin_local.SetLineWidth(3 if itemDict["color"] == 0 else 1)
     else:
         hist_rebin_local.SetLineColor(itemDict["color"])
-    for ii in xrange(1, allbins + 1):
+    for ii in range(1, allbins + 1):
         bin_width = 1.0
         if divideByBinWidth:
             bin_width = hist.GetXaxis().GetBinWidth(ii)
@@ -1076,19 +1077,19 @@ def stack_histo(
                 (binContent_original - binContent_modified), 2
             )
             if not binError2_modified >= 0.0:
-                if verbose : print"Bin error negative!"
+                if verbose : print("Bin error negative!")
             hist_rebin_local.SetBinError(ii + lastbin, math.sqrt(binError2_modified) / bin_width)
             hist_rebin_local.SetBinContent(ii + lastbin, 0.0)
-            if verbose : print"binerror_original= ", binError2_original, "\t", "bincontent_original", "\t", binContent_original, "\t", "bincontent_modified", "\t", binContent_modified, "\t", "binerror= ", hist_rebin.GetBinError(
+            if verbose : print("binerror_original= ", binError2_original, "\t", "bincontent_original", "\t", binContent_original, "\t", "bincontent_modified", "\t", binContent_modified, "\t", "binerror= ", hist_rebin.GetBinError(
                 ii
-            )
+            ))
         else:
             hist_rebin_local.SetBinError(ii + lastbin, hist.GetBinError(ii) / bin_width)
             hist_rebin_local.SetBinContent(ii + lastbin, hist.GetBinContent(ii) / bin_width)
     if not hist.GetSumw2N():
         hist.Sumw2()
 
-    error_hist =  ROOT.Double()
+    error_hist =  ctypes.c_double()
     integral_histo = hist.IntegralAndError(0, hist.GetNbinsX()+1, error_hist, "")
 
     return {
@@ -1098,7 +1099,7 @@ def stack_histo(
         - 0.5,  # if lastbin > 0 else 0
         "labelPos": float(float(allbins) / 2.0),
         "yield_cat" : integral_histo,
-        "yield_cat_err" : error_hist
+        "yield_cat_err" : error_hist.value
     }
 
 
@@ -1122,7 +1123,7 @@ def do_hist_total_err(hist_total_err, labelX, total_hist, minBottom, maxBottom, 
         maxBottom = maxBottom
     hist_total_err.SetMinimum(minBottom)
     hist_total_err.SetMaximum(maxBottom)
-    for bin in xrange(0, allbins):
+    for bin in range(0, allbins):
         hist_total_err.SetBinContent(bin + 1, 0)
         if total_hist.GetBinContent(bin + 1) > 0.0:
             hist_total_err.SetBinError(
@@ -1133,15 +1134,15 @@ def do_hist_total_err(hist_total_err, labelX, total_hist, minBottom, maxBottom, 
 
 def err_data(dataTGraph1, template, dataTGraph, histtotal, folder, fin, divideByBinWidth, lastbin, ROOT):
     allbins = histtotal.GetXaxis().GetNbins()  # GetNonZeroBins(histtotal)
-    for ii in xrange(0, allbins):
+    for ii in range(0, allbins):
         bin_width = 1.0
         if divideByBinWidth:
             bin_width = histtotal.GetXaxis().GetBinWidth(ii + 1)
         if histtotal.GetBinContent(ii + 1) == 0:
             continue
         dividend = histtotal.GetBinContent(ii + 1) * bin_width
-        xp = ROOT.Double()
-        yp = ROOT.Double()
+        xp = ctypes.c_double()
+        yp = ctypes.c_double()
         dataTGraph.GetPoint(ii, xp, yp)
         if yp > 0:
             if dividend > 0:

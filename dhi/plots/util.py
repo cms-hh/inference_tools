@@ -13,14 +13,19 @@ import json
 import functools
 import itertools
 import contextlib
+import ctypes
 from collections import OrderedDict
 
 import six
 import numpy as np
 import scipy.interpolate
+import law
 
 from dhi.config import poi_data, br_hh_names
-from dhi.util import import_ROOT, import_file, try_int, to_root_latex, make_list, InterExtrapolator
+from dhi.util import (
+    import_ROOT, import_file, try_int, to_root_latex, make_list, make_tuple, InterExtrapolator,
+    GridDataInterpolator, DotDict, round_scientific,
+)
 
 
 _styles = {}
@@ -62,12 +67,49 @@ def use_style(style_name):
     return decorator
 
 
+class Style(DotDict):
+
+    @classmethod
+    def new(cls, style, *args, **kwargs):
+        # takes a string or tuple of strings and returns a new style object
+        inst = cls(*args, **kwargs)
+        inst.styles = make_tuple(style)
+        return inst
+
+    def __init__(self, *args, **kwargs):
+        super(Style, self).__init__(*args, **kwargs)
+
+        self.styles = ()
+
+    def __eq__(self, other):
+        if isinstance(other, (str, list, tuple)):
+            return self.matches(other)
+
+        super(Style, self).__eq__(other)
+
+    def __ne__(self, other):
+        if isinstance(other, (str, list, tuple)):
+            return not self.matches(other)
+
+        super(Style, self).__ne__(other)
+
+    def matches(self, pattern):
+        return any(law.util.multi_match(style, pattern) for style in self.styles)
+
+
 def create_random_name():
     return str(uuid.uuid4())
 
 
-def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y_offset=40,
-        dy=24, props=None):
+def create_model_parameters(
+    model_parameters,
+    pad,
+    grouped=False,
+    x_offset=25,
+    y_offset=40,
+    dy=24,
+    props=None,
+):
     """
     Creates a list of ``ROOT.TLatex`` objects for *model_parameters*, properly positioned for *pad*
     with options to change the offsets *x_offset* and *y_offset*, the vertical distance between
@@ -101,8 +143,13 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
             for name in make_list(names)
         ]
         label = "{} = {}".format(" = ".join(labels), try_int(value))
-        label = r.routines.create_top_left_label(label, pad=pad, props=props, x_offset=x_offset,
-            y_offset=y_offset + i * dy)
+        label = r.routines.create_top_left_label(
+            label,
+            pad=pad,
+            props=props,
+            x_offset=x_offset,
+            y_offset=y_offset + i * dy,
+        )
         parameter_labels.append(label)
 
     return parameter_labels
@@ -111,7 +158,13 @@ def create_model_parameters(model_parameters, pad, grouped=False, x_offset=25, y
 def create_hh_process_label(poi="r", prefix=r"pp $\rightarrow$ "):
     # please note the possible ambiguity in the process between r and r_gghh, and consider using
     # sth like "HH (incl.)" for r (however, this was recently discouraged)
-    proc = {"r": "HH", "r_gghh": "HH", "r_qqhh": "qqHH", "r_vhh": "VHH"}.get(poi, "HH")
+    proc = {
+        "r": "HH",
+        "r_gghh": "HH",
+        "r_qqhh": "qqHH",
+        "r_vhh": "VHH",
+        "r_xhh": r"X $\rightarrow$ HH",
+    }.get(poi, "HH")
     return prefix + proc
 
 
@@ -125,6 +178,22 @@ def create_hh_xsbr_label(poi="r", br=None):
     br_label = create_hh_br_label(br)
     br_label = (" x " + br_label) if br_label else ""
     return r"$\sigma$({}){}".format(create_hh_process_label(poi), br_label)
+
+
+def expand_hh_channel_label(name, to_root=True, allow_prefix=True):
+    prefix = ""
+    if allow_prefix:
+        m = re.match(r"^(\+|-)(.+)$", name)
+        if m:
+            prefix, name = m.groups()
+            prefix += " "
+
+    label = prefix + br_hh_names.get(name, name)
+
+    if to_root:
+        label = to_root_latex(label)
+
+    return label
 
 
 def determine_limit_digits(limit, is_xsec=False):
@@ -182,20 +251,28 @@ def make_parameter_label_map(parameter_names, labels=None):
     return labels
 
 
-def get_y_range(y_min_value, y_max_value, y_min=None, y_max=None, log=False, y_min_log=1e-3,
-        top_margin=0.38, visible_margin=0.4):
+def get_y_range(
+    y_min_value,
+    y_max_value,
+    y_min=None,
+    y_max=None,
+    log=False,
+    y_min_log=1e-3,
+    top_margin=0.38,
+    visible_margin=0.4,
+):
     if log:
         if y_min is None:
             y_min = (0.75 * y_min_value) if y_min_value > 0 else y_min_log
         if y_max is None:
-            y_max = y_min * 10**(math.log10(y_max_value / y_min) * (1. + top_margin))
-        y_max_vis = y_min * 10**(math.log10(y_max / y_min) / (1. + visible_margin))
+            y_max = y_min * 10**(math.log10(y_max_value / y_min) * (1.0 + top_margin))
+        y_max_vis = y_min * 10**(math.log10(y_max / y_min) / (1.0 + visible_margin))
     else:
         if y_min is None:
-            y_min = 0. if y_min_value is None else y_min_value
+            y_min = 0.0 if y_min_value is None else y_min_value
         if y_max is None:
-            y_max = (y_max_value - y_min) * (1. + top_margin)
-        y_max_vis = y_max / (1. + visible_margin) + y_min
+            y_max = y_min + (y_max_value - y_min) * (1.0 + top_margin)
+        y_max_vis = y_max / (1.0 + visible_margin) + y_min
 
     return y_min, y_max, y_max_vis
 
@@ -257,8 +334,16 @@ def frame_histogram(hist, x_width, y_width, mode="edge", frame_value=None, conto
 
 
 # helper to fill each bin in a 2D histogram from potentially sparse points via interpolation
-def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=None, replace_nan=None,
-        interpolation="root"):
+def fill_hist_from_points(
+    h,
+    x_values,
+    y_values,
+    z_values,
+    z_min=None,
+    z_max=None,
+    replace_nan=None,
+    interpolation="tgraph2d",
+):
     ROOT = import_ROOT()
 
     # remove or replace nans in z_values
@@ -271,18 +356,52 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
     else:
         z_values[nan_indices] = replace_nan
 
+    # check if the grid is even
+    def values_even(values):
+        values = sorted(set(values))
+        diffs = set(round(b - a, 5) for a, b in zip(values[:-1], values[1:]))
+        return len(diffs) == 1
+
+    even_grid = values_even(x_values) and values_even(y_values)
+
     # create an interpolation function
     interp_args = ()
     if isinstance(interpolation, (list, tuple)):
         interpolation, interp_args = interpolation[0], interpolation[1:]
-    if interpolation in ("tgraph2d", "root"):
+    if interpolation == "tgraph2d":
         g = ROOT.TGraph2D(len(z_values))
         for i, (x, y, z) in enumerate(zip(x_values, y_values, z_values)):
             g.SetPoint(i, x, y, z)
         interp = lambda x, y: g.Interpolate(x, y)
-    elif interpolation in ("linear", "cubic", "quintic"):
-        interp = InterExtrapolator(x_values, y_values, z_values, kind2d=interpolation,
-            kind1d=interpolation)
+    elif interpolation in ("linear", "cubic"):
+        if even_grid:
+            interp = InterExtrapolator(
+                x_values,
+                y_values,
+                z_values,
+                kind2d=interpolation,
+                kind1d=interpolation,
+            )
+        else:
+            # prepare ad-hoc interpolation points as required by scipy's griddata
+            interp_points = []
+            if isinstance(h, ROOT.TH2Poly):
+                for poly_bin in h.GetBins():
+                    interp_points.append(list(find_poly_bin_center(poly_bin)))
+            else:
+                # strictly rectangular bins
+                for bx in range(1, h.GetNbinsX() + 1):
+                    for by in range(1, h.GetNbinsY() + 1):
+                        x = h.GetXaxis().GetBinCenter(bx)
+                        y = h.GetYaxis().GetBinCenter(by)
+                        interp_points.append([x, y])
+            interp = GridDataInterpolator(
+                x_values,
+                y_values,
+                z_values,
+                interp_points,
+                kind=interpolation,
+            )
     elif interpolation == "rbf":
         # parse arguments in order
         spec = [("function", str), ("smooth", float), ("epsilon", float)]
@@ -292,8 +411,11 @@ def fill_hist_from_points(h, x_values, y_values, z_values, z_min=None, z_max=Non
                 rbf_args[name] = _type(val)
             except:
                 print("WARNING: cannot parse value {} for rbf argument {} to {}".format(
-                    val, name, _type))
+                    val, name, _type,
+                ))
         interp = scipy.interpolate.Rbf(x_values, y_values, z_values, **rbf_args)
+    else:
+        raise ValueError("unknown interpolation method '{}'".format(interpolation))
 
     # helper for limiting z values
     def cap_z(z):
@@ -326,8 +448,6 @@ def find_poly_bin_center(poly_bin, n=1000):
     for _ in range(n):
         if poly_bin.IsInside(x, y):
             return x, y
-
-        # vary
         raise NotImplementedError("center determination of complex poly bins not implemented yet")
 
     raise Exception("could not determine poly bin center after {} iterations".format(n))
@@ -351,12 +471,14 @@ def infer_binning_from_grid(x_values, y_values):
     # infer the number of bins
     x_bins = (x_max - x_min) / x_width
     y_bins = (y_max - y_min) / y_width
-    if round(x_bins, 3) != int(x_bins):
+    if round_scientific(x_bins, 3) != int(x_bins):
         raise Exception("x axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
-            x_min, x_max, x_width))
-    if round(y_bins, 3) != int(y_bins):
+            x_min, x_max, x_width,
+        ))
+    if round_scientific(y_bins, 3) != int(y_bins):
         raise Exception("y axis range [{:3f},{:3f}) cannot be evenly split by bin width {}".format(
-            y_min, y_max, y_width))
+            y_min, y_max, y_width,
+        ))
     x_bins = int(x_bins)
     y_bins = int(y_bins)
 
@@ -364,7 +486,15 @@ def infer_binning_from_grid(x_values, y_values):
 
 
 # helper to extract contours
-def get_contours(x_values, y_values, z_values, levels, frame_kwargs=None, min_points=10, **kwargs):
+def get_contours(
+    x_values,
+    y_values,
+    z_values,
+    levels,
+    frame_kwargs=None,
+    min_points=10,
+    **kwargs  # noqa
+):
     ROOT = import_ROOT()
 
     if frame_kwargs is None:
@@ -484,11 +614,12 @@ def get_graph_points(g, errors=False):
         else:
             errors = False
 
-    x, y = ROOT.Double(), ROOT.Double()
+    x = ctypes.c_double()
+    y = ctypes.c_double()
     for i in range(g.GetN()):
         g.GetPoint(i, x, y)
-        x_values.append(float(x))
-        y_values.append(float(y))
+        x_values.append(x.value)
+        y_values.append(y.value)
         if asym_errors:
             x_errors_up.append(g.GetErrorXhigh(i))
             x_errors_down.append(g.GetErrorXlow(i))
@@ -500,10 +631,11 @@ def get_graph_points(g, errors=False):
 
     if asym_errors:
         return x_values, y_values, x_errors_down, x_errors_up, y_errors_down, y_errors_up
-    elif errors:
+
+    if errors:
         return x_values, y_values, x_errors, y_errors
-    else:
-        return x_values, y_values
+
+    return x_values, y_values
 
 
 def repeat_graph(g, n):
@@ -517,8 +649,16 @@ def repeat_graph(g, n):
     return g_repeated
 
 
-def invert_graph(g, x_min=None, x_max=None, y_min=None, y_max=None, x_axis=None, y_axis=None,
-        offset=0.):
+def invert_graph(
+    g,
+    x_min=None,
+    x_max=None,
+    y_min=None,
+    y_max=None,
+    x_axis=None,
+    y_axis=None,
+    offset=0.0,
+):
     # get all graph values
     x_values, y_values = get_graph_points(g)
 
@@ -552,14 +692,14 @@ def invert_graph(g, x_min=None, x_max=None, y_min=None, y_max=None, x_axis=None,
     corners = [tr, br, bl, tl]
 
     # find the corner that is closest to the graph start point
-    dist = lambda x, y: ((x - x_values[0])**2. + (y - y_values[0])**2.)**0.5
+    dist = lambda x, y: ((x - x_values[0])**2 + (y - y_values[0])**2)**0.5
     start_index = min(list(range(4)), key=lambda i: dist(corners[i][0], corners[i][1]))
 
     # to invert the graph, create a new graph whose points start with an outer frame consisting of
     # the 4 corners, the graph points itself, the first point of the graph again to close it, and
     # ending with the closest corner again
     points = (2 * corners)[start_index:start_index + 5]
-    points.extend(zip(x_values, y_values))
+    points.extend(list(zip(x_values, y_values)))
     points.append((x_values[0], y_values[0]))
     points.append(corners[start_index])
 
@@ -571,11 +711,24 @@ def invert_graph(g, x_min=None, x_max=None, y_min=None, y_max=None, x_axis=None,
     return g_inv
 
 
+def fill_legend_column(legend_entries, n_column_entries, dummy_obj):
+    n_entries = len(legend_entries)
+    if not isinstance(dummy_obj, tuple):
+        dummy_obj = (dummy_obj, " ", "L")
+
+    # number of missing entries in the column
+    n_missing = int(math.ceil((1.0 * n_entries) / n_column_entries)) * n_column_entries - n_entries
+
+    # fill up legend entries
+    for _ in range(n_missing):
+        legend_entries.append(dummy_obj)
+
+
 def get_text_extent(t, text_size=None, text_font=None):
     ROOT = import_ROOT()
 
     # convert to a tlatex if t is a string, otherwise clone
-    t = ROOT.TLatex(0., 0., t) if isinstance(t, six.string_types) else t.Clone()
+    t = ROOT.TLatex(0.0, 0.0, t) if isinstance(t, six.string_types) else t.Clone()
 
     # set size and font when set
     if text_size is not None:
@@ -612,8 +765,20 @@ def temporary_canvas(*args, **kwargs):
             c.Close()
 
 
-def locate_contour_labels(graphs, label_width, label_height, pad_width, pad_height, x_min, x_max,
-        y_min, y_max, other_positions=None, min_points=10, label_offset=None):
+def locate_contour_labels(
+    graphs,
+    label_width,
+    label_height,
+    pad_width,
+    pad_height,
+    x_min,
+    x_max,
+    y_min,
+    y_max,
+    other_positions=None,
+    min_points=10,
+    label_offset=None,
+):
     positions = []
     other_positions = other_positions or []
 
@@ -647,7 +812,7 @@ def locate_contour_labels(graphs, label_width, label_height, pad_width, pad_heig
         # compute the line contour and number of blocks
         line_contour = np.array([x_values, y_values]).T
         n_blocks = int(np.ceil(n_points / label_width)) if label_width > 1 else 1
-        block_size = n_points if n_blocks == 1 else int(round(label_width))
+        block_size = n_points if n_blocks == 1 else int(round_scientific(label_width))
 
         # split contour into blocks of length block_size, filling the last block by cycling the
         # contour start (per np.resize semantics)
@@ -680,7 +845,7 @@ def locate_contour_labels(graphs, label_width, label_height, pad_width, pad_heig
 
         # get the best position by checking the distance to other labels and the roration
         # use idx1 when no position was found
-        rot = 0.
+        rot = 0.0
         for idx2 in np.append(adist, idx1):
             # rotation
             ind = (idx2 * block_size + hb_size) % n_points
@@ -692,7 +857,7 @@ def locate_contour_labels(graphs, label_width, label_height, pad_width, pad_heig
                 # ensure that the rotation is between -90 and 90 deg
                 rot = (rot + 90) % 180 - 90
             else:
-                rot = 0.
+                rot = 0.0
 
             # position
             x, y = xx[idx2, hb_size], yy[idx2, hb_size]

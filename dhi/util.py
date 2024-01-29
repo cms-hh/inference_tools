@@ -19,7 +19,8 @@ from collections import OrderedDict
 
 import numpy as np
 import scipy.interpolate
-from law.util import no_value, multi_match, make_unique, make_list  # noqa
+from law.util import no_value, multi_match, make_unique, make_list, make_tuple  # noqa
+import scinum as sn
 import six
 
 # modules and objects from lazy imports
@@ -97,17 +98,18 @@ def _load_hooks():
     global _hook_data
 
     if _hook_data is no_value:
+        _hook_data = None
         if os.getenv("DHI_HOOK_FILE", ""):
             path = expand_path("$DHI_HOOK_FILE")
             # when the path is relative, always resolve it w.r.t. DHI_BASE
             if path and not path.startswith(os.sep):
                 path = expand_path(os.path.join("$DHI_BASE", path))
             if not path or not os.path.isfile(path):
-                raise Exception("DHI_HOOK_FILE refers to '{}' but it does not exist; either unset the "
-                    "variable or set it to the path of an existing file".format(path))
+                raise Exception(
+                    "DHI_HOOK_FILE refers to '{}' but it does not exist; either unset the "
+                    "variable or set it to the path of an existing file".format(path),
+                )
             _hook_data = (path, import_file(path))
-        else:
-            _hook_data = None
 
     return _hook_data
 
@@ -132,19 +134,60 @@ def call_hook(name, *args, **kwargs):
 
 class DotDict(OrderedDict):
     """
-    Dictionary providing item access via attributes.
+    Subclass of *OrderedDict* that provides read access for items via attributes by implementing
+    ``__getattr__``. In case a item is accessed via attribute and it does not exist, an
+    *AttriuteError* is raised rather than a *KeyError*. Example:
+
+    .. code-block:: python
+
+        d = DotDict()
+        d["foo"] = 1
+
+        print(d["foo"])
+        # => 1
+
+        print(d.foo)
+        # => 1
+
+        print(d["bar"])
+        # => KeyError
+
+        print(d.bar)
+        # => AttributeError
     """
 
-    FORWARD_UPSTREAM = ["_OrderedDict__root"]
+    # forward certain attributes to the super class in python 2
+    FORWARD_SUPER = ("_OrderedDict__root", "_OrderedDict__map")
 
     def __getattr__(self, attr):
-        if attr in self.FORWARD_UPSTREAM:
+        if six.PY2 and attr in self.FORWARD_SUPER:
             return super(DotDict, self).__getattr__(attr)
 
-        return self[attr]
+        try:
+            return self[attr]
+        except KeyError:
+            raise AttributeError(
+                "'{}' object has no attribute '{}'".format(self.__class__.__name__, attr),
+            )
+
+    def __setattr__(self, attr, value):
+        if six.PY2 and attr in self.FORWARD_SUPER:
+            return super(DotDict, self).__setattr__(attr, value)
+
+        self[attr] = value
 
     def copy(self):
-        return self.__class__(super(DotDict, self).copy())
+        """"""
+        return self.__class__(self)
+
+    @classmethod
+    def wrap(cls, *args, **kwargs):
+        """
+        Takes a dictionary *d* and recursively replaces it and all other nested dictionary types
+        with :py:class:`DotDict`'s for deep attribute-style access.
+        """
+        wrap = lambda d: cls((k, wrap(v)) for k, v in d.items()) if isinstance(d, dict) else d
+        return wrap(OrderedDict(*args, **kwargs))
 
 
 def expand_path(path):
@@ -165,6 +208,30 @@ def real_path(path):
     Takes a *path* and returns its real, absolute location with all variables expanded.
     """
     return os.path.realpath(expand_path(path))
+
+
+def round_scientific(v, ndigits=None, return_str=False):
+    """
+    Rounds a number *v* to a certain number of *ndigits* in the usual scientific notation. That is, considering
+    *ndigits* is *None* or 0, 2.5 and 3.5 would be rounded up to 3 and 4, unlike Python's default "round-half-to-even"
+    behavior that would result in 2 and 4 (this was different in Python 2).
+
+    When *return_str* is *True*, the result is returned as a string, potentially including trailing zeros, or otherwise
+    as a float or int.
+    """
+    ref = 1 if not ndigits else 10**(-ndigits)
+    s = sn.match_precision(v, ref)
+    return s if return_str else (float if ndigits else int)(s)
+
+
+def common_leading_substring(a, b):
+    """
+    Returns the common leading substring between two strings *a* and *b*.
+    """
+    for i in range(1, min(len(a), len(b)) + 1):
+        if a[:i] != b[:i]:
+            return a[:i - 1]
+    return a[:i]
 
 
 def prepare_output(path, is_dir=False):
@@ -264,7 +331,7 @@ def linspace(start, stop, steps, precision=7):
     """
     import numpy as np
 
-    return np.linspace(start, stop, steps).round(precision).tolist()
+    return np.linspace(start, stop, int(steps)).round(precision).tolist()
 
 
 def round_digits(v, n, round_fn=round):
@@ -293,7 +360,7 @@ def get_neighbor_coordinates(shape, i, j):
     # check inputs
     if len(shape) != 2:
         raise ValueError("shape must have length 2, got {}".format(shape))
-    if any(l <= 0 for l in shape):
+    if any(s <= 0 for s in shape):
         raise ValueError("shape must contain only positive numbers, got {}".format(shape))
     if not (0 <= i < shape[0]):
         raise ValueError("i must be within interval [0, shape[0])")
@@ -380,6 +447,7 @@ def create_tgraph(n, *args, **kwargs):
     """
     ROOT = import_ROOT()
 
+    n = int(n)
     if len(args) <= 2:
         cls = ROOT.TGraph
     elif len(args) <= 4:
@@ -414,8 +482,8 @@ def create_tgraph(n, *args, **kwargs):
 
     if n == 0:
         return cls(n)
-    else:
-        return cls(n, *(array.array("f", a) for a in _args))
+
+    return cls(n, *(array.array("f", a) for a in _args))
 
 
 def convert_rooargset(argset):
@@ -596,9 +664,12 @@ def unique_recarray(a, cols=None, sort=True, test_metric=None):
             # call test_fn except when both values are nan
             both_nan = np.isnan(removed_metric) and np.isnan(kept_metric)
             if not both_nan and not test_fn(kept_metric, removed_metric):
-                raise Exception("duplicate entries identified by columns {} with '{}' values of {} "
+                raise Exception(
+                    "duplicate entries identified by columns {} with '{}' values of {} "
                     "(kept) and {} (removed at row {}) differ".format(
-                        cols, metric, kept_metric, removed_metric, i))
+                        cols, metric, kept_metric, removed_metric, i,
+                    ),
+                )
 
     return b
 
@@ -622,14 +693,18 @@ def dict_to_recarray(dicts):
     for i, d in enumerate(dicts):
         # check if keys are identical to first dict
         if set(d.keys()) != set(first_keys):
-            raise Exception("keys of dictionary {} ({}) do not match those of first dictionary "
-                "({})".format(i, ",".join(d.keys()), ",".join(first_keys)))
+            raise Exception(
+                "keys of dictionary {} ({}) do not match those of first dictionary ({})".format(
+                    i, ",".join(d.keys()), ",".join(first_keys),
+                ),
+            )
 
         # check if all values (lists) have the same length
         value_lengths = set(map(len, d.values()))
         if len(value_lengths) != 1:
             raise Exception("dictionary {} found to map to lists with unequal lengths: {}".format(
-                d, value_lengths))
+                d, value_lengths,
+            ))
 
         # construct the recarray
         records = [tuple(v[i] for v in d.values()) for i in range(list(value_lengths)[0])]
@@ -672,11 +747,11 @@ def convert_dnll2(dnll2, n=1):
     # the precision of pdf/ppf can't handle very high dnll2 (== low p-values)
     # so using (inverse) survival function instead
     alpha = stats.chi2.sf(dnll2, n)  # same as 1 - chi2.cdf(dnll2)
-    p_value = alpha / 2.
+    p_value = alpha / 2.0
     sig = stats.norm.isf(p_value)  # same as chi2.ppf(1 - p_value)
 
     # replace values where dnll2 is <= 0 by 0 (probably nan)
-    sig[dnll2 <= 0] = 0.
+    sig[dnll2 <= 0] = 0.0
 
     # optionally convert back to a single value
     if single_value:
@@ -691,9 +766,7 @@ class TFileCache(object):
     def __init__(self, logger=None):
         super(TFileCache, self).__init__()
 
-        self.logger = logger or logging.getLogger(
-            "{}_{}".format(self.__class__.__name__, hex(id(self)))
-        )
+        self.logger = logger or logging.getLogger(f"{self.__class__.__name__}_{hex(id(self))}")
 
         # cache of files opened for reading
         # abs_path -> {tfile: TFile}
@@ -738,44 +811,44 @@ class TFileCache(object):
                 tfile = ROOT.TFile(abs_path, mode)
                 self._r_cache[abs_path] = {"tfile": tfile}
 
-                self.logger.debug("opened tfile {} with mode {}".format(abs_path, mode))
+                self.logger.debug(f"opened tfile {abs_path} with mode {mode}")
 
             return self._r_cache[abs_path]["tfile"]
 
-        else:
-            if abs_path not in self._w_cache:
-                if tmp:
-                    # determine a temporary location
-                    suffix = "_" + os.path.basename(abs_path)
-                    tmp_path = tempfile.mkstemp(suffix=suffix)[1]
-                    if os.path.exists(tmp_path):
-                        os.remove(tmp_path)
+        if abs_path not in self._w_cache:
+            if tmp:
+                # determine a temporary location
+                suffix = "_" + os.path.basename(abs_path)
+                tmp_path = tempfile.mkstemp(suffix=suffix)[1]
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
 
-                    # copy the file when existing
-                    if os.path.exists(abs_path):
-                        shutil.copy2(abs_path, tmp_path)
+                # copy the file when existing
+                if os.path.exists(abs_path):
+                    shutil.copy2(abs_path, tmp_path)
 
-                    # open the file
-                    tfile = ROOT.TFile(tmp_path, mode)
+                # open the file
+                tfile = ROOT.TFile(tmp_path, mode)
 
-                    self.logger.debug("opened tfile {} with mode {} in temporary location {}".format(
-                        abs_path, mode, tmp_path))
-                else:
-                    # open the file
-                    tfile = ROOT.TFile(abs_path, mode)
-                    tmp_path = None
+                self.logger.debug(
+                    f"opened tfile {abs_path} with mode {mode} in temporary location {tmp_path}",
+                )
+            else:
+                # open the file
+                tfile = ROOT.TFile(abs_path, mode)
+                tmp_path = None
 
-                    self.logger.debug("opened tfile {} with mode {}".format(abs_path, mode))
+                self.logger.debug(f"opened tfile {abs_path} with mode {mode}")
 
-                # store it
-                self._w_cache[abs_path] = {
-                    "tmp_path": tmp_path,
-                    "tfile": tfile,
-                    "write_objects": [],
-                    "delete_objects": [],
-                }
+            # store it
+            self._w_cache[abs_path] = {
+                "tmp_path": tmp_path,
+                "tfile": tfile,
+                "write_objects": [],
+                "delete_objects": [],
+            }
 
-            return self._w_cache[abs_path]["tfile"]
+        return self._w_cache[abs_path]["tfile"]
 
     def write_tobj(self, path, tobj, towner=None, name=None):
         ROOT = import_ROOT()
@@ -787,13 +860,12 @@ class TFileCache(object):
                     data["write_objects"].append((tobj, towner, name))
                     break
             else:
-                raise Exception("cannot write object {} into unknown TFile {}".format(
-                    tobj, path))
+                raise Exception(f"cannot write object {tobj} into unknown TFile {path}")
 
         else:
             abs_path = real_path(path)
             if abs_path not in self._w_cache:
-                raise Exception("cannot write object {} into unopened file {}".format(tobj, path))
+                raise Exception(f"cannot write object {tobj} into unopened file {path}")
 
             self._w_cache[abs_path]["write_objects"].append((tobj, towner, name))
 
@@ -807,27 +879,30 @@ class TFileCache(object):
                     data["delete_objects"].append(abs_key)
                     break
             else:
-                raise Exception("cannot delete object {} from unknown TFile {}".format(
-                    abs_key, path))
+                raise Exception(f"cannot delete object {abs_key} from unknown TFile {path}")
 
         else:
             abs_path = real_path(path)
             if abs_path not in self._w_cache:
-                raise Exception("cannot delete object {} from unopened file {}".format(
-                    abs_key, path))
+                raise Exception(f"cannot delete object {abs_key} from unopened file {path}")
 
             self._w_cache[abs_path]["delete_objects"].append(abs_key)
 
     def finalize(self, skip_write=False, skip_delete=False):
         if self._r_cache:
             # close files opened for reading
+            n = 0
             for abs_path, data in self._r_cache.items():
                 if data["tfile"] and data["tfile"].IsOpen():
                     data["tfile"].Close()
-            self.logger.debug("closed {} cached file(s) opened for reading".format(
-                len(self._r_cache)))
+                    n += 1
+            if n:
+                self.logger.debug(f"closed {n} cached file(s) opened for reading")
 
-        if self._w_cache:
+        if (
+            self._w_cache and
+            any(data["write_objects"] or data["delete_objects"] for data in self._w_cache.values())
+        ):
             # close files opened for reading, write objects and move to actual location
             ROOT = import_ROOT()
             ignore_level_orig = ROOT.gROOT.ProcessLine("gErrorIgnoreLevel;")
@@ -836,31 +911,37 @@ class TFileCache(object):
             for abs_path, data in self._w_cache.items():
                 # stop when the tfile is empty
                 if not data["tfile"]:
-                    self.logger.warning("could not write empty tfile with data {}".format(data))
+                    self.logger.warning(f"could not write empty tfile with data {data}")
                     continue
 
                 # issue a warning when the file was closed externally
                 if not data["tfile"].IsOpen():
-                    self.logger.warning("could not write tfile {}, already closed".format(
-                        data["tfile"]))
+                    self.logger.warning(f"could not write tfile {data['tfile']}, already closed")
                 else:
                     # write objects
                     if not skip_write and data["write_objects"]:
                         data["tfile"].cd()
-                        self.logger.debug("writing {} objects".format(len(data["write_objects"])))
-                        for tobj, towner, name in data["write_objects"]:
+                        objects = make_unique(data["write_objects"])
+                        self.logger.debug(f"writing {len(objects)} object(s)")
+                        for tobj, towner, name in objects:
                             if towner:
                                 towner.cd()
                             args = (name,) if name else ()
                             tobj.Write(*args)
 
                     # delete objects
+                    # (this does not reduce the file size though, see
+                    # https://root-forum.cern.ch/t/delete-object-from-tfile/17658/2)
                     if not skip_delete and data["delete_objects"]:
-                        data["tfile"].cd()
-                        self.logger.debug("deleting {} objects".format(len(data["delete_objects"])))
-                        for abs_key in data["delete_objects"]:
-                            data["tfile"].Delete(abs_key)
-                            self.logger.debug("deleted {} from tfile at {}".format(abs_key, abs_path))
+                        objects = make_unique(data["delete_objects"])
+                        self.logger.debug(f"deleting {len(objects)} object(s)")
+                        for abs_key in objects:
+                            tdir = data["tfile"]
+                            parts = abs_key.split("/")
+                            for part in parts[:-1]:
+                                tdir = tdir.Get(part)
+                            tdir.Delete(parts[-1])
+                            self.logger.debug(f"deleted {abs_key} from tfile at {abs_path}")
 
                     # close the file
                     data["tfile"].Close()
@@ -868,12 +949,12 @@ class TFileCache(object):
                 # move back to original place when it was temporary and something changed
                 if data["tmp_path"] and (not skip_write or not skip_delete):
                     shutil.move(data["tmp_path"], abs_path)
-                    self.logger.debug("moving back temporary file {} to {}".format(
-                        data["tmp_path"], abs_path))
+                    self.logger.debug(
+                        f"moving back temporary file {data['tmp_path']} to {abs_path}",
+                    )
 
-            self.logger.debug("closed {} cached file(s) opened for writing".format(
-                len(self._w_cache)))
-            ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = {};".format(ignore_level_orig))
+            self.logger.debug(f"closed {len(self._w_cache)} cached file(s) opened for writing")
+            ROOT.gROOT.ProcessLine(f"gErrorIgnoreLevel = {ignore_level_orig};")
 
         # clear
         self._clear()
@@ -929,8 +1010,17 @@ class ROOTColorGetter(object):
 
 class InterExtrapolator(object):
 
-    def __init__(self, x_values, y_values, z_values, kind2d="linear", kind1d="linear",
-            epsilon_x=1e-3, epsilon_y=1e-3, warn_treshold=0.15):
+    def __init__(
+        self,
+        x_values,
+        y_values,
+        z_values,
+        kind2d="linear",
+        kind1d="linear",
+        epsilon_x=1e-3,
+        epsilon_y=1e-3,
+        warn_treshold=0.15,
+    ):
         super(InterExtrapolator, self).__init__()
 
         # nan check
@@ -980,16 +1070,24 @@ class InterExtrapolator(object):
     def get_row_interp(self, y):
         if y not in self.interps1d_y:
             xs, _, zs = self.get_row(y)
-            self.interps1d_y[y] = scipy.interpolate.interp1d(xs, zs, kind=self.kind1d,
-                fill_value="extrapolate")
+            self.interps1d_y[y] = scipy.interpolate.interp1d(
+                xs,
+                zs,
+                kind=self.kind1d,
+                fill_value="extrapolate",
+            )
 
         return self.interps1d_y[y]
 
     def get_col_interp(self, x):
         if x not in self.interps1d_x:
             _, ys, zs = self.get_col(x)
-            self.interps1d_x[x] = scipy.interpolate.interp1d(ys, zs, kind=self.kind1d,
-                fill_value="extrapolate")
+            self.interps1d_x[x] = scipy.interpolate.interp1d(
+                ys,
+                zs,
+                kind=self.kind1d,
+                fill_value="extrapolate",
+            )
 
         return self.interps1d_x[x]
 
@@ -1006,8 +1104,56 @@ class InterExtrapolator(object):
         # check if the asymmetry is below a threshold
         asym = (z_row - z_col) / (z_row + z_col + 1e-5)
         if asym > self.warn_treshold:
-            warn("{}: asymmetry between 1D interpolations from row ({:.3f}) and column ({:.3f}) at "
-                "point ({}, {}) is {:.3f}, larger than {}".format(self.__class__.__name__, z_row,
-                z_col, x, y, asym, self.warn_treshold))
+            warn(
+                "{}: asymmetry between 1D interpolations from row ({:.3f}) and column ({:.3f}) at "
+                "point ({}, {}) is {:.3f}, larger than {}".format(
+                    self.__class__.__name__, z_row, z_col, x, y, asym, self.warn_treshold,
+                ),
+            )
 
         return 0.5 * (z_row + z_col)
+
+
+class GridDataInterpolator(object):
+
+    def __init__(
+        self,
+        x_values,
+        y_values,
+        z_values,
+        points,
+        kind="linear",
+    ):
+        super(GridDataInterpolator, self).__init__()
+
+        # nan check
+        if np.isnan(z_values).sum() > 0:
+            raise Exception("z_values contain NaN values")
+
+        # store valus
+        self.x_values = np.array(x_values)
+        self.y_values = np.array(y_values)
+        self.z_values = np.array(z_values)
+        self.interp_points = np.array(points)
+        self.kind = kind
+
+        # scipy's grid data requires to directly pass the points where to interpolate
+        grid_points = [list(tpl) for tpl in zip(self.x_values, self.y_values)]
+        interp_values = scipy.interpolate.griddata(
+            np.array(grid_points),
+            self.z_values,
+            self.interp_points,
+            method=self.kind,
+        )
+
+        # caches for points
+        self._interp_values = {
+            tuple(point): value
+            for point, value in zip(self.interp_points, interp_values)
+        }
+
+    def __call__(self, x, y):
+        if (x, y) not in self._interp_values:
+            raise Exception("no interpolation existing at point x={}, y={}".format(x, y))
+
+        return self._interp_values[(x, y)]

@@ -70,7 +70,7 @@ Rounded boxes mark [workflows](practices.md#workflows) with the option to run ta
 
 **1.** Execute `PullsAndImpacts` including all MC stats nuisances on HTCondor, and pass `--robustFit 1` to combine:
 
-```shell hl_lines="5-6´7"
+```shell hl_lines="5-7"
 law run PlotPullsAndImpacts \
     --version dev \
     --datacards $DHI_EXAMPLE_CARDS \
