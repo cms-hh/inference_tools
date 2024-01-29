@@ -7,6 +7,7 @@ Custom HH physics model implementing gluon gluon fusion (ggf / gghh), vector bos
 Authors:
   - Aravind Sugunan
   - Kajari Mazumdar
+  - Soumya Mukherjee 
 
 Developments to come:
 - make model return the formula to inference draw
@@ -16,6 +17,7 @@ Developments to come:
 - retest the basis stability
 - integration with HH model, can be already with the kl-kt-c2 one for definitiveness 
   - be sure that c3 = kl without any factors floating
+- integration with HH modelling
 - integration H BR scaling 
 - integration with single H scaling (placeholder for when we add kt to modelling to HHH part)
 
