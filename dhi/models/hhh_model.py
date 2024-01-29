@@ -25,6 +25,7 @@ from numpy import matrix
 from numpy import linalg
 from sympy import Matrix
 from HiggsAnalysis.CombinedLimit.PhysicsModel import *
+from collections import OrderedDict, defaultdict
 
 class HHHSample:
     def __init__(self, val_c3, val_d4, val_xs, label):
@@ -154,13 +155,15 @@ class HHHFormula:
 
 
 class HHHModel(PhysicsModel):
-    """ Models the HH production as linear sum of 6 components (VBF) and 3 components (GGF) """
+    """ Models the HHH production as linear sum of 9 components (GGF) """
     def __init__(self, ggHHH_sample_list , name):
         PhysicsModel.__init__(self)
         self.name            = name
         self.check_validity_ggf(ggHHH_sample_list)
         self.ggHHH_formula = HHHFormula(ggHHH_sample_list)
         self.dump_inputs()
+        self.hh_options = OrderedDict() # placeholder
+        self.reset_pois = None #placeholder
 
     def check_validity_ggf( self, ggf_sample_list ):
         if len(ggf_sample_list) != 9:
@@ -391,9 +394,9 @@ gHere = HHHFormula(HHH_List)
 
 
 
-HHHcomb3 = HHHModel(
+model_default = HHHModel(
     ggHHH_sample_list = HHH_List,
-    name            = 'HHHcomb3'
+    name            = 'model_default'
 )
 
 #if __name__=="__main__":
