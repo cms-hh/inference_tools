@@ -1616,15 +1616,6 @@ class CombineCommandTask(CommandTask):
         " --X-rtd MINIMIZER_multiMin_maskChannels=2"
     )
 
-    combine_timming_options = (
-    " --for-fits"
-    " --no-wrappers"
-    " --optimize-simpdf-constraints cms"
-    " --X-pack-asympows"
-    " --X-optimizeMHDependency=fixed"
-    #" --use-histsum" -- NOt yet on the latest combine release
-    )
-
     option_aliases = {
         "-d": ["--datacard"],
         "-M": ["--method"],
@@ -2030,7 +2021,6 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
 
         # build the t2w command
         cmd = (
-            "{test_timming_options} "
             "text2workspace.py {datacard}"
             " {self.custom_args}"
             " --out workspace.root"
@@ -2042,7 +2032,6 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
             datacard=datacard,
             opt_args=opt_args,
             model_args=" ".join(model_args),
-            test_timming_options=test_timming_options
         )
 
         # add optional workspace injection commands
