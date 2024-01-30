@@ -22,7 +22,7 @@ import six
 from dhi import dhi_combine_version
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
 from dhi.tasks.remote import HTCondorWorkflow
-from dhi.config import poi_data, br_hh, single_higgs_processes
+from dhi.config import poi_data, br_hh, additional_signal_processes
 from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path, make_unique
 from dhi.datacard_tools import bundle_datacard, read_datacard_blocks
 
@@ -1798,10 +1798,13 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
     allow_workspace_input = False
     skip_inject_files = True
 
-    keep_sh_as_signal = luigi.BoolParameter(
-        default=False,
-        description="do not remove single higgs processes if they are set as signal and not part "
-        "of the HH formula; default: False",
+    keep_additional_signals = luigi.ChoiceParameter(
+        default="no",
+        choices=["no", "all", "sh"],
+        significant=False,
+        description="Setting if additional signals such as"
+        " SH or resonant not part of the HH formula should be kept"
+        "choices: no, all, sh; default: no",
     )
 
     def __init__(self, *args, **kwargs):
@@ -1880,6 +1883,10 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             formulae = model.get_formulae().values()
 
             for proc in signal_procs:
+                # keep all signals if set to all
+                if "all" == self.keep_additional_signals:
+                    continue
+
                 # keep signal if matched by at least one process in any formula
                 if any(
                     any(sample.matches_process(proc) for sample in formula.samples)
@@ -1887,10 +1894,10 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
                 ):
                     continue
 
-                # keep signal if single higgs and configured to do so
+                # keep signal if in allowed extra signals e.g. SH
                 if (
-                    self.keep_sh_as_signal and
-                    any(proc.startswith(f"{p}_" for p in single_higgs_processes))
+                    "no" != self.keep_additional_signals and
+                    any(proc.startswith(f"{p}_" for p in additional_signal_processes[self.keep_additional_signals]))
                 ):
                     continue
 
