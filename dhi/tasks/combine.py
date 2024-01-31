@@ -22,7 +22,8 @@ import six
 from dhi import dhi_combine_version
 from dhi.tasks.base import AnalysisTask, CommandTask, PlotTask, ModelParameters
 from dhi.tasks.remote import HTCondorWorkflow
-from dhi.config import poi_data, br_hh, single_higgs_processes
+from dhi.config import poi_data, br_hh
+from dhi.config import additional_signal_processes as additional_sigprocs
 from dhi.util import linspace, try_int, real_path, expand_path, get_dcr2_path, make_unique
 from dhi.datacard_tools import bundle_datacard, read_datacard_blocks
 
@@ -1798,10 +1799,15 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
     allow_workspace_input = False
     skip_inject_files = True
 
-    keep_sh_as_signal = luigi.BoolParameter(
-        default=False,
-        description="do not remove single higgs processes if they are set as signal and not part "
-        "of the HH formula; default: False",
+    keep_additional_signals = luigi.ChoiceParameter(
+        default="no",
+        choices=["no", "all", "sh"],
+        significant=False,
+        description="Setting if additional signals such as"
+        "SH or resonant not part of the HH formula should be kept"
+        "For new choices, also additional_signal_processes"
+        "in dhi.config needs to be adjusted."
+        "choices: no, all, sh; default: no",
     )
 
     def __init__(self, *args, **kwargs):
@@ -1875,36 +1881,39 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             proc_ids = list(map(int, blocks["rates"][2].strip().split()[1:]))
             signal_procs = set(proc for proc, proc_id in zip(procs, proc_ids) if proc_id <= 0)
 
-            # loop through model formulae and determine signal processes that are not covered
-            to_remove = set()
-            formulae = model.get_formulae().values()
+            if self.keep_additional_signals != "all":
+                # loop through model formulae and determine signal processes that are not covered
+                to_remove = set()
+                formulae = model.get_formulae().values()
+                for proc in signal_procs:
+                    # keep signal if matched by at least one process in any formula
+                    if any(
+                        any(sample.matches_process(proc) for sample in formula.samples)
+                        for formula in formulae
+                    ):
+                        continue
 
-            for proc in signal_procs:
-                # keep signal if matched by at least one process in any formula
-                if any(
-                    any(sample.matches_process(proc) for sample in formula.samples)
-                    for formula in formulae
-                ):
-                    continue
+                    if (
+                        self.keep_additional_signals in additional_sigprocs.keys() and (
+                            any(
+                                proc.startswith(f"{p}_") for p in additional_sigprocs[self.keep_additional_signals]
+                            ) or
+                            any(proc in p for p in additional_sigprocs[self.keep_additional_signals])
+                        )
+                    ):
+                        continue
 
-                # keep signal if single higgs and configured to do so
-                if (
-                    self.keep_sh_as_signal and
-                    any(proc.startswith(f"{p}_" for p in single_higgs_processes))
-                ):
-                    continue
+                    # remove it
+                    to_remove.add(proc)
 
-                # remove it
-                to_remove.add(proc)
-
-            # actual removal
-            if to_remove:
-                from dhi.scripts.remove_processes import remove_processes
-                self.logger.info(
-                    f"trying to remove processe(s) '{','.join(to_remove)}' from the combined datacard as "
-                    f"they are not part of the phyics model {self.hh_model}",
-                )
-                remove_processes(output_card.path, map("{0}*".format, to_remove))
+                # actual removal
+                if to_remove:
+                    from dhi.scripts.remove_processes import remove_processes
+                    self.logger.info(
+                        f"trying to remove processe(s) '{','.join(to_remove)}' from the combined datacard as "
+                        f"they are not part of the phyics model {self.hh_model}",
+                    )
+                    remove_processes(output_card.path, map("{0}*".format, to_remove))
 
             # remove the THU_HH nuisance if not added (probably in listed in nuisances group)
             if not model.opt("doklDependentUnc"):
