@@ -56,6 +56,8 @@ class HHModelTask(AnalysisTask):
         # EFT
         "C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP", "MA", "Z6", "TB", "CBA", "LQ", "MQ",
         "XI", "kl_EFT", "kt_EFT", "C2_EFT", "cosbma", "tanbeta",
+        # for HHH, chech renamings and duplications
+        "c3", "d4"
     )
     ALL_POIS = R_POIS + K_POIS
 
@@ -163,7 +165,11 @@ class HHModelTask(AnalysisTask):
                 set_opt(opt, options.get(opt))
 
         # reset pois
-        model.reset_pois()
+        try:
+            model.reset_pois()
+        except:
+            pass
+        # TODO: FIX reset_pois in hhh_model
 
         return mod, model
 
