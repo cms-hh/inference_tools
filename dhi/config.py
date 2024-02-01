@@ -154,6 +154,8 @@ poi_data = DotDict(
     r_qqhh=DotDict(range=(-20.0, 20.0), label=r"$r_{qqhh}$", sm_value=1.0),
     r_vhh=DotDict(range=(-20.0, 20.0), label=r"$r_{vhh}$", sm_value=1.0),
     kl=DotDict(range=(-30.0, 30.0), label=r"$\kappa_{\lambda}$", sm_value=1.0),
+    c3=DotDict(range=(-30.0, 30.0), label=r"$c{3}$", sm_value=1.0), # check if that is kl directly 
+    d4=DotDict(range=(-30.0, 30.0), label=r"$d{4}$", sm_value=1.0), # check if change to k4 or khhh
     kt=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
     C2V=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{2V}$", sm_value=1.0),
     CV=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{V}$", sm_value=1.0),
@@ -279,6 +281,8 @@ for bm in ["1", "2", "3", "4", "5", "6", "7"]:
 bm_labels["SM"] = ("SM", "")
 
 # SH procs
-single_higgs_processes = [
-    "ggH", "qqH", "ttH", "ZH", "WH", "VH", "tHW", "tHq",
-]
+additional_signal_processes = {
+    "sh": [
+        "ggH", "qqH", "ttH", "ZH", "WH", "VH", "tHW", "tHq",
+    ],
+}
