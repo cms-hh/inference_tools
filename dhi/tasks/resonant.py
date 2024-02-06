@@ -312,6 +312,20 @@ class PlotMultipleResonantLimits(PlotResonantLimits, MultiDatacardTask):
         default=tuple(),
         description="one or multiple json files that contain externally computed limit values to "
         "be shown below the ones computed with actual datacards; default: empty",
+        brace_expand=True,
+    )
+    colors = law.CSVParameter(
+        default=tuple(),
+        description="custom colors (names as defined in config.py) to use for the limit lines; missing values "
+        "are replaced with the next value in the default color sequence; default: empty",
+        brace_expand=True,
+    )
+    markers = law.CSVParameter(
+        cls=luigi.IntParameter,
+        default=tuple(),
+        description="custom marker style values (as in ROOT) to use for the limit lines; missing values "
+        "are replaced with the next value in the default marker sequence; default: empty",
+        brace_expand=True,
     )
 
     default_plot_function = "dhi.plots.limits.plot_limit_scans"
@@ -450,6 +464,8 @@ class PlotMultipleResonantLimits(PlotResonantLimits, MultiDatacardTask):
             hh_process=self.br if self.xsec and self.br in br_hh else None,
             campaign=self.campaign if self.campaign != law.NO_STR else None,
             show_points=self.show_points,
+            custom_colors=list(self.colors),
+            custom_markers=list(self.markers),
             cms_postfix=self.cms_postfix,
             style=self.style,
             dump_target=outputs.get("plot_data"),
