@@ -523,6 +523,8 @@ def plot_limit_scans(
     model_parameters=None,
     campaign=None,
     show_points=True,
+    custom_colors=None,
+    custom_markers=None,
     cms_postfix=None,
     style=None,
 ):
@@ -549,13 +551,16 @@ def plot_limit_scans(
     branching ratio.
 
     *model_parameters* can be a dictionary of key-value pairs of model parameters. *campaign* should
-    refer to the name of a campaign label defined in dhi.config.campaign_labels. When *show_points*
+    refer to the name of a campaign label defined in dhi.config.campaign_labels. *custom*colors* and
+    *custom_markers* can be sequences of custom values that are used per line. When *show_points*
     is *True*, the central scan points are drawn on top of the interpolated curve. *cms_postfix* is
     shown as the postfix behind the CMS label.
 
     Supported values for *style*:
 
         - "paper"
+        - "compare": Do not show the legend box and hide legend items that just state (e.g.)
+          "Expected".
 
     Example: https://cms-hh.web.cern.ch/tools/inference/tasks/limits.html#multiple-limits-on-poi-vs-scan-parameter  # noqa
     """
@@ -643,12 +648,18 @@ def plot_limit_scans(
     _color_sequence = color_sequence
     if all(name in br_hh_colors.root for name in names):
         _color_sequence = [br_hh_colors.root[name] for name in names]
+    _color_sequence = list(_color_sequence)
+
+    # prepare markers
+    _marker_sequence = list(marker_sequence)
 
     # central values
     g_exps, g_obss = [], []
-    for i, (ev, name, col, ms) in enumerate(zip(
-        expected_values, names, _color_sequence[:n_graphs], marker_sequence[:n_graphs],
-    )):
+    for i, (ev, name) in enumerate(zip(expected_values, names)):
+        # get color and marker
+        col = (custom_colors[i] if custom_colors and i < len(custom_colors) else None) or _color_sequence.pop(0)
+        ms = (custom_markers[i] if custom_markers and i < len(custom_markers) else None) or _marker_sequence.pop(0)
+
         # expected graph
         mask = ~np.isnan(ev["limit"])
         limit_values = ev["limit"][mask]
@@ -659,7 +670,7 @@ def plot_limit_scans(
         g_exp = create_tgraph(mask.sum(), scan_values, limit_values)
         r.setup_graph(
             g_exp,
-            color=colors[col],
+            color=int(col) if col.isnumeric() else colors[col],
             props={
                 "LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2,
                 "LineStyle": 2 if has_obs else 1,
@@ -708,7 +719,7 @@ def plot_limit_scans(
             g_obs = create_tgraph(obs_mask.sum(), obs_scan_values, obs_limit_values)
             r.setup_graph(
                 g_obs,
-                color=colors[col],
+                color=int(col) if col.isnumeric() else colors[col],
                 props={"LineWidth": 2, "MarkerStyle": ms, "MarkerSize": 1.2},
             )
             draw_objs.append((g_obs, "SAME,CP" if show_points else "SAME,C"))
@@ -869,22 +880,31 @@ def plot_limit_scans(
                 )
 
     # legend
+    show_legend_box = True
+    legend_entry_width = 180
+    if style.matches("compare"):
+        # remove the last four legend items which are only showing what expected, observer and theory is
+        legend_entries = legend_entries[:-4]
+        show_legend_box = False
+        legend_entry_width = 200
     legend_cols = int(math.ceil(len(legend_entries) / 4.0))
     legend = r.routines.create_legend(
         pad=pad,
-        width=legend_cols * 180,
+        width=legend_cols * legend_entry_width,
         n=4,
         props={"NColumns": legend_cols, "TextSize": 18},
     )
+    print("legend entries:", legend_entries)
     r.fill_legend(legend, legend_entries)
     draw_objs.append(legend)
-    legend_box = r.routines.create_legend_box(
-        legend,
-        pad,
-        "trl",
-        props={"LineWidth": 0, "FillColor": colors.white_trans_70},
-    )
-    draw_objs.insert(-1, legend_box)
+    if show_legend_box:
+        legend_box = r.routines.create_legend_box(
+            legend,
+            pad,
+            "trl",
+            props={"LineWidth": 0, "FillColor": colors.white_trans_70},
+        )
+        draw_objs.insert(-1, legend_box)
 
     # cms label
     cms_labels = r.routines.create_cms_labels(

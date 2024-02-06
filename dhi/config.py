@@ -279,6 +279,8 @@ for bm in ["1", "2", "3", "4", "5", "6", "7"]:
 bm_labels["SM"] = ("SM", "")
 
 # SH procs
-single_higgs_processes = [
-    "ggH", "qqH", "ttH", "ZH", "WH", "VH", "tHW", "tHq",
-]
+additional_signal_processes = {
+    "sh": [
+        "ggH", "qqH", "ttH", "ZH", "WH", "VH", "tHW", "tHq",
+    ],
+}
