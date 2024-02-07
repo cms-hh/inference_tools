@@ -1431,6 +1431,7 @@ model_all_vhh = create_model(
 model_vbf_reweight = create_model(
     "model_vbf_reweight",
     vbf=[
+        (1.0, 1.0, 1.0),
         (0.4, 1.0, 2.9),
         (1.1, 1.0, 0.2),
         (1.0, 0.2, 1.3),
