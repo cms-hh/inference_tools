@@ -192,10 +192,10 @@ add_vbf_sample(CV=0.5, C2V=1.0, kl=1.0, xs=0.0108237, label="qqHH_CV_0p5_C2V_1_k
 add_vbf_sample(CV=1.5, C2V=1.0, kl=1.0, xs=0.0660185, label="qqHH_CV_1p5_C2V_1_kl_1")
 
 # for VBF samples that contain weights for modeling kappas
-add_vbf_sample(CV=0.4, C2V=1.0, kl=2.9, xs=0.0191330, label="qqHH_CV_0p4_C2V_1p0_kl_2p9")
-add_vbf_sample(CV=1.1, C2V=1.0, kl=0.2, xs=0.0095458, label="qqHH_CV_1p1_C2V_1p0_kl_0p2")
-add_vbf_sample(CV=1.0, C2V=0.2, kl=1.3, xs=0.0170294, label="qqHH_CV_1p0_C2V_0p2_kl_1p3")
-add_vbf_sample(CV=1.0, C2V=1.3, kl=0.2, xs=0.0020093, label="qqHH_CV_1p0_C2V_1p3_kl_0p2")
+add_vbf_sample(CV=0.4, C2V=1.0, kl=2.9, xs=0.0191330, label="qqHH_CV_0p4_C2V_1_kl_2p9")
+add_vbf_sample(CV=1.1, C2V=1.0, kl=0.2, xs=0.0095458, label="qqHH_CV_1p1_C2V_1_kl_0p2")
+add_vbf_sample(CV=1.0, C2V=0.2, kl=1.3, xs=0.0170294, label="qqHH_CV_1_C2V_0p2_kl_1p3")
+add_vbf_sample(CV=1.0, C2V=1.3, kl=0.2, xs=0.0020093, label="qqHH_CV_1_C2V_1p3_kl_0p2")
 add_vbf_sample(CV=1.1, C2V=0.2, kl=0.9, xs=0.0316486, label="qqHH_CV_1p1_C2V_0p2_kl_0p9")
 add_vbf_sample(CV=0.4, C2V=1.3, kl=2.2, xs=0.0293875, label="qqHH_CV_0p4_C2V_1p3_kl_2p2")
 add_vbf_sample(CV=1.74, C2V=1.37, kl=14.4, xs=0.3777832, label="qqHH_CV_1p74_C2V_1p37_kl_14p4")
@@ -210,7 +210,6 @@ add_vbf_sample(CV=-0.65, C2V=-0.382, kl=19.9, xs=0.3250792, label="qqHH_CV_m0p65
 add_vbf_sample(CV=0.008, C2V=-0.047, kl=19.9, xs=0.0000250, label="qqHH_CV_0p008_C2V_m0p047_kl_19p9")
 add_vbf_sample(CV=0.906, C2V=0.878, kl=1.55, xs=0.0008202, label="qqHH_CV_0p906_C2V_0p878_kl_1p55")
 add_vbf_sample(CV=1.27, C2V=1.89, kl=1.17, xs=0.0031827, label="qqHH_CV_1p27_C2V_1p89_kl_1p17")
-add_vbf_sample(CV=1.0, C2V=0.0, kl=1.0, xs=0.0270800, label="qqHH_CV_1p0_C2V_0p0_kl_1p0")
 
 # vhh samples with keys (CV, C2V, kl)
 # cross section values are NLO WHH + NNLO ZHH (no k-factor applied)
