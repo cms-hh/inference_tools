@@ -1050,7 +1050,7 @@ def plot_limit_points(
                 x_min_value = min(x_min_value, d["observed"])
                 x_max_value = max(x_max_value, d["observed"])
             d["observed"] = [d["observed"]]
-        if "theory" in d:
+        if d.get("theory") is not None:
             if isinstance(d["theory"], (tuple, list)):
                 if len(d["theory"]) == 3:
                     has_thy_err = True

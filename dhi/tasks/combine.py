@@ -32,7 +32,7 @@ def require_hh_model(func):
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         if self.hh_model_empty:
-            raise Exception(f"calls to {func._name__}() are invalid with empty hh_model")
+            raise Exception(f"calls to {func.__name__}() are invalid with empty hh_model")
         return func(self, *args, **kwargs)
 
     return wrapper
