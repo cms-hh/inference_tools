@@ -106,9 +106,9 @@ setup() {
     # see https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit
     #
 
-    export DHI_SCRAM_ARCH="${DHI_SCRAM_ARCH:-slc7_amd64_gcc900}"
-    export DHI_CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_11_3_4}"
-    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v9.1.0}"
+    export DHI_SCRAM_ARCH="${DHI_SCRAM_ARCH:-slc7_amd64_gcc12}"
+    export DHI_CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_14_0_0_pre0}"
+    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-14x-comb2023}"
     export DHI_CMSSW_BASE="${DHI_SOFTWARE}/combine_${DHI_COMBINE_VERSION}_${DHI_SCRAM_ARCH}"
 
     local flag_file_combine="${DHI_CMSSW_BASE}/.combine_${DHI_CMSSW_VERSION}_good"
@@ -228,7 +228,7 @@ setup() {
             dhi_pip_install 'cvxpy==1.4.1' || return "$?"
             dhi_pip_install 'PyYAML==6.0' || return "$?"
             dhi_pip_install 'mermaidmro==0.2.1' || return "$?"
-            dhi_pip_install 'flake8==5.0.4' || return "$?"
+            dhi_pip_install 'flake8==6.0.0' || return "$?"
             dhi_pip_install 'flake8-commas==2.1.0' || return "$?"
             dhi_pip_install 'flake8-quotes==3.3.2' || return "$?"
 
@@ -435,8 +435,8 @@ interactive_setup() {
     fi
     query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "${eos_user_store}" "${eos_user_store_repr}"
     query DHI_SOFTWARE "Directory for installing software" "${DHI_DATA}/software" "\$DHI_DATA/software"
-    query DHI_CMSSW_VERSION "Version of CMSSW to be used" "CMSSW_11_3_4"
-    query DHI_COMBINE_VERSION "Version of combine to be used (tag name)" "v9.1.0"
+    query DHI_CMSSW_VERSION "Version of CMSSW to be used" "CMSSW_14_0_0_pre0"
+    query DHI_COMBINE_VERSION "Version of combine to be used (tag name)" "14x-comb2023"
     query DHI_DATACARDS_RUN2 "Location of the datacards_run2 repository (optional)" "" "''"
     query DHI_WLCG_CACHE_ROOT "Local directory for caching remote files" "" "''"
     export_and_save DHI_WLCG_USE_CACHE "$( [ -z "${DHI_WLCG_CACHE_ROOT}" ] && echo false || echo true )"

@@ -30,6 +30,8 @@ __version__ = "0.1.0"
 # helper to split version strings
 def split_version(v):
     m = re.match(r"^v?(\d+)\.(\d+)\.(\d+)(-.+)?$", v)
+    if m == None:
+        return m
     return tuple(map(int, m.groups()[:3])) + (m.group(4),)
 
 
