@@ -56,6 +56,8 @@ class HHModelTask(AnalysisTask):
         # EFT
         "C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP", "MA", "Z6", "TB", "CBA", "LQ", "MQ",
         "XI", "kl_EFT", "kt_EFT", "C2_EFT", "cosbma", "tanbeta",
+        # TOFIX ATLASCMS branch: we would rename instead of adding stuff here
+        "k2V","kF","kH","kV","kb","klambda","ktau","mu_HH_VBF","mu_HH_ggF","xsec_br"
     )
     ALL_POIS = R_POIS + K_POIS
 
@@ -79,7 +81,7 @@ class HHModelTask(AnalysisTask):
     )
 
     # switch to decide on a per task-level if an HH model is required or not
-    allow_empty_hh_model = False
+    allow_empty_hh_model = True
 
     def __init__(self, *args, **kwargs):
         super(HHModelTask, self).__init__(*args, **kwargs)
@@ -149,8 +151,13 @@ class HHModelTask(AnalysisTask):
 
         # helper to set options when existing
         def set_opt(name, value):
-            if name in model.hh_options:
-                model.set_opt(name, value)
+            # TOFIX ATLASCMS branch: dummy_model will solve, when merged to master pull to test fix
+            try: 
+                model.hh_options
+                if name in model.hh_options:
+                    model.set_opt(name, value)
+            except:
+                pass
 
         # set physics options
         set_opt("doNNLOscaling", not options.get("noNNLOscaling", False))
@@ -163,7 +170,11 @@ class HHModelTask(AnalysisTask):
                 set_opt(opt, options.get(opt))
 
         # reset pois
-        model.reset_pois()
+        # TOFIX ATLASCMS branch: dummy_model will solve, when merged to master pull to test fix
+        try:
+            model.reset_pois()
+        except:
+            pass
 
         return mod, model
 
@@ -327,8 +338,12 @@ class HHModelTask(AnalysisTask):
             self._k_pois = tuple(self.K_POIS)
         else:
             model = self.load_hh_model()[1]
-            self._r_pois = tuple(model.r_pois)
-            self._k_pois = tuple(model.k_pois)
+            # TOFIX ATLASCMS branch: dummy_model will solve, when merged to master pull to test fix
+            try:
+                self._r_pois = tuple(model.r_pois)
+                self._k_pois = tuple(model.k_pois)
+            except:
+                pass
 
     @property
     def r_pois(self):
@@ -1190,7 +1205,12 @@ class POITask(DatacardTask, ParameterValuesTask):
         super(POITask, self).__init__(*args, **kwargs)
 
         # store all available pois on task level and potentially update them according to the model
-        self.all_pois = self.r_pois + self.k_pois
+        # TOFIX ATLASCMS branch: dummy_model will solve, when merged to master pull to test fix
+        try:
+            self.all_pois = self.r_pois + self.k_pois
+        except:
+            self.all_pois = ("k2V","kF","kH","kV","kb","klambda","kt","ktau","mu_HH_VBF","mu_HH_ggF","xsec_br")
+            # give poi's option in command line
 
         # check again of the chosen pois are available
         for p in self.pois:
@@ -1509,7 +1529,8 @@ class POIScanTask(POITask, ParameterScanTask):
                         continue
 
                     # check model poi ranges
-                    model_ranges = law.util.merge_dicts({}, model.r_pois, model.k_pois)
+                    #model_ranges = law.util.merge_dicts({}, model.r_pois, model.k_pois)
+                    model_ranges = law.util.merge_dicts({}, self.all_pois)
                     if self.warn_if_scan_range_exceeds_model_range and p in model_ranges:
                         _s, _e = model_ranges[p][1:3]
                         if s < _s:

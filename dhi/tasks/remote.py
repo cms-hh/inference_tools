@@ -259,7 +259,9 @@ class HTCondorWorkflow(AnalysisTask, law.htcondor.HTCondorWorkflow):
         if self.htcondor_flavor == "cern":
             # use el7 at CERN
             # https://batchdocs.web.cern.ch/local/submit.html#os-selection-via-containers
-            config.custom_content.append(("MY.WantOS", "el7"))
+            #config.custom_content.append(("MY.WantOS", "el7"))
+            config.custom_content.append(("requirements", '(OpSysAndVer =?= "CentOS7")'))
+            # TOFIX ATLASCMS branch: probable bug in containers
         elif self.htcondor_flavor == "naf":
             # use cc7 at NAF
             config.custom_content.append(("requirements", '(OpSysAndVer =?= "CentOS7")'))

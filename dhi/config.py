@@ -148,6 +148,7 @@ campaign_labels.update(br_hh_names)
 
 # poi defaults (value, range, points, taken from physics model) and labels
 # note: C2V and CV are not following kappa notation and are upper case to be consistent to the model
+# TOFIX ATLASCMS branch: we would rename instead of adding ATLAS naming stuff here
 poi_data = DotDict(
     r=DotDict(range=(-20.0, 20.0), label=r"$r$", sm_value=1.0),
     r_gghh=DotDict(range=(-20.0, 20.0), label=r"$r_{gghh}$", sm_value=1.0),
@@ -157,6 +158,16 @@ poi_data = DotDict(
     kt=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
     C2V=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{2V}$", sm_value=1.0),
     CV=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{V}$", sm_value=1.0),
+    k2V=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
+    kF=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
+    kH=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
+    kV=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
+    kb=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
+    klambda=DotDict(range=(-30.0, 30.0), label=r"$\kappa_{\lambda}$", sm_value=1.0),
+    ktau=DotDict(range=(-10.0, 10.0), label=r"$\kappa_{t}$", sm_value=1.0),
+    mu_HH_VBF=DotDict(range=(-20.0, 20.0), label=r"$r$", sm_value=1.0),
+    mu_HH_ggF=DotDict(range=(-20.0, 20.0), label=r"$r$", sm_value=1.0),
+    xsec_br=DotDict(range=(-20.0, 20.0), label=r"$r$", sm_value=1.0),
     C2=DotDict(range=(-2.0, 3.0), label=r"$C_{2}$", sm_value=0.0),
     CG=DotDict(range=(-2.0, 2.0), label=r"$C_{g}$", sm_value=0.0),
     C2G=DotDict(range=(-2.0, 2.0), label=r"$C_{2g}$", sm_value=0.0),
