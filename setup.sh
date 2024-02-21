@@ -138,16 +138,15 @@ setup() {
                 scram b
             ) || return "$?"
 
-	    local combine_repo="https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git"
-	    if [[ ${DHI_COMBINE_VERSION} == "lviliani:14x-comb2023" ]]; then
-		export DHI_COMBINE_VERSION="14x-comb2023"
-		local combine_repo="https://github.com/lviliani/HiggsAnalysis-CombinedLimit.git"
+	    local combine_install="${DHI_COMBINE_VERSION} https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git"
+	    if [ -z ${DHI_COMBINE_REPO} ]; then
+		local combine_install="${DHI_COMBINE_VERSION} ${DHI_COMBINE_REPO}"
 	    fi
             # add combine
             (
                 cd "${DHI_CMSSW_BASE}/${DHI_CMSSW_VERSION}/src"
                 eval "$( scramv1 runtime -sh )" && \
-                git clone --branch "${DHI_COMBINE_VERSION}" ${combine_repo} HiggsAnalysis/CombinedLimit && \
+                git clone --branch ${combine_install} HiggsAnalysis/CombinedLimit && \
                 cd HiggsAnalysis/CombinedLimit && \
                 chmod ug+x test/diffNuisances.py && \
                 ( [ "${DHI_COMBINE_PYTHON_ONLY}" = "1" ] && scram b python || scram b -j "${DHI_INSTALL_CORES}" )
