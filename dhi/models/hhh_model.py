@@ -54,7 +54,6 @@ class HHHSample:
         self.val_xs  = val_xs
         self.label   = label
 
-####################
 class HHHFormula:
     def __init__(self, sample_list):
         self.sample_list = sample_list
@@ -80,7 +79,7 @@ class HHHFormula:
 
         if len(self.sample_list) != 9:
             print ("[ERROR] : expecting 9 samples in input")
-            raise RuntimeError("malformed vbf input sample list")
+            raise RuntimeError("malformed input sample list")
         M_tofill = [
             [None,None,None,None,None,None,None,None,None],
             [None,None,None,None,None,None,None,None,None],
@@ -111,16 +110,9 @@ class HHHFormula:
             self.xSections['s'+str(isample+1)]=sample.val_xs
 
 
-        #print (M_tofill)
-        #print("Input Matrix defined as  :\n")
-        #for row in  M_tofill:
-        #    print(end="   ")
-        #    for item in row:
-        #        print("{0:0.3f}".format(item), " | ",end="")
-        #    print()
- 
         self.M = Matrix(M_tofill)
-        #print ("\n Determinant of the matrix : " , det(self.M) )
+        if det(self.M) ==0.0:
+            print ("\n Determinant of the matrix : " , det(self.M) )
 
     def calculatecoeffients(self):
         """ create the function sigma and the nine coefficients in this object """
@@ -184,9 +176,6 @@ class HHHFormula:
             substitutions.append((ky,params[ky]))
         return self.sigmaEval.subs(substitutions)[0]
 
-####################
-
-
 class HHHModel(PhysicsModel):
     """ Models the HHH production as linear sum of 9 components (GGF) """
     def __init__(self, ggHHH_sample_list , name):
@@ -220,34 +209,22 @@ class HHHModel(PhysicsModel):
         print ("[INFO]  HHH model : " , self.name)
         print ("......  ggHHH configuration")
         for i,s in enumerate(self.ggHHH_formula.sample_list):
-            print ("        {0:<3} ... kl : {1:<3}, kt : {2:<3}, xs : {3:<3.8f} pb, label : {4}".format(i, s.val_c3, s.val_d4, s.val_xs, s.label))
+            print ("        {0:<3} ... kl : {1:<3}, kt : {2:<3}, xs : {3:<3.8f} pb, label : {4}".format(i, s.val_c3+1, s.val_d4+1, s.val_xs, s.label))
 
     def doParametersOfInterest(self):
         
         ## the model is built with:
         ## GGF = r_GGF x [sum samples(kl, kt)] 
         
-        
         POIs = "r,c3,d4"
-        #self.modelBuilder.doVar("r[1,0,10000]")
         self.modelBuilder.doVar("r[0.001,0,10000.0]")
-        #self.modelBuilder.doVar("r_hhh[1,0,10000]")
         self.modelBuilder.doVar("c3[0.0,-10000,10000]")
         self.modelBuilder.doVar("d4[0.0,-10000,10000]")
         
         self.modelBuilder.doSet("POI",POIs)
 
-        #self.modelBuilder.out.var("r_gghh") .setConstant(True)
-        #self.modelBuilder.out.var("r_qqhh") .setConstant(True)
-        #self.modelBuilder.out.var("CV")     .setConstant(True)
-        #self.modelBuilder.out.var("C2V")    .setConstant(True)
-        #self.modelBuilder.out.var("kl")     .setConstant(True)
-        #self.modelBuilder.out.var("kt")     .setConstant(True)
-        
-        #self.modelBuilder.out.var("r_hhh")  .setConstant(True)
         self.modelBuilder.out.var("c3")     .setConstant(True)
         self.modelBuilder.out.var("d4")     .setConstant(True)
-        
 
         self.create_scalings()
 
@@ -292,18 +269,11 @@ class HHHModel(PhysicsModel):
             print ("Expression name  : " , exprname)
             self.modelBuilder.factory_(exprname) # the function that scales each sample
             
-            #f_prod_name_pmode = f_name + '_r_hhh'
-            #prodname = 'prod::{}(r_hhh,{})'.format(f_prod_name_pmode, f_name)
-            #self.modelBuilder.factory_(prodname)  ## the function that scales this production mode
-            #self.modelBuilder.out.function(f_prod_name_pmode).Print("") ## will just print out the values
-
-            #f_prod_name = f_prod_name_pmode + '_r'
             f_prod_name = f_name + '_r'
             prodname = 'prod::{}(r,{})'.format(f_prod_name, f_name)
             self.modelBuilder.factory_(prodname)  ## the function that scales this production mode
             self.modelBuilder.out.function(f_prod_name).Print("") ## will just print out the values
 
-            #self.f_r_ggf_names.append(f_prod_name) #bookkeep the scaling that has been created
             self.f_r_ggf_names.append(f_prod_name) #bookkeep the scaling that has been created
 
 
@@ -337,71 +307,26 @@ class HHHModel(PhysicsModel):
         if len(imatched_ggf) == 1:
             isample = imatched_ggf[0]
             self.scalingMap[process].append((isample, 'GGF'))
-            #print isample , self.f_r_ggf_names[isample]
             return self.f_r_ggf_names[isample]
         raise RuntimeError('HHHModel : fatal error in getYieldScale - this should never happen')
 
     def done(self):
         print ('the function done is not used for the moment, have to be updated not to fail for Run II combination')
-        ## this checks that a scaling has been attached to a unique process
- #       scalings = {}
- #       for k, i in self.scalingMap.items(): ## key -> process, item -> [(isample, 'type')]
- #           samples = list(set(i)) # remove duplicates
- #           for s in samples:
- #               if not s in scalings:
- #                   scalings[s] = []
- #               scalings[s].append(k)
-#
-#        #for key, val in scalings.items():
-#        #    if len(val) > 1:
-#        #        print "[ERROR] : in HH model named", self.name, "there is a double assignment of a scaling : ", key, " ==> ", val
-#        #        raise RuntimeError('HHModel : coudl not uniquely match the scaling to the process')
-#
-#        ## now check that, if a VBF/GGF scaling exists, there are actually 6/3 samples in the card
-#        n_VBF = 0
-#        n_GGF = 0
-#        for k, i in self.scalingMap.items():
-#            # the step above ensured me that the list contains a single element -> i[0]
-#            if i[0][1] == "GGF":
-#                n_GGF += 1
-#            elif i[0][1] == "VBF":
-#                n_VBF += 1
-#            else:
-#                raise RuntimeError("HHModel : unrecognised type %s - should never happen" % i[0][1])
-#
-#        if n_GGF > 0 and n_GGF != 3:
-#            raise RuntimeError("HHModel : you did not pass all the 3 samples needed to build the GGF HH model")
-#        
-#        if n_VBF > 0 and n_VBF != 6:
-#            raise RuntimeError("HHModel : you did not pass all the 6 samples needed to build the VBF HH model")
 
 
-####################
 # set of all cross sections
-
 HHH_List=[]
-br_ratio=0.0023098822656
-#HHH_List.append(HHHSample( 0,0,val_xs=3.274e-05*br_ratio *1e3*2.22 , label='c3_0_d4_0' ) )
-#HHH_List.append(HHHSample( 0,99,val_xs=5.243e-03*br_ratio *1e3*2.22 , label='c3_0_d4_99' ) )
-#HHH_List.append(HHHSample( 0,-1,val_xs=3.624e-05*br_ratio *1e3*2.22 , label='c3_0_d4_m1' ) )
-#HHH_List.append(HHHSample( 19,19,val_xs=1.318e-01*br_ratio *1e3*2.22 , label='c3_19_d4_19' ) )
-#HHH_List.append(HHHSample( 1,0,val_xs=2.567e-05*br_ratio *1e3*2.22 , label='c3_1_d4_0' ) )
-#HHH_List.append(HHHSample( 1,2,val_xs=1.415e-05*br_ratio *1e3*2.22 , label='c3_1_d4_2' ) )
-#HHH_List.append(HHHSample( 2,-1,val_xs=5.110e-05*br_ratio *1e3*2.22 , label='c3_2_d4_m1' ) )
-#HHH_List.append(HHHSample( 4,9,val_xs=2.182e-04*br_ratio *1e3*2.22 , label='c3_4_d4_9' ) )
-#HHH_List.append(HHHSample( -1,0,val_xs=1.004e-04*br_ratio *1e3*2.22 , label='c3_m1_d4_0' ) )
-#HHH_List.append(HHHSample( -1,-1,val_xs=9.674e-05*br_ratio *1e3*2.22 , label='c3_m1_d4_m1' ) )
-#HHH_List.append(HHHSample( -1.5,-0.5,val_xs=1.723e-04*br_ratio *1e3*2.22 , label='c3_m1p5_d4_m0p5' ) )
-
-HHH_List.append(HHHSample( 0   ,0  ,  val_xs=3.274e-05*br_ratio*1e3*2.22,      label='c3_0_d4_0' ) )
-HHH_List.append(HHHSample( 0   ,99 ,  val_xs=5.243e-03*br_ratio*1e3*2.22,      label='c3_0_d4_99' ) )
-HHH_List.append(HHHSample( 0   ,-1 ,  val_xs=3.624e-05*br_ratio*1e3*2.22,      label='c3_0_d4_m1' ) )
-HHH_List.append(HHHSample( 19  ,19 ,  val_xs=1.318e-01*br_ratio*1e3*2.22,      label='c3_19_d4_19' ) )
-HHH_List.append(HHHSample( 1   ,0  ,  val_xs=2.567e-05*br_ratio*1e3*2.22,      label='c3_1_d4_0' ) )
-HHH_List.append(HHHSample( 4   ,9  ,  val_xs=2.182e-04*br_ratio*1e3*2.22,      label='c3_4_d4_9' ) )
-HHH_List.append(HHHSample( -1  ,0  ,  val_xs=1.004e-04*br_ratio*1e3*2.22,      label='c3_m1_d4_0' ) )
-HHH_List.append(HHHSample( -1  ,-1 ,  val_xs=9.674e-05*br_ratio*1e3*2.22,       label='c3_m1_d4_m1' ) )
-HHH_List.append(HHHSample( -1.5,-0.5, val_xs=1.723e-04*br_ratio*1e3*2.22,     label='c3_m1p5_d4_m0p5' ) )
+br_ratio = 0.0023098822656
+k_factor = 2.22
+HHH_List.append(HHHSample( 0   ,0  ,  val_xs=3.274e-05*br_ratio*1e3*k_factor,      label='c3_0_d4_0' ) )
+HHH_List.append(HHHSample( 0   ,99 ,  val_xs=5.243e-03*br_ratio*1e3*k_factor,      label='c3_0_d4_99' ) )
+HHH_List.append(HHHSample( 0   ,-1 ,  val_xs=3.624e-05*br_ratio*1e3*k_factor,      label='c3_0_d4_m1' ) )
+HHH_List.append(HHHSample( 19  ,19 ,  val_xs=1.318e-01*br_ratio*1e3*k_factor,      label='c3_19_d4_19' ) )
+HHH_List.append(HHHSample( 1   ,0  ,  val_xs=2.567e-05*br_ratio*1e3*k_factor,      label='c3_1_d4_0' ) )
+HHH_List.append(HHHSample( 4   ,9  ,  val_xs=2.182e-04*br_ratio*1e3*k_factor,      label='c3_4_d4_9' ) )
+HHH_List.append(HHHSample( -1  ,0  ,  val_xs=1.004e-04*br_ratio*1e3*k_factor,      label='c3_m1_d4_0' ) )
+HHH_List.append(HHHSample( -1  ,-1 ,  val_xs=9.674e-05*br_ratio*1e3*k_factor,      label='c3_m1_d4_m1' ) )
+HHH_List.append(HHHSample( -1.5,-0.5, val_xs=1.723e-04*br_ratio*1e3*k_factor,      label='c3_m1p5_d4_m0p5' ) )
 
 
 print("Making the Object with ",len(HHH_List)," samples \n") 
