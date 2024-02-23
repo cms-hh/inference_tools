@@ -49,8 +49,8 @@ __all__ = [
 
 class HHHSample:
     def __init__(self, val_c3, val_d4, val_xs, label):
-        self.val_c3  = val_c3
-        self.val_d4  = val_d4
+        self.val_kl  = val_c3+1.0
+        self.val_k4  = val_d4+1.0
         self.val_xs  = val_xs
         self.label   = label
 
@@ -94,17 +94,17 @@ class HHHFormula:
         
         self.xSections={}
         for isample, sample in enumerate(self.sample_list):
-            print(isample, " c3, d4  = ", sample.val_c3, sample.val_d4, sample.val_xs)
+           # print(isample, " kl, k4  = ", sample.val_kl, sample.val_k4, sample.val_xs)
 
             ## implement the 9 scalings
-            M_tofill[isample][0] = sample.val_c3**4                             
-            M_tofill[isample][1] = sample.val_c3**3
-            M_tofill[isample][2] = sample.val_c3**2
-            M_tofill[isample][3] = sample.val_c3**2 * sample.val_d4
-            M_tofill[isample][4] = sample.val_c3    
-            M_tofill[isample][5] = sample.val_c3 * sample.val_d4
-            M_tofill[isample][6] = sample.val_d4**2
-            M_tofill[isample][7] = sample.val_d4
+            M_tofill[isample][0] = sample.val_kl**4                             
+            M_tofill[isample][1] = sample.val_kl**3
+            M_tofill[isample][2] = sample.val_kl**2
+            M_tofill[isample][3] = sample.val_kl**2 * sample.val_k4
+            M_tofill[isample][4] = sample.val_kl    
+            M_tofill[isample][5] = sample.val_kl * sample.val_k4
+            M_tofill[isample][6] = sample.val_k4**2
+            M_tofill[isample][7] = sample.val_k4
             M_tofill[isample][8] = 1.0
 
             self.xSections['s'+str(isample+1)]=sample.val_xs
@@ -120,18 +120,18 @@ class HHHFormula:
         try: self.M
         except AttributeError: self.build_matrix()
         ##############################################    
-        c3, d4, A, B, C, D, E, F, G, H, I, s1, s2, s3, s4, s5, s6, s7, s8, s9 = symbols('c3, d4, A, B, C, D, E, F, G, H, I, s1, s2, s3, s4, s5, s6, s7, s8, s9')
+        kl, k4, A, B, C, D, E, F, G, H, I, s1, s2, s3, s4, s5, s6, s7, s8, s9 = symbols('kl, k4, A, B, C, D, E, F, G, H, I, s1, s2, s3, s4, s5, s6, s7, s8, s9')
         ### the vector of couplings
         ### the vector of couplings
         c = Matrix([
-            [c3**4 ] ,
-            [c3**3] ,
-            [c3**2] ,
-            [c3**2 * d4] ,
-            [c3] ,
-            [c3 * d4] ,
-            [d4**2] ,
-            [d4] ,
+            [kl**4 ] ,
+            [kl**3] ,
+            [kl**2] ,
+            [kl**2 * k4] ,
+            [kl] ,
+            [kl * k4] ,
+            [k4**2] ,
+            [k4] ,
             [1] ,
         ])
         ### the vector of components
@@ -192,8 +192,8 @@ class HHHModel(PhysicsModel):
         ])
 
         self.k_pois = OrderedDict([
-        ("c3", (1, -30, 30)),
-        ("d4", (1, -10, 10)),
+        ("kl", (1, -30, 30)),
+        ("k4", (1, -10, 10)),
     ])
 
     def check_validity_ggf( self, ggf_sample_list ):
@@ -209,22 +209,22 @@ class HHHModel(PhysicsModel):
         print ("[INFO]  HHH model : " , self.name)
         print ("......  ggHHH configuration")
         for i,s in enumerate(self.ggHHH_formula.sample_list):
-            print ("        {0:<3} ... kl : {1:<3}, kt : {2:<3}, xs : {3:<3.8f} pb, label : {4}".format(i, s.val_c3+1, s.val_d4+1, s.val_xs, s.label))
+            print ("        {0:<3} ... kl : {1:<3}, kt : {2:<3}, xs : {3:<3.8f} pb, label : {4}".format(i, s.val_kl, s.val_k4, s.val_xs, s.label))
 
     def doParametersOfInterest(self):
         
         ## the model is built with:
         ## GGF = r_GGF x [sum samples(kl, kt)] 
         
-        POIs = "r,c3,d4"
+        POIs = "r,kl,k4"
         self.modelBuilder.doVar("r[0.001,0,10000.0]")
-        self.modelBuilder.doVar("c3[0.0,-10000,10000]")
-        self.modelBuilder.doVar("d4[0.0,-10000,10000]")
+        self.modelBuilder.doVar("kl[0.0,-10000,10000]")
+        self.modelBuilder.doVar("k4[0.0,-10000,10000]")
         
         self.modelBuilder.doSet("POI",POIs)
 
-        self.modelBuilder.out.var("c3")     .setConstant(True)
-        self.modelBuilder.out.var("d4")     .setConstant(True)
+        self.modelBuilder.out.var("kl")     .setConstant(True)
+        self.modelBuilder.out.var("k4")     .setConstant(True)
 
         self.create_scalings()
 
@@ -252,8 +252,8 @@ class HHHModel(PhysicsModel):
             # for ROOFit, this will convert expressions as a**2 to a*a
             s_expr = pow_to_mul_string(f_expr)
             couplings_in_expr = []
-            if 'c3'  in s_expr: couplings_in_expr.append('c3')
-            if 'd4'  in s_expr: couplings_in_expr.append('d4')
+            if 'kl'  in s_expr: couplings_in_expr.append('kl')
+            if 'k4'  in s_expr: couplings_in_expr.append('k4')
 
             # no constant expressions are expected
             if len(couplings_in_expr) == 0:
@@ -314,7 +314,13 @@ class HHHModel(PhysicsModel):
         print ('the function done is not used for the moment, have to be updated not to fail for Run II combination')
 
 
+########################################################
+# definition of the model inputs
+## NOTE : the scaling functions are not sensitive to global scalings of the xs of each sample
+## so by convention use val_xs of the samples *without* the decay BR [ TODO , need to validate this ]
+## NOTE 2 : the xs *must* correspond to the generator one
 # set of all cross sections
+
 HHH_List=[]
 br_ratio = 0.0023098822656
 k_factor = 2.22
@@ -329,49 +335,24 @@ HHH_List.append(HHHSample( -1  ,-1 ,  val_xs=9.674e-05*br_ratio*1e3*k_factor,   
 HHH_List.append(HHHSample( -1.5,-0.5, val_xs=1.723e-04*br_ratio*1e3*k_factor,      label='c3_m1p5_d4_m0p5' ) )
 
 
-print("Making the Object with ",len(HHH_List)," samples \n") 
-gHere = HHHFormula(HHH_List)
-
-#print("Crossection as a function of {sigma_i} {c3,d4} ! ")
-#for sig in gHere.sigma:
-#    print(sig)
-#
-#print("Scaling funtion to be applied to the sample {i} for a given {c3,d4} ! ")
-#for i,sig in enumerate(gHere.coeffs):
-#    print (i , "   :  ", sig)
-#    s=str(sig)
-#    print("   > for (0,0) " ,eval(s.replace('c3','0.0').replace('d4','0.0')))
-#
-#print("   Validation !  =====================  ")
-#for sample in HHH_List:
-#    print ("{ ",sample.label,"  | ",sample.val_c3 , "  |  " ,sample.val_d4) 
-#    evals=gHere.evaluateSigma({'c3':sample.val_c3 , 'd4':sample.val_d4 })
-#    print ("   > exact : { ",sample.val_xs," } | eval : { ",evals," } | ratio : { ",evals/sample.val_xs," } )")
-#print("              !  =====================  ")
-
-
-
-
-#print("Formula =  ",gHere.sigma[0])
-########################################################
-# definition of the model inputs
-## NOTE : the scaling functions are not sensitive to global scalings of the xs of each sample
-## so by convention use val_xs of the samples *without* the decay BR
-## NOTE 2 : the xs *must* correspond to the generator one
-
-
+print("Making the formula with ",len(HHH_List)," samples \n") 
+hhhFormula_ = HHHFormula(HHH_List)
 
 model_default = HHHModel(
     ggHHH_sample_list = HHH_List,
     name            = 'model_default'
 )
 
-#if __name__=="__main__":
-#    gHere = HHHFormula(HHH_List)
-#        
-#    for st in gHere.sigmaEval:
-#        print(st)
-#
-#    for i,st in enumerate(gHere.coeffs):
-#        print(i,st)
-#
+if __name__=="__main__":
+    print("   Validation !  =====================  ")
+    for sample in HHH_List:
+        print ("{ ",sample.label,"  | ",sample.val_kl , "  |  " ,sample.val_k4) 
+        evals=hhhFormula_.evaluateSigma({'kl':sample.val_kl , 'k4':sample.val_k4 })
+        print ("   > exact : { ",sample.val_xs," } | eval : { ",evals," } | ratio : { ",evals/sample.val_xs," } )")
+    print("              !  =====================  ")
+
+
+#print("Formula =  ",gHere.sigma[0])
+
+
+
