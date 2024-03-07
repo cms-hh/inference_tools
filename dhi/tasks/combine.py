@@ -52,12 +52,12 @@ class HHModelTask(AnalysisTask):
     R_POIS = ("r", "r_gghh", "r_qqhh", "r_vhh")
     K_POIS = (
         # SM-like
-        "kl", "kt", "CV", "C2V",
+        "kl", "kt", "CV", "C2V", "k4",
         # EFT
         "C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP", "MA", "Z6", "TB", "CBA", "LQ", "MQ",
         "XI", "kl_EFT", "kt_EFT", "C2_EFT", "cosbma", "tanbeta",
         # for HHH, chech renamings and duplications
-        "c3", "d4"
+        "c3", "d4", "k3"
     )
     ALL_POIS = R_POIS + K_POIS
 
@@ -149,20 +149,22 @@ class HHModelTask(AnalysisTask):
         # get the model
         model = getattr(mod, model_name)
 
-        # helper to set options when existing
-        def set_opt(name, value):
-            if name in model.hh_options:
-                model.set_opt(name, value)
+        if not model_name == "higgsk3k4" :
+            # TODO: FIX when dummy model branch merged that enters as dummy
+            # helper to set options when existing
+            def set_opt(name, value):
+                if name in model.hh_options:
+                    model.set_opt(name, value)
 
-        # set physics options
-        set_opt("doNNLOscaling", not options.get("noNNLOscaling", False))
-        set_opt("doBRscaling", not options.get("noBRscaling", False))
-        set_opt("doHscaling", not options.get("noHscaling", False))
-        set_opt("doklDependentUnc", not options.get("noklDependentUnc", False))
-        # profiling options with identical names
-        for opt in cls.valid_hh_model_options:
-            if opt.startswith("doProfile"):
-                set_opt(opt, options.get(opt))
+            # set physics options
+            set_opt("doNNLOscaling", not options.get("noNNLOscaling", False))
+            set_opt("doBRscaling", not options.get("noBRscaling", False))
+            set_opt("doHscaling", not options.get("noHscaling", False))
+            set_opt("doklDependentUnc", not options.get("noklDependentUnc", False))
+            # profiling options with identical names
+            for opt in cls.valid_hh_model_options:
+                if opt.startswith("doProfile"):
+                    set_opt(opt, options.get(opt))
 
         # reset pois
         try:
@@ -171,7 +173,8 @@ class HHModelTask(AnalysisTask):
             pass
         # TODO: FIX reset_pois in hhh_model
 
-        return mod, model
+        return mod, model,model_name
+        # TODO: FIX when dummy model branch merged that enters as dummy
 
     @classmethod
     def _create_xsec_func(cls, hh_model, r_poi, unit, br=None, safe_signature=True):
@@ -204,12 +207,19 @@ class HHModelTask(AnalysisTask):
             has_unc = get_xsec.has_unc()
             signature_kwargs = set(get_xsec.xsec_kwargs)
         else:  # r
-            get_xsec = model.create_hh_xsec_func()
-            has_unc = get_xsec.has_unc(ggf_nnlo=model.opt("doNNLOscaling"))
-            signature_kwargs = set(get_xsec.xsec_kwargs)
-            if "ggf_nnlo" in signature_kwargs:
-                signature_kwargs -= {"ggf_nnlo"}
-                get_xsec = functools.partial(get_xsec, ggf_nnlo=model.opt("doNNLOscaling"))
+            ## TODO solve to r_hhh
+            try:
+                get_xsec = model.create_hh_xsec_func()
+                has_unc = get_xsec.has_unc(ggf_nnlo=model.opt("doNNLOscaling"))
+                signature_kwargs = set(get_xsec.xsec_kwargs)
+                if "ggf_nnlo" in signature_kwargs:
+                    signature_kwargs -= {"ggf_nnlo"}
+                    get_xsec = functools.partial(get_xsec, ggf_nnlo=model.opt("doNNLOscaling"))
+            except: # for hhh , doing HH xsec instead
+                has_unc = False
+                signature_kwargs = {}
+                #get_xsec = model.create_hh_xsec_func()
+                #get_xsec = functools.partial(get_xsec, ggf_nnlo=model.opt("doNNLOscaling"))
 
         # compute the scale conversion
         scale = {"pb": 1.0, "fb": 1000.0}[unit]
@@ -221,7 +231,7 @@ class HHModelTask(AnalysisTask):
             if safe_signature:
                 # remove all kwargs that are not accepted
                 kwargs = {k: v for k, v in kwargs.items() if k in signature_kwargs}
-            return get_xsec(**kwargs) * scale
+            return 1 #get_xsec(**kwargs) * scale
 
         # store whether it accepts an uncertainty
         wrapper.has_unc = has_unc
@@ -333,8 +343,14 @@ class HHModelTask(AnalysisTask):
             self._k_pois = tuple(self.K_POIS)
         else:
             model = self.load_hh_model()[1]
-            self._r_pois = tuple(model.r_pois)
-            self._k_pois = tuple(model.k_pois)
+            # TODO: FIX when dummy model branch merged that enters as dummy
+            model_name = self.load_hh_model()[2]
+            if not model_name == "higgsk3k4" :
+                self._r_pois = tuple(model.r_pois)
+                self._k_pois = tuple(model.k_pois)
+            else:
+                self._r_pois = tuple(self.R_POIS)
+                self._k_pois = tuple(self.K_POIS)
 
     @property
     def r_pois(self):
@@ -1496,7 +1512,7 @@ class POIScanTask(POITask, ParameterScanTask):
                 "the {where} value {allowed} of the physics model, please adjust the allowed range "
                 "via --parameter-ranges 'name,start,stop' or choose a different scan range"
             )
-            _, model = self.load_hh_model()
+            _, model, model_name = self.load_hh_model()
             for p, ranges in self.scan_parameters_dict.items():
                 for s, e, _ in ranges:
                     # check parameter ranges first
@@ -1515,19 +1531,20 @@ class POIScanTask(POITask, ParameterScanTask):
                         continue
 
                     # check model poi ranges
-                    model_ranges = law.util.merge_dicts({}, model.r_pois, model.k_pois)
-                    if self.warn_if_scan_range_exceeds_model_range and p in model_ranges:
-                        _s, _e = model_ranges[p][1:3]
-                        if s < _s:
-                            self.logger.warning_once(
-                                f"exceeded_start_{p}_{s}",
-                                msg.format(p=p, where="start", value=s, allowed=_s),
-                            )
-                        if e > _e:
-                            self.logger.warning_once(
-                                f"exceeded_start_{p}_{e}",
-                                msg.format(p=p, where="stop", value=e, allowed=_e),
-                            )
+                    if not model_name == "higgsk3k4" :
+                        model_ranges = law.util.merge_dicts({}, model.r_pois, model.k_pois)
+                        if self.warn_if_scan_range_exceeds_model_range and p in model_ranges:
+                            _s, _e = model_ranges[p][1:3]
+                            if s < _s:
+                                self.logger.warning_once(
+                                    f"exceeded_start_{p}_{s}",
+                                    msg.format(p=p, where="start", value=s, allowed=_s),
+                                )
+                            if e > _e:
+                                self.logger.warning_once(
+                                    f"exceeded_start_{p}_{e}",
+                                    msg.format(p=p, where="stop", value=e, allowed=_e),
+                                )
 
     def _joined_parameter_values_pois(self):
         pois = super(POIScanTask, self)._joined_parameter_values_pois()
@@ -1879,7 +1896,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
 
         # remove signal processes that are not covered by the physics model
         if not self.hh_model_empty:
-            mod, model = self.load_hh_model()
+            mod, model, model_name = self.load_hh_model()
 
             # get all datacard processes
             blocks = read_datacard_blocks(output_card.path)
@@ -1922,13 +1939,15 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
                     remove_processes(output_card.path, map("{0}*".format, to_remove))
 
             # remove the THU_HH nuisance if not added (probably in listed in nuisances group)
-            if not model.opt("doklDependentUnc"):
-                from dhi.scripts.remove_parameters import remove_parameters
-                self.logger.info(
-                    f"trying to remove '{model.ggf_kl_dep_unc}' from the combined datacard "
-                    "as the model does not add it",
-                )
-                remove_parameters(output_card.path, [model.ggf_kl_dep_unc])
+            # TODO write better, if it is a new model it will not have this
+            if self.keep_additional_signals != "all":
+                if not model.opt("doklDependentUnc"):
+                    from dhi.scripts.remove_parameters import remove_parameters
+                    self.logger.info(
+                        f"trying to remove '{model.ggf_kl_dep_unc}' from the combined datacard "
+                        "as the model does not add it",
+                    )
+                    remove_parameters(output_card.path, [model.ggf_kl_dep_unc])
 
         # copy shape files and the datacard to the output location
         output = self.output()
@@ -2008,10 +2027,15 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
         model_args = []
         if not self.hh_model_empty:
             model = self.load_hh_model()[1]
-            model_args.append(f"--physics-model {model.__module__}:{model.name}")
+            model_name = self.load_hh_model()[2]
+            if not model_name == "higgsk3k4" :
+                model_args.append(f"--physics-model {model.__module__}:{model.name}")
+            else:
+                model_args.append(f"--physics-model {model.__module__}:{model_name}")
             # add options
-            for name, opt in model.hh_options.items():
-                model_args.append(f"--physics-option {name}={opt['value']}")
+            if not model_name == "higgsk3k4" :
+                for name, opt in model.hh_options.items():
+                    model_args.append(f"--physics-option {name}={opt['value']}")
 
         # optimization options
         opt_args = ""

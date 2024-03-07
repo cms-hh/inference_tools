@@ -62,7 +62,7 @@ class Snapshot(POITask, CombineCommandTask, law.LocalWorkflow, HTCondorWorkflow)
         else:
             blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
 
-        test_timming_options = test_timming_options_base(self.output().path, self.test_timming)
+        test_timming_options = " " # test_timming_options_base(self.output().path, self.test_timming)
 
         # build the command
         cmd = (
