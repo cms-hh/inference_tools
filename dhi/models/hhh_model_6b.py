@@ -119,7 +119,18 @@ class HHHFormula:
 
         try: self.M
         except AttributeError: self.build_matrix()
-        ##############################################    
+        ##############################################  
+        #     return (
+        # 0.000561288888888889*k4**2 + ==
+        # 0.00158596086279662*k4*kl**2 - == 
+        # 0.0087459608627966*k4*kl + ==
+        # 0.00309871111111112*k4 + ==
+        # 0.00131512995806449*kl**4 - ==
+        # 0.0137965222529057*kl**3 + ==
+        # 0.0608926961894692*kl**2 - ==
+        # 0.108911303894628*kl + ==
+        # 0.09674)/0.03274000000000003 ==
+  
         kl, k4, A, B, C, D, E, F, G, H, I, s1, s2, s3, s4, s5, s6, s7, s8, s9 = symbols('kl, k4, A, B, C, D, E, F, G, H, I, s1, s2, s3, s4, s5, s6, s7, s8, s9')
         ### the vector of couplings
         ### the vector of couplings
@@ -188,7 +199,7 @@ class HHHModel(PhysicsModel):
 
         # actual r and k pois, depending on used formulae and profiling options, set in reset_pois
         self.r_pois = OrderedDict([
-        ("r", (1, -3000, 3000)),
+        ("r", (1, -4000, 4000)),
         ])
 
         self.k_pois = OrderedDict([
@@ -217,9 +228,9 @@ class HHHModel(PhysicsModel):
         ## GGF = r_GGF x [sum samples(kl, kt)] 
         
         POIs = "r,kl,k4"
-        self.modelBuilder.doVar("r[0.001,0,10000.0]")
-        self.modelBuilder.doVar("kl[0.0,-10000,10000]")
-        self.modelBuilder.doVar("k4[0.0,-10000,10000]")
+        self.modelBuilder.doVar("r[500,0,10000.0]")
+        self.modelBuilder.doVar("kl[1.0,-10000,10000]")
+        self.modelBuilder.doVar("k4[1.0,-10000,10000]")
         
         self.modelBuilder.doSet("POI",POIs)
 
@@ -323,17 +334,16 @@ class HHHModel(PhysicsModel):
 
 HHH_List=[]
 br_ratio = 0.5824**3 
-k_factor = 2.22
-HHH_List.append(HHHSample( 0   ,0  ,  val_xs=3.274e-05*br_ratio*1e3*k_factor,      label='c3_0_d4_0' ) )
-HHH_List.append(HHHSample( 0   ,99 ,  val_xs=5.243e-03*br_ratio*1e3*k_factor,      label='c3_0_d4_99' ) )
-HHH_List.append(HHHSample( 0   ,-1 ,  val_xs=3.624e-05*br_ratio*1e3*k_factor,      label='c3_0_d4_m1' ) )
-HHH_List.append(HHHSample( 19  ,19 ,  val_xs=1.318e-01*br_ratio*1e3*k_factor,      label='c3_19_d4_19' ) )
-HHH_List.append(HHHSample( 1   ,0  ,  val_xs=2.567e-05*br_ratio*1e3*k_factor,      label='c3_1_d4_0' ) )
-HHH_List.append(HHHSample( 4   ,9  ,  val_xs=2.182e-04*br_ratio*1e3*k_factor,      label='c3_4_d4_9' ) )
-HHH_List.append(HHHSample( -1  ,0  ,  val_xs=1.004e-04*br_ratio*1e3*k_factor,      label='c3_m1_d4_0' ) )
-HHH_List.append(HHHSample( -1  ,-1 ,  val_xs=9.674e-05*br_ratio*1e3*k_factor,      label='c3_m1_d4_m1' ) )
-HHH_List.append(HHHSample( -1.5,-0.5, val_xs=1.723e-04*br_ratio*1e3*k_factor,      label='c3_m1p5_d4_m0p5' ) )
-
+k_factor = 2.72 #2.22
+HHH_List.append(HHHSample( 0   ,0  ,  val_xs=3.274e-05*br_ratio*k_factor,      label='c3_0_d4_0' ) )
+HHH_List.append(HHHSample( 0   ,99 ,  val_xs=5.243e-03*br_ratio*k_factor,      label='c3_0_d4_99' ) )
+HHH_List.append(HHHSample( 0   ,-1 ,  val_xs=3.624e-05*br_ratio*k_factor,      label='c3_0_d4_m1' ) )
+HHH_List.append(HHHSample( 19  ,19 ,  val_xs=1.318e-01*br_ratio*k_factor,      label='c3_19_d4_19' ) )
+HHH_List.append(HHHSample( 1   ,0  ,  val_xs=2.567e-05*br_ratio*k_factor,      label='c3_1_d4_0' ) )
+HHH_List.append(HHHSample( 4   ,9  ,  val_xs=2.182e-04*br_ratio*k_factor,      label='c3_4_d4_9' ) )
+HHH_List.append(HHHSample( -1  ,0  ,  val_xs=1.004e-04*br_ratio*k_factor,      label='c3_m1_d4_0' ) )
+HHH_List.append(HHHSample( -1  ,-1 ,  val_xs=9.674e-05*br_ratio*k_factor,      label='c3_m1_d4_m1' ) )
+HHH_List.append(HHHSample( -1.5,-0.5, val_xs=1.723e-04*br_ratio*k_factor,      label='c3_m1p5_d4_m0p5' ) )
 
 print("Making the formula with ",len(HHH_List)," samples \n") 
 hhhFormula_ = HHHFormula(HHH_List)
