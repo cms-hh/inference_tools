@@ -1039,8 +1039,11 @@ def plot_limit_points(
             else:
                 d["theory"] = 3 * (d["theory"],)
             has_thy = True
-            x_min_value = min(x_min_value, min(d["theory"]))
-            x_max_value = max(x_max_value, max(d["theory"]))
+            try:
+                x_min_value = min(x_min_value, min(d["theory"]))
+                x_max_value = max(x_max_value, max(d["theory"]))
+            except:
+                has_thy = False
 
     # sort data
     if sort_by == "expected":

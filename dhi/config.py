@@ -153,6 +153,7 @@ poi_data = DotDict(
     r_gghh=DotDict(range=(-20.0, 20.0), label=r"$r_{gghh}$", sm_value=1.0),
     r_qqhh=DotDict(range=(-20.0, 20.0), label=r"$r_{qqhh}$", sm_value=1.0),
     r_vhh=DotDict(range=(-20.0, 20.0), label=r"$r_{vhh}$", sm_value=1.0),
+    r_hhh=DotDict(range=(-2000.0, 2000.0), label=r"$r_{HHH}$", sm_value=1.0),
     kl=DotDict(range=(-20.0, 20.0), label=r"$\kappa_{\lambda}$", sm_value=1.0),
     k3=DotDict(range=(-20.0, 20.0), label=r"$\kappa_{3}$", sm_value=1.0),
     k4=DotDict(range=(-1000.0, 1000.0), label=r"$\kappa_{4}$", sm_value=1.0),
