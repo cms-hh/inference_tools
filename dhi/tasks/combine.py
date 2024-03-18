@@ -54,8 +54,8 @@ class HHModelTask(AnalysisTask):
         # SM-like
         "kl", "kt", "CV", "C2V", "k4",
         # EFT
-        "C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP", "MA", "Z6", "TB", "CBA", "LQ", "MQ",
-        "XI", "kl_EFT", "kt_EFT", "C2_EFT", "cosbma", "tanbeta",
+        #"C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP", "MA", "Z6", "TB", "CBA", "LQ", "MQ",
+        #"XI", "kl_EFT", "kt_EFT", "C2_EFT", "cosbma", "tanbeta",
         # for HHH, chech renamings and duplications
         "c3", "d4", "k3"
     )
