@@ -1148,6 +1148,13 @@ class POITask(DatacardTask, ParameterValuesTask):
         description="comma-separated names of parameters to be frozen in addition to non-POI and "
         "scan parameters",
     )
+    float_pois = law.CSVParameter(
+        default=(),
+        unique=True,
+        sort=True,
+        description="comma-separated names of parameters to be frozen in addition to non-POI and "
+        "scan parameters",
+    )
     frozen_groups = law.CSVParameter(
         default=(),
         unique=True,
@@ -1343,7 +1350,8 @@ class POITask(DatacardTask, ParameterValuesTask):
             params += tuple(p for p in self.pois if p in self.parameter_values_dict)
 
         # unused pois
-        params += tuple(self.other_pois)
+        #params += tuple(self.other_pois)
+        params += tuple(p for p in self.other_pois if not p in list(self.float_pois))
 
         # manually frozen parameters
         params += tuple(self.frozen_parameters)
