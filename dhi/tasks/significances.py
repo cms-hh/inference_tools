@@ -6,6 +6,7 @@ Tasks related to significance calculation.
 
 import law
 import luigi
+import re
 
 from dhi.tasks.base import view_output_plots
 from dhi.tasks.remote import HTCondorWorkflow
@@ -97,6 +98,35 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
         else:
             blinded_args = "--seed {self.branch} --toys {self.toys}".format(self=self)
 
+        # join custom setparameters with job-specific setparameters
+        parsed_setparams = None
+        parsed_freezeparams = None
+        cleaned_custom_args = []
+        self.custom_args = re.sub(' +', ' ', self.custom_args)
+        custom_args_list = self.custom_args.split(' ')
+        ic=0
+        while ic<len(custom_args_list):
+            c = custom_args_list[ic]
+            if c=='--setParameters':
+                parsed_setparams = custom_args_list[ic+1]
+                ic = ic+2
+            elif c=='--freezeParameters':
+                parsed_freezeparams = custom_args_list[ic+1]
+                ic = ic+2
+            else:
+                cleaned_custom_args.append(c)
+                ic = ic+1
+
+        self.custom_args = (' ').join(cleaned_custom_args)
+
+        joined_parameter_values=self.joined_parameter_values
+        joined_frozen_parameters=self.joined_frozen_parameters
+        if parsed_setparams:
+            joined_parameter_values=(',').join([self.joined_parameter_values, parsed_setparams])
+        if parsed_freezeparams:
+            joined_frozen_parameters=(',').join([self.joined_frozen_parameters, parsed_freezeparams])
+
+
         # build the command
         cmd = (
             "combine -M Significance {workspace}"
@@ -107,14 +137,16 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
             " {snapshot_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameterRanges {self.joined_parameter_ranges}"
-            " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
-            " --freezeParameters {self.joined_frozen_parameters}"
+            " --setParameters {self.joined_scan_values},{joined_parameter_values}"
+            " --freezeParameters {joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {self.combine_optimization_args}"
             " && "
             "mv higgsCombineTest.Significance.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
+            joined_parameter_values=joined_parameter_values,
+            joined_frozen_parameters=joined_frozen_parameters,
             workspace=workspace,
             output=self.output().path,
             blinded_args=blinded_args,
