@@ -140,6 +140,8 @@ campaign_labels = DotDict({
     "2017": "41.5 fb^{-1} (2017, 13 TeV)",
     "2018": "59.8 fb^{-1} (2018, 13 TeV)",
     "run2": "138 fb^{-1} (13 TeV)",
+    "projections3000": "3000 fb^{-1} (14 TeV)",
+    "projections": "(14 TeV)",
 })
 for c, c_label in list(campaign_labels.items()):
     for b, b_label in br_hh_names.items():
