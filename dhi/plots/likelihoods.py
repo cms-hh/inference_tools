@@ -444,6 +444,9 @@ def plot_likelihood_scans_1d(
     r.update_canvas(canvas)
     for path in make_list(paths):
         canvas.SaveAs(path)
+        canvas.SaveAs(path.replace(".pdf",".root"))
+        canvas.SaveAs(path.replace(".pdf",".C"))
+
 
     # save parameter ranges
     if ranges_path:
@@ -1019,6 +1022,8 @@ def plot_likelihood_scan_2d(
     r.update_canvas(canvas)
     for path in make_list(paths):
         canvas.SaveAs(path)
+        canvas.SaveAs(path.replace(".pdf",".root"))
+        canvas.SaveAs(path.replace(".pdf",".C"))
 
     # remove custom styles
     if style_changed:
@@ -1272,6 +1277,8 @@ def plot_likelihood_scans_2d(
     r.update_canvas(canvas)
     for path in make_list(paths):
         canvas.SaveAs(path)
+        canvas.SaveAs(path.replace(".pdf",".root"))
+        canvas.SaveAs(path.replace(".pdf",".C"))
 
 
 @use_style("dhi_default")
