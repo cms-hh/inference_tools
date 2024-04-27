@@ -49,13 +49,13 @@ class HHModelTask(AnalysisTask):
 
     # class-level sequence of all known pois
     # instances can potentially have reduced sets (lower case attributes), depending on the model
-    R_POIS = ("r", "r_gghh", "r_qqhh", "r_vhh")
+    R_POIS = ("r", "r_gghh", "r_qqhh", "r_vhh", "r_hhh")
     K_POIS = (
         # SM-like
         "kl", "kt", "CV", "C2V", "k4",
         # EFT
-        "C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP", "MA", "Z6", "TB", "CBA", "LQ", "MQ",
-        "XI", "kl_EFT", "kt_EFT", "C2_EFT", "cosbma", "tanbeta",
+        #"C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP", "MA", "Z6", "TB", "CBA", "LQ", "MQ",
+        #"XI", "kl_EFT", "kt_EFT", "C2_EFT", "cosbma", "tanbeta",
         # for HHH, chech renamings and duplications
         "c3", "d4", "k3"
     )
@@ -81,7 +81,7 @@ class HHModelTask(AnalysisTask):
     )
 
     # switch to decide on a per task-level if an HH model is required or not
-    allow_empty_hh_model = False
+    allow_empty_hh_model = True
 
     def __init__(self, *args, **kwargs):
         super(HHModelTask, self).__init__(*args, **kwargs)
@@ -149,7 +149,7 @@ class HHModelTask(AnalysisTask):
         # get the model
         model = getattr(mod, model_name)
 
-        if not model_name == "higgsk3k4" :
+        if "hh" in model_name  :
             # TODO: FIX when dummy model branch merged that enters as dummy
             # helper to set options when existing
             def set_opt(name, value):
@@ -345,7 +345,7 @@ class HHModelTask(AnalysisTask):
             model = self.load_hh_model()[1]
             # TODO: FIX when dummy model branch merged that enters as dummy
             model_name = self.load_hh_model()[2]
-            if not model_name == "higgsk3k4" :
+            if "hh" in model_name :
                 self._r_pois = tuple(model.r_pois)
                 self._k_pois = tuple(model.k_pois)
             else:
@@ -1148,6 +1148,13 @@ class POITask(DatacardTask, ParameterValuesTask):
         description="comma-separated names of parameters to be frozen in addition to non-POI and "
         "scan parameters",
     )
+    float_pois = law.CSVParameter(
+        default=(),
+        unique=True,
+        sort=True,
+        description="comma-separated names of parameters to be frozen in addition to non-POI and "
+        "scan parameters",
+    )
     frozen_groups = law.CSVParameter(
         default=(),
         unique=True,
@@ -1343,7 +1350,8 @@ class POITask(DatacardTask, ParameterValuesTask):
             params += tuple(p for p in self.pois if p in self.parameter_values_dict)
 
         # unused pois
-        params += tuple(self.other_pois)
+        #params += tuple(self.other_pois)
+        params += tuple(p for p in self.other_pois if not p in list(self.float_pois))
 
         # manually frozen parameters
         params += tuple(self.frozen_parameters)
@@ -1531,7 +1539,7 @@ class POIScanTask(POITask, ParameterScanTask):
                         continue
 
                     # check model poi ranges
-                    if not model_name == "higgsk3k4" :
+                    if "hh" in model_name :
                         model_ranges = law.util.merge_dicts({}, model.r_pois, model.k_pois)
                         if self.warn_if_scan_range_exceeds_model_range and p in model_ranges:
                             _s, _e = model_ranges[p][1:3]
@@ -2025,15 +2033,17 @@ class CreateWorkspace(DatacardTask, CombineCommandTask, law.LocalWorkflow, HTCon
 
         # build physics model arguments when not empty
         model_args = []
+        print(self.hh_model_empty)
         if not self.hh_model_empty:
             model = self.load_hh_model()[1]
             model_name = self.load_hh_model()[2]
-            if not model_name == "higgsk3k4" :
+            print(self.hh_model_empty, model_name)
+            if "hh" in model_name :
                 model_args.append(f"--physics-model {model.__module__}:{model.name}")
             else:
                 model_args.append(f"--physics-model {model.__module__}:{model_name}")
             # add options
-            if not model_name == "higgsk3k4" :
+            if "hh" in model_name :
                 for name, opt in model.hh_options.items():
                     model_args.append(f"--physics-option {name}={opt['value']}")
 

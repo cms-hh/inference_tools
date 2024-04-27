@@ -161,6 +161,7 @@ def create_hh_process_label(poi="r", prefix=r"pp $\rightarrow$ "):
     proc = {
         "r": "HH",
         "r_gghh": "HH",
+        "r_hhh": "HHH",
         "r_qqhh": "qqHH",
         "r_vhh": "VHH",
         "r_xhh": r"X $\rightarrow$ HH",
