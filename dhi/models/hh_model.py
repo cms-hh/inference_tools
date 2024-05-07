@@ -127,6 +127,8 @@ class HHHSample(HHSample):
     """
     Class describing hhh samples, charecterized by c3 and d4.
     """
+    # label format
+    label_re = r"^c3_([pm0-9]+)_d4_([pm0-9]+)$"
     def __init__(self, c3, d4, xs, label):
         super(HHHSample, self).__init__(xs, label)
         self.c3  = c3
@@ -277,7 +279,7 @@ class HHFormula(object):
         self.M = None  # the matrix to be inverted
         self.coeffs = None  # scaling coefficients per sample
         self.sigma = None  # cross section
-
+        self.sigmaEval = None
         # eagerly build all matrix, coefficient and cross section expressions
         self.build_expressions()
 
@@ -293,6 +295,21 @@ class HHFormula(object):
         To be implemented by subclasses.
         """
         raise NotImplementedError
+
+
+    def evaluateSigma(self,params):
+        substitutions=[]
+        if self.sigmaEval==None:
+            print("  > Evaluating the substitutions first !! ")
+            substitutions=[]
+            for isample,sample in enumerate(self.samples):
+                substitutions.append((f"xs{isample}",sample.xs))
+            self.sigmaEval=self.sigma.subs(substitutions)
+            print( self.sigmaEval[0])
+        for ky in params:
+            substitutions.append((ky,params[ky]))
+        return self.sigmaEval.subs(substitutions)[0]
+
 
 
 class GGFFormula(HHFormula):
@@ -396,27 +413,24 @@ class HHHFormula(HHFormula):
         # define the matrix with three scalings
         self.M = sympy.Matrix([
               [
-                   sample.val_kl**4,  
-                   sample.val_kl**3,
-                   sample.val_kl**2,
-                   sample.val_kl**2 * sample.val_k4,
-                   sample.val_kl    ,
-                   sample.val_kl * sample.val_k4,
-                   sample.val_k4**2,
-                   sample.val_k4,
+                   sample.kl**4,  
+                   sample.kl**3,
+                   sample.kl**2,
+                   sample.kl**2 * sample.k4,
+                   sample.kl    ,
+                   sample.kl * sample.k4,
+                   sample.k4**2,
+                   sample.k4,
                    1.0
               ]
              for i, sample in enumerate(self.samples)
           ]
         )
-        self.xSections={}
-        for isample, sample in enumerate(self.sample_list):
-            self.xSections['xs'+str(isample)]=sample.xs
         
         kl, k4 = sympy.symbols("kl k4")
 
         ### the vector of couplings
-        c = Matrix([
+        c = sympy.Matrix([
             [kl**4 ] ,
             [kl**3] ,
             [kl**2] ,
@@ -438,20 +452,13 @@ class HHHFormula(HHFormula):
         Minv   = self.M.inv()
         self.coeffs = c.transpose() * Minv # coeffs * s is the sigma, accessing per component gives each sample scaling
         self.sigma  = self.coeffs*s
-        substitutions=[]
-        for ky in self.xSections:
-            substitutions.append((ky,self.xSections[ky]))
-        self.sigmaEval=self.sigma.subs(substitutions)
-
-
-    def evaluateSigma(self,params):
-        substitutions=[]
-        if self.sigmaEval==None:
-            print("Evaliate the matrix first !! ")
-            return -1.0
-        for ky in params:
-            substitutions.append((ky,params[ky]))
-        return self.sigmaEval.subs(substitutions)[0]
+        #self.xSections={}
+        #for isample, sample in enumerate(self.samples):
+        #    self.xSections['xs'+str(isample)]=sample.xs
+        #substitutions=[]
+        #for isample,sample in enumerate(self.samples):
+        #    substitutions.append((f"xs{isample}",sample.xs))
+        #self.sigmaEval=self.sigma.subs(substitutions)
 
 class VHHFormula(VBFFormula):
     """
@@ -1071,7 +1078,6 @@ class HHModel(HHModelBase):
 
     def __init__(self, name, ggf_samples=None, vbf_samples=None, vhh_samples=None,hhh_samples=None):
         super(HHModel, self).__init__(name)
-
         # attributes
         self.ggf_formula = self.ggf_formula_cls(ggf_samples) if ggf_samples else None
         self.vbf_formula = self.vbf_formula_cls(vbf_samples) if vbf_samples else None
@@ -1524,7 +1530,7 @@ def create_model(name, ggf=None, vbf=None, vhh=None, hhh=None, **kwargs):
         ggf_samples=get_samples(ggf, ggf_samples, GGFSample),
         vbf_samples=get_samples(vbf, vbf_samples, VBFSample),
         vhh_samples=get_samples(vhh, vhh_samples, VHHSample),
-        hhh_samples=get_samples(hhh, hhh_samples, HHHSample)
+        hhh_samples=get_samples(hhh, hhh_samples, HHHSample),
         **kwargs,
     )
 
@@ -1554,13 +1560,13 @@ model_default_vhh = create_model(
     vbf=model_default.vbf_formula.samples,
     vhh=model_all_vhh.vhh_formula.samples,
 )
-
+print("Making HHH model")
 model_default_hhh=create_model(
     "model_default_hhh",
     ggf=model_default.ggf_formula.samples,
     vbf=model_default.vbf_formula.samples,
     vhh=model_all_vhh.vhh_formula.samples,
-    hhh=[(0,0),(0,-1),(-4,39),(-4,99),(8,39),(8,-101),(2,-241),(14,-301),(-16,301)]
+    hhh=[(0,0),(0,-1),(-4,39),(-4,99),(8,39),(8,-101),(2,-241),(14,-301),(-16,-301)]
 )
 
 ####################################################################################################
@@ -1883,6 +1889,16 @@ get_hh_xsec = create_hh_xsec_func(
 
 if __name__=="__main__":
     print("   Validation !  =====================  ")
+    formulaDict=model_default_hhh.get_formulae()
+    for ky in formulaDict:
+        print(f"  ---> Validating the {ky} formula  <---")
+        formula_=formulaDict[ky]
+        for sample in formula_.samples:
+            couplingData={ poi : getattr(sample,poi) for poi in formula_.couplings }
+            print ("{ ",sample.label,"  | ",couplingData) 
+            evals=formula_.evaluateSigma(couplingData)
+            print ("   > exact : { ",sample.xs," } | eval : { ",evals," } | ratio : { ",evals/sample.xs," } )")
+        print("\n\n")
     print("              !  =====================  ")
 
 
