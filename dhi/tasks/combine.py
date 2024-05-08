@@ -49,7 +49,7 @@ class HHModelTask(AnalysisTask):
 
     # class-level sequence of all known pois
     # instances can potentially have reduced sets (lower case attributes), depending on the model
-    R_POIS = ("r", "r_gghh", "r_qqhh", "r_vhh", "r_hhh")
+    R_POIS = ("r","r_gghhh" ,"r_gghh", "r_qqhh", "r_vhh", "r_hhh")
     K_POIS = (
         # SM-like
         "kl", "kt", "CV", "C2V", "k4",
