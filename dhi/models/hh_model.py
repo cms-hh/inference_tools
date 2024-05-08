@@ -230,15 +230,15 @@ hhh_samples = OrderedDict()
 add_hhh_sample = _create_add_sample_func( HHHSample , hhh_samples  )
 br_ratio = 0.0023098822656
 k_factor = 2.22/3.274e-05
-add_hhh_sample( c3 = 0.00   ,d4 =    0.00    ,  xs=0.0327*1e-3*br_ratio*1e3*k_factor ,     label='c3_0_d4_0' ) 
-add_hhh_sample( c3 = 0.00   ,d4 =   -1.00    ,  xs=0.0362*1e-3*br_ratio*1e3*k_factor ,     label='c3_0_d4_m1' ) 
-add_hhh_sample( c3 =-4.00   ,d4 =   39.00    ,  xs=4.0930*1e-3*br_ratio*1e3*k_factor ,     label='c3_m4_d4_39' )
-add_hhh_sample( c3 =-4.00   ,d4 =   99.00    ,  xs=11.4245*1e-3*br_ratio*1e3*k_factor,     label='c3_m4_d4_99' )
-add_hhh_sample( c3 = 8.00   ,d4 =   39.00    ,  xs=5.6317*1e-3*br_ratio*1e3*k_factor ,     label='c3_8_d4_39' ) 
-add_hhh_sample( c3 = 8.00   ,d4 = -101.00    ,  xs=2.9478*1e-3*br_ratio*1e3*k_factor ,     label='c3_8_d4_m101' )
-add_hhh_sample( c3 = 2.00   ,d4 = -241.00    ,  xs=34.5100*1e-3*br_ratio*1e3*k_factor,     label='c3_2_d4_m241' )
-add_hhh_sample( c3 =14.00   ,d4 = -301.00    ,  xs=14.0700*1e-3*br_ratio*1e3*k_factor,     label='c3_14_d4_m301' )
-add_hhh_sample( c3 =-16.00  ,d4 = -301.00    ,  xs=31.7502*1e-3*br_ratio*1e3*k_factor,     label='c3_m16_d4_m301')
+add_hhh_sample( c3 = 0.00   ,d4 =    0.00    ,  xs=0.0327*1e-3*br_ratio*k_factor ,     label='c3_0_d4_0' ) 
+add_hhh_sample( c3 = 0.00   ,d4 =   -1.00    ,  xs=0.0362*1e-3*br_ratio*k_factor ,     label='c3_0_d4_m1' ) 
+add_hhh_sample( c3 =-4.00   ,d4 =   39.00    ,  xs=4.0930*1e-3*br_ratio*k_factor ,     label='c3_m4_d4_39' )
+add_hhh_sample( c3 =-4.00   ,d4 =   99.00    ,  xs=11.4245*1e-3*br_ratio*k_factor,     label='c3_m4_d4_99' )
+add_hhh_sample( c3 = 8.00   ,d4 =   39.00    ,  xs=5.6317*1e-3*br_ratio*k_factor ,     label='c3_8_d4_39' ) 
+add_hhh_sample( c3 = 8.00   ,d4 = -101.00    ,  xs=2.9478*1e-3*br_ratio*k_factor ,     label='c3_8_d4_m101' )
+add_hhh_sample( c3 = 2.00   ,d4 = -241.00    ,  xs=34.5100*1e-3*br_ratio*k_factor,     label='c3_2_d4_m241' )
+add_hhh_sample( c3 =14.00   ,d4 = -301.00    ,  xs=14.0700*1e-3*br_ratio*k_factor,     label='c3_14_d4_m301' )
+add_hhh_sample( c3 =-16.00  ,d4 = -301.00    ,  xs=31.7502*1e-3*br_ratio*k_factor,     label='c3_m16_d4_m301')
 
 ####################################################################################################
 # symbolic cross section formulae
