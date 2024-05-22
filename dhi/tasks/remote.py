@@ -259,7 +259,8 @@ class HTCondorWorkflow(AnalysisTask, law.htcondor.HTCondorWorkflow):
         if self.htcondor_flavor == "cern":
             # use el7 at CERN
             # https://batchdocs.web.cern.ch/local/submit.html#os-selection-via-containers
-            config.custom_content.append(("MY.WantOS", "el7"))
+            #config.custom_content.append(("MY.WantOS", "el7"))
+            pass
         elif self.htcondor_flavor == "naf":
             # use cc7 at NAF
             config.custom_content.append(("requirements", '(OpSysAndVer =?= "CentOS7")'))
@@ -284,9 +285,8 @@ class HTCondorWorkflow(AnalysisTask, law.htcondor.HTCondorWorkflow):
 
         # max runtime
         max_runtime = int(math.floor(self.max_runtime * 3600)) - 1
-        config.custom_content.append(("+MaxRuntime", max_runtime))
-        config.custom_content.append(("+RequestRuntime", max_runtime))
-
+        #config.custom_content.append(("+MaxRuntime", max_runtime))
+        #config.custom_content.append(("+RequestRuntime", max_runtime))
         # request cpus
         if self.htcondor_cpus > 0:
             if self.htcondor_flavor == "naf":
@@ -326,7 +326,7 @@ class HTCondorWorkflow(AnalysisTask, law.htcondor.HTCondorWorkflow):
             dhi_base = expand_path("$DHI_BASE")
             if hook_file.startswith(dhi_base):
                 hook_file = os.path.relpath(hook_file, dhi_base)
-
+    
         # render_variables are rendered into all files sent with a job
         config.render_variables["dhi_env_path"] = os.environ["PATH"]
         config.render_variables["dhi_env_pythonpath"] = os.environ["PYTHONPATH"]
@@ -342,6 +342,7 @@ class HTCondorWorkflow(AnalysisTask, law.htcondor.HTCondorWorkflow):
             config.render_variables["dhi_bootstrap_name"] = "htcondor_standalone"
             config.render_variables["dhi_lcg_dir"] = os.environ["DHI_LCG_DIR"]
             if self.htcondor_share_software:
+                print("GOTCHA ! shareing software !")
                 config.render_variables["dhi_software"] = os.environ["DHI_SOFTWARE"]
 
             # add repo bundle variables

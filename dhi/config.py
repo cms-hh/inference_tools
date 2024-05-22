@@ -150,6 +150,7 @@ campaign_labels.update(br_hh_names)
 # note: C2V and CV are not following kappa notation and are upper case to be consistent to the model
 poi_data = DotDict(
     r=DotDict(range=(-3000.0, 3000.0), label=r"$r$", sm_value=1.0),
+    r_gghhh=DotDict(range=(-2000.0, 2000.0), label=r"$r_{gghhh}$", sm_value=1.0),
     r_gghh=DotDict(range=(-20.0, 20.0), label=r"$r_{gghh}$", sm_value=1.0),
     r_qqhh=DotDict(range=(-20.0, 20.0), label=r"$r_{qqhh}$", sm_value=1.0),
     r_vhh=DotDict(range=(-20.0, 20.0), label=r"$r_{vhh}$", sm_value=1.0),

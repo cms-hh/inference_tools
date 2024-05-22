@@ -5,3 +5,7 @@
 [submodule "modules/plotlib"]
     path = modules/plotlib
     url = https://github.com/riga/plotlib.git
+
+[submodule "hhh4b2g_inferancescripts"]
+    path = hhh4b2g_inferancescripts 
+    url = ssh://git@gitlab.cern.ch:7999/athachay/hhh4b2g_inferancescripts.git 
