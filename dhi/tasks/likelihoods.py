@@ -6,6 +6,7 @@ Tasks related to likelihood scans.
 
 import copy
 from operator import mul
+import re
 
 import law
 import luigi
@@ -121,6 +122,35 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             for name, (start, stop, _) in zip(self.scan_parameter_names, ext_ranges)
         )
 
+        # join custom setparameters with job-specific setparameters
+        parsed_setparams = None
+        parsed_freezeparams = None
+        cleaned_custom_args = []
+        self.custom_args = re.sub(' +', ' ', self.custom_args)
+        custom_args_list = self.custom_args.split(' ')
+        ic=0
+        while ic<len(custom_args_list):
+            c = custom_args_list[ic]
+            if c=='--setParameters':
+                parsed_setparams = custom_args_list[ic+1]
+                ic = ic+2
+            elif c=='--freezeParameters':
+                parsed_freezeparams = custom_args_list[ic+1]
+                ic = ic+2
+            else:
+                cleaned_custom_args.append(c)
+                ic = ic+1
+
+        self.custom_args = (' ').join(cleaned_custom_args)
+
+        joined_parameter_values=self.joined_parameter_values
+        joined_frozen_parameters=self.joined_frozen_parameters
+        if parsed_setparams:
+            joined_parameter_values=(',').join([self.joined_parameter_values, parsed_setparams])
+        if parsed_freezeparams:
+            joined_frozen_parameters=(',').join([self.joined_frozen_parameters, parsed_freezeparams])
+
+
         # build the command
         cmd = (
             "combine -M MultiDimFit {workspace}"
@@ -136,8 +166,8 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             " --lastPoint {ext_point}"
             " --alignEdges 1"
             " --setParameterRanges {ext_joined_scan_ranges}:{self.joined_parameter_ranges}"
-            " --setParameters {self.joined_parameter_values}"
-            " --freezeParameters {self.joined_frozen_parameters}"
+            " --setParameters {joined_parameter_values}"
+            " --freezeParameters {joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " --saveNLL"
             " {self.combine_optimization_args}"
@@ -145,6 +175,8 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             "mv higgsCombineTest.MultiDimFit.mH{self.mass_int}.{self.branch}.root {output}"
         ).format(
             self=self,
+            joined_parameter_values=joined_parameter_values,
+            joined_frozen_parameters=joined_frozen_parameters,
             workspace=workspace,
             output=self.output().path,
             blinded_args=blinded_args,
@@ -153,6 +185,15 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
             ext_joined_scan_ranges=ext_joined_scan_ranges,
             ext_point=ext_point,
         )
+
+        # hack for setting lumiscale correctly...
+        if "lumi" in self.datacards[0] and "lumiscale" in self.joined_parameter_values:
+            lumi_tmp = self.datacards[0][self.datacards[0].find("lumi_"):]
+            lumi_tmp = lumi_tmp.strip("/datacard.txt").strip("lumi_")
+            lumi_tmp = float(lumi_tmp)
+            lumiscale_tmp = lumi_tmp/138.
+            lumiscalestring = "lumiscale="+str(lumiscale_tmp)
+            cmd = cmd.replace("lumiscale=1.0",lumiscalestring)
 
         return cmd
 
