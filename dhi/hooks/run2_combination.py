@@ -34,7 +34,7 @@ def _is_r2c_bbbb_boosted_ggf(task):
     if not task.r2c_bin_names:
         return False
 
-    all_bbbb_boosted = all(name.startswith("bbbb_boosted_") for name in task.r2c_bin_names)
+    all_bbbb_boosted = all(name.startswith("bbbb") for name in task.r2c_bin_names)
     return all_bbbb_boosted and "bbbb_boosted_ggf" in task.r2c_bin_names
 
 

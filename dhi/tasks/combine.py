@@ -632,6 +632,9 @@ class DatacardTask(HHModelTask):
                     # alias
                     if inject_file.lower() == "i":
                         inject_file = "inject.json"
+                        if "JHEP" in _paths[0]:
+                            inject_file = (os.path.split(_paths[0])[1]).replace("datacard_", "inject_")
+                            inject_file = inject_file.replace(".txt", ".json")
                     real_inject_file = real_path(inject_file)
                     if not os.path.exists(real_inject_file):
                         _real_inject_file = os.path.join(os.path.dirname(_paths[0]), inject_file)

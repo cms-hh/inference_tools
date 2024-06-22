@@ -197,10 +197,17 @@ model_default_novbf = create_model(
     ggf=model_default.ggf_formula.samples,
 )
 
+# model with all ggf/vbf signals, needed for 4b boosted ggf injection
+model_all = create_model(
+    "model_all",
+    ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (0.5, 1, 1), (1.5, 1, 1)],
+)
 
 ####################################################################################################
 # updated cross section helpers
 ####################################################################################################
+
 
 def create_ggf_xsec_func(ggf_formula):
     """
