@@ -963,6 +963,7 @@ def plot_limit_points(
     digits=None,
     cms_postfix=None,
     style=None,
+    top_left_label=None,
 ):
     """
     Creates a plot showing a comparison of limits of multiple analysis (or channels) on a *poi* and
@@ -1124,10 +1125,7 @@ def plot_limit_points(
     draw_objs = []
 
     # dummy histogram to control axes
-    x_title = "95% CL limit on {} {}".format(
-        to_root_latex(create_hh_xsbr_label(poi, hh_process)),
-        to_root_latex("({})".format(xsec_unit)) if xsec_unit else "/ #sigma_{Theory}",
-    )
+    x_title = "95% CL limit on #mu_{HH}"
     h_dummy = ROOT.TH1F("dummy", ";{};".format(x_title), 1, x_min, x_max)
     r.setup_hist(
         h_dummy,
@@ -1386,8 +1384,14 @@ def plot_limit_points(
         campaign_label = r.routines.create_top_right_label(campaign_label, pad=pad)
         draw_objs.append(campaign_label)
 
+    if top_left_label:
+        top_left_text = r.routines.create_top_left_label(top_left_label, 0.23, 0.87, pad=pad)
+        draw_objs.append(top_left_text)
+
+
     # draw all objects
     r.routines.draw_objects(draw_objs)
+
 
     # save plots
     r.update_canvas(canvas)

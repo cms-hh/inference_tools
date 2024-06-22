@@ -338,6 +338,11 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         description="file path for potential EFT lines in 2D likelihood plot; ignored for 1D; "
         "empty default",
     )
+    top_left_label = law.Parameter(
+        default=law.NO_STR,
+        description="extra label to add on the top left",
+    )
+
 
     force_n_pois = (1, 2)
     force_n_scan_parameters = (1, 2)
@@ -700,6 +705,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 cms_postfix=self.cms_postfix,
                 style=self.style,
                 dump_target=outputs.get("plot_data"),
+                top_left_label=self.top_left_label,
             )
         else:  # 2
             self.call_plot_func(

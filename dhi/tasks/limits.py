@@ -976,6 +976,10 @@ class PlotUpperLimitsAtPoint(
         description="one or multiple json files that contain externally computed limit values to "
         "be shown below the ones computed with actual datacards; default: empty",
     )
+    top_left_label = law.Parameter(
+        default=law.NO_STR,
+        description="extra label to add on the top left",
+    )
 
     y_min = None
     y_max = None
@@ -1229,6 +1233,7 @@ class PlotUpperLimitsAtPoint(
             cms_postfix=self.cms_postfix,
             style=self.style,
             dump_target=outputs.get("plot_data"),
+            top_left_label=self.top_left_label,
         )
 
 

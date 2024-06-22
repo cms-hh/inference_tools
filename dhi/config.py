@@ -141,6 +141,8 @@ campaign_labels = DotDict({
     "2018": "59.8 fb^{-1} (2018, 13 TeV)",
     "run2": "138 fb^{-1} (13 TeV)",
     "projections3000": "3000 fb^{-1} (14 TeV)",
+    "projections2000": "2000 fb^{-1} (14 TeV)",
+    "projections1000": "1000 fb^{-1} (14 TeV)",
     "projections": "(14 TeV)",
 })
 for c, c_label in list(campaign_labels.items()):
@@ -267,7 +269,7 @@ chi2_levels = {
 }
 
 # default postfix after "CMS" labels in plots
-cms_postfix = os.getenv("DHI_CMS_POSTFIX", "Work in progress")
+cms_postfix = os.getenv("DHI_CMS_POSTFIX", "Projections")
 
 # shorthands for EFT benchmark labels and groups
 bm_labels = DotDict()
