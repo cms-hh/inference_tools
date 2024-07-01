@@ -62,9 +62,9 @@ class HHSample(object):
         super(HHSample, self).__init__()
 
         # check if the label matches the format
-        if not re.match(self.label_re, label):
-            raise Exception("{} label '{}' does not match configured format {}".format(
-                self.__class__.__name__, label, self.label_re))
+        # if not re.match(self.label_re, label):
+        #     raise Exception("{} label '{}' does not match configured format {}".format(
+        #         self.__class__.__name__, label, self.label_re))
 
         self.xs = xs
         self.label = label
@@ -123,6 +123,24 @@ class VBFSample(HHSample):
         return (self.CV, self.C2V, self.kl)
 
 
+class HHHSample(HHSample):    
+    """
+    Class describing hhh samples, charecterized by c3 and d4.
+    """
+    # label format
+    label_re = r"^c3_([pm0-9]+)_d4_([pm0-9]+)$"
+    def __init__(self, c3, d4, xs, label):
+        super(HHHSample, self).__init__(xs, label)
+        self.c3  = c3
+        self.d4  = d4
+        self.kl  = c3+1.0
+        self.k4  = d4+1.0
+
+    @property
+    def key(self):
+        return (self.c3, self.d4)
+
+
 class VHHSample(HHSample):
     """
     Class describing vhh samples, characterized by values of *CV* (kV), *C2V* (k2V) and *kl*.
@@ -175,7 +193,7 @@ ggf_samples = OrderedDict()
 add_ggf_sample = _create_add_sample_func(GGFSample, ggf_samples)
 add_ggf_sample(kl=0.0, kt=1.0, xs=0.069725, label="ggHH_kl_0_kt_1")
 add_ggf_sample(kl=1.0, kt=1.0, xs=0.031047, label="ggHH_kl_1_kt_1")
-add_ggf_sample(kl=2.45, kt=1.0, xs=0.013124, label="ggHH_kl_2p45_kt_1")
+# add_ggf_sample(kl=2.45, kt=1.0, xs=0.013124, label="ggHH_kl_2p45_kt_1")
 add_ggf_sample(kl=5.0, kt=1.0, xs=0.091172, label="ggHH_kl_5_kt_1")
 
 # vbf samples with keys (CV, C2V, kl)
@@ -204,6 +222,31 @@ add_vhh_sample(CV=0.5, C2V=1.0, kl=1.0, xs=0.0005946, label="VHH_CV_0p5_C2V_1_kl
 add_vhh_sample(CV=1.5, C2V=1.0, kl=1.0, xs=0.0019173, label="VHH_CV_1p5_C2V_1_kl_1")
 add_vhh_sample(CV=1.0, C2V=1.0, kl=0.0, xs=0.0005127, label="VHH_CV_1_C2V_1_kl_0")
 add_vhh_sample(CV=1.0, C2V=1.0, kl=20.0, xs=0.0428974, label="VHH_CV_1_C2V_1_kl_20")
+
+# hhh samples with keys (kl, k4)
+# cross section values are NLO WHH + NNLO ZHH (no k-factor applied)
+# and are only used in create_hhh_xsec_func below
+hhh_samples = OrderedDict()
+add_hhh_sample = _create_add_sample_func( HHHSample , hhh_samples  )
+br_ratio = 0.0023098822656
+k_factor = 2.22
+add_hhh_sample( c3 =  0.00   ,d4 =    0.00    ,  xs=0.0327*1e-3*br_ratio*k_factor ,     label='c3_0_d4_0' ) 
+add_hhh_sample( c3 =  0.00   ,d4 =   -1.00    ,  xs=0.0362*1e-3*br_ratio*k_factor ,     label='c3_0_d4_m1' ) 
+add_hhh_sample( c3 = -4.00   ,d4 =   39.00    ,  xs=4.0930*1e-3*br_ratio*k_factor ,     label='c3_m4_d4_39' )
+add_hhh_sample( c3 = -4.00   ,d4 =   99.00    ,  xs=11.4245*1e-3*br_ratio*k_factor,     label='c3_m4_d4_99' )
+add_hhh_sample( c3 =  8.00   ,d4 =   39.00    ,  xs=5.6317*1e-3*br_ratio*k_factor ,     label='c3_8_d4_39' ) 
+add_hhh_sample( c3 =  8.00   ,d4 = -101.00    ,  xs=2.9478*1e-3*br_ratio*k_factor ,     label='c3_8_d4_m101' )
+add_hhh_sample( c3 =  2.00   ,d4 = -241.00    ,  xs=34.5100*1e-3*br_ratio*k_factor,     label='c3_2_d4_m241' )
+add_hhh_sample( c3 = 14.00   ,d4 = -301.00    ,  xs=14.0700*1e-3*br_ratio*k_factor,     label='c3_14_d4_m301' )
+add_hhh_sample( c3 =-16.00   ,d4 = -301.00    ,  xs=31.7502*1e-3*br_ratio*k_factor,     label='c3_m16_d4_m301')
+add_hhh_sample( c3 =  0.00   ,d4 =   99.00    ,  xs=5.243*1e-3*br_ratio*k_factor  ,     label='c3_0_d4_99' )
+add_hhh_sample( c3 = 19.00   ,d4 =   19.00    ,  xs=131.8*1e-3*br_ratio*k_factor  ,     label='c3_19_d4_19')
+add_hhh_sample( c3 =  1.00   ,d4 =    0.00    ,  xs=0.02567*1e-3*br_ratio*k_factor,     label='c3_1_d4_0')
+add_hhh_sample( c3 =  4.00   ,d4 =    9.00    ,  xs=0.2182*1e-3*br_ratio*k_factor ,     label='c3_4_d4_9')
+add_hhh_sample( c3 = -1.00   ,d4 =    0.00    ,  xs=0.1004*1e-3*br_ratio*k_factor ,     label='c3_m1_d4_0')
+add_hhh_sample( c3 = -1.00   ,d4 =   -1.00    ,  xs=0.09674*1e-3*br_ratio*k_factor,     label='c3_m1_d4_m1')
+add_hhh_sample( c3 = -1.50   ,d4 =   -0.50    ,  xs=0.1723*1e-3*br_ratio*k_factor ,     label='c3_m1p5_d4_m0p5')
+
 
 
 ####################################################################################################
@@ -245,7 +288,7 @@ class HHFormula(object):
         self.M = None  # the matrix to be inverted
         self.coeffs = None  # scaling coefficients per sample
         self.sigma = None  # cross section
-
+        self.sigmaEval = None
         # eagerly build all matrix, coefficient and cross section expressions
         self.build_expressions()
 
@@ -261,6 +304,21 @@ class HHFormula(object):
         To be implemented by subclasses.
         """
         raise NotImplementedError
+
+
+    def evaluateSigma(self,params):
+        substitutions=[]
+        if self.sigmaEval==None:
+            print("  > Evaluating the substitutions first !! ")
+            substitutions=[]
+            for isample,sample in enumerate(self.samples):
+                substitutions.append((f"xs{isample}",sample.xs))
+            self.sigmaEval=self.sigma.subs(substitutions)
+            print( self.sigmaEval[0])
+        for ky in params:
+            substitutions.append((ky,params[ky]))
+        return self.sigmaEval.subs(substitutions)[0]
+
 
 
 class GGFFormula(HHFormula):
@@ -350,6 +408,66 @@ class VBFFormula(HHFormula):
         self.coeffs = c.transpose() * M_inv
         self.sigma = self.coeffs * s
 
+class HHHFormula(HHFormula):
+    """
+    Scaling formula for hhh samples, based on an 9x9 matrix.
+    """
+
+    sample_cls = HHHSample
+    min_samples = 9
+    r_poi = "r_gghhh"
+    couplings = ["kl","k4"]
+    
+    def build_expressions(self):
+        # define the matrix with three scalings
+        self.M = sympy.Matrix([
+              [
+                   sample.kl**4,  
+                   sample.kl**3,
+                   sample.kl**2,
+                   sample.kl**2 * sample.k4,
+                   sample.kl    ,
+                   sample.kl * sample.k4,
+                   sample.k4**2,
+                   sample.k4,
+                   1.0
+              ]
+             for i, sample in enumerate(self.samples)
+          ]
+        )
+        
+        kl, k4 = sympy.symbols("kl k4")
+
+        ### the vector of couplings
+        c = sympy.Matrix([
+            [kl**4 ] ,
+            [kl**3] ,
+            [kl**2] ,
+            [kl**2 * k4] ,
+            [kl] ,
+            [kl * k4] ,
+            [k4**2] ,
+            [k4] ,
+            [1] ,
+        ])
+
+        ### the vector of samples (i.e. cross sections)
+        s = sympy.Matrix([
+            [sympy.Symbol("xs{}".format(i))]
+            for i in range(self.n_samples)
+        ])
+
+        ### solving for  scaling funtions
+        Minv   = self.M.inv()
+        self.coeffs = c.transpose() * Minv # coeffs * s is the sigma, accessing per component gives each sample scaling
+        self.sigma  = self.coeffs*s
+        #self.xSections={}
+        #for isample, sample in enumerate(self.samples):
+        #    self.xSections['xs'+str(isample)]=sample.xs
+        #substitutions=[]
+        #for isample,sample in enumerate(self.samples):
+        #    substitutions.append((f"xs{isample}",sample.xs))
+        #self.sigmaEval=self.sigma.subs(substitutions)
 
 class VHHFormula(VBFFormula):
     """
@@ -902,7 +1020,9 @@ class HHModelBase(PhysicsModelBase):
             max_len = max(len(sample.label) for sample in formula.samples)
             unmatched_samples = []
             for sample in formula.samples:
+                print(formula.samples)
                 processes = self.process_scales[formula][sample]
+                print(processes)
                 if not processes:
                     unmatched_samples.append(sample)
                 print("  {}{} -> {}".format(
@@ -948,8 +1068,10 @@ class HHModel(HHModelBase):
         ("r_gghh", (1, -20, 20)),
         ("r_qqhh", (1, -200, 200)),
         ("r_vhh", (1, -20, 20)),
+        ("r_gghhh", (1, -2000, 2000)),
     ])
     K_POIS = OrderedDict([
+        ("k4", (1, -1500, 1000)),
         ("kl", (1, -30, 30)),
         ("kt", (1, -10, 10)),
         ("CV", (1, -10, 10)),
@@ -963,14 +1085,16 @@ class HHModel(HHModelBase):
     ggf_formula_cls = GGFFormula
     vbf_formula_cls = VBFFormula
     vhh_formula_cls = VHHFormula
+    hhh_formula_cls = HHHFormula
 
-    def __init__(self, name, ggf_samples=None, vbf_samples=None, vhh_samples=None):
+    def __init__(self, name, ggf_samples=None, vbf_samples=None, vhh_samples=None,hhh_samples=None):
         super(HHModel, self).__init__(name)
-
         # attributes
         self.ggf_formula = self.ggf_formula_cls(ggf_samples) if ggf_samples else None
         self.vbf_formula = self.vbf_formula_cls(vbf_samples) if vbf_samples else None
         self.vhh_formula = self.vhh_formula_cls(vhh_samples) if vhh_samples else None
+        self.hhh_formula = self.hhh_formula_cls(hhh_samples) if hhh_samples else None
+
         self.ggf_kl_dep_unc = "THU_HH"  # name for kl-dependent QCDscale + mtop uncertainty on ggf
         self.h_br_scaler = None  # initialized in create_scalings
 
@@ -1007,6 +1131,8 @@ class HHModel(HHModelBase):
             formulae["vbf_formula"] = self.vbf_formula
         if self.vhh_formula:
             formulae["vhh_formula"] = self.vhh_formula
+        if self.hhh_formula:
+            formulae["hhh_formula"] = self.hhh_formula
         return formulae
 
     def _create_ggf_xsec_str(self, *args, **kwargs):
@@ -1263,6 +1389,29 @@ class HHModel(HHModelBase):
 
                     # store the final expression name
                     self.r_expressions[(formula, sample)] = name
+            elif isinstance(formula, HHHFormula):
+                for sample, coeff in zip(formula.samples, formula.coeffs):
+                    # create the expression that scales this particular sample based on the formula
+                    name = "f_scale_hhh_sample_{}".format(sample.label)
+                    expr = pow_to_mul_string(coeff)
+                    for i, coupling in enumerate(formula.couplings):
+                        expr = replace_coupling(coupling, "@{}".format(i), expr)
+                    self.make_expr("expr::{}('{}', {})".format(
+                        name, expr, ", ".join(formula.couplings)))
+
+                    # scale it by the channel specific r POI
+                    new_name = "{}__{}".format(name, formula.r_poi)
+                    self.make_expr("prod::{}({}, {})".format(new_name, formula.r_poi, name))
+                    name = new_name
+
+                    # scale it by the common r POI
+                    new_name = "{}__r".format(name)
+                    self.make_expr("prod::{}(r, {})".format(
+                        new_name, name))
+                    name = new_name
+
+                    # store the final expression name
+                    self.r_expressions[(formula, sample)] = name
 
             else:
                 raise Exception("unhandled formula {}".format(formula))
@@ -1362,7 +1511,7 @@ class HHModel(HHModelBase):
         return 1.0
 
 
-def create_model(name, ggf=None, vbf=None, vhh=None, **kwargs):
+def create_model(name, ggf=None, vbf=None, vhh=None, hhh=None, **kwargs):
     """
     Returns a new :py:class:`HHModel` instance named *name*. Its *ggf*, *vbf* and *vhh* samples can
     configured through lists that should either contain valid sample instances or keys of samples
@@ -1392,6 +1541,7 @@ def create_model(name, ggf=None, vbf=None, vhh=None, **kwargs):
         ggf_samples=get_samples(ggf, ggf_samples, GGFSample),
         vbf_samples=get_samples(vbf, vbf_samples, VBFSample),
         vhh_samples=get_samples(vhh, vhh_samples, VHHSample),
+        hhh_samples=get_samples(hhh, hhh_samples, HHHSample),
         **kwargs,
     )
 
@@ -1399,7 +1549,7 @@ def create_model(name, ggf=None, vbf=None, vhh=None, **kwargs):
 # some named, default models
 model_all = create_model(
     "model_all",
-    ggf=[(0, 1), (1, 1), (2.45, 1), (5, 1)],
+    ggf=[(0, 1), (1, 1), (5, 1)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (0.5, 1, 1), (1.5, 1, 1)],
 )
 model_all_vhh = create_model(
@@ -1412,7 +1562,7 @@ model_all_vhh = create_model(
 # model used for the combination
 model_default = create_model(
     "model_default",
-    ggf=[(1, 1), (2.45, 1), (5, 1)],  # no (1, 0)
+    ggf=[(1, 1), (0, 1), (5, 1)],  # no (1, 0)
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],  # no (0.5, 1, 1)
 )
 model_default_vhh = create_model(
@@ -1421,7 +1571,14 @@ model_default_vhh = create_model(
     vbf=model_default.vbf_formula.samples,
     vhh=model_all_vhh.vhh_formula.samples,
 )
-
+print("Making HHH model")
+model_default_hhh=create_model(
+    "model_default_hhh",
+    ggf=model_default.ggf_formula.samples,
+    vbf=model_default.vbf_formula.samples,
+    vhh=model_all_vhh.vhh_formula.samples,
+    hhh=[(0,-1),(0,99),(19,19),(1,0),(4,9),(-1,0),(-1,-1),(-1.5,-0.5),(0,0)]
+)
 
 ####################################################################################################
 # cross section helpers
@@ -1740,3 +1897,19 @@ get_hh_xsec = create_hh_xsec_func(
     model_default.vbf_formula,
     model_default_vhh.vhh_formula,
 )
+
+if __name__=="__main__":
+    print("   Validation !  =====================  ")
+    formulaDict=model_default_hhh.get_formulae()
+    for ky in formulaDict:
+        print(f"  ---> Validating the {ky} formula  <---")
+        formula_=formulaDict[ky]
+        for sample in formula_.samples:
+            couplingData={ poi : getattr(sample,poi) for poi in formula_.couplings }
+            print ("{ ",sample.label,"  | ",couplingData) 
+            evals=formula_.evaluateSigma(couplingData)
+            print ("   > exact : { ",sample.xs," } | eval : { ",evals," } | ratio : { ",evals/sample.xs," } )")
+        print("\n\n")
+    print("              !  =====================  ")
+
+
