@@ -225,6 +225,7 @@ setup() {
             dhi_pip_install 'uproot==5.0.5' || return "$?"
             dhi_pip_install 'awkward==2.1.1' || return "$?"
             dhi_pip_install 'mplhep==0.3.31' || return "$?"
+            dhi_pip_install 'scs==3.2.5' || return "$?"
             dhi_pip_install 'cvxpy==1.4.1' || return "$?"
             dhi_pip_install 'PyYAML==6.0' || return "$?"
             dhi_pip_install 'mermaidmro==0.2.1' || return "$?"
