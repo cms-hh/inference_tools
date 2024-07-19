@@ -503,6 +503,7 @@ def plot_likelihood_scan_2d(
     cms_postfix=None,
     style=None,
     extra_text=None,
+    smoothContour=(None,),
 ):
     """
     Creates a likelihood plot of the 2D scan of two POIs *poi1* and *poi2*, and saves it at *paths*.
@@ -668,6 +669,7 @@ def plot_likelihood_scan_2d(
         levels=contour_levels_dnll2,
         frame_kwargs=[{"mode": "edge", "width": 1.}],
         interpolation=interpolation_method,
+        smooth=smoothContour,
     )
 
     # evaluate the scan, run interpolation and error estimation
@@ -1109,6 +1111,7 @@ def plot_likelihood_scans_2d(
     show_sm_point=True,
     extra_text=None,
     show_best_fit=True,
+    smoothContour=(None,),
 ):
     """
     Creates the likelihood contour plots of multiple 2D scans of two POIs *poi1* and *poi2*, and
@@ -1154,14 +1157,6 @@ def plot_likelihood_scans_2d(
 
     # validate data entries
     for i, d in enumerate(data):
-        # convert likelihood values to arrays
-        assert "values" in d
-        values = d["values"]
-        if isinstance(values, np.ndarray):
-            values = {k: values[k] for k in values.dtype.names}
-        assert poi1 in values
-        assert poi2 in values
-        assert "dnll2" in values
         # check poi minima
         d["poi_mins"] = d.get("poi_mins") or [None, None]
         assert len(d["poi_mins"]) == 2
@@ -1169,37 +1164,48 @@ def plot_likelihood_scans_2d(
         d.setdefault("name", str(i + 1))
         # origin (for printouts)
         d["origin"] = None if not d["name"] else "entry '{}'".format(d["name"])
-        # drop all fields except for required ones and convert to arrays
-        values = {
-            k: np.array(v, dtype=np.float32)
-            for k, v in values.items()
-            if k in [poi1, poi2, "dnll2"]
-        }
-        # preprocess values (nan detection, negative shift)
-        values["dnll2"], values[poi1], values[poi2] = _preprocess_values(
-            values["dnll2"],
-            (poi1, values[poi1]),
-            (poi2, values[poi2]),
-            shift_negative_values=shift_negative_values,
-            remove_nans=interpolate_nans,
-            remove_above=interpolate_above,
-            origin=d["origin"],
-            min_is_external=None not in d["poi_mins"],
-        )
-        d["values"] = values
+        # convert likelihood values to arrays
+        assert "values" in d
+        values = make_list(d["values"])
+        for j, _values in enumerate(list(values)):
+            if isinstance(_values, np.ndarray):
+                _values = {k: _values[k] for k in _values.dtype.names}
+            assert poi1 in _values
+            assert poi2 in _values
+            assert "dnll2" in _values
+            # drop all fields except for required ones and convert to arrays
+            _values = {k: v for k, v in _values.items() if k in [poi1, poi2, "dnll2"]}
+            # preprocess values (nan detection, negative shift)
+            _values["dnll2"], _values[poi1], _values[poi2] = _preprocess_values(
+                _values["dnll2"],
+                (poi1, _values[poi1]),
+                (poi2, _values[poi2]),
+                shift_negative_values=shift_negative_values,
+                remove_nans=interpolate_nans,
+                remove_above=interpolate_above,
+                origin=d["origin"],
+                min_is_external=None not in d["poi_mins"],
+            )
+            values[j] = _values
+        d["values"] = unique_recarray(dict_to_recarray(values), cols=[poi1, poi2])
 
     # determine contours independent of plotting
-    contours = [
-        get_contours(
-            d["values"][poi1],
-            d["values"][poi2],
-            d["values"]["dnll2"],
-            levels=[chi2_levels[2][1], chi2_levels[2][2]],
-            frame_kwargs=[{"mode": "edge"}],
-            interpolation=interpolation_method,
+    contours = []
+    for i, d in enumerate(data):
+        # join values for contour calculation
+        smoothContour_temp=smoothContour[0] if len(smoothContour) is 1 else smoothContour[i]
+        print(smoothContour_temp, "!!!!!", d["name"])
+        contours.append(
+            get_contours(
+                d["values"][poi1],
+                d["values"][poi2],
+                d["values"]["dnll2"],
+                levels=[chi2_levels[2][1], chi2_levels[2][2]],
+                frame_kwargs=[{"mode": "edge"}],
+                interpolation=interpolation_method,
+                smooth=smoothContour_temp,
+            )
         )
-        for d in data
-    ]
 
     # start plotting
     r.setup_style()
@@ -1865,6 +1871,7 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None, origin=N
     poi_p1, poi_m1 = get_intersections(chi2_levels[1][1])
     poi_p2, poi_m2 = get_intersections(chi2_levels[1][2])
     poi_p3, poi_m3 = get_intersections(chi2_levels[1][3])
+    poi_p5, poi_m5 = get_intersections(chi2_levels[1][5])
 
     # create a Number object wrapping the best fit value and its 1 sigma error when given
     unc = None
@@ -1903,6 +1910,8 @@ def evaluate_likelihood_scan_1d(poi_values, dnll2_values, poi_min=None, origin=N
         print("    " + sigma_line(2, poi_p2, poi_m2))
     if poi_p3 is not None or poi_m3 is not None:
         print("    " + sigma_line(3, poi_p3, poi_m3))
+    if poi_p5 is not None or poi_m5 is not None:
+        print("    " + sigma_line(5, poi_p5, poi_m5))
 
     return DotDict(
         interp=interp,

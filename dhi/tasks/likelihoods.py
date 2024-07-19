@@ -294,6 +294,13 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         significant=False,
         description="weather or not to show the SM point; default: True",
     )
+    smooth_contour = law.CSVParameter(
+        default=(None,),
+        significant=False,
+        description="smooth histogramm before finding contours, first value "
+        "gives kernel used to smooth graph either 5x5 (k5a/k5b) or 3x3 (k3a), "
+        "second value gives number of smoothing iterations, empty default",
+    )
     extra_text = luigi.Parameter(
         default=None,
         significant=False,
@@ -458,6 +465,7 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
                 style=self.style,
                 dump_target=outputs.get("plot_data"),
                 extra_text=self.extra_text,
+                smoothContour=self.smooth_contour,
             )
 
     def load_scan_data(self, inputs, recompute_dnll2=True, merge_scans=True):
@@ -574,6 +582,14 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
         "to overlay with lines and lables; default: 1,2,3,5",
     )
 
+    smooth_contour = law.MultiCSVParameter(
+        default=(('None',),),
+        significant=False,
+        description="smooth histogramm before finding contours, first value "
+        "gives kernel used to smooth graph either 5x5 (k5a/k5b) or 3x3 (k3a), "
+        "second value gives number of smoothing iterations, empty default",
+    )
+
     z_min = None
     z_max = None
     z_log = None
@@ -584,6 +600,18 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
         "dhi.plots.likelihoods.plot_likelihood_scans_1d",
         "dhi.plots.likelihoods.plot_likelihood_scans_2d",
     ]
+
+    def __init__(self, *args, **kwargs):
+
+        super(PlotMultipleLikelihoodScans, self).__init__(*args, **kwargs)
+        n = len(getattr(self, self.compare_multi_sequence))
+        # check smooth_contour
+        if self.smooth_contour is not None and len(self.smooth_contour) not in (0, 1, n):
+            raise Exception(
+                f"{self!r}: the number of --smooth-contour sequences ({len(self.smooth_contour)}) "
+                f"must be zero, one or match that of {self.compare_multi_sequence} ({n})",
+            )
+
 
     def requires(self):
         return [
@@ -652,7 +680,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
         # load scan data
         data = []
         for i, inps in enumerate(self.input()):
-            values, poi_mins = self.load_scan_data(inps)
+            values, poi_mins = self.load_scan_data(inps, merge_scans=self.n_pois == 1)
 
             if self.recompute_best_fit:
                 poi_mins = {p: None for p in poi_mins}
@@ -739,6 +767,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 show_sm_point=self.show_sm,
                 extra_text=self.extra_text,
                 show_best_fit=self.show_best_fit,
+                smoothContour=self.smooth_contour,
             )
 
 
@@ -817,7 +846,7 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
         # load scan data
         data = []
         for hh_model, inps in zip(self.hh_models, self.input()):
-            values, poi_mins = self.load_scan_data(inps)
+            values, poi_mins = self.load_scan_data(inps, merge_scans=self.n_pois == 1)
 
             if self.recompute_best_fit:
                 poi_mins = {p: None for p in poi_mins}
@@ -895,4 +924,5 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
                 cms_postfix=self.cms_postfix,
                 style=self.style,
                 dump_target=outputs.get("plot_data"),
+                smoothContour=self.smooth_contour,
             )

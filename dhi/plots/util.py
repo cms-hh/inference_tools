@@ -493,6 +493,7 @@ def get_contours(
     levels,
     frame_kwargs=None,
     min_points=10,
+    smooth=(None,),
     **kwargs  # noqa
 ):
     ROOT = import_ROOT()
@@ -554,14 +555,14 @@ def get_contours(
                 _h = frame_histogram(_h, xw, yw, contour_level=l, **fk)
 
             # get the contour graphs and filter by the number of points
-            graphs = _get_contour(_h, l)
+            graphs = _get_contour(_h, l, smooth)
             graphs = [g for g in graphs if g.GetN() >= min_points]
             contours.append(graphs)
 
     return contours
 
 
-def _get_contour(hist, level):
+def _get_contour(hist, level, smooth=(None,)):
     ROOT = import_ROOT()
 
     # make a clone to set contour levels
@@ -572,6 +573,11 @@ def _get_contour(hist, level):
     with temporary_canvas() as c:
         pad = c.cd()
         pad.SetLogz(True)
+        if smooth[0] and smooth[0] != "None":
+            if len(smooth) is 2:
+                h.Smooth(int(smooth[1]), str(smooth[0]))
+            else:
+                h.Smooth(1, str(smooth[0]))
         h.Draw("CONT,Z,LIST")
         pad.Update()
         graphs = ROOT.gROOT.GetListOfSpecials().FindObject("contours")
