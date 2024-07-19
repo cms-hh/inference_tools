@@ -268,9 +268,9 @@ class PlotPostfitSOverB(PostfitPlotBase):
     def __init__(self, *args, **kwargs):
         super(PlotPostfitSOverB, self).__init__(*args, **kwargs)
 
-        # show a warning when unblinded, not in paper mode and not hiding the best fit value
-        if self.unblinded and not self.paper and self.show_best_fit:
-            self.logger.warning("running unblinded but not hiding the best fit value")
+        ## show a warning when unblinded, not in paper mode and not hiding the best fit value
+        #if self.unblinded and not self.paper and self.show_best_fit:
+        #    self.logger.warning("running unblinded but not hiding the best fit value")
 
         # when the signal limit is requested, define a pseudo scan parameter
         self.pseudo_scan_parameter = None
