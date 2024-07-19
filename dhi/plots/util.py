@@ -574,7 +574,7 @@ def _get_contour(hist, level, smooth=(None,)):
         pad = c.cd()
         pad.SetLogz(True)
         if smooth[0] and smooth[0] != "None":
-            if len(smooth) is 2:
+            if len(smooth) == 2:
                 h.Smooth(int(smooth[1]), str(smooth[0]))
             else:
                 h.Smooth(1, str(smooth[0]))

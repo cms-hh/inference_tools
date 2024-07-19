@@ -583,7 +583,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
     )
 
     smooth_contour = law.MultiCSVParameter(
-        default=(('None',),),
+        default=(("None",),),
         significant=False,
         description="smooth histogramm before finding contours, first value "
         "gives kernel used to smooth graph either 5x5 (k5a/k5b) or 3x3 (k3a), "
@@ -611,7 +611,6 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 f"{self!r}: the number of --smooth-contour sequences ({len(self.smooth_contour)}) "
                 f"must be zero, one or match that of {self.compare_multi_sequence} ({n})",
             )
-
 
     def requires(self):
         return [

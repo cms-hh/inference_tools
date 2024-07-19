@@ -1193,7 +1193,7 @@ def plot_likelihood_scans_2d(
     contours = []
     for i, d in enumerate(data):
         # join values for contour calculation
-        smoothContour_temp=smoothContour[0] if len(smoothContour) is 1 else smoothContour[i]
+        smoothContour_temp = smoothContour[0] if len(smoothContour) == 1 else smoothContour[i]
         print(smoothContour_temp, "!!!!!", d["name"])
         contours.append(
             get_contours(
@@ -1204,7 +1204,7 @@ def plot_likelihood_scans_2d(
                 frame_kwargs=[{"mode": "edge"}],
                 interpolation=interpolation_method,
                 smooth=smoothContour_temp,
-            )
+            ),
         )
 
     # start plotting

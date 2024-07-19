@@ -1468,7 +1468,7 @@ model_default_vhh = create_model(
 )
 
 
-# alt model 
+# alt model
 model_alt = create_model(
     "model_alt",
     ggf=[(1, 1), (2.45, 1), (0, 1)],  # no (1, 0)
