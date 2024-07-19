@@ -1468,6 +1468,20 @@ model_default_vhh = create_model(
 )
 
 
+# alt model 
+model_alt = create_model(
+    "model_alt",
+    ggf=[(1, 1), (2.45, 1), (0, 1)],  # no (1, 0)
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],  # no (0.5, 1, 1)
+)
+model_alt_vhh = create_model(
+    "model_alt_vhh",
+    ggf=model_alt.ggf_formula.samples,
+    vbf=model_alt.vbf_formula.samples,
+    vhh=model_all_vhh.vhh_formula.samples,
+)
+
+
 ####################################################################################################
 # cross section helpers
 ####################################################################################################
