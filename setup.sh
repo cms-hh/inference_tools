@@ -86,12 +86,6 @@ setup() {
     # helper functions
     #
 
-    # pip install helper
-    dhi_pip_install() {
-        PYTHONUSERBASE="${DHI_SOFTWARE}" pip3 install --user --no-cache-dir "$@"
-    }
-    [ ! -z "${BASH_VERSION}" ] && export -f dhi_pip_install
-
     # remove cache locks on cached wlcg targets
     dhi_remove_cache_locks() {
         if [ ! -z "${DHI_WLCG_CACHE_ROOT}" ] && [ -d "${DHI_WLCG_CACHE_ROOT}" ]; then
@@ -106,13 +100,13 @@ setup() {
     # see https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit
     #
 
-    export DHI_SCRAM_ARCH="${DHI_SCRAM_ARCH:-slc7_amd64_gcc900}"
-    export DHI_CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_11_3_4}"
-    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v9.1.0}"
+    export DHI_SCRAM_ARCH="${DHI_SCRAM_ARCH:-el9_amd64_gcc12}"
+    export DHI_CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_14_1_0_pre5}"
+    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v10.0.1}"
     export DHI_CMSSW_BASE="${DHI_SOFTWARE}/combine_${DHI_COMBINE_VERSION}_${DHI_SCRAM_ARCH}"
 
     local flag_file_combine="${DHI_CMSSW_BASE}/.combine_${DHI_CMSSW_VERSION}_good"
-    local combine_version="6"
+    local combine_version="7"
 
     source "/cvmfs/cms.cern.ch/cmsset_default.sh" "" || return "$?"
     export SCRAM_ARCH="${DHI_SCRAM_ARCH}"
@@ -192,10 +186,10 @@ setup() {
 
     # update paths and flags
     local pyv="$( python3 -c "import sys; print('{0.major}.{0.minor}'.format(sys.version_info))" )"
-    export PATH="${DHI_BASE}/bin:${DHI_BASE}/dhi/scripts:${DHI_BASE}/modules/law/bin:${DHI_SOFTWARE}/bin:$PATH"
+    export PATH="${DHI_BASE}/bin:${DHI_BASE}/dhi/scripts:${DHI_BASE}/modules/law/bin:${DHI_SOFTWARE}/bin:${PATH}"
     export PYTHONPATH="${DHI_BASE}:${DHI_BASE}/modules/law:${DHI_BASE}/modules/plotlib:${DHI_SOFTWARE}/lib/python${pyv}/site-packages:${DHI_SOFTWARE}/lib64/python${pyv}/site-packages:${PYTHONPATH}"
     export PYTHONWARNINGS="ignore"
-    export PYTHONNOUSERSITE="1"
+    # export PYTHONNOUSERSITE="1"
 
     # unlimited stack size (as fallback, set soft-limit only)
     ulimit -s unlimited 2> /dev/null
@@ -213,26 +207,30 @@ setup() {
     if [ ! -f "${flag_file_sw}" ]; then
         # local env
         if [ "${DHI_REMOTE_JOB}" != "1" ]; then
-            echo "installing software stack at ${DHI_SOFTWARE}"
-            rm -rf "${DHI_SOFTWARE}/lib"
+            echo "installing software stack in 'dhi' venv at ${DHI_SOFTWARE}"
+            rm -rf "${DHI_SOFTWARE}/dhi"
             mkdir -p "${DHI_SOFTWARE}"
 
+            # create the venv and activate it
+            python3 -m venv --symlinks --upgrade-deps "${DHI_SOFTWARE}/dhi" || return "$?"
+            source "${DHI_SOFTWARE}/dhi/bin/activate" "" || return "$?"
+
             # python packages
-            dhi_pip_install 'six==1.16.0' || return "$?"
-            dhi_pip_install 'luigi==3.2.1' || return "$?"
-            dhi_pip_install 'scinum==2.0.2' || return "$?"
-            dhi_pip_install 'tabulate==0.9.0' || return "$?"
-            dhi_pip_install 'uproot==5.0.5' || return "$?"
-            dhi_pip_install 'awkward==2.1.1' || return "$?"
-            dhi_pip_install 'mplhep==0.3.31' || return "$?"
-            dhi_pip_install 'scs==3.2.5' || return "$?"
-            dhi_pip_install 'cvxpy==1.4.1' || return "$?"
-            dhi_pip_install 'PyYAML==6.0' || return "$?"
-            dhi_pip_install 'mermaidmro==0.2.1' || return "$?"
-            dhi_pip_install 'flake8==5.0.4' || return "$?"
-            dhi_pip_install 'flake8-commas==2.1.0' || return "$?"
-            dhi_pip_install 'flake8-quotes==3.3.2' || return "$?"
-            dhi_pip_install 'cmsstyle' || return "$?"
+            pip install 'six==1.16.0' || return "$?"
+            pip install 'luigi==3.2.1' || return "$?"
+            pip install 'scinum==2.0.2' || return "$?"
+            pip install 'tabulate==0.9.0' || return "$?"
+            pip install 'uproot==5.0.5' || return "$?"
+            pip install 'awkward==2.1.1' || return "$?"
+            pip install 'mplhep==0.3.31' || return "$?"
+            pip install 'scs==3.2.5' || return "$?"
+            pip install 'cvxpy==1.4.1' || return "$?"
+            pip install 'PyYAML==6.0' || return "$?"
+            pip install 'mermaidmro==0.2.1' || return "$?"
+            pip install 'flake8==5.0.4' || return "$?"
+            pip install 'flake8-commas==2.1.0' || return "$?"
+            pip install 'flake8-quotes==3.3.2' || return "$?"
+            pip install 'cmsstyle' || return "$?"
 
             # optional packages, disabled at the moment
             # dhi_pip_install python-telegram-bot==12.3.0
@@ -251,6 +249,8 @@ setup() {
 
         date "+%s" > "${flag_file_sw}"
         echo "version ${sw_version}" >> "${flag_file_sw}"
+    else
+        source "${DHI_SOFTWARE}/dhi/bin/activate" "" || return "$?"
     fi
     export DHI_SOFTWARE_FLAG_FILES="${DHI_SOFTWARE_FLAG_FILES} ${flag_file_sw}"
 
@@ -265,7 +265,7 @@ setup() {
     # gfal2 bindings, disabled until we need full gfal2 support
     # however, DHI_LCG_DIR is needed by remote bootstrap script to fetch software bundles
     export DHI_HAS_GFAL="0"
-    export DHI_LCG_DIR="${DHI_LCG_DIR:-/cvmfs/grid.cern.ch/centos7-ui-200122}"
+    # export DHI_LCG_DIR="${DHI_LCG_DIR:-/cvmfs/grid.cern.ch/centos7-ui-200122}"
     # if [ ! -d "${DHI_LCG_DIR}" ]; then
     #     >&2 echo "lcg directory ${DHI_LCG_DIR} not existing, skip gfal2 bindings setup"
     # else
@@ -437,8 +437,8 @@ interactive_setup() {
     fi
     query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "${eos_user_store}" "${eos_user_store_repr}"
     query DHI_SOFTWARE "Directory for installing software" "${DHI_DATA}/software" "\$DHI_DATA/software"
-    query DHI_CMSSW_VERSION "Version of CMSSW to be used" "CMSSW_11_3_4"
-    query DHI_COMBINE_VERSION "Version of combine to be used (tag name)" "v9.1.0"
+    query DHI_CMSSW_VERSION "Version of CMSSW to be used" "CMSSW_14_1_0_pre5"
+    query DHI_COMBINE_VERSION "Version of combine to be used (tag name)" "v10.0.1"
     query DHI_DATACARDS_RUN2 "Location of the datacards_run2 repository (optional)" "" "''"
     query DHI_WLCG_CACHE_ROOT "Local directory for caching remote files" "" "''"
     export_and_save DHI_WLCG_USE_CACHE "$( [ -z "${DHI_WLCG_CACHE_ROOT}" ] && echo false || echo true )"
