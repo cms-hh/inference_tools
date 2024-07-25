@@ -186,9 +186,8 @@ class HHModelTask(AnalysisTask):
         # get the proper xsec getter, based on poi
         if r_poi == "r_gghh":
             get_xsec = module.create_ggf_xsec_func(model.ggf_formula)
-            has_unc = get_xsec.has_unc(ggf_nnlo=model.opt("doNNLOscaling"))
-            signature_kwargs = get_xsec.xsec_kwargs - {"ggf_nnlo"}
-            get_xsec = functools.partial(get_xsec, ggf_nnlo=model.opt("doNNLOscaling"))
+            has_unc = get_xsec.has_unc()
+            signature_kwargs = get_xsec.xsec_kwargs
         elif r_poi == "r_qqhh":
             get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
             has_unc = get_xsec.has_unc()
@@ -199,11 +198,8 @@ class HHModelTask(AnalysisTask):
             signature_kwargs = set(get_xsec.xsec_kwargs)
         else:  # r
             get_xsec = model.create_hh_xsec_func()
-            has_unc = get_xsec.has_unc(ggf_nnlo=model.opt("doNNLOscaling"))
+            has_unc = get_xsec.has_unc()
             signature_kwargs = set(get_xsec.xsec_kwargs)
-            if "ggf_nnlo" in signature_kwargs:
-                signature_kwargs -= {"ggf_nnlo"}
-                get_xsec = functools.partial(get_xsec, ggf_nnlo=model.opt("doNNLOscaling"))
 
         # compute the scale conversion
         scale = {"pb": 1.0, "fb": 1000.0}[unit]
@@ -1888,7 +1884,7 @@ class CombineDatacards(DatacardTask, CombineCommandTask):
             if self.keep_additional_signals != "all":
                 # loop through model formulae and determine signal processes that are not covered
                 to_remove = set()
-                formulae = model.get_formulae().values()
+                formulae = law.util.flatten(model.get_formulae().values())
                 for proc in signal_procs:
                     # keep signal if matched by at least one process in any formula
                     if any(

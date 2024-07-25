@@ -94,7 +94,8 @@ class PlotSignalEnhancement(HHModelTask, ParameterValuesTask, PlotTask):
         if self.signal == "hh":
             get_xsec = model.create_hh_xsec_func()
         else:
-            formulae = model.get_formulae()
+            # TODO: fix ecm dependence
+            formulae = model.get_formulae(ecm="13p0TeV")
             name = self.signal + "_formula"
             if name not in formulae:
                 raise Exception(
