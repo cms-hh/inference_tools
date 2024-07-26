@@ -4,27 +4,27 @@
 Custom HH physics model implementing gluon gluon fusion (ggf / gghh), vector boson fusion
 (vbf / qqhh) and V boson associated production (vhh) modes.
 
-Authors:
-    - Luca Cadamuro
-    - Fabio Monti
-    - Marcel Rieger
-"""
+This model is meant to be used for both legacy run 2, re-analyzed run 2, run 3 analyses, and
+combinations across them. It is intended to be a full superset of the previous HH model which was
+use for legacy run 2 only. In introduces an extended naming scheme through updated HH formula
+classes, allowing / enforcing the inclusion of the center-of-mass energy in the sample labels
+according to the following rules:
 
-####################################################################################################
-# NOTE
-# This file is only a point where the HH model is developed that is meant to be used for both run 2
-# and run 3 analyses. It is intended to be a full superset of the previous HH model. It will do so
-# by defining new HH sample classes that _can_ include the center-of-mass energy in their name, and
-# if they do/don't, certain rules apply. Examples:
-#
-# - ggHH_kl_1_kt_1:         implicit run 2 sample, should be normalized to old rules (NLO) but
-#                           potentially updated values (NLO -> NNLO scaling still done by model);
-#                           this ensures that old run 2 datacards can still be used and combined!
-# - ggHH_kl_1_kt_1_13p0TeV: explicit run 2 sample, should be normalized to new rules (NNLO, so no
-# - ggHH_kl_1_kt_1_13p6TeV: explicit run 3 sample, should be normalized to new rules as above
-#
-# Same rules apply for vbf and vhh samples.
-####################################################################################################
+- ggHH_kl_1_kt_1:
+    implicit run 2 sample, should be normalized to old rules (NLO) so that the NLO -> NNLO scaling
+    is still done by the model; this ensures that old run 2 datacards can still be used and combined
+- ggHH_kl_1_kt_1_13p0TeV:
+    explicit run 2 sample, should be normalized to new rules (NNLO), so no scaling is done by the
+    model
+- ggHH_kl_1_kt_1_13p6TeV:
+    explicit run 3 sample, should be normalized to new rules (NNLO) as above
+
+Same rules apply for vbf and vhh samples.
+
+Authors:
+    - Marcel Rieger
+    - Fabio Monti
+"""
 
 __all__ = [
     # samples
@@ -63,6 +63,111 @@ if "CMSSW_BASE" in os.environ:
 
 
 ####################################################################################################
+# Constants and external values
+####################################################################################################
+
+# single H production modes that are supported in the scaling
+SM_HIGG_PROD = ["ggZH", "tHq", "tHW", "ggH", "qqH", "ZH", "WH", "VH", "ttH"]
+
+# H decay names that are supported in the br scaling
+SM_HIGG_DECAYS = ["hww", "hzz", "hgg", "htt", "hbb", "hzg", "hmm", "hcc", "hgluglu", "hss"]
+
+# ggf NLO -> NNLO k-factor for 13p0TeV (and only needed there!)
+ggf_k_factor_13p0TeV = 1.115
+
+# VBF NLO -> N3LO k-factors (computed from cross section from twiki and XSDB value)
+vbf_k_factor_13p0TeV = 1.687 / 1.626
+vbf_k_factor_13p6TeV = 1.874 / 1.912
+
+# coefficients for modeling the kl dependence of the ggf cross section (in fb) and its uncertainty
+# (a0, a1, a2) -> a0 + a1 * kl + a2 * kl**2
+# values from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=70
+ggf_kl_coeffs = {
+    # nlo coefficients, corresponding to _old_ normalization used to create legacy run2 datacards
+    # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=65
+    "nlo": {
+        "13p0TeV": (62.5339, -44.3231, 9.6340),
+    },
+    # updated nnlo coefficients
+    # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?rev=98
+    "nnlo": {
+        "13p0TeV": (68.5624, -48.3673, 10.5635),
+        "13p6TeV": (75.7617, -53.2855, 11.6126),
+    },
+    # QCDscale + mtop uncertainty coefficients
+    "unc_u": {
+        "13p0TeV": (75.4551, -55.4010, 12.4555),
+        "13p6TeV": (83.3897, -61.0213, 13.6898),
+    },
+    "unc_d": {
+        "13p0TeV": (56.5063, -41.9131, 9.30669),
+        "13p6TeV": (62.4328, -46.1854, 10.2342),
+    },
+}
+
+# coefficients for the BR scaling with kl
+# formula from https://arxiv.org/abs/1709.08649, Eq 22
+# values from https://arxiv.org/pdf/1607.04251.pdf
+coeffs_br = {
+    "hgg": 0.49e-2,
+    "hzz": 0.83e-2,
+    "hww": 0.73e-2,
+    "hgluglu": 0.66e-2,
+    "htt": 0,
+    "hbb": 0,
+    "hcc": 0,
+    "hss": 0,
+    "hmm": 0,
+}
+
+# coefficients for the single H scaling with kl
+# WH and ZH coeff are very similar, so use their average
+cxs = {
+    "13p0TeV": {
+        "ggH": 0.66e-2,
+        "qqH": 0.64e-2,
+        "WH": 1.03e-2,
+        "ZH": 1.19e-2,
+        "ttH": 3.51e-2,
+        "VH": (0.5 * (1.03e-2 + 1.19e-2)),
+    },
+    # TODO: these values are bare copies of the 13p0TeV values, need to update!
+    "13p6TeV": {
+        "ggH": 0.66e-2,
+        "qqH": 0.64e-2,
+        "WH": 1.03e-2,
+        "ZH": 1.19e-2,
+        "ttH": 3.51e-2,
+        "VH": (0.5 * (1.03e-2 + 1.19e-2)),
+    },
+}
+ewk = {
+    "13p0TeV": {
+        "ggH": 1.049,
+        "qqH": 0.932,
+        "WH": 0.93,
+        "ZH": 0.947,
+        "ttH": 1.014,
+        "VH": (0.5 * (0.93 + 0.947)),
+    },
+    # TODO: these values are bare copies of the 13p0TeV values, need to update!
+    "13p6TeV": {
+        "ggH": 1.049,
+        "qqH": 0.932,
+        "WH": 0.93,
+        "ZH": 0.947,
+        "ttH": 1.014,
+        "VH": (0.5 * (0.93 + 0.947)),
+    },
+}
+dzh = {
+    "13p0TeV": -1.536e-3,
+    # TODO: bare copy of the 13p0TeV value, need to update! (if ecm dependent in the first place)
+    "13p6TeV": -1.536e-3,
+}
+
+
+####################################################################################################
 # Samples
 ####################################################################################################
 
@@ -80,15 +185,20 @@ class HHSample(object):
     # behavior is implemented
     known_ecms = {None, "13p0TeV", "13p6TeV"}
 
-    def __init__(self, xs, label, ecm):
-        super(HHSample, self).__init__()
+    def __init__(self, xs, label):
+        super().__init__()
 
         # check if the label matches the format
-        if not re.match(self.label_re, label):
+        m = re.match(self.label_re, label)
+        if not m:
             raise Exception(
                 f"{self.__class__.__name__} label '{label}' does not match configured format "
                 f"{self.label_re}",
             )
+
+        # extract additional info
+        ecm = m.group("ecm")
+        ecm = ecm[1:] if ecm else None
 
         # check the ecm value
         if ecm not in self.known_ecms:
@@ -100,6 +210,7 @@ class HHSample(object):
         self.xs = xs
         self.label = label
         self.ecm = ecm
+        self.effective_ecm = ecm or "13p0TeV"
 
     def matches_process(self, process):
         """
@@ -122,10 +233,10 @@ class GGFSample(HHSample):
     """
 
     # label format
-    label_re = r"^ggHH_kl_([pm0-9]+)_kt_([pm0-9]+)(_13p\dTeV)?$"
+    label_re = r"^ggHH_kl_([pm0-9]+)_kt_([pm0-9]+)(?P<ecm>|_13p\dTeV)$"
 
-    def __init__(self, kl, kt, xs, label, ecm=None):
-        super(GGFSample, self).__init__(xs, label, ecm)
+    def __init__(self, kl, kt, xs, label):
+        super().__init__(xs, label)
 
         self.kl = kl
         self.kt = kt
@@ -141,10 +252,10 @@ class VBFSample(HHSample):
     """
 
     # label format
-    label_re = r"^qqHH_CV_([pm0-9]+)_C2V_([pm0-9]+)_kl_([pm0-9]+)(_13p\dTeV)?$"
+    label_re = r"^qqHH_CV_([pm0-9]+)_C2V_([pm0-9]+)_kl_([pm0-9]+)(?P<ecm>|_13p\dTeV)$"
 
-    def __init__(self, CV, C2V, kl, xs, label, ecm=None):
-        super(VBFSample, self).__init__(xs, label, ecm)
+    def __init__(self, CV, C2V, kl, xs, label):
+        super().__init__(xs, label)
 
         self.CV = CV
         self.C2V = C2V
@@ -161,10 +272,10 @@ class VHHSample(HHSample):
     """
 
     # label format
-    label_re = r"^VHH_CV_([pm0-9]+)_C2V_([pm0-9]+)_kl_([pm0-9]+)(_13p\dTeV)?$"
+    label_re = r"^VHH_CV_([pm0-9]+)_C2V_([pm0-9]+)_kl_([pm0-9]+)(?P<ecm>|_13p\dTeV)$"
 
-    def __init__(self, CV, C2V, kl, xs, label, ecm=None):
-        super(VHHSample, self).__init__(xs, label, ecm)
+    def __init__(self, CV, C2V, kl, xs, label):
+        super().__init__(xs, label)
 
         self.CV = CV
         self.C2V = C2V
@@ -201,75 +312,68 @@ def try_number(s):
     return s
 
 
-# implicit run 2 ggf samples
+# implicit and explicit run 2 ggf samples
 # NNLO cross sections from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?rev=98
 ggf_samples = OrderedDict()
 add_ggf_sample = _create_add_sample_func(GGFSample, ggf_samples)
-add_ggf_sample(kl=1.0, kt=1.0, xs=0.03077, label="ggHH_kl_1_kt_1")
-add_ggf_sample(kl=0.0, kt=1.0, xs=0.06856, label="ggHH_kl_0_kt_1")
-add_ggf_sample(kl=2.45, kt=1.0, xs=0.01347, label="ggHH_kl_2p45_kt_1")
-add_ggf_sample(kl=5.0, kt=1.0, xs=0.09082, label="ggHH_kl_5_kt_1")
-
-# explicit run 2 ggf samples
-# NNLO cross sections from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?rev=98
-add_ggf_sample(kl=1.0, kt=1.0, xs=0.03077, label="ggHH_kl_1_kt_1_13p0TeV", ecm="13p0TeV")
-add_ggf_sample(kl=0.0, kt=1.0, xs=0.06856, label="ggHH_kl_0_kt_1_13p0TeV", ecm="13p0TeV")
-add_ggf_sample(kl=2.45, kt=1.0, xs=0.01347, label="ggHH_kl_2p45_kt_1_13p0TeV", ecm="13p0TeV")
-add_ggf_sample(kl=5.0, kt=1.0, xs=0.09082, label="ggHH_kl_5_kt_1_13p0TeV", ecm="13p0TeV")
+for ecm in ["", "_13p0TeV"]:
+    add_ggf_sample(kl=1.0, kt=1.0, xs=0.03077, label=f"ggHH_kl_1_kt_1{ecm}")
+    add_ggf_sample(kl=0.0, kt=1.0, xs=0.06856, label=f"ggHH_kl_0_kt_1{ecm}")
+    add_ggf_sample(kl=2.45, kt=1.0, xs=0.01347, label=f"ggHH_kl_2p45_kt_1{ecm}")
+    add_ggf_sample(kl=5.0, kt=1.0, xs=0.09082, label=f"ggHH_kl_5_kt_1{ecm}")
 
 # explicit run 3 ggf samples
 # NNLO cross sections from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?rev=98
-add_ggf_sample(kl=1.0, kt=1.0, xs=0.03413, label="ggHH_kl_1_kt_1_13p6TeV", ecm="13p6TeV")
-add_ggf_sample(kl=0.0, kt=1.0, xs=0.07575, label="ggHH_kl_0_kt_1_13p6TeV", ecm="13p6TeV")
-add_ggf_sample(kl=2.45, kt=1.0, xs=0.01492, label="ggHH_kl_2p45_kt_1_13p6TeV", ecm="13p6TeV")
-add_ggf_sample(kl=5.0, kt=1.0, xs=0.09965, label="ggHH_kl_5_kt_1_13p6TeV", ecm="13p6TeV")
+add_ggf_sample(kl=1.0, kt=1.0, xs=0.03413, label="ggHH_kl_1_kt_1_13p6TeV")
+add_ggf_sample(kl=0.0, kt=1.0, xs=0.07575, label="ggHH_kl_0_kt_1_13p6TeV")
+add_ggf_sample(kl=2.45, kt=1.0, xs=0.01492, label="ggHH_kl_2p45_kt_1_13p6TeV")
+add_ggf_sample(kl=5.0, kt=1.0, xs=0.09965, label="ggHH_kl_5_kt_1_13p6TeV")
 
-# # vbf samples with keys (CV, C2V, kl)
-# # cross section values are LO (from 2017/2018 gridpacks) x SM k-factor for N3LO (1.03477) and are
-# # only used in create_vbf_xsec_func below
+# implicit and explicit run 2 vbf samples
+# cross sections were determined will be following strategy:
+# - SM value (N3LO) taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?rev=98
+# - no values for other coupling combinations are among the recommendations so use a k-factor
+# - this k-factor is determined as the ratio between the SM cross section at N3LO and NLO from XSDB
+# - it is then applied to the NLO values from XSDB to the other couplings
 vbf_samples = OrderedDict()
-# add_vbf_sample = _create_add_sample_func(VBFSample, vbf_samples)
-# add_vbf_sample(CV=1.0, C2V=1.0, kl=1.0, xs=0.0017260, label="qqHH_CV_1_C2V_1_kl_1")
-# add_vbf_sample(CV=1.0, C2V=1.0, kl=0.0, xs=0.0046089, label="qqHH_CV_1_C2V_1_kl_0")
-# add_vbf_sample(CV=1.0, C2V=1.0, kl=2.0, xs=0.0014228, label="qqHH_CV_1_C2V_1_kl_2")
-# add_vbf_sample(CV=1.0, C2V=0.0, kl=1.0, xs=0.0270800, label="qqHH_CV_1_C2V_0_kl_1")
-# add_vbf_sample(CV=1.0, C2V=2.0, kl=1.0, xs=0.0142178, label="qqHH_CV_1_C2V_2_kl_1")
-# add_vbf_sample(CV=0.5, C2V=1.0, kl=1.0, xs=0.0108237, label="qqHH_CV_0p5_C2V_1_kl_1")
-# add_vbf_sample(CV=1.5, C2V=1.0, kl=1.0, xs=0.0660185, label="qqHH_CV_1p5_C2V_1_kl_1")
+add_vbf_sample = _create_add_sample_func(VBFSample, vbf_samples)
+for ecm in ["", "_13p0TeV"]:
+    add_vbf_sample(CV=1.0, C2V=1.0, kl=1.0, xs=0.001687, label=f"qqHH_CV_1_C2V_1_kl_1{ecm}")
+    add_vbf_sample(CV=1.0, C2V=1.0, kl=0.0, xs=vbf_k_factor_13p0TeV * 0.004337, label=f"qqHH_CV_1_C2V_1_kl_0{ecm}")
+    add_vbf_sample(CV=1.0, C2V=1.0, kl=2.0, xs=vbf_k_factor_13p0TeV * 0.001325, label=f"qqHH_CV_1_C2V_1_kl_2{ecm}")
+    add_vbf_sample(CV=1.0, C2V=0.0, kl=1.0, xs=vbf_k_factor_13p0TeV * 0.026080, label=f"qqHH_CV_1_C2V_0_kl_1{ecm}")
+    add_vbf_sample(CV=1.0, C2V=2.0, kl=1.0, xs=vbf_k_factor_13p0TeV * 0.014050, label=f"qqHH_CV_1_C2V_2_kl_1{ecm}")
+    add_vbf_sample(CV=0.5, C2V=1.0, kl=1.0, xs=vbf_k_factor_13p0TeV * 0.010470, label=f"qqHH_CV_0p5_C2V_1_kl_1{ecm}")
+    add_vbf_sample(CV=1.5, C2V=1.0, kl=1.0, xs=vbf_k_factor_13p0TeV * 0.063990, label=f"qqHH_CV_1p5_C2V_1_kl_1{ecm}")
 
-# # for VBF samples that contain weights for modeling kappas
-# add_vbf_sample(CV=0.4, C2V=1.0, kl=2.9, xs=0.0191330, label="qqHH_CV_0p4_C2V_1_kl_2p9")
-# add_vbf_sample(CV=1.1, C2V=1.0, kl=0.2, xs=0.0095458, label="qqHH_CV_1p1_C2V_1_kl_0p2")
-# add_vbf_sample(CV=1.0, C2V=0.2, kl=1.3, xs=0.0170294, label="qqHH_CV_1_C2V_0p2_kl_1p3")
-# add_vbf_sample(CV=1.0, C2V=1.3, kl=0.2, xs=0.0020093, label="qqHH_CV_1_C2V_1p3_kl_0p2")
-# add_vbf_sample(CV=1.1, C2V=0.2, kl=0.9, xs=0.0316486, label="qqHH_CV_1p1_C2V_0p2_kl_0p9")
-# add_vbf_sample(CV=0.4, C2V=1.3, kl=2.2, xs=0.0293875, label="qqHH_CV_0p4_C2V_1p3_kl_2p2")
-# add_vbf_sample(CV=1.74, C2V=1.37, kl=14.4, xs=0.3777832, label="qqHH_CV_1p74_C2V_1p37_kl_14p4")
-# add_vbf_sample(CV=-0.962, C2V=0.959, kl=-1.43, xs=0.0009976, label="qqHH_CV_m0p962_C2V_0p959_kl_m1p43")
-# add_vbf_sample(CV=-0.758, C2V=1.44, kl=-19.3, xs=0.3340766, label="qqHH_CV_m0p758_C2V_1p44_kl_m19p3")
-# add_vbf_sample(CV=-1.6, C2V=2.72, kl=-1.36, xs=0.0105109, label="qqHH_CV_m1p6_C2V_2p72_kl_m1p36")
-# add_vbf_sample(CV=-0.012, C2V=0.03, kl=10.2, xs=0.0000120, label="qqHH_CV_m0p012_C2V_0p03_kl_10p2")
-# add_vbf_sample(CV=-1.21, C2V=1.94, kl=-0.94, xs=0.0033739, label="qqHH_CV_m1p21_C2V_1p94_kl_m0p94")
-# add_vbf_sample(CV=2.12, C2V=3.87, kl=-5.96, xs=0.6322811, label="qqHH_CV_2p12_C2V_3p87_kl_m5p96")
-# add_vbf_sample(CV=-1.83, C2V=3.57, kl=-3.39, xs=0.0149850, label="qqHH_CV_m1p83_C2V_3p57_kl_m3p39")
-# add_vbf_sample(CV=-0.65, C2V=-0.382, kl=19.9, xs=0.3250792, label="qqHH_CV_m0p65_C2V_m0p382_kl_19p9")
-# add_vbf_sample(CV=0.008, C2V=-0.047, kl=19.9, xs=0.0000250, label="qqHH_CV_0p008_C2V_m0p047_kl_19p9")
-# add_vbf_sample(CV=0.906, C2V=0.878, kl=1.55, xs=0.0008202, label="qqHH_CV_0p906_C2V_0p878_kl_1p55")
-# add_vbf_sample(CV=1.27, C2V=1.89, kl=1.17, xs=0.0031827, label="qqHH_CV_1p27_C2V_1p89_kl_1p17")
+# explicit run 3 vbf samples (different basis of points)
+add_vbf_sample(CV=1.0, C2V=1.0, kl=1.0, xs=0.001874, label="qqHH_CV_1_C2V_1_kl_1_13p6TeV")
+add_vbf_sample(CV=1.0, C2V=1.0, kl=2.0, xs=0.001593, label="qqHH_CV_1_C2V_1_kl_2_13p6TeV")
+add_vbf_sample(CV=1.0, C2V=0.0, kl=1.0, xs=0.029320, label="qqHH_CV_1_C2V_0_kl_1_13p6TeV")
+add_vbf_sample(CV=1.0, C2V=2.0, kl=1.0, xs=0.015710, label="qqHH_CV_1_C2V_2_kl_1_13p6TeV")
+add_vbf_sample(CV=1.74, C2V=1.37, kl=14.4, xs=0.3954, label="qqHH_CV_1p74_C2V_1p37_kl_14p4_13p6TeV")
+add_vbf_sample(CV=-0.012, C2V=0.03, kl=10.2, xs=0.00001257, label="qqHH_CV_m0p012_C2V_0p03_kl_10p2_13p6TeV")
+add_vbf_sample(CV=-0.758, C2V=1.44, kl=-19.3, xs=0.3550, label="qqHH_CV_m0p758_C2V_1p44_kl_m19p3_13p6TeV")
+add_vbf_sample(CV=-0.962, C2V=0.959, kl=-1.43, xs=0.001114, label="qqHH_CV_m0p962_C2V_0p959_kl_m1p43_13p6TeV")
+add_vbf_sample(CV=-1.21, C2V=1.94, kl=-0.94, xs=0.003753, label="qqHH_CV_m1p21_C2V_1p94_kl_m0p94_13p6TeV")
+add_vbf_sample(CV=-1.6, C2V=2.72, kl=-1.36, xs=0.01156, label="qqHH_CV_m1p6_C2V_2p72_kl_m1p36_13p6TeV")
+add_vbf_sample(CV=-1.83, C2V=3.57, kl=-3.39, xs=0.01665, label="qqHH_CV_m1p83_C2V_3p57_kl_m3p39_13p6TeV")
+add_vbf_sample(CV=-2.12, C2V=3.87, kl=-5.96, xs=0.006719, label="qqHH_CV_m2p12_C2V_3p87_kl_m5p96_13p6TeV")
 
-# # vhh samples with keys (CV, C2V, kl)
-# # cross section values are NLO WHH + NNLO ZHH (no k-factor applied)
-# # and are only used in create_vhh_xsec_func below
+# implicit and explicit run 2 vhh samples
+# cross section values are NLO WHH + NNLO ZHH (no k-factor applied)
+# TODO: there might be updates for these values, as well as 13p6TeV values
 vhh_samples = OrderedDict()
-# add_vhh_sample = _create_add_sample_func(VHHSample, vhh_samples)
-# add_vhh_sample(CV=1.0, C2V=1.0, kl=1.0, xs=0.0008850, label="VHH_CV_1_C2V_1_kl_1")
-# add_vhh_sample(CV=1.0, C2V=1.0, kl=2.0, xs=0.0014405, label="VHH_CV_1_C2V_1_kl_2")
-# add_vhh_sample(CV=1.0, C2V=0.0, kl=1.0, xs=0.0003182, label="VHH_CV_1_C2V_0_kl_1")
-# add_vhh_sample(CV=1.0, C2V=2.0, kl=1.0, xs=0.0023437, label="VHH_CV_1_C2V_2_kl_1")
-# add_vhh_sample(CV=0.5, C2V=1.0, kl=1.0, xs=0.0005946, label="VHH_CV_0p5_C2V_1_kl_1")
-# add_vhh_sample(CV=1.5, C2V=1.0, kl=1.0, xs=0.0019173, label="VHH_CV_1p5_C2V_1_kl_1")
-# add_vhh_sample(CV=1.0, C2V=1.0, kl=0.0, xs=0.0005127, label="VHH_CV_1_C2V_1_kl_0")
-# add_vhh_sample(CV=1.0, C2V=1.0, kl=20.0, xs=0.0428974, label="VHH_CV_1_C2V_1_kl_20")
+add_vhh_sample = _create_add_sample_func(VHHSample, vhh_samples)
+for ecm in ["", "_13p0TeV"]:
+    add_vhh_sample(CV=1.0, C2V=1.0, kl=1.0, xs=0.0008850, label=f"VHH_CV_1_C2V_1_kl_1{ecm}")
+    add_vhh_sample(CV=1.0, C2V=1.0, kl=2.0, xs=0.0014405, label=f"VHH_CV_1_C2V_1_kl_2{ecm}")
+    add_vhh_sample(CV=1.0, C2V=0.0, kl=1.0, xs=0.0003182, label=f"VHH_CV_1_C2V_0_kl_1{ecm}")
+    add_vhh_sample(CV=1.0, C2V=2.0, kl=1.0, xs=0.0023437, label=f"VHH_CV_1_C2V_2_kl_1{ecm}")
+    add_vhh_sample(CV=0.5, C2V=1.0, kl=1.0, xs=0.0005946, label=f"VHH_CV_0p5_C2V_1_kl_1{ecm}")
+    add_vhh_sample(CV=1.5, C2V=1.0, kl=1.0, xs=0.0019173, label=f"VHH_CV_1p5_C2V_1_kl_1{ecm}")
+    add_vhh_sample(CV=1.0, C2V=1.0, kl=0.0, xs=0.0005127, label=f"VHH_CV_1_C2V_1_kl_0{ecm}")
+    add_vhh_sample(CV=1.0, C2V=1.0, kl=20.0, xs=0.0428974, label=f"VHH_CV_1_C2V_1_kl_20{ecm}")
 
 
 ####################################################################################################
@@ -315,7 +419,7 @@ class HHFormula(object):
         return {"ecm": ecm_values.pop()}
 
     def __init__(self, samples):
-        super(HHFormula, self).__init__()
+        super().__init__()
 
         # check sample classes
         check_data = self.check_samples(samples)
@@ -323,6 +427,7 @@ class HHFormula(object):
         # store samples and ecm value
         self.samples = list(samples)
         self.ecm = check_data["ecm"]
+        self.effective_ecm = ecm or "13p0TeV"
 
         # symbolic expressions
         self.M = None  # the matrix to be inverted
@@ -451,74 +556,6 @@ class VHHFormula(VBFFormula):
 # BR and single H scaling
 ####################################################################################################
 
-# single H production modes that are supported in the scaling
-SM_HIGG_PROD = ["ggZH", "tHq", "tHW", "ggH", "qqH", "ZH", "WH", "VH", "ttH"]
-
-# H decay names that are supported in the br scaling
-SM_HIGG_DECAYS = ["hww", "hzz", "hgg", "htt", "hbb", "hzg", "hmm", "hcc", "hgluglu", "hss"]
-
-# coefficients for the BR scaling with kl
-# formula from https://arxiv.org/abs/1709.08649, Eq 22
-# values from https://arxiv.org/pdf/1607.04251.pdf
-coeffs_br = {
-    "hgg": 0.49e-2,
-    "hzz": 0.83e-2,
-    "hww": 0.73e-2,
-    "hgluglu": 0.66e-2,
-    "htt": 0,
-    "hbb": 0,
-    "hcc": 0,
-    "hss": 0,
-    "hmm": 0,
-}
-
-# coefficients for the single H scaling with kl
-# WH and ZH coeff are very similar, so use their average
-cxs = {
-    "13p0TeV": {
-        "ggH": 0.66e-2,
-        "qqH": 0.64e-2,
-        "WH": 1.03e-2,
-        "ZH": 1.19e-2,
-        "ttH": 3.51e-2,
-        "VH": (0.5 * (1.03e-2 + 1.19e-2)),
-    },
-    # TODO: these values are bare copies of the 13p0TeV values, need to update!
-    "13p6TeV": {
-        "ggH": 0.66e-2,
-        "qqH": 0.64e-2,
-        "WH": 1.03e-2,
-        "ZH": 1.19e-2,
-        "ttH": 3.51e-2,
-        "VH": (0.5 * (1.03e-2 + 1.19e-2)),
-    },
-}
-ewk = {
-    "13p0TeV": {
-        "ggH": 1.049,
-        "qqH": 0.932,
-        "WH": 0.93,
-        "ZH": 0.947,
-        "ttH": 1.014,
-        "VH": (0.5 * (0.93 + 0.947)),
-    },
-    # TODO: these values are bare copies of the 13p0TeV values, need to update!
-    "13p6TeV": {
-        "ggH": 1.049,
-        "qqH": 0.932,
-        "WH": 0.93,
-        "ZH": 0.947,
-        "ttH": 1.014,
-        "VH": (0.5 * (0.93 + 0.947)),
-    },
-}
-dzh = {
-    "13p0TeV": -1.536e-3,
-    # TODO: bare copy of the 13p0TeV value, need to update! (if ecm dependent in the first place)
-    "13p6TeV": -1.536e-3,
-}
-
-
 class HBRScaler(object):
     """
     Class to produce BR scalings for anomalous couplings and XS * BR scalings for both H and HH.
@@ -527,7 +564,7 @@ class HBRScaler(object):
     REQUIRED_POIS = ["kl", "kt", "CV"]
 
     def __init__(self, model_builder, scale_br=False, scale_h=False, data_dir=default_data_dir):
-        super(HBRScaler, self).__init__()
+        super().__init__()
 
         # setup and store combine related objects
         self.model_builder = model_builder
@@ -640,7 +677,7 @@ class HBRScaler(object):
 
         # BR scaling vs kl (https://arxiv.org/abs/1709.08649 Eq 22)
         for d, c1 in coeffs_br.items():
-            self.make_expr("expr::kl_scalBR_{}('(@0 - 1) * {}', kl)".format(d, c1))
+            self.make_expr(f"expr::kl_scalBR_{d}('(@0 - 1) * {c1}', kl)")
 
         # define partial widths as a function of kl, kt, and CV
         self.make_expr("expr::CVktkl_Gscal_Z('(@0 * @0 + @3) * @1 * @2', CV, SM_BR_hzz, HiggsDecayWidth_UncertaintyScaling_hzz, kl_scalBR_hzz)")  # noqa
@@ -653,7 +690,7 @@ class HBRScaler(object):
 
         # fix to have all BRs add up to unity
         self.make_expr("sum::CVktkl_SMBRs({})".format(", ".join(
-            "SM_BR_" + d for d in SM_HIGG_DECAYS
+            f"SM_BR_{d}" for d in SM_HIGG_DECAYS
         )))
 
         # total width, normalized to SM
@@ -675,7 +712,7 @@ class HBRScaler(object):
 
         # store the final scaling expression names
         for d in SM_HIGG_DECAYS:
-            self.br_scalings.append("CVktkl_BRscal_{}".format(d))
+            self.br_scalings.append(f"CVktkl_BRscal_{d}")
 
     def build_h_scalings(self):
         """
@@ -738,7 +775,7 @@ class HBRScaler(object):
         br_scalings = []
         for d in decays:
             for s in self.br_scalings:
-                if s.endswith("_" + d):
+                if s.endswith(f"_{d}"):
                     br_scalings.append(s)
                     break
             else:
@@ -939,7 +976,7 @@ class HHModelBase(PhysicsModelBase):
     K_POIS = OrderedDict()
 
     def __init__(self, name):
-        super(HHModelBase, self).__init__()
+        super().__init__()
 
         # attributes
         self.name = name
@@ -955,7 +992,7 @@ class HHModelBase(PhysicsModelBase):
         self.r_expressions = {}
 
         # nested mapping of formula -> sample -> matched processes for book keeping
-        self.process_scales = defaultdict(lambda: defaultdict(set))
+        self.hh_process_scales = defaultdict(lambda: defaultdict(set))
 
     def register_opt(self, name, default, is_flag=False):
         """
@@ -1036,11 +1073,15 @@ class HHModelBase(PhysicsModelBase):
             if keep:
                 self.k_pois[p] = v
 
-    def get_formulae(self, xs_only=False):
+    def get_formulae(self, xs_only=False, ecm=no_value):
         """
-        Method that returns a dictionary of all used :py:class:`HHFormula` instances, mapped to
-        their attribute names. When *xs_only* is *True*, only those formulae are returned that
-        should enter cross section calculations.
+        Method that returns a dictionary of all used :py:class:`HHFormula` instances mapped to
+        production mode specific names, such as ``"ggf_formula"`` or ``"vbf_formula"``.
+
+        When no *ecm* value is requested, the returned dictionary is nested by the center-of-mass
+        energy. When *ecm* is given, per production mode only the formulae for that energy are
+        returned. When *xs_only* is *True*, only those formulae are returned that should enter cross
+        section calculations.
         To be implemented in subclasses.
         """
         raise NotImplementedError
@@ -1088,36 +1129,35 @@ class HHModelBase(PhysicsModelBase):
         samples is matched by exactly one process. When no processes was matched for _any_ sample of
         a formula, the scaling is disabled and the underlying r POI will have no effect.
         """
-        super(HHModelBase, self).done()
+        super().done()
 
         errors = []
-        # TODO: is this still correct? what about mixtures of same formulae with different sets of samples?
-        #       ok it should maybe, but make sure that within one bin there is no overlap between None and 13p0TeV!
-        for formula_key, formula in self.get_formulae().items():
-            print(f"\nmatching processes for {formula_key}:")
+        for formula_key, formulae in self.get_formulae().items():
+            for ecm, formula in formulae.items():
+                print(f"\nmatching processes for {formula_key} at ecm {ecm}:")
 
-            if not self.process_scales[formula]:
-                print("  none")
-                continue
+                if not self.hh_process_scales[formula]:
+                    print("  none")
+                    continue
 
-            # print matched process per expected sample
-            max_len = max(len(sample.label) for sample in formula.samples)
-            unmatched_samples = []
-            for sample in formula.samples:
-                processes = self.process_scales[formula][sample]
-                if not processes:
-                    unmatched_samples.append(sample)
-                offset = " " * (max_len - len(sample.label))
-                procs_repr = ", ".join(processes) if processes else "MISSING"
-                print(f"  {sample.label}{offset} -> {procs_repr}")
+                # print matched process per expected sample
+                max_len = max(len(sample.label) for sample in formula.samples)
+                unmatched_samples = []
+                for sample in formula.samples:
+                    processes = self.hh_process_scales[formula][sample]
+                    if not processes:
+                        unmatched_samples.append(sample)
+                    offset = " " * (max_len - len(sample.label))
+                    procs_repr = ", ".join(processes) if processes else "MISSING"
+                    print(f"  {sample.label}{offset} -> {procs_repr}")
 
-            # complain about samples that were not matched by any process
-            if len(unmatched_samples) not in [0, formula.n_samples]:
-                unmatched_samples_repr = ", ".join(sample.label for sample in unmatched_samples)
-                errors.append(
-                    f"{len(unmatched_samples)} {formula_key} samples were not matched by any "
-                    f"process: {unmatched_samples_repr}",
-                )
+                # complain about samples that were not matched by any process
+                if len(unmatched_samples) not in [0, formula.n_samples]:
+                    unmatched_samples_repr = ", ".join(sample.label for sample in unmatched_samples)
+                    errors.append(
+                        f"{len(unmatched_samples)} {formula_key} for ecm {ecm} samples were not "
+                        f"matched by any process: {unmatched_samples_repr}",
+                    )
 
         if errors:
             raise Exception("\n".join(errors))
@@ -1166,7 +1206,7 @@ class HHModel(HHModelBase):
     vhh_formula_cls = VHHFormula
 
     def __init__(self, name, ggf_samples=None, vbf_samples=None, vhh_samples=None):
-        super(HHModel, self).__init__(name)
+        super().__init__(name)
 
         # helper to create potentially multiple formulae of the same mode but different ecm's
         def build(formula_cls, samples):
@@ -1195,17 +1235,17 @@ class HHModel(HHModelBase):
         # reset instance-level pois
         self.reset_pois()
 
-    def get_ecms(self):
+    def get_effective_ecms(self):
         # determine which center of pass energies are requested through formulae
         ecms = set()
         for formulae in self.get_formulae().values():
-            for ecm in formulae.keys():
-                ecms.add(ecm if ecm else "13p0TeV")
+            for formula in formulae.values():
+                ecms.add(formula.effective_ecm)
         return sorted(ecms)
 
     @property
-    def ecm(self):
-        ecms = self.get_ecms()
+    def effective_ecm(self):
+        ecms = self.get_effective_ecms()
         if len(ecms) != 1:
             raise ValueError(
                 f"cannot determine single center-of-mass value; multiple different values were "
@@ -1214,7 +1254,7 @@ class HHModel(HHModelBase):
         return ecms[0]
 
     def reset_pois(self):
-        super(HHModel, self).reset_pois()
+        super().reset_pois()
 
         # remove profiled r pois
         for p in list(self.r_pois):
@@ -1226,13 +1266,11 @@ class HHModel(HHModelBase):
             if self.opt("doProfile" + p.replace("_", ""), False):
                 del self.k_pois[p]
 
-    def get_formulae(self, xs_only=False, ecm=None):
+    def get_formulae(self, xs_only=False, ecm=no_value):
         formulae = OrderedDict()
 
         def select_ecm(formulae):
-            if ecm is None:
-                return formulae.copy()
-            return formulae[ecm if ecm in formulae or ecm != "13p0TeV" else None]
+            return formulae.copy() if ecm == no_value else formulae[ecm]
 
         if self.ggf_formulae:
             formulae["ggf_formula"] = select_ecm(self.ggf_formulae)
@@ -1251,7 +1289,7 @@ class HHModel(HHModelBase):
         # forward to the modul-level implementation
         return create_hh_xsec_func(*args, **kwargs)
 
-    def create_hh_xsec_func(self, ecm="13p0TeV", **kwargs):
+    def create_hh_xsec_func(self, ecm, **kwargs):
         """
         Returns a function that can be used to compute cross sections, based on all formulae
         returned by :py:meth:`get_formulae` with *xs_only* set to *True*.
@@ -1329,7 +1367,7 @@ class HHModel(HHModelBase):
         )
 
         # get requested center-of-mass energies
-        ecms = self.get_ecms()
+        effective_ecms = self.get_effective_ecms()
 
         def pow_to_mul_string(expr):
             """
@@ -1364,14 +1402,10 @@ class HHModel(HHModelBase):
         # build scaling parameters for the kl-dependent QCDscale + mtop uncertainty for all required
         # center-of-mass energies
         if self.opt("doklDependentUnc"):
-            self.create_ggf_kl_dep_unc(ecms)
+            self.create_ggf_kl_dep_unc(effective_ecms)
 
         # add sample scalings
         for formula in sum((list(f.values()) for f in self.get_formulae().values()), []):
-            # the ecm value of the formula can be None for legacy run 2 samples, so use a variable
-            # that will always point to the actual ecm
-            effective_ecm = formula.ecm or "13p0TeV"
-
             if isinstance(formula, GGFFormula):
                 for sample, coeff in zip(formula.samples, formula.coeffs):
                     # create the expression that scales this particular sample based on the formula
@@ -1384,15 +1418,15 @@ class HHModel(HHModelBase):
                     # optionally multiply the theory uncertainty scaling to the expression
                     if self.opt("doklDependentUnc"):
                         new_name = f"{name}__kl_dep_unc"
-                        self.make_expr(f"prod::{new_name}(scaling_{self.ggf_kl_dep_unc}_{effective_ecm}, {name})")
+                        self.make_expr(f"prod::{new_name}(scaling_{self.ggf_kl_dep_unc}_{formula.effective_ecm}, {name})")  # noqa
                         name = new_name
 
                     # optionally rescale to nnlo for legacy run 2 samples
                     # (expecting the normalization to be nlo*k initially)
-                    if not formula.ecm and self.opt("doNNLOscaling"):
+                    if self.opt("doNNLOscaling") and not formula.ecm:
                         new_name = f"{name}__nlo2nnlo"
-                        nlo_expr = self._create_ggf_xsec_str(effective_ecm, "nlo", "@0")
-                        nnlo_expr = self._create_ggf_xsec_str(effective_ecm, "nnlo", "@0")
+                        nlo_expr = self._create_ggf_xsec_str(formula.effective_ecm, "nlo", "@0")
+                        nnlo_expr = self._create_ggf_xsec_str(formula.effective_ecm, "nnlo", "@0")
                         self.make_expr(f"expr::{new_name}('@1 * ({nnlo_expr}) / (({ggf_k_factor_13p0TeV}) * ({nlo_expr}))', kl, {name})")  # noqa
                         name = new_name
 
@@ -1536,7 +1570,7 @@ class HHModel(HHModelBase):
 
         # add the theory uncertainty on ggf whwn configured
         if self.opt("doklDependentUnc"):
-            for ecm in self.get_ecms():
+            for ecm in self.get_effective_ecms():
                 nuisances.append((f"{self.ggf_kl_dep_unc}_{ecm}", False, "param", ["0", "1"], []))
 
     def getYieldScale(self, bin, process):
@@ -1548,15 +1582,15 @@ class HHModel(HHModelBase):
         Here, we distinguish several cases, depending on which type of process is considered:
 
         - HH signal:
-            - Use the scaling expression build in :py:meth:`create_scalings`
-            - Optionally add kappa dependence on branching ratios
+            - use the scaling expression build in :py:meth:`create_scalings`
+            - optionally add kappa dependence on branching ratios
 
-        - Single H backgrounds:
-            - Optionally add kappa dependence on production cross sections
-            - Optionally add kappa dependence on branching ratios
+        - single H backgrounds:
+            - optionally add kappa dependence on production cross sections
+            - optionally add kappa dependence on branching ratios
 
-        - Other backgrounds:
-            - Return 1 to express that we are using the rate as saved in datacards
+        - other backgrounds:
+            - return 1 to express that we are using the rate as saved in datacards
         """
         # find signal matches
         for formula_key, formulae in self.get_formulae().items():
@@ -1581,7 +1615,7 @@ class HHModel(HHModelBase):
                 # get the scale
                 sample = matching_samples[0]
                 # store the process
-                self.process_scales[formula][sample].add(process)
+                self.hh_process_scales[formula][sample].add(process)
                 # get the scale expression
                 scaling = self.r_expressions[(formula, sample)]
                 # when the BR scaling is enabled, try to extract the decays from the process name
@@ -1634,8 +1668,8 @@ def create_model(name, ggf=None, vbf=None, vhh=None, **kwargs):
     return HHModel(
         name=name,
         ggf_samples=get_samples(ggf, ggf_samples, GGFSample),
-        # vbf_samples=get_samples(vbf, vbf_samples, VBFSample),
-        # vhh_samples=get_samples(vhh, vhh_samples, VHHSample),
+        vbf_samples=get_samples(vbf, vbf_samples, VBFSample),
+        vhh_samples=get_samples(vhh, vhh_samples, VHHSample),
         **kwargs,
     )
 
@@ -1684,7 +1718,7 @@ def create_model(name, ggf=None, vbf=None, vhh=None, **kwargs):
 
 default_ggf_points = [(1, 1), (2.45, 1), (5, 1)]  # no (1, 0)
 default_vbf_points_run2l = [(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)]  # no (0.5, 1, 1)
-default_vbf_points = ...  # TODO
+default_vbf_points = [(1, 1, 1), (1, 1, 2), (1, 0, 1), (1, 2, 1), (-1.21, 1.94, -0.94), (-0.012, 0.03, 10.2)]  # draft!
 default_vhh_points = [(1, 1, 1), (1, 1, 2), (1, 0, 1), (1, 2, 1), (0.5, 1, 1), (1.5, 1, 1), (1, 1, 0), (1, 1, 20)]
 
 
@@ -1696,31 +1730,34 @@ def make_points(defaults, ecm):
 model_default_run2l = create_model(
     "model_default_run2l",
     ggf=make_points(default_ggf_points, None),
-    # vbf=make_points(default_vbf_points_run2l, None),
-    # vhh=make_points(default_vhh_points, None),
+    vbf=make_points(default_vbf_points_run2l, None),
+    vhh=make_points(default_vhh_points, None),
 )
 model_default_run2 = create_model(
     "model_default_run2",
     ggf=make_points(default_ggf_points, "13p0TeV"),
-    # vbf=make_points(default_vbf_points, "13p0TeV"),
-    # vhh=make_points(default_vhh_points, "13p0TeV"),
+    vbf=make_points(default_vbf_points, "13p0TeV"),
+    vhh=make_points(default_vhh_points, "13p0TeV"),
 )
 model_default_run3 = create_model(
     "model_default_run3",
     ggf=make_points(default_ggf_points, "13p6TeV"),
-    # vbf=make_points(default_vbf_points, "13p6TeV"),
+    vbf=make_points(default_vbf_points, "13p6TeV"),
+    # TODO: no vhh points for 13p6TeV yet
     # vhh=make_points(default_vhh_points, "13p6TeV"),
 )
 model_default_run2l3 = create_model(
     "model_default_run2l3",
     ggf=make_points(default_ggf_points, None) + make_points(default_ggf_points, "13p6TeV"),
-    # vbf=make_points(default_vbf_points_run2l, None) + make_points(default_vbf_points, "13p6TeV"),
+    vbf=make_points(default_vbf_points_run2l, None) + make_points(default_vbf_points, "13p6TeV"),
+    # TODO: no vhh points for 13p6TeV yet
     # vhh=make_points(default_vhh_points, None) + make_points(default_vhh_points, "13p6TeV"),
 )
 model_default_run23 = create_model(
     "model_default_run23",
     ggf=make_points(default_ggf_points, "13p0TeV") + make_points(default_ggf_points, "13p6TeV"),
-    # vbf=make_points(default_vbf_points, "13p0TeV") + make_points(default_vbf_points, "13p6TeV"),
+    vbf=make_points(default_vbf_points, "13p0TeV") + make_points(default_vbf_points, "13p6TeV"),
+    # TODO: no vhh points for 13p6TeV yet
     # vhh=make_points(default_vhh_points, "13p0TeV") + make_points(default_vhh_points, "13p6TeV"),
 )
 
@@ -1728,36 +1765,6 @@ model_default_run23 = create_model(
 ####################################################################################################
 # cross section helpers
 ####################################################################################################
-
-# ggf NLO -> NNLO k-factor for 13p0TeV (and only needed there!)
-ggf_k_factor_13p0TeV = 1.115
-
-# coefficients for modeling the kl dependence of the ggf cross section (in fb) and its uncertainty
-# (a0, a1, a2) -> a0 + a1 * kl + a2 * kl**2
-# values from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=70
-ggf_kl_coeffs = {
-    # nlo coefficients, corresponding to _old_ normalization used to create legacy run2 datacards
-    # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=65
-    "nlo": {
-        "13p0TeV": (62.5339, -44.3231, 9.6340),
-    },
-    # updated nnlo coefficients
-    # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?rev=98
-    "nnlo": {
-        "13p0TeV": (68.5624, -48.3673, 10.5635),
-        "13p6TeV": (75.7617, -53.2855, 11.6126),
-    },
-    # QCDscale + mtop uncertainty coefficients
-    "unc_u": {
-        "13p0TeV": (75.4551, -55.4010, 12.4555),
-        "13p6TeV": (83.3897, -61.0213, 13.6898),
-    },
-    "unc_d": {
-        "13p0TeV": (56.5063, -41.9131, 9.30669),
-        "13p6TeV": (62.4328, -46.1854, 10.2342),
-    },
-}
-
 
 def create_ggf_xsec_str(ecm, coeffs, s):
     """
@@ -1800,7 +1807,7 @@ def create_ggf_xsec_func(ggf_formula):
     Formulae are taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?rev=70.
     """
     # effective center-of-mass energy
-    ecm = ggf_formula.ecm or "13p0TeV"
+    ecm = ggf_formula.effective_ecm
 
     # create the lambdify'ed evaluation function
     symbol_names = ["kl", "kt"] + list(map("xs{}".format, range(ggf_formula.n_samples)))
@@ -1880,7 +1887,7 @@ def create_vbf_xsec_func(vbf_formula):
     Uncertainties taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHXSWGHH?rev=70.
     """
     # effective center-of-mass energy
-    ecm = vbf_formula.ecm or "13p0TeV"
+    ecm = vbf_formula.effective_ecm
 
     # create the lambdify'ed evaluation function
     symbol_names = ["C2V", "CV", "kl"] + list(map("xs{}".format, range(vbf_formula.n_samples)))
