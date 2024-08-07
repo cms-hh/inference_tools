@@ -346,6 +346,13 @@ alpha_1_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+alpha_1_model_alt = create_model(
+    "alpha_1_model_alt",
+    HHModel=HHModel_Alpha_1,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 
 class HHModel_Alpha_1b(HHModelEFTBase):
     """
@@ -395,6 +402,13 @@ alpha_1b_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+alpha_1b_model_alt = create_model(
+    "alpha_1b_model_alt",
+    HHModel=HHModel_Alpha_1b,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 
 class HHModel_Alpha_2(HHModelEFTBase):
     """
@@ -438,6 +452,13 @@ alpha_2_model_default = create_model(
     "alpha_2_model_default",
     HHModel=HHModel_Alpha_2,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+alpha_2_model_alt = create_model(
+    "alpha_2_model_alt",
+    HHModel=HHModel_Alpha_2,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
@@ -487,6 +508,13 @@ alpha_2b_model_default = create_model(
     "alpha_2b_model_default",
     HHModel=HHModel_Alpha_2b,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+alpha_2b_model_alt = create_model(
+    "alpha_2b_model_alt",
+    HHModel=HHModel_Alpha_2b,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
@@ -541,6 +569,13 @@ betamh_3_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+betamh_3_model_alt = create_model(
+    "betamh_3_model_alt",
+    HHModel=HHModel_BETAMH_3,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 
 class HHModel_BETAMH_3b(HHModelEFTBase):
     """
@@ -588,6 +623,13 @@ betamh_3b_model_default = create_model(
     "betamh_3b_model_default",
     HHModel=HHModel_BETAMH_3b,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+betamh_3b_model_alt = create_model(
+    "betamh_3b_model_alt",
+    HHModel=HHModel_BETAMH_3b,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
@@ -641,6 +683,13 @@ betamh_4_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+betamh_4_model_alt = create_model(
+    "betamh_4_model_alt",
+    HHModel=HHModel_BETAMH_4,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 
 class HHModel_BETAMH_4b(HHModelEFTBase):
     """
@@ -687,6 +736,13 @@ betamh_4b_model_default = create_model(
     "betamh_4b_model_default",
     HHModel=HHModel_BETAMH_4b,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+betamh_4b_model_alt = create_model(
+    "betamh_4b_model_alt",
+    HHModel=HHModel_BETAMH_4b,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
@@ -740,6 +796,13 @@ betamh_5_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+betamh_5_model_alt = create_model(
+    "betamh_5_model_alt",
+    HHModel=HHModel_BETAMH_5,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 
 class HHModel_BETAMH_5b(HHModelEFTBase):
     """
@@ -786,6 +849,13 @@ betamh_5b_model_default = create_model(
     "betamh_5b_model_default",
     HHModel=HHModel_BETAMH_5b,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+betamh_5b_model_alt = create_model(
+    "betamh_5b_model_alt",
+    HHModel=HHModel_BETAMH_5b,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
@@ -839,6 +909,13 @@ betamh_6_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+betamh_6_model_alt = create_model(
+    "betamh_6_model_alt",
+    HHModel=HHModel_BETAMH_6,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 
 class HHModel_BETAMH_6b(HHModelEFTBase):
     """
@@ -885,6 +962,13 @@ betamh_6b_model_default = create_model(
     "betamh_6b_model_default",
     HHModel=HHModel_BETAMH_6b,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+betamh_6b_model_alt = create_model(
+    "betamh_6b_model_alt",
+    HHModel=HHModel_BETAMH_6b,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
@@ -941,6 +1025,13 @@ betamh_7i_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+betamh_7i_model_alt = create_model(
+    "betamh_7i_model_alt",
+    HHModel=HHModel_BETAMH_7_i,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 
 class HHModel_BETAMH_7_ii(HHModelEFTBase):
     """
@@ -992,6 +1083,13 @@ betamh_7ii_model_default = create_model(
     "betamh_7ii_model_default",
     HHModel=HHModel_BETAMH_7_ii,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+betamh_7ii_model_alt = create_model(
+    "betamh_7ii_model_alt",
+    HHModel=HHModel_BETAMH_7_ii,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
@@ -1050,6 +1148,13 @@ betamh_7iii_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+betamh_7iii_model_alt = create_model(
+    "betamh_7iii_model_alt",
+    HHModel=HHModel_BETAMH_7_iii,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 
 class HHModel_BETAMH_7_iv(HHModelEFTBase):
     """
@@ -1102,6 +1207,13 @@ betamh_7iv_model_default = create_model(
     "betamh_7iv_model_default",
     HHModel=HHModel_BETAMH_7_iv,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+betamh_7iv_model_alt = create_model(
+    "betamh_7iv_model_alt",
+    HHModel=HHModel_BETAMH_7_iv,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
@@ -1162,6 +1274,13 @@ betamh_7ai_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+betamh_7ai_model_alt = create_model(
+    "betamh_7ai_model_alt",
+    HHModel=HHModel_BETAMH_7a_i,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 
 class HHModel_BETAMH_7a_ii(HHModelEFTBase):
     """
@@ -1217,6 +1336,13 @@ betamh_7aii_model_default = create_model(
     "betamh_7aii_model_default",
     HHModel=HHModel_BETAMH_7a_ii,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+betamh_7aii_model_alt = create_model(
+    "betamh_7aii_model_alt",
+    HHModel=HHModel_BETAMH_7a_ii,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
@@ -1279,6 +1405,13 @@ betamh_7aiii_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+betamh_7aiii_model_alt = create_model(
+    "betamh_7aiii_model_alt",
+    HHModel=HHModel_BETAMH_7a_iii,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 
 class HHModel_BETAMH_7a_iv(HHModelEFTBase):
     """
@@ -1338,6 +1471,13 @@ betamh_7aiv_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+betamh_7aiv_model_alt = create_model(
+    "betamh_7aiv_model_alt",
+    HHModel=HHModel_BETAMH_7a_iv,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 
 class HHModel_VLQ_8(HHModelEFTBase):
     """
@@ -1383,6 +1523,13 @@ vlq_8_model_default = create_model(
     "vlq_8_model_default",
     HHModel=HHModel_VLQ_8,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+vlq_8_model_alt = create_model(
+    "vlq_8_model_alt",
+    HHModel=HHModel_VLQ_8,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
@@ -1434,6 +1581,13 @@ vlq_9_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+vlq_9_model_alt = create_model(
+    "vlq_9_model_alt",
+    HHModel=HHModel_VLQ_9,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 
 class HHModel_XI_10(HHModelEFTBase):
     """
@@ -1480,6 +1634,13 @@ xi_10_model_default = create_model(
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
 
+xi_10_model_alt = create_model(
+    "xi_10_model_alt",
+    HHModel=HHModel_XI_10,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
 
 class HHModel_XI_11(HHModelEFTBase):
     """
@@ -1522,5 +1683,12 @@ xi_11_model_default = create_model(
     "xi_11_model_default",
     HHModel=HHModel_XI_11,
     ggf=[(0, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
+    vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
+)
+
+xi_11_model_alt = create_model(
+    "xi_11_model_alt",
+    HHModel=HHModel_XI_11,
+    ggf=[(5, 1, 0), (1, 1, 0), (2.45, 1, 0), (0, 1, 1), (1, 1, 0.35), (1, 1, 3)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],
 )
