@@ -1201,7 +1201,7 @@ def plot_limit_points(
     g_2sigma = create_graph(sigma=2)
     r.setup_graph(
         g_2sigma,
-        props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.brazil_yellow},
+        props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.cms_yellow},
     )
     draw_objs.append((g_2sigma, "SAME,2"))
     legend_entries[5] = (g_2sigma, r"95% expected", "LF")
@@ -1210,7 +1210,7 @@ def plot_limit_points(
     g_1sigma = create_graph(sigma=1)
     r.setup_graph(
         g_1sigma,
-        props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.brazil_green},
+        props={"LineWidth": 2, "LineStyle": 2, "FillColor": colors.cms_blue},
     )
     draw_objs.append((g_1sigma, "SAME,2"))
     legend_entries[4] = (g_1sigma, r"68% expected", "LF")
@@ -1235,7 +1235,7 @@ def plot_limit_points(
     if has_thy and any((d["theory"][0] >= x_min) for d in data):
         # uncertainty line
         g_thy_line = create_graph(key="theory")
-        r.setup_graph(g_thy_line, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors.red})
+        r.setup_graph(g_thy_line, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors.cms_I_C})
         draw_objs.append((g_thy_line, "SAME,LZ"))
         legend_entry = (g_thy_line, "Theory prediction", "L")
         # uncertainty area
@@ -1244,7 +1244,7 @@ def plot_limit_points(
             r.setup_graph(
                 g_thy_area,
                 props={
-                    "LineWidth": 2, "LineStyle": 1, "LineColor": colors.red, "FillStyle": 1001,
+                    "LineWidth": 2, "LineStyle": 1, "LineColor": colors.cms_I_C, "FillStyle": 1001,
                     "FillColor": colors.red_trans_50,
                 },
             )

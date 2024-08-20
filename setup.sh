@@ -101,8 +101,8 @@ setup() {
     #
 
     export DHI_SCRAM_ARCH="${DHI_SCRAM_ARCH:-el9_amd64_gcc12}"
-    export DHI_CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_14_1_0_pre5}"
-    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v10.0.1}"
+    export DHI_CMSSW_VERSION="${DHI_CMSSW_VERSION:-CMSSW_14_1_0_pre6}"
+    export DHI_COMBINE_VERSION="${DHI_COMBINE_VERSION:-v10.0.2}"
     export DHI_CMSSW_BASE="${DHI_SOFTWARE}/combine_${DHI_COMBINE_VERSION}_${DHI_SCRAM_ARCH}"
 
     local flag_file_combine="${DHI_CMSSW_BASE}/.combine_${DHI_CMSSW_VERSION}_good"
@@ -189,7 +189,6 @@ setup() {
     export PATH="${DHI_BASE}/bin:${DHI_BASE}/dhi/scripts:${DHI_BASE}/modules/law/bin:${DHI_SOFTWARE}/bin:${PATH}"
     export PYTHONPATH="${DHI_BASE}:${DHI_BASE}/modules/law:${DHI_BASE}/modules/plotlib:${DHI_SOFTWARE}/lib/python${pyv}/site-packages:${DHI_SOFTWARE}/lib64/python${pyv}/site-packages:${PYTHONPATH}"
     export PYTHONWARNINGS="ignore"
-    # export PYTHONNOUSERSITE="1"
 
     # unlimited stack size (as fallback, set soft-limit only)
     ulimit -s unlimited 2> /dev/null
@@ -197,7 +196,7 @@ setup() {
 
     # local stack
     local sw_version="8"
-    local flag_file_sw="${DHI_SOFTWARE}/.sw_good"
+    local flag_file_sw="${DHI_CMSSW_BASE}/.sw_good"
 
     # reset software if requested
     if [ "${DHI_REMOTE_JOB}" != "1" ] && [ "${DHI_REINSTALL_SOFTWARE}" = "1" ]; then
@@ -207,13 +206,20 @@ setup() {
     if [ ! -f "${flag_file_sw}" ]; then
         # local env
         if [ "${DHI_REMOTE_JOB}" != "1" ]; then
-            echo "installing software stack in 'dhi' venv at ${DHI_SOFTWARE}"
-            rm -rf "${DHI_SOFTWARE}/dhi"
-            mkdir -p "${DHI_SOFTWARE}"
+            echo "installing software stack in 'dhi' venv at ${DHI_CMSSW_BASE} for python ${pyv}"
+            rm -rf "${DHI_CMSSW_BASE}/dhi"
+            mkdir -p "${DHI_CMSSW_BASE}"
 
             # create the venv and activate it
-            python3 -m venv --symlinks --upgrade-deps "${DHI_SOFTWARE}/dhi" || return "$?"
-            source "${DHI_SOFTWARE}/dhi/bin/activate" "" || return "$?"
+            if [ "${pyv}" = "3.8" ]; then
+                python3 -m virtualenv --symlinks "${DHI_CMSSW_BASE}/dhi" || return "$?"
+                source "${DHI_CMSSW_BASE}/dhi/bin/activate" "" || return "$?"
+                pip install --upgrade pip setuptools[core] wheel virtualenv || return "$?"
+            else
+                python3 -m venv --symlinks --upgrade-deps "${DHI_CMSSW_BASE}/dhi" || return "$?"
+                source "${DHI_CMSSW_BASE}/dhi/bin/activate" "" || return "$?"
+                pip install --upgrade pip setuptools wheel || return "$?"
+            fi
 
             # python packages
             pip install 'six==1.16.0' || return "$?"
@@ -231,16 +237,13 @@ setup() {
             pip install 'flake8-commas==2.1.0' || return "$?"
             pip install 'flake8-quotes==3.3.2' || return "$?"
             pip install 'cmsstyle' || return "$?"
-
-            # optional packages, disabled at the moment
-            # dhi_pip_install python-telegram-bot==12.3.0
         fi
 
         # remote env
         if [ "${DHI_REMOTE_JOB}" = "1" ]; then
             # fetch the bundle and unpack it
             (
-                cd "${DHI_SOFTWARE}" && \
+                cd "${DHI_CMSSW_BASE}" && \
                 law_wlcg_get_file "${DHI_JOB_SOFTWARE_URIS}" "${DHI_JOB_SOFTWARE_PATTERN}" "${PWD}/software.tgz" && \
                 tar -xzf "software.tgz" && \
                 rm "software.tgz"
@@ -250,7 +253,7 @@ setup() {
         date "+%s" > "${flag_file_sw}"
         echo "version ${sw_version}" >> "${flag_file_sw}"
     else
-        source "${DHI_SOFTWARE}/dhi/bin/activate" "" || return "$?"
+        source "${DHI_CMSSW_BASE}/dhi/bin/activate" "" || return "$?"
     fi
     export DHI_SOFTWARE_FLAG_FILES="${DHI_SOFTWARE_FLAG_FILES} ${flag_file_sw}"
 
@@ -437,8 +440,8 @@ interactive_setup() {
     fi
     query DHI_STORE_EOSUSER "Optional output store in EOS user directory" "${eos_user_store}" "${eos_user_store_repr}"
     query DHI_SOFTWARE "Directory for installing software" "${DHI_DATA}/software" "\$DHI_DATA/software"
-    query DHI_CMSSW_VERSION "Version of CMSSW to be used" "CMSSW_14_1_0_pre5"
-    query DHI_COMBINE_VERSION "Version of combine to be used (tag name)" "v10.0.1"
+    query DHI_CMSSW_VERSION "Version of CMSSW to be used" "CMSSW_14_1_0_pre6"
+    query DHI_COMBINE_VERSION "Version of combine to be used (tag name)" "v10.0.2"
     query DHI_DATACARDS_RUN2 "Location of the datacards_run2 repository (optional)" "" "''"
     query DHI_WLCG_CACHE_ROOT "Local directory for caching remote files" "" "''"
     export_and_save DHI_WLCG_USE_CACHE "$( [ -z "${DHI_WLCG_CACHE_ROOT}" ] && echo false || echo true )"

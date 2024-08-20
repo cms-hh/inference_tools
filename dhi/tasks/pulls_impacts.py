@@ -49,6 +49,7 @@ class PullsAndImpactsBase(POITask, SnapshotUser):
         "only available for the 'default' method; default: False",
     )
 
+    allow_empty_hh_model = True
     mc_stats_patterns = ["*prop_bin*"]
 
     force_n_pois = 1

@@ -24,6 +24,13 @@ Same rules apply for vbf and vhh samples.
 Authors:
     - Marcel Rieger
     - Fabio Monti
+
+TODOs:
+    - the single H scaling in the HBRScaler is currently still purely based on numbers for 13p0TeV
+    - here, it is also unclear whether the parameters should actually be the same or separate for
+      the two energy regimes; for now they are kept separate
+    - there are no VBF samples yet for the reprocessing of run 2, so no points exist for them
+    - VHH samples are not yet added for 13p6TeV in the list of samples below
 """
 
 __all__ = [
@@ -427,7 +434,7 @@ class HHFormula(object):
         # store samples and ecm value
         self.samples = list(samples)
         self.ecm = check_data["ecm"]
-        self.effective_ecm = ecm or "13p0TeV"
+        self.effective_ecm = self.ecm or "13p0TeV"
 
         # symbolic expressions
         self.M = None  # the matrix to be inverted
@@ -726,29 +733,32 @@ class HBRScaler(object):
         self.make_scaling("ggH", Cb="1", Ctop="kt", Cc="1")
 
         # create scalings for different production processes which require different formulae
-        for ecm in ["13p0TeV", "13p6TeV"]:
-            for p in ["ggH", "qqH"]:
-                d = {"prod": p, "ecm": ecm, "cxs": cxs[ecm][p], "ewk": ewk[ecm][p], "dzh": dzh[ecm]}
-                self.make_expr("expr::CVktkl_XSscal_{prod}_{ecm}('(@1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, Scaling_{prod}_{ecm})".format(**d))  # noqa
-                self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})".format(**d))  # noqa
-                self.h_scalings.append("CVktkl_pos_XSscal_{prod}_{ecm}".format(**d))
+        # TODO: there are no scaling parameters defined yet for 13p6TeV, so use the 13p0TeV ones
+        # (also, the ecm values in combine do not use the "p0" as we do for consistency with "p6")
+        # TODO: also we need to figure out of the scaling parameters should be actually the same
+        # when combining multiple energies; they are kept separate by using looping
+        for ecm, combine_ecm in [("13p0TeV", "13TeV"), ("13p6TeV", "13TeV")]:
+            for prod in ["ggH", "qqH"]:
+                _cxs, _ewk, _dzh = cxs[ecm][prod], ewk[ecm][prod], dzh[ecm]
+                self.make_expr(f"expr::CVktkl_XSscal_{prod}_{ecm}('(@1 + (@0 - 1) * {_cxs} / {_ewk}) / ((1 - (@0 * @0 - 1) * {_dzh}))', kl, Scaling_{prod}_{combine_ecm})")  # noqa
+                self.make_expr(f"expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})")  # noqa
+                self.h_scalings.append(f"CVktkl_pos_XSscal_{prod}_{ecm}")
 
-            for p in ["ggZH", "tHq", "tHW"]:
-                d = {"prod": p, "ecm": ecm}
-                self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', Scaling_{prod}_{ecm})".format(**d))  # noqa
-                self.h_scalings.append("CVktkl_pos_XSscal_{prod}_{ecm}".format(**d))
+            for prod in ["ggZH", "tHq", "tHW"]:
+                self.make_expr(f"expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', Scaling_{prod}_{combine_ecm})")  # noqa
+                self.h_scalings.append(f"CVktkl_pos_XSscal_{prod}_{ecm}")
 
-            for p in ["ZH", "WH", "VH"]:
-                d = {"prod": p, "ecm": ecm, "cxs": cxs[ecm][p], "ewk": ewk[ecm][p], "dzh": dzh[ecm]}
-                self.make_expr("expr::CVktkl_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, CV)".format(**d))  # noqa
-                self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})".format(**d))  # noqa
-                self.h_scalings.append("CVktkl_pos_XSscal_{prod}_{ecm}".format(**d))
+            for prod in ["ZH", "WH", "VH"]:
+                _cxs, _ewk, _dzh = cxs[ecm][prod], ewk[ecm][prod], dzh[ecm]
+                self.make_expr(f"expr::CVktkl_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {_cxs} / {_ewk}) / ((1 - (@0 * @0 - 1) * {_dzh}))', kl, CV)")  # noqa
+                self.make_expr(f"expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})")  # noqa
+                self.h_scalings.append(f"CVktkl_pos_XSscal_{prod}_{ecm}")
 
-            for p in ["ttH"]:
-                d = {"prod": p, "ecm": ecm, "cxs": cxs[ecm][p], "ewk": ewk[ecm][p], "dzh": dzh[ecm]}
-                self.make_expr("expr::CVktkl_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {cxs} / {ewk}) / ((1 - (@0 * @0 - 1) * {dzh}))', kl, kt)".format(**d))  # noqa
-                self.make_expr("expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})".format(**d))  # noqa
-                self.h_scalings.append("CVktkl_pos_XSscal_{prod}_{ecm}".format(**d))
+            for prod in ["ttH"]:
+                _cxs, _ewk, _dzh = cxs[ecm][prod], ewk[ecm][prod], dzh[ecm]
+                self.make_expr(f"expr::CVktkl_XSscal_{prod}_{ecm}('(@1 * @1 + (@0 - 1) * {_cxs} / {_ewk}) / ((1 - (@0 * @0 - 1) * {_dzh}))', kl, kt)")  # noqa
+                self.make_expr(f"expr::CVktkl_pos_XSscal_{prod}_{ecm}('0. + @0 * (@0 > 0)', CVktkl_XSscal_{prod}_{ecm})")  # noqa
+                self.h_scalings.append(f"CVktkl_pos_XSscal_{prod}_{ecm}")
 
     def find_br_scalings(self, process, bin=None):
         """
@@ -1134,7 +1144,12 @@ class HHModelBase(PhysicsModelBase):
         errors = []
         for formula_key, formulae in self.get_formulae().items():
             for ecm, formula in formulae.items():
-                print(f"\nmatching processes for {formula_key} at ecm {ecm}:")
+                ecm_repr = {
+                    None: "13p0TeV (run 2 legacy)",
+                    "13p0TeV": "13p0TeV (run 2 re-processing)",
+                    "13p6TeV": "13p6TeV (run 3)",
+                }[ecm]
+                print(f"\nmatching processes for {formula_key} at ecm {ecm_repr}:")
 
                 if not self.hh_process_scales[formula]:
                     print("  none")
@@ -1155,8 +1170,8 @@ class HHModelBase(PhysicsModelBase):
                 if len(unmatched_samples) not in [0, formula.n_samples]:
                     unmatched_samples_repr = ", ".join(sample.label for sample in unmatched_samples)
                     errors.append(
-                        f"{len(unmatched_samples)} {formula_key} for ecm {ecm} samples were not "
-                        f"matched by any process: {unmatched_samples_repr}",
+                        f"{len(unmatched_samples)} {formula_key} for ecm {ecm_repr} samples were "
+                        f"not matched by any process: {unmatched_samples_repr}",
                     )
 
         if errors:
@@ -1570,8 +1585,7 @@ class HHModel(HHModelBase):
 
         # add the theory uncertainty on ggf whwn configured
         if self.opt("doklDependentUnc"):
-            for ecm in self.get_effective_ecms():
-                nuisances.append((f"{self.ggf_kl_dep_unc}_{ecm}", False, "param", ["0", "1"], []))
+            nuisances.append((self.ggf_kl_dep_unc, False, "param", ["0", "1"], []))
 
     def getYieldScale(self, bin, process):
         """
@@ -1660,7 +1674,7 @@ def create_model(name, ggf=None, vbf=None, vhh=None, **kwargs):
             else:
                 raise Exception(
                     f"sample '{s}' is neither an instance of {sample_cls}, nor does it correspond "
-                    "to a known sample",
+                    f"to a known sample for building model {name}",
                 )
         return samples
 
@@ -1736,7 +1750,8 @@ model_default_run2l = create_model(
 model_default_run2 = create_model(
     "model_default_run2",
     ggf=make_points(default_ggf_points, "13p0TeV"),
-    vbf=make_points(default_vbf_points, "13p0TeV"),
+    # the new vbf basis does not exist yet for run 2 reprocessing, so use legacy
+    vbf=make_points(default_vbf_points_run2l, "13p0TeV"),
     vhh=make_points(default_vhh_points, "13p0TeV"),
 )
 model_default_run3 = create_model(
@@ -1751,14 +1766,15 @@ model_default_run2l3 = create_model(
     ggf=make_points(default_ggf_points, None) + make_points(default_ggf_points, "13p6TeV"),
     vbf=make_points(default_vbf_points_run2l, None) + make_points(default_vbf_points, "13p6TeV"),
     # TODO: no vhh points for 13p6TeV yet
-    # vhh=make_points(default_vhh_points, None) + make_points(default_vhh_points, "13p6TeV"),
+    vhh=make_points(default_vhh_points, None),  # + make_points(default_vhh_points, "13p6TeV"),
 )
 model_default_run23 = create_model(
     "model_default_run23",
     ggf=make_points(default_ggf_points, "13p0TeV") + make_points(default_ggf_points, "13p6TeV"),
-    vbf=make_points(default_vbf_points, "13p0TeV") + make_points(default_vbf_points, "13p6TeV"),
+    # the new vbf basis does not exist yet for run 2 reprocessing, so use legacy
+    vbf=make_points(default_vbf_points_run2l, "13p0TeV") + make_points(default_vbf_points, "13p6TeV"),
     # TODO: no vhh points for 13p6TeV yet
-    # vhh=make_points(default_vhh_points, "13p0TeV") + make_points(default_vhh_points, "13p6TeV"),
+    vhh=make_points(default_vhh_points, "13p0TeV"),  # + make_points(default_vhh_points, "13p6TeV"),
 )
 
 

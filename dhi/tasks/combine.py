@@ -44,8 +44,8 @@ class HHModelTask(AnalysisTask):
     provides a few convenience functions for working with it.
     """
 
-    DEFAULT_HH_MODULE = "hh_model"
-    DEFAULT_HH_MODEL = "model_default"
+    DEFAULT_HH_MODULE = "hh_model_run23"
+    DEFAULT_HH_MODEL = "model_default_run3"
 
     # class-level sequence of all known pois
     # instances can potentially have reduced sets (lower case attributes), depending on the model
@@ -54,8 +54,8 @@ class HHModelTask(AnalysisTask):
         # SM-like
         "kl", "kt", "CV", "C2V",
         # EFT
-        "C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP", "MA", "Z6", "TB", "CBA", "LQ", "MQ",
-        "XI", "kl_EFT", "kt_EFT", "C2_EFT", "cosbma", "tanbeta",
+        # "C2", "A", "CA", "LA", "LE", "M2", "B", "MHE", "MHP", "MA", "Z6", "TB", "CBA", "LQ", "MQ",
+        # "XI", "kl_EFT", "kt_EFT", "C2_EFT", "cosbma", "tanbeta",
     )
     ALL_POIS = R_POIS + K_POIS
 
@@ -63,10 +63,10 @@ class HHModelTask(AnalysisTask):
         "noNNLOscaling", "noBRscaling", "noHscaling", "noklDependentUnc",
         "doProfilergghh", "doProfilerqqhh", "doProfilervhh",
         "doProfilekl", "doProfilekt", "doProfileCV", "doProfileC2V",
-        "doProfileC2", "doProfileA", "doProdileCA", "doProdileLA", "doProdileLE", "doProfileM2",
-        "doProfileB", "doProfileMHE", "doProfileMHP", "doPrifileMA", "doProfileZ6", "doProfileTB",
-        "doProfileCBA", "doProfileLQ", "doProfileMQ", "doProfileXi",
-        "doProfilekl_EFT", "doProfilekt_EFT", "doProfileC2_EFT",
+        # "doProfileC2", "doProfileA", "doProdileCA", "doProdileLA", "doProdileLE", "doProfileM2",
+        # "doProfileB", "doProfileMHE", "doProfileMHP", "doPrifileMA", "doProfileZ6", "doProfileTB",
+        # "doProfileCBA", "doProfileLQ", "doProfileMQ", "doProfileXi",
+        # "doProfilekl_EFT", "doProfilekt_EFT", "doProfileC2_EFT",
     }
 
     hh_model = luigi.Parameter(
@@ -168,7 +168,7 @@ class HHModelTask(AnalysisTask):
         return mod, model
 
     @classmethod
-    def _create_xsec_func(cls, hh_model, r_poi, unit, br=None, safe_signature=True):
+    def _create_xsec_func(cls, hh_model, r_poi, unit, br=None, ecm=None, safe_signature=True):
         if r_poi not in cls.R_POIS:
             raise ValueError(f"cross section conversion not supported for POI {r_poi}")
         if unit not in ["fb", "pb"]:
@@ -183,21 +183,32 @@ class HHModelTask(AnalysisTask):
         if r_poi not in model.r_pois:
             raise ValueError(f"r POI {r_poi} is not covered by the HH model {hh_model}")
 
+        # get the ecm value and complain when there are multiple as no consistent cross section
+        # function can be created
+        if ecm is None:
+            ecms = model.get_effective_ecms()
+            if len(ecms) != 1:
+                raise ValueError(
+                    f"multiple ECM values found in HH model {hh_model} ({ecms}), so no single cross "
+                    "section function can be defiend",
+                )
+            ecm = ecms[0]
+
         # get the proper xsec getter, based on poi
         if r_poi == "r_gghh":
-            get_xsec = module.create_ggf_xsec_func(model.ggf_formula)
+            get_xsec = module.create_ggf_xsec_func(model.ggf_formula[ecm])
             has_unc = get_xsec.has_unc()
             signature_kwargs = get_xsec.xsec_kwargs
         elif r_poi == "r_qqhh":
-            get_xsec = module.create_vbf_xsec_func(model.vbf_formula)
+            get_xsec = module.create_vbf_xsec_func(model.vbf_formula[ecm])
             has_unc = get_xsec.has_unc()
             signature_kwargs = set(get_xsec.xsec_kwargs)
         elif r_poi == "r_vhh":
-            get_xsec = module.create_vhh_xsec_func(model.vhh_formula)
+            get_xsec = module.create_vhh_xsec_func(model.vhh_formula[ecm])
             has_unc = get_xsec.has_unc()
             signature_kwargs = set(get_xsec.xsec_kwargs)
         else:  # r
-            get_xsec = model.create_hh_xsec_func()
+            get_xsec = model.create_hh_xsec_func(ecm)
             has_unc = get_xsec.has_unc()
             signature_kwargs = set(get_xsec.xsec_kwargs)
 
@@ -226,13 +237,14 @@ class HHModelTask(AnalysisTask):
         data,
         unit,
         br=None,
+        ecm=None,
         param_keys=None,
         xsec_kwargs=None,
     ):
         import numpy as np
 
         # create the xsec getter
-        get_xsec = cls._create_xsec_func(hh_model, r_poi, unit, br=br)
+        get_xsec = cls._create_xsec_func(hh_model, r_poi, unit, br=br, ecm=ecm)
 
         # copy values
         data = np.array(data)
@@ -261,6 +273,7 @@ class HHModelTask(AnalysisTask):
         param_values,
         unit=None,
         br=None,
+        ecm=None,
         normalize=False,
         skip_unc=False,
         xsec_kwargs=None,
@@ -274,7 +287,7 @@ class HHModelTask(AnalysisTask):
             unit = "fb"
 
         # create the xsec getter
-        get_xsec = cls._create_xsec_func(hh_model, r_poi, unit, br=br)
+        get_xsec = cls._create_xsec_func(hh_model, r_poi, unit, br=br, ecm=ecm)
 
         # check if uncertainties can / should be added
         add_unc = get_xsec.has_unc and not skip_unc
@@ -1684,7 +1697,7 @@ class CombineCommandTask(CommandTask):
 
         # additional args
         args += " --X-rtd REMOVE_CONSTANT_ZERO_POINT=1"
-        args += " --X-rtd TMCSO_AdaptivePseudoAsimov=0 --X-rtd TMCSO_PseudoAsimov=0"
+        # args += " --X-rtd TMCSO_AdaptivePseudoAsimov=0 --X-rtd TMCSO_PseudoAsimov=0"
 
         # optimization for discrete parameters (as suggested by bbgg)
         if self.optimize_discretes:
