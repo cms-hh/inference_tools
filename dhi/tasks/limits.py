@@ -104,6 +104,7 @@ class UpperLimitsBase(POITask, SnapshotUser):
 
         # load raw values
         data = target.load(formatter="uproot")["limit"].arrays(["limit", "quantileExpected"])
+        data = {str(key): value for key, value in data.items()}
         limits = data["limit"]
         quantiles = data["quantileExpected"]
 
