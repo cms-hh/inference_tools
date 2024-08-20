@@ -102,9 +102,12 @@ class UpperLimitsBase(POITask, SnapshotUser):
     def load_limits(cls, target, unblinded=False):
         import numpy as np
 
+        # byte decode helper for legacy uproot support
+        decode = lambda x: x.decode("utf-8") if isinstance(x, bytes) else x
+
         # load raw values
         data = target.load(formatter="uproot")["limit"].arrays(["limit", "quantileExpected"])
-        data = {str(key): value for key, value in data.items()}
+        data = {decode(key): value for key, value in data.items()}
         limits = data["limit"]
         quantiles = data["quantileExpected"]
 
