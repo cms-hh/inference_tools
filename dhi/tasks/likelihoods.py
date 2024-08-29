@@ -589,6 +589,22 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
 
 class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacardTask):
 
+    show_significances = law.CSVParameter(
+        cls=luigi.FloatParameter,
+        default=None,
+        significant=False,
+        description="values of integer significances (>= 1) or float confidence levels (< 1) "
+        "to overlay with lines and lables; default: 1,2,3,5",
+    )
+
+    smooth_contour = law.MultiCSVParameter(
+        default=(("None",),),
+        significant=False,
+        description="smooth histogramm before finding contours, first value "
+        "gives kernel used to smooth graph either 5x5 (k5a/k5b) or 3x3 (k3a), "
+        "second value gives number of smoothing iterations, empty default",
+    )
+
     z_min = None
     z_max = None
     z_log = None
@@ -599,6 +615,17 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
         "dhi.plots.likelihoods.plot_likelihood_scans_1d",
         "dhi.plots.likelihoods.plot_likelihood_scans_2d",
     ]
+
+    def __init__(self, *args, **kwargs):
+
+        super(PlotMultipleLikelihoodScans, self).__init__(*args, **kwargs)
+        n = len(getattr(self, self.compare_multi_sequence))
+        # check smooth_contour
+        if self.smooth_contour is not None and len(self.smooth_contour) not in (0, 1, n):
+            raise Exception(
+                f"{self!r}: the number of --smooth-contour sequences ({len(self.smooth_contour)}) "
+                f"must be zero, one or match that of {self.compare_multi_sequence} ({n})",
+            )
 
     def requires(self):
         return [
@@ -654,6 +681,12 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
     @law.decorator.safe_output
     @law.decorator.localize(input=False)
     def run(self):
+        if not self.show_significances[0]:
+            if self.n_pois == 1:
+                self.show_significances = (1, 2, 3, 4, 5)
+            else:
+                self.show_significances = (1, 2)
+
         # prepare the output
         outputs = self.output()
         outputs["plots"][0].parent.touch()
@@ -661,17 +694,25 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
         # load scan data
         data = []
         for i, inps in enumerate(self.input()):
-            values, poi_mins = self.load_scan_data(inps)
+            values, poi_mins = self.load_scan_data(inps, merge_scans=self.n_pois == 1)
 
             if self.recompute_best_fit:
                 poi_mins = {p: None for p in poi_mins}
 
-            # store a data entry
-            data.append(dict([
-                ("values", values),
-                ("poi_mins", [poi_mins[p] for p in self.pois]),
-                ("name", "Cards {}".format(i + 1)),
-            ]))
+            if self.n_pois == 1:
+                # store a data entry
+                data.append(dict([
+                    ("values", values),
+                    ("poi_min", [poi_mins[p] for p in self.pois]),
+                    ("name", "Cards {}".format(i + 1)),
+                ]))
+            else:
+                # store a data entry
+                data.append(dict([
+                    ("values", values),
+                    ("poi_mins", [poi_mins[p] for p in self.pois]),
+                    ("name", "Cards {}".format(i + 1)),
+                ]))
 
         # allow scaling via hook for projections
         self.call_hook("scale_multi_likelihoods", data=data)
@@ -700,6 +741,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 show_best_fit=self.show_best_fit,
                 show_best_fit_error=self.show_best_fit_error,
                 show_best_fit_indicators=False,
+                #show_sm_point=self.show_sm,
                 show_significances=self.show_significances,
                 shift_negative_values=self.shift_negative_values,
                 interpolate_above=self.interpolate_above,
@@ -714,7 +756,7 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 cms_postfix=self.cms_postfix,
                 style=self.style,
                 dump_target=outputs.get("plot_data"),
-                top_left_label=self.top_left_label,
+                #extra_text=self.extra_text,
             )
         else:  # 2
             self.call_plot_func(
@@ -735,6 +777,11 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 cms_postfix=self.cms_postfix,
                 style=self.style,
                 dump_target=outputs.get("plot_data"),
+                show_significances=self.show_significances,
+                #show_sm_point=self.show_sm,
+                #extra_text=self.extra_text,
+                show_best_fit=self.show_best_fit,
+                smoothContour=self.smooth_contour,
             )
 
 
