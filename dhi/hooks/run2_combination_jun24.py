@@ -158,6 +158,9 @@ def define_limit_grid(task, scan_parameter_values, approx_points, debug=False):
 
     # detect if any combined datacard setup is used by comparing to environment variables that are
     # usually defined in the combination
+
+    # ignore the card checks to use grid in different limits
+"""
     used_cards = set(task.resolve_datacards(task.datacards)[2].split("__"))
     cards_vars = ["COMBCARDS", "COMBCARDS_POINTS", "COMBCARDS_VBF", "COMBCARDS_VBF_POINTS"]
     for cards_var in cards_vars:
@@ -171,7 +174,7 @@ def define_limit_grid(task, scan_parameter_values, approx_points, debug=False):
         raise Exception(
             f"define_limit_grid could not detect combined datacard variables {','.join(cards_vars)}",
         )
-
+"""
     if debug:
         print(
             f"defining limit grid for datacards '{cards_var}' on POI {poi} for scan over "
