@@ -10,6 +10,8 @@ import re
 import law
 import luigi
 
+import hashlib
+
 from dhi.tasks.base import BoxPlotTask, ModelParameters, view_output_plots
 from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
@@ -352,6 +354,34 @@ class MergeUpperLimitsGrid(UpperLimitsScanBase):
         name = self.join_postfix(["limitgrid", self.get_output_postfix()]) + ".root"
         return self.target(name)
 
+    # generate unique id for intermediate outputs
+    def generate_unique_id_from_inputs(self, inputs):
+        hasher = hashlib.md5()
+        for inp in inputs:
+            hasher.update(inp.path.encode('utf-8'))
+        return hasher.hexdigest()[:8] 
+
+    # merge 100 files to the intermediate outputs
+    def batch_hadd(self, inputs, output, batch_size=100):
+        intermediate_outputs = []
+
+        unique_id = self.generate_unique_id_from_inputs(inputs)
+
+        for i in range(0, len(inputs), batch_size):
+            batch = inputs[i:i + batch_size]
+            intermediate_output_path = os.path.join(output.parent.path, f"intermediate_{unique_id}_{i}.root")
+            intermediate_output = law.LocalFileTarget(intermediate_output_path)
+
+            intermediate_dir = intermediate_output.parent
+            if not intermediate_dir.exists():
+                intermediate_dir.touch()
+
+            intermediate_outputs.append(intermediate_output)
+            
+            law.root.hadd_task(self, batch, intermediate_output, local=True)
+
+        law.root.hadd_task(self, intermediate_outputs, output, local=True)
+
     @law.decorator.log
     @law.decorator.safe_output
     def run(self):
@@ -374,8 +404,14 @@ class MergeUpperLimitsGrid(UpperLimitsScanBase):
                 input_paths.append(target.path)
                 inputs.append(target)
 
-        # hadd using a helper
-        law.root.hadd_task(self, inputs, output, local=True)
+        # hadd using batch for files > 100 
+#        law.root.hadd_task(self, inputs, output, local=True)
+        if len(inputs) > 100:
+            self.logger.info(f"More than 100 input files ({len(inputs)}), using batch processing.")
+            self.batch_hadd(inputs, output, batch_size=100)
+        else:
+            self.logger.info(f"Less than or equal to 100 input files ({len(inputs)}), merging directly.")
+            law.root.hadd_task(self, inputs, output, local=True)        
 
 
 class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
