@@ -193,7 +193,7 @@ ggf_samples = OrderedDict()
 add_ggf_sample = _create_add_sample_func(GGFSample, ggf_samples)
 add_ggf_sample(kl=0.0, kt=1.0, xs=0.069725, label="ggHH_kl_0_kt_1")
 add_ggf_sample(kl=1.0, kt=1.0, xs=0.031047, label="ggHH_kl_1_kt_1")
-add_ggf_sample(kl=2.45, kt=1.0, xs=0.013124, label="ggHH_kl_2p45_kt_1")
+# add_ggf_sample(kl=2.45, kt=1.0, xs=0.013124, label="ggHH_kl_2p45_kt_1")
 add_ggf_sample(kl=5.0, kt=1.0, xs=0.091172, label="ggHH_kl_5_kt_1")
 
 # vbf samples with keys (CV, C2V, kl)
@@ -228,17 +228,40 @@ add_vhh_sample(CV=1.0, C2V=1.0, kl=20.0, xs=0.0428974, label="VHH_CV_1_C2V_1_kl_
 # and are only used in create_hhh_xsec_func below
 hhh_samples = OrderedDict()
 add_hhh_sample = _create_add_sample_func( HHHSample , hhh_samples  )
-br_ratio = 0.0023098822656
-k_factor = 2.22/3.274e-05
-add_hhh_sample( c3 = 0.00   ,d4 =    0.00    ,  xs=0.0327*1e-3*br_ratio*k_factor ,     label='c3_0_d4_0' ) 
-add_hhh_sample( c3 = 0.00   ,d4 =   -1.00    ,  xs=0.0362*1e-3*br_ratio*k_factor ,     label='c3_0_d4_m1' ) 
-add_hhh_sample( c3 =-4.00   ,d4 =   39.00    ,  xs=4.0930*1e-3*br_ratio*k_factor ,     label='c3_m4_d4_39' )
-add_hhh_sample( c3 =-4.00   ,d4 =   99.00    ,  xs=11.4245*1e-3*br_ratio*k_factor,     label='c3_m4_d4_99' )
-add_hhh_sample( c3 = 8.00   ,d4 =   39.00    ,  xs=5.6317*1e-3*br_ratio*k_factor ,     label='c3_8_d4_39' ) 
-add_hhh_sample( c3 = 8.00   ,d4 = -101.00    ,  xs=2.9478*1e-3*br_ratio*k_factor ,     label='c3_8_d4_m101' )
-add_hhh_sample( c3 = 2.00   ,d4 = -241.00    ,  xs=34.5100*1e-3*br_ratio*k_factor,     label='c3_2_d4_m241' )
-add_hhh_sample( c3 =14.00   ,d4 = -301.00    ,  xs=14.0700*1e-3*br_ratio*k_factor,     label='c3_14_d4_m301' )
-add_hhh_sample( c3 =-16.00  ,d4 = -301.00    ,  xs=31.7502*1e-3*br_ratio*k_factor,     label='c3_m16_d4_m301')
+# br_ratio = 1
+br_ratio = 0.197544
+# k_factor = 2.22
+k_factor = 2.72
+add_hhh_sample( c3 = 0.00   ,d4 =    0.00    ,  xs=0.03274*1e-3*br_ratio*k_factor ,     label='c3_0_d4_0' ) 
+add_hhh_sample( c3 = 0.00   ,d4 =   -1.00    ,  xs=0.03624*1e-3*br_ratio*k_factor ,     label='c3_0_d4_m1' ) 
+add_hhh_sample( c3 =-4.00   ,d4 =   39.00    ,  xs=4.0930*1e-3*br_ratio*k_factor ,      label='c3_m4_d4_39' )
+add_hhh_sample( c3 =-4.00   ,d4 =   99.00    ,  xs=11.4245*1e-3*br_ratio*k_factor,      label='c3_m4_d4_99' )
+add_hhh_sample( c3 = 8.00   ,d4 =   39.00    ,  xs=5.6317*1e-3*br_ratio*k_factor ,      label='c3_8_d4_39' ) 
+add_hhh_sample( c3 = 8.00   ,d4 = -101.00    ,  xs=2.9478*1e-3*br_ratio*k_factor ,      label='c3_8_d4_m101' )
+add_hhh_sample( c3 = 2.00   ,d4 = -241.00    ,  xs=34.5100*1e-3*br_ratio*k_factor,      label='c3_2_d4_m241' )
+add_hhh_sample( c3 =14.00   ,d4 = -301.00    ,  xs=14.0700*1e-3*br_ratio*k_factor,      label='c3_14_d4_m301' )
+add_hhh_sample( c3 =-16.00  ,d4 = -301.00    ,  xs=31.7502*1e-3*br_ratio*k_factor,      label='c3_m16_d4_m301')
+add_hhh_sample( c3 =  0.00   ,d4 =   99.00    ,  xs=5.243*1e-3*br_ratio*k_factor  ,     label='c3_0_d4_99' )
+add_hhh_sample( c3 = 19.00   ,d4 =   19.00    ,  xs=131.8*1e-3*br_ratio*k_factor  ,     label='c3_19_d4_19')
+add_hhh_sample( c3 =  1.00   ,d4 =    0.00    ,  xs=0.02567*1e-3*br_ratio*k_factor,     label='c3_1_d4_0')
+add_hhh_sample( c3 =  4.00   ,d4 =    9.00    ,  xs=0.2182*1e-3*br_ratio*k_factor ,     label='c3_4_d4_9')
+add_hhh_sample( c3 = -1.00   ,d4 =    0.00    ,  xs=0.1004*1e-3*br_ratio*k_factor ,     label='c3_m1_d4_0')
+add_hhh_sample( c3 = -1.00   ,d4 =   -1.00    ,  xs=0.09674*1e-3*br_ratio*k_factor,     label='c3_m1_d4_m1')
+add_hhh_sample( c3 =  1.00   ,d4 =    2.00    ,  xs=0.01415*1e-3*br_ratio*k_factor ,    label='c3_1_d4_2')
+add_hhh_sample( c3 =  2.00   ,d4 =   -1.00    ,  xs=0.0511*1e-3*br_ratio*k_factor ,     label='c3_2_d4_m1')
+add_hhh_sample( c3 = -1.50   ,d4 =   -0.50    ,  xs=0.1723*1e-3*br_ratio*k_factor ,     label='c3_m1p5_d4_m0p5')
+#new reweight
+add_hhh_sample( c3 = -14.00  ,d4 =   -101.00  ,  xs=46.806369*1e-3*br_ratio*k_factor ,  label='c3_m14_d4_m101')
+add_hhh_sample( c3 = -11.00  ,d4 =   -51.00   ,  xs=23.168446*1e-3*br_ratio*k_factor ,  label='c3_m11_d4_m51')
+add_hhh_sample( c3 = -5.00   ,d4 =   -21.00   ,  xs=1.681676*1e-3*br_ratio*k_factor ,   label='c3_m5_d4_m21')
+add_hhh_sample( c3 = -6.00   ,d4 =   -31.00   ,  xs=2.620969*1e-3*br_ratio*k_factor ,   label='c3_m6_d4_m31')
+add_hhh_sample( c3 = 2.00    ,d4 =   59.00    ,  xs=1.540768*1e-3*br_ratio*k_factor ,   label='c3_2_d4_59')
+add_hhh_sample( c3 = 7.00    ,d4 =   49.00    ,  xs=4.580383*1e-3*br_ratio*k_factor ,   label='c3_7_d4_49')
+add_hhh_sample( c3 = 8.00    ,d4 =   99.00    ,  xs=13.517428*1e-3*br_ratio*k_factor ,  label='c3_8_d4_99')
+add_hhh_sample( c3 = 16.00   ,d4 =   33.00    ,  xs=69.184585*1e-3*br_ratio*k_factor ,  label='c3_16_d4_33')
+add_hhh_sample( c3 = 1.00    ,d4 =   2.00     ,  xs=0.014062*1e-3*br_ratio*k_factor ,   label='c3_1_d4_2')
+add_hhh_sample( c3 = 2.00    ,d4 =   3.00     ,  xs=0.025578*1e-3*br_ratio*k_factor ,   label='c3_2_d4_3')
+ 
 
 ####################################################################################################
 # symbolic cross section formulae
@@ -450,8 +473,35 @@ class HHHFormula(HHFormula):
 
         ### solving for  scaling funtions
         Minv   = self.M.inv()
+        ####equation
         self.coeffs = c.transpose() * Minv # coeffs * s is the sigma, accessing per component gives each sample scaling
         self.sigma  = self.coeffs*s
+
+        print("Matrix M:")
+        sympy.pprint(self.M)
+        
+        print("\nVector c:")
+        sympy.pprint(c)
+        
+        print("\nVector s:")
+        sympy.pprint(s)
+        
+        print("\nInverse of Matrix M:")
+        sympy.pprint(Minv)
+        
+        print("\nCoefficients (c.transpose() * Minv):")
+        sympy.pprint(self.coeffs)
+        
+        print("\nSigma (coeffs * s):")
+
+        sympy.pprint(self.sigma)
+        k4, kl = sympy.symbols('k4 kl')
+        f = sympy.lambdify((k4, kl), self.sigma)
+        print(f)
+        print(str(self.sigma))
+        # exit
+
+
         #self.xSections={}
         #for isample, sample in enumerate(self.samples):
         #    self.xSections['xs'+str(isample)]=sample.xs
@@ -1538,7 +1588,7 @@ def create_model(name, ggf=None, vbf=None, vhh=None, hhh=None, **kwargs):
 # some named, default models
 model_all = create_model(
     "model_all",
-    ggf=[(0, 1), (1, 1), (2.45, 1), (5, 1)],
+    ggf=[(0, 1), (1, 1), (5, 1)],
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (0.5, 1, 1), (1.5, 1, 1)],
 )
 model_all_vhh = create_model(
@@ -1551,7 +1601,7 @@ model_all_vhh = create_model(
 # model used for the combination
 model_default = create_model(
     "model_default",
-    ggf=[(1, 1), (2.45, 1), (5, 1)],  # no (1, 0)
+    ggf=[(1, 1), (0, 1), (5, 1)],  # no (1, 0)
     vbf=[(1, 1, 1), (1, 1, 0), (1, 1, 2), (1, 0, 1), (1, 2, 1), (1.5, 1, 1)],  # no (0.5, 1, 1)
 )
 model_default_vhh = create_model(
@@ -1566,7 +1616,9 @@ model_default_hhh=create_model(
     ggf=model_default.ggf_formula.samples,
     vbf=model_default.vbf_formula.samples,
     vhh=model_all_vhh.vhh_formula.samples,
-    hhh=[(0,0),(0,-1),(-4,39),(-4,99),(8,39),(8,-101),(2,-241),(14,-301),(-16,-301)]
+    hhh=[(0,-1),(1,2),(0,99),(-1,-1),(19,19),(4,9),(2,-1),(1,0),(-1.5,-0.5)]
+    # hhh=[(0,-1),(0,99),(19,19),(1,0),(4,9),(-1,0),(-1,-1),(-1.5,-0.5),(0,0)]
+    # hhh=[(0,-1),(0,99),(19,19),(1,0),(4,9),(-1,0),(-1,-1),(-1.5,-0.5),(0,0),(1,2),(2,-1)]
 )
 
 ####################################################################################################
