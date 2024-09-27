@@ -1202,7 +1202,7 @@ def plot_likelihood_scans_2d(
                 d["values"][poi1],
                 d["values"][poi2],
                 d["values"]["dnll2"],
-                levels=[chi2_levels[2][1], chi2_levels[2][2]],
+                levels=[chi2_levels[2][1], chi2_levels[2][2], chi2_levels[2][3], chi2_levels[2][4], chi2_levels[2][5]],
                 frame_kwargs=[{"mode": "edge"}],
                 interpolation=interpolation_method,
                 smooth=smoothContour_temp,
@@ -1244,7 +1244,7 @@ def plot_likelihood_scans_2d(
         _color_sequence = [br_hh_colors.root[d["name"]] for d in data]
 
     # loop through data entries
-    for d, (cont1, cont2), col in zip(data, contours, _color_sequence[:len(data)]):
+    for d, (cont1, cont2, cont3, cont4, cont5), col in zip(data, contours, _color_sequence[:len(data)]):
         # evaluate the scan
         scan = evaluate_likelihood_scan_2d(
             d["values"][poi1],
@@ -1257,7 +1257,7 @@ def plot_likelihood_scans_2d(
             warn("2D likelihood evaluation failed for entry '{}'".format(d["name"]))
 
         # plot selected contours
-        g1, g2 = None, None
+        g1, g2, g3, g5 = None, None, None, None
         for g1 in cont1:
             r.setup_graph(g1, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors[col]})
             if 1 in show_significances:
@@ -1268,6 +1268,18 @@ def plot_likelihood_scans_2d(
                 r.setup_graph(g2, props={"LineWidth": 2, "LineStyle": 1, "LineColor": colors[col]})
             if 2 in show_significances:
                 draw_objs.append((g2, "SAME,L"))
+        for g3 in cont3:
+            r.setup_graph(g3, props={"LineWidth": 2, "LineStyle": 3, "LineColor": colors[col]})
+            if 3 in show_significances:
+                draw_objs.append((g3, "SAME,L"))
+        for g4 in cont4:
+            r.setup_graph(g4, props={"LineWidth": 2, "LineStyle": 3, "LineColor": colors[col]})
+            if 4 in show_significances:
+                draw_objs.append((g4, "SAME,L"))
+        for g5 in cont5:
+            r.setup_graph(g5, props={"LineWidth": 2, "LineStyle": 4, "LineColor": colors[col]})
+            if 5 in show_significances:
+                draw_objs.append((g5, "SAME,L"))
         name = expand_hh_channel_label(d["name"])
         if g1:
             legend_entries.append((g1, name, "L"))
@@ -1296,6 +1308,24 @@ def plot_likelihood_scans_2d(
         legend_entries.append((g2_style, "#pm 2 #sigma", "L"))
     else:
         warn("no secondary contour found, no line will be visible")
+    if g4 and 4 in show_significances:
+        g4_style = g4.Clone()
+        r.apply_properties(g4_style, {"LineColor": colors.black})
+        legend_entries.append((g4_style, "#pm 3 #sigma", "L"))
+    else:
+        warn("no 4 contour found, no line will be visible")
+    if g3 and 3 in show_significances:
+        g3_style = g3.Clone()
+        r.apply_properties(g3_style, {"LineColor": colors.black})
+        legend_entries.append((g3_style, "#pm 3 #sigma", "L"))
+    else:
+        warn("no 3 contour found, no line will be visible")
+    if g5 and 5 in show_significances:
+        g5_style = g5.Clone()
+        r.apply_properties(g5_style, {"LineColor": colors.black})
+        legend_entries.append((g5_style, "#pm 5 #sigma", "L"))
+    else:
+        warn("no 5 contour found, no line will be visible")
 
     # campaign label
     if campaign:
