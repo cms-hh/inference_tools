@@ -1194,7 +1194,9 @@ def plot_likelihood_scans_2d(
     for i, d in enumerate(data):
         # join values for contour calculation
         smoothContour_temp = smoothContour[0] if len(smoothContour) == 1 else smoothContour[i]
-        print(smoothContour_temp, "!!!!!", d["name"])
+        if smoothContour_temp == None :
+            smoothContour_temp = ('None',)
+        print(smoothContour_temp, "!!!!!", d["name"], smoothContour, len(smoothContour))
         contours.append(
             get_contours(
                 d["values"][poi1],
