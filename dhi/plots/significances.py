@@ -128,6 +128,7 @@ def plot_significance_scan_1d(
 
     # expected values
     if expected_values is not None:
+
         y_values = expected_values["significance"]
         if show_p_values:
             y_values = sp.stats.norm.sf(y_values)
@@ -330,6 +331,7 @@ def plot_significance_scans_1d(
         values, names, _color_sequence[:n_graphs], marker_sequence[:n_graphs]),
     ):
         y_vals = vals["significance"]
+        scan_values = values[i][scan_parameter]
         if show_p_values:
             y_vals = sp.stats.norm.sf(y_vals)
         g_exp = create_tgraph(int(len(scan_values)), scan_values, y_vals)
