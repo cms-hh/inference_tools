@@ -12,7 +12,7 @@ import law
 import luigi
 import six
 
-from dhi.tasks.base import view_output_plots
+from dhi.tasks.base import view_output_plots, ModelParameters
 from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     CombineCommandTask,
@@ -70,7 +70,7 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
         return reqs
 
     def output(self):
-        name = self.join_postfix(["likelihood", self.get_output_postfix()]) + ".root"
+        name = self.join_postfix(["likelihood", self.get_output_postfix(), self.get_output_postfix_additional()]) + ".root"
         return self.target(name)
 
     def build_command(self, fallback_level):
@@ -125,6 +125,7 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
         # join custom setparameters with job-specific setparameters
         parsed_setparams = None
         parsed_freezeparams = None
+        parsed_setfitparams = None
         cleaned_custom_args = []
         self.custom_args = re.sub(' +', ' ', self.custom_args)
         custom_args_list = self.custom_args.split(' ')
@@ -145,11 +146,17 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
 
         joined_parameter_values=self.joined_parameter_values
         joined_frozen_parameters=self.joined_frozen_parameters
+        joined_fit_parameter_values=self.joined_fit_parameter_values()
         if parsed_setparams:
             joined_parameter_values=(',').join([self.joined_parameter_values, parsed_setparams])
         if parsed_freezeparams:
             joined_frozen_parameters=(',').join([self.joined_frozen_parameters, parsed_freezeparams])
 
+        # Add additional set and freeze
+        if len(joined_fit_parameter_values)>0:
+            joined_parameter_values=(',').join([self.joined_parameter_values, joined_fit_parameter_values])
+        if len(self.additional_frozen_parameters):
+            joined_frozen_parameters=(',').join([self.joined_frozen_parameters, ",".join(self.additional_frozen_parameters) ])
 
         # build the command
         cmd = (
@@ -204,7 +211,7 @@ class MergeLikelihoodScan(LikelihoodBase):
         return LikelihoodScan.req(self)
 
     def output(self):
-        name = self.join_postfix(["likelihoods", self.get_output_postfix()]) + ".npz"
+        name = self.join_postfix(["likelihoods", self.get_output_postfix(), self.get_output_postfix_additional()]) + ".npz"
         return self.target(name)
 
     @law.decorator.log
@@ -385,10 +392,15 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
+        if len(self.get_output_postfix_additional())>0:
+            postfix_out= "{}__{}".format(self.get_output_postfix(),self.get_output_postfix_additional())
+        else:
+            postfix_out=self.get_output_postfix()
+
         # plots
         names = self.create_plot_names([
             "nll{}d".format(self.n_pois),
-            self.get_output_postfix(),
+            postfix_out,
             parts,
         ])
         outputs["plots"] = [self.target(name) for name in names]
@@ -396,17 +408,17 @@ class PlotLikelihoodScan(LikelihoodBase, POIPlotTask):
         # ranges
         if self.n_pois == 1 and self.save_ranges:
             outputs["ranges"] = self.target("ranges__{}.json".format(
-                self.get_output_postfix(),
+                postfix_out
             ))
 
         # hep data
         if self.save_hep_data:
-            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["hepdata", postfix_out] + parts)
             outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
-            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["plotdata", postfix_out] + parts)
             outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
@@ -649,10 +661,15 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
+        if len(self.get_output_postfix_additional())>0:
+            postfix_out= "{}__{}".format(self.get_output_postfix(),self.get_output_postfix_additional())
+        else:
+            postfix_out=self.get_output_postfix()
+
         # plots
         names = self.create_plot_names([
             "multinll{}d".format(self.n_pois),
-            self.get_output_postfix(),
+            postfix_out,
             parts,
         ])
         outputs["plots"] = [self.target(name) for name in names]
@@ -660,17 +677,17 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
         # ranges
         if self.n_pois == 1 and self.save_ranges:
             outputs["ranges"] = self.target("ranges__{}.json".format(
-                self.get_output_postfix(),
+                postfix_out
             ))
 
         # hep data
         if self.save_hep_data:
-            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["hepdata", postfix_out] + parts)
             outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
-            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["plotdata", postfix_out] + parts)
             outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
@@ -821,10 +838,15 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
         if self.n_pois == 1 and self.y_log:
             parts.append("log")
 
+        if len(self.get_output_postfix_additional())>0:
+            postfix_out= "{}__{}".format(self.get_output_postfix(),self.get_output_postfix_additional())
+        else:
+            postfix_out=self.get_output_postfix()
+
         # plots
         names = self.create_plot_names([
             "multinllbymodel{}d".format(self.n_pois),
-            self.get_output_postfix(),
+            postfix_out,
             parts,
         ])
         outputs["plots"] = [self.target(name) for name in names]
@@ -832,17 +854,17 @@ class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, Multi
         # ranges
         if self.n_pois == 1 and self.save_ranges:
             outputs["ranges"] = self.target("ranges__{}.json".format(
-                self.get_output_postfix(),
+                postfix_out
             ))
 
         # hep data
         if self.save_hep_data:
-            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["hepdata", postfix_out] + parts)
             outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
-            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["plotdata", postfix_out] + parts)
             outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs

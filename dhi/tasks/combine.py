@@ -840,9 +840,18 @@ class ParameterValuesTask(AnalysisTask):
         description="colon-separated parameter names and ranges to be set; the accepted format is "
         "'name1=min1,max1:name2=min2,max2:...'",
     )
+    # additional paramaters
+    fit_parameter_values = ModelParameters(
+        default=(),
+        min_len=1,
+        max_len=10,
+        description="colon-separated parameter names and values to be set; the accepted format is "
+        "'name1=value1:name2=value2:...'",
+    )
 
     sort_parameter_values = True
     sort_parameter_ranges = True
+    sort_fit_parameter_values = True
 
     @classmethod
     def modify_param_values(cls, params):
@@ -861,6 +870,13 @@ class ParameterValuesTask(AnalysisTask):
             if cls.sort_parameter_ranges:
                 parameter_ranges = sorted(parameter_ranges, key=lambda p: p[0])
             params["parameter_ranges"] = tuple(parameter_ranges)
+
+        # sort parameters values
+        if "fit_parameter_values" in params:
+            fit_parameter_values = params["fit_parameter_values"]
+            if cls.sort_fit_parameter_values:
+                fit_parameter_values = sorted(fit_parameter_values, key=lambda p: p[0])
+            params["fit_parameter_values"] = tuple(fit_parameter_values)
 
         return params
 
@@ -881,6 +897,13 @@ class ParameterValuesTask(AnalysisTask):
                 raise ValueError(f"{self!r}: duplicate parameter range '{p[0]}'")
             self.parameter_ranges_dict[p[0]] = (float(p[1]), float(p[2]))
 
+        # store additional parameter values in a dict, check for duplicates
+        self.fit_parameter_values_dict = OrderedDict()
+        for p in self.fit_parameter_values:
+            if p[0] in self.fit_parameter_values_dict:
+                raise ValueError(f"{self!r}: duplicate additional parameter value '{p[0]}'")
+            self.fit_parameter_values_dict[p[0]] = float(p[1])
+
     def get_output_postfix(self, join=True):
         parts = []
         if self.parameter_values:
@@ -891,13 +914,30 @@ class ParameterValuesTask(AnalysisTask):
 
         return self.join_postfix(parts) if join else parts
 
+    def get_output_postfix_additional(self, join=True):
+        parts = []
+        if self.fit_parameter_values:
+            parts = [
+                ["fit_params"] +
+                ["{}{}".format(*tpl) for tpl in self.fit_parameter_values_dict.items()],
+            ]
+
+        return self.join_postfix(parts) if join else parts
+
     def _joined_parameter_values(self, join=True):
         values = OrderedDict(self.parameter_values_dict)
+        return ",".join("{}={}".format(*tpl) for tpl in values.items()) if join else values
+
+    def _joined_fit_parameter_values(self, join=True):
+        values = OrderedDict(self.fit_parameter_values_dict)
         return ",".join("{}={}".format(*tpl) for tpl in values.items()) if join else values
 
     @property
     def joined_parameter_values(self):
         return self._joined_parameter_values() or '""'
+
+    def joined_fit_parameter_values(self):
+        return self._joined_fit_parameter_values() or '""'
 
     def _joined_parameter_ranges(self, join=True):
         values = OrderedDict(self.parameter_ranges_dict)
@@ -1134,6 +1174,14 @@ class POITask(DatacardTask, ParameterValuesTask):
         unique=True,
         sort=True,
         description="comma-separated names of groups of parameters to be frozen",
+    )
+    # additional freeze
+    additional_frozen_parameters = law.CSVParameter(
+        default=(),
+        unique=True,
+        sort=True,
+        description="comma-separated names of parameters to be frozen in addition to non-POI and "
+        "scan parameters",
     )
 
     force_n_pois = None
@@ -1474,9 +1522,10 @@ class POIScanTask(POITask, ParameterScanTask):
         if not self.allow_parameter_values_in_scan_parameters:
             for p in self.parameter_values_dict:
                 if p in self.scan_parameter_names:
-                    raise Exception(
-                        f"parameter values are not allowed to be in scan parameters, but found {p}",
-                    )
+                    #raise Exception(
+                    #    f"parameter values are not allowed to be in scan parameters, but found {p}",
+                    #)
+                    print("WARNING!: you are changing the expected value of the POI you are scanning into")
 
         # check if no scan parameter is in custom parameter ranges
         if not self.allow_parameter_ranges_in_scan_parameters:
