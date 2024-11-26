@@ -743,6 +743,79 @@ class ModelParameters(luigi.Parameter):
             for v in value
         )
 
+class FitParameters(luigi.Parameter):
+    fit_scan_parameters = ModelParameters(
+        default=(("kl",),),
+        max_len=3,
+        description="colon-separated parameters to scan, each in the format, to be used only as fit option "
+        "'name[,start,stop[,points]]'; defaults for start and stop values are taken from the used "
+        "physics model; the default number of points is inferred from that range so that there is "
+        "one measurement per integer step; when the same scan parameter name is used multiple "
+        "times, the corresponding scan ranges are joined and the order of first occurrence is "
+        "preserved; default: (kl,)",
+    )
+
+    fit_scan_parameters_list = ModelParameters(
+        default=(("kl",),),
+        max_len=30,
+        description="colon-separated plain list of parameters to scan, each in the format, to be used only as fit option "
+        "'name[,point1,point2,....]'; defaults for start and stop values are taken from the used "
+        "physics model; the default number of points is inferred from that range so that there is "
+        "one measurement per integer step; when the same scan parameter name is used multiple "
+        "times, the corresponding scan ranges are joined and the order of first occurrence is "
+        "preserved; default: (kl,)",
+    )
+
+    fit_scan_parameters_labels = ModelParameters(
+        default=(),
+        max_len=30,
+        description="colon-separated plain list of labels of parameters to scan, each in the format, to be used only as fit option "
+        "'name[,point1,point2,....]'; defaults for start and stop values are taken from the used "
+        "physics model; the default number of points is inferred from that range so that there is "
+        "one measurement per integer step; when the same scan parameter name is used multiple "
+        "times, the corresponding scan ranges are joined and the order of first occurrence is "
+        "preserved; default: ()",
+    )    
+
+    def get_fit_scan_parameters_tuple_list(self):
+        if len(self.fit_scan_parameters) > 1:
+            raise Exception(f"You can only scan fit parameteds in 1D for --fit-scan-parameters")
+
+        if len(self.fit_scan_parameters[0])>2 and len(self.fit_scan_parameters_list[0])>1:
+            raise Exception(f"You must chose ONLY one scan method --fit-scan-parameters-list OR --fit-scan-parameters")
+        
+        if len(self.fit_scan_parameters[0])>2:
+            name_out = self.join_postfix(self.fit_scan_parameters[0])
+            self.fit_scan_parameters_dict = OrderedDict()
+            for p in self.fit_scan_parameters:
+                if len(p) < 4:
+                    raise Exception(f"invalid scan parameter size '{p}'")
+                self.fit_scan_parameters_dict.setdefault(p[0], []).append(p[1:])
+
+            _fit_scan_parameters = ()
+            for p, ranges in self.fit_scan_parameters_dict.items():
+                # give error if scan param already set on command?
+                start, stop, points = ranges[0]
+                param_val = float(start)
+                for pp in range(0, int(points)):
+                    _fit_scan_parameters= (*_fit_scan_parameters, tuple((p, param_val + (float(stop)-float(start))*pp/int(points)))) #self.fit_parameter_values + (tuple((p, pp)))
+            return tuple((_fit_scan_parameters, name_out))  
+
+        elif len(self.fit_scan_parameters_list[0])>1:
+
+            _fit_scan_parameters=()
+            _scan_parameter=self.fit_scan_parameters_list[0][0]
+            name_out = self.join_postfix([_scan_parameter, len(self.fit_scan_parameters_list[0])-1])
+            for ff, fit_value in enumerate(self.fit_scan_parameters_list[0]):
+                if ff==0:
+                    continue
+                else:
+                    _fit_scan_parameters= (*_fit_scan_parameters, tuple((_scan_parameter, fit_value))) 
+
+            return tuple((_fit_scan_parameters, name_out))        
+        else:
+            raise Exception(f"You must chose one scan method --fit-scan-parameters-list OR --fit-scan-parameters")
+
 
 @law.decorator.factory(accept_generator=True)
 def view_output_plots(fn, opts, task, *args, **kwargs):

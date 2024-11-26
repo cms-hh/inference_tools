@@ -12,7 +12,7 @@ import law
 import luigi
 import six
 
-from dhi.tasks.base import view_output_plots, ModelParameters
+from dhi.tasks.base import view_output_plots, ModelParameters, FitParameters
 from dhi.tasks.remote import HTCondorWorkflow
 from dhi.tasks.combine import (
     CombineCommandTask,
@@ -26,7 +26,7 @@ from dhi.tasks.combine import (
 from dhi.tasks.snapshot import Snapshot, SnapshotUser
 from dhi.config import poi_data
 from dhi.util import unique_recarray
-
+from collections import defaultdict, OrderedDict
 
 class LikelihoodBase(POIScanTask, SnapshotUser):
 
@@ -125,7 +125,6 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
         # join custom setparameters with job-specific setparameters
         parsed_setparams = None
         parsed_freezeparams = None
-        parsed_setfitparams = None
         cleaned_custom_args = []
         self.custom_args = re.sub(' +', ' ', self.custom_args)
         custom_args_list = self.custom_args.split(' ')
@@ -156,7 +155,7 @@ class LikelihoodScan(LikelihoodBase, CombineCommandTask, law.LocalWorkflow, HTCo
         if len(joined_fit_parameter_values)>0:
             joined_parameter_values=(',').join([self.joined_parameter_values, joined_fit_parameter_values])
         if len(self.additional_frozen_parameters):
-            joined_frozen_parameters=(',').join([self.joined_frozen_parameters, ",".join(self.additional_frozen_parameters) ])
+            joined_frozen_parameters=(',').join([self.joined_frozen_parameters, ",".join(self.additional_frozen_parameters)])
 
         # build the command
         cmd = (
@@ -801,6 +800,174 @@ class PlotMultipleLikelihoodScans(PlotLikelihoodScan, POIMultiTask, MultiDatacar
                 smoothContour=self.smooth_contour,
             )
 
+
+class PlotMultipleLikelihoodScansByParameter(PlotLikelihoodScan, POIMultiTask, FitParameters):
+
+    show_best_fit_error = None
+    z_min = None
+    z_max = None
+    z_log = None
+
+    compare_multi_sequence = "fit_scan_parameters"
+
+    default_plot_function = [
+        "dhi.plots.likelihoods.plot_likelihood_scans_1d",
+        "dhi.plots.likelihoods.plot_likelihood_scans_2d",
+    ]
+
+    def requires(self):
+        if len(self.unblinded)>1:
+            raise Exception(f"This task does not support mixing unblinded and blinded")
+        return [
+            [
+                MergeLikelihoodScan.req(
+                    self,
+                    scan_parameters=scan_parameters,
+                    fit_parameter_values=(*self.fit_parameter_values, fit_param_point),
+                    unblinded=self.unblinded[0],
+                )
+                for scan_parameters in self.get_scan_parameter_combinations()
+            ]
+            for fit_param_point in self.get_fit_scan_parameters_tuple_list()[0]
+        ]
+
+    def output(self):
+        outputs = {}
+        # add scan fit on out name 
+        scan_name = "fit_scan_{}".format(self.get_fit_scan_parameters_tuple_list()[1]).replace("__", "_")
+        print("self.get_fit_scan_parameters_tuple_list()[1]", self.get_fit_scan_parameters_tuple_list()[1])
+
+        # additional postfix
+        parts = [scan_name]
+        if self.n_pois == 1 and self.y_log:
+            parts.append("log")
+
+        if len(self.get_output_postfix_additional())>0:
+            postfix_out= "{}__{}".format(self.get_output_postfix(),self.get_output_postfix_additional())
+        else:
+            postfix_out=self.get_output_postfix()
+
+        # plots
+        names = self.create_plot_names([
+            "multinllbymodel{}d".format(self.n_pois),
+            postfix_out,
+            parts,
+        ])
+        outputs["plots"] = [self.target(name) for name in names]
+
+        # ranges
+        if self.n_pois == 1 and self.save_ranges:
+            outputs["ranges"] = self.target("ranges__{}__{}.json".format(
+                postfix_out,
+                scan_name
+            ))
+
+        # hep data
+        if self.save_hep_data:
+            name = self.join_postfix(["hepdata", postfix_out] + parts)
+            outputs["hep_data"] = self.target("{}.yaml".format(name))
+
+        # plot data
+        if self.save_plot_data:
+            name = self.join_postfix(["plotdata", postfix_out] + parts)
+            outputs["plot_data"] = self.target("{}.pkl".format(name))
+
+        return outputs
+
+    @law.decorator.log
+    @law.decorator.notify
+    @view_output_plots
+    @law.decorator.safe_output
+    @law.decorator.localize(input=False)
+    def run(self):
+        # prepare the output
+        outputs = self.output()
+        outputs["plots"][0].parent.touch()
+
+        param_labels = ()
+        fit_scan_parameters_tuple_list=self.get_fit_scan_parameters_tuple_list()[0]
+
+        if len(self.fit_scan_parameters_labels)==0:
+            for ff, fit_param_point in enumerate(fit_scan_parameters_tuple_list):
+                param_labels=(*param_labels, "{} = {}".format(fit_param_point[0], fit_param_point[1])) # param_labels+("{} = {}".format(fit_param_point[0], fit_param_point[1]))
+        elif len(self.fit_scan_parameters_labels[0])==len(fit_scan_parameters_tuple_list):
+            #fit_scan_parameters_labels=self.fit_scan_parameters_labels[0]
+            param_labels=self.fit_scan_parameters_labels[0]
+        else:
+            print(self.fit_scan_parameters_labels[0])
+            print(fit_scan_parameters_tuple_list)
+            print(param_labels)
+            raise Exception("The lenghts of labels and parameters scan do not match {} {}".format(len(self.fit_scan_parameters_labels),len(fit_scan_parameters_tuple_list)))
+
+        # load scan data
+        data = []
+        for fit_param_point, label, inps in zip(fit_scan_parameters_tuple_list, param_labels, self.input()):
+                values, poi_mins = self.load_scan_data(inps)
+
+                if self.recompute_best_fit:
+                    poi_mins = {p: None for p in poi_mins}
+
+                # prepare the name
+                #name = "{} = {}".format(fit_param_point[0], fit_param_point[1])
+                #if name.startswith("model "):
+                #    name = name.split("model ", 1)[-1]
+
+                # store a data entry
+                data.append(dict([
+                    ("values", values),
+                    ("poi_mins", [poi_mins[p] for p in self.pois]),
+                    ("name", label),
+                ]))
+
+        # call the plot function
+        if self.n_pois == 1:
+            # get the SM value when the parameter is known
+            theory_value = poi_data.get(self.pois[0], {}).get("sm_value")
+
+            self.call_plot_func(
+                paths=[outp.path for outp in outputs["plots"]],
+                poi=self.pois[0],
+                data=data,
+                theory_value=theory_value,
+                ranges_path=outputs["ranges"].path if "ranges" in outputs else None,
+                hep_data_path=outputs["hep_data"].path if "hep_data" in outputs else None,
+                show_best_fit=self.show_best_fit,
+                show_best_fit_indicators=False,
+                show_significances=self.show_significances,
+                shift_negative_values=self.shift_negative_values,
+                interpolate_above=self.interpolate_above,
+                x_min=self.get_axis_limit("x_min"),
+                x_max=self.get_axis_limit("x_max"),
+                y_min=self.get_axis_limit("y_min"),
+                y_max=self.get_axis_limit("y_max"),
+                y_log=self.y_log,
+                model_parameters=self.get_shown_parameters(),
+                campaign=self.campaign if self.campaign != law.NO_STR else None,
+                show_points=self.show_points,
+                cms_postfix=self.cms_postfix,
+                style=self.style,
+                dump_target=outputs.get("plot_data"),
+            )
+        else:  # 2
+            self.call_plot_func(
+                paths=[outp.path for outp in outputs["plots"]],
+                poi1=self.pois[0],
+                poi2=self.pois[1],
+                data=data,
+                shift_negative_values=self.shift_negative_values,
+                interpolate_nans=self.interpolate_nans,
+                interpolate_above=self.interpolate_above,
+                interpolation_method=self.interpolation_method,
+                x_min=self.get_axis_limit("x_min"),
+                x_max=self.get_axis_limit("x_max"),
+                y_min=self.get_axis_limit("y_min"),
+                y_max=self.get_axis_limit("y_max"),
+                model_parameters=self.get_shown_parameters(),
+                campaign=self.campaign if self.campaign != law.NO_STR else None,
+                cms_postfix=self.cms_postfix,
+                style=self.style,
+                dump_target=outputs.get("plot_data"),
+            )
 
 class PlotMultipleLikelihoodScansByModel(PlotLikelihoodScan, POIMultiTask, MultiHHModelTask):
 

@@ -78,7 +78,7 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
         return reqs
 
     def output(self):
-        name = self.join_postfix(["significance", self.get_output_postfix()]) + ".root"
+        name = self.join_postfix(["significance", self.get_output_postfix(), self.get_output_postfix_additional()]) + ".root"
         return self.target(name)
 
     def build_command(self, fallback_level):
@@ -121,11 +121,17 @@ class SignificanceScan(SignificanceBase, CombineCommandTask, law.LocalWorkflow, 
 
         joined_parameter_values=self.joined_parameter_values
         joined_frozen_parameters=self.joined_frozen_parameters
+        joined_fit_parameter_values=self.joined_fit_parameter_values()
         if parsed_setparams:
             joined_parameter_values=(',').join([self.joined_parameter_values, parsed_setparams])
         if parsed_freezeparams:
             joined_frozen_parameters=(',').join([self.joined_frozen_parameters, parsed_freezeparams])
 
+        # Add additional set and freeze
+        if len(joined_fit_parameter_values)>0:
+            joined_parameter_values=(',').join([self.joined_parameter_values, joined_fit_parameter_values])
+        if len(self.additional_frozen_parameters):
+            joined_frozen_parameters=(',').join([self.joined_frozen_parameters, ",".join(self.additional_frozen_parameters)])
 
         # build the command
         cmd = (
@@ -171,7 +177,7 @@ class MergeSignificanceScan(SignificanceBase):
         return SignificanceScan.req(self)
 
     def output(self):
-        name = self.join_postfix(["significance", self.get_output_postfix()]) + ".npz"
+        name = self.join_postfix(["significance", self.get_output_postfix(), self.get_output_postfix_additional()]) + ".npz"
         return self.target(name)
 
     @law.decorator.log
@@ -259,12 +265,12 @@ class PlotSignificanceScan(SignificanceBase, POIPlotTask):
         outputs = {}
 
         prefix = "significance" if self.convert == law.NO_STR else self.convert
-        names = self.create_plot_names([prefix, self.get_output_postfix(), parts])
+        names = self.create_plot_names([prefix, self.get_output_postfix(), self.get_output_postfix_additional(), parts])
         outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
-            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["plotdata", self.get_output_postfix(), self.get_output_postfix_additional()] + parts)
             outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
@@ -366,12 +372,12 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
         outputs = {}
 
         prefix = "significance" if self.convert == law.NO_STR else self.convert
-        names = self.create_plot_names(["multi{}s".format(prefix), self.get_output_postfix(), parts])
+        names = self.create_plot_names(["multi{}s".format(prefix), self.get_output_postfix(), self.get_output_postfix_additional(), parts])
         outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
-            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["plotdata", self.get_output_postfix(), self.get_output_postfix_additional()] + parts)
             outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
@@ -421,3 +427,5 @@ class PlotMultipleSignificanceScans(PlotSignificanceScan, POIMultiTask, MultiDat
             style=self.style,
             dump_target=outputs.get("plot_data"),
         )
+
+#class PlotMultipleSignificanceScansByParameter

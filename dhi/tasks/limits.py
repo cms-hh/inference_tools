@@ -195,7 +195,7 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
         return reqs
 
     def output(self):
-        name = self.join_postfix(["limit", self.get_output_postfix()]) + ".root"
+        name = self.join_postfix(["limit", self.get_output_postfix(), self.get_output_postfix_additional()]) + ".root"
         return self.target(name)
 
     def build_command(self, fallback_level):
@@ -225,6 +225,15 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
                 " --noFitAsimov"
             ).format(self=self)
 
+        joined_parameter_values=self.joined_parameter_values
+        joined_frozen_parameters=self.joined_frozen_parameters
+        joined_fit_parameter_values=self.joined_fit_parameter_values()
+        # Add additional set and freeze
+        if len(joined_fit_parameter_values)>0:
+            joined_parameter_values=(',').join([self.joined_parameter_values, joined_fit_parameter_values])
+        if len(self.additional_frozen_parameters):
+            joined_frozen_parameters=(',').join([self.joined_frozen_parameters, ",".join(self.additional_frozen_parameters)])
+
         # build the command
         cmd = (
             "combine -M AsymptoticLimits {workspace}"
@@ -236,8 +245,8 @@ class UpperLimits(UpperLimitsScanBase, CombineCommandTask, law.LocalWorkflow, HT
             " {snapshot_args}"
             " --redefineSignalPOIs {self.joined_pois}"
             " --setParameterRanges {self.joined_parameter_ranges}"
-            " --setParameters {self.joined_scan_values},{self.joined_parameter_values}"
-            " --freezeParameters {self.joined_frozen_parameters}"
+            " --setParameters {self.joined_scan_values},{joined_parameter_values}"
+            " --freezeParameters {joined_frozen_parameters}"
             " --freezeNuisanceGroups {self.joined_frozen_groups}"
             " {self.combine_optimization_args}"
             " && "
@@ -269,7 +278,7 @@ class MergeUpperLimits(UpperLimitsScanBase):
         return UpperLimits.req(self)
 
     def output(self):
-        name = self.join_postfix(["limits", self.get_output_postfix()]) + ".npz"
+        name = self.join_postfix(["limits", self.get_output_postfix(), self.get_output_postfix_additional()]) + ".npz"
         return self.target(name)
 
     @law.decorator.log
@@ -321,7 +330,7 @@ class UpperLimitsGrid(UpperLimits):
     exclude_params_req_set = {"parameter_values"}
 
     def output(self):
-        name = self.join_postfix(["limitgridpoint", self.get_output_postfix()]) + ".root"
+        name = self.join_postfix(["limitgridpoint", self.get_output_postfix(), self.get_output_postfix_additional()]) + ".root"
         return self.target(name)
 
     def build_command(self, fallback_level):
@@ -358,7 +367,7 @@ class MergeUpperLimitsGrid(UpperLimitsScanBase):
         ]
 
     def output(self):
-        name = self.join_postfix(["limitgrid", self.get_output_postfix()]) + ".root"
+        name = self.join_postfix(["limitgrid", self.get_output_postfix(), self.get_output_postfix_additional()]) + ".root"
         return self.target(name)
 
     @law.decorator.log
@@ -476,26 +485,31 @@ class PlotUpperLimits(UpperLimitsScanBase, POIPlotTask):
         if self.y_log:
             parts.append("log")
 
+        if len(self.get_output_postfix_additional())>0:
+            postfix_out= "{}__{}".format(self.get_output_postfix(), self.get_output_postfix_additional())
+        else:
+            postfix_out=self.get_output_postfix()
+
         outputs = {}
 
         # plots
-        names = self.create_plot_names(["limits", self.get_output_postfix(), parts])
+        names = self.create_plot_names(["limits", postfix_out, parts])
         outputs["plots"] = [self.target(name) for name in names]
 
         # ranges
         if self.save_ranges:
             outputs["ranges"] = self.target("ranges__{}.json".format(
-                self.get_output_postfix(),
+                postfix_out
             ))
 
         # hep data
         if self.save_hep_data:
-            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["hepdata", postfix_out] + parts)
             outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
-            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["plotdata", postfix_out] + parts)
             outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
@@ -651,24 +665,29 @@ class PlotMultipleUpperLimits(PlotUpperLimits, POIMultiTask, MultiDatacardTask):
         if self.y_log:
             parts.append("log")
 
+        if len(self.get_output_postfix_additional())>0:
+            postfix_out= "{}__{}".format(self.get_output_postfix(), self.get_output_postfix_additional())
+        else:
+            postfix_out=self.get_output_postfix()
+
         # plots
-        names = self.create_plot_names(["multilimits", self.get_output_postfix(), parts])
+        names = self.create_plot_names(["multilimits", postfix_out, parts])
         outputs["plots"] = [self.target(name) for name in names]
 
         # ranges
         if self.save_ranges:
             outputs["ranges"] = self.target("ranges__{}.json".format(
-                self.get_output_postfix(),
+                postfix_out
             ))
 
         # hep data
         if self.save_hep_data:
-            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["hepdata", postfix_out] + parts)
             outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
-            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["plotdata", postfix_out] + parts)
             outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
@@ -813,22 +832,29 @@ class PlotMultipleUpperLimitsByModel(PlotUpperLimits, POIMultiTask, MultiHHModel
         if self.y_log:
             parts.append("log")
 
+        if len(self.get_output_postfix_additional())>0:
+            postfix_out= "{}__{}".format(self.get_output_postfix(), self.get_output_postfix_additional())
+        else:
+            postfix_out=self.get_output_postfix()
+
         # plots
-        names = self.create_plot_names(["multilimitsbymodel", self.get_output_postfix(), parts])
+        names = self.create_plot_names(["multilimitsbymodel", postfix_out, parts])
         outputs["plots"] = [self.target(name) for name in names]
 
         # ranges
         if self.save_ranges:
-            outputs["ranges"] = self.target(f"ranges__{self.get_output_postfix()}.json")
+            outputs["ranges"] = self.target("ranges__{}.json".format(
+                postfix_out
+            ))
 
         # hep data
         if self.save_hep_data:
-            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["hepdata", postfix_out] + parts)
             outputs["hep_data"] = self.target(f"{name}.yaml")
 
         # plot data
         if self.save_plot_data:
-            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["plotdata", postfix_out] + parts)
             outputs["plot_data"] = self.target(f"{name}.pkl")
 
         return outputs
@@ -1112,17 +1138,17 @@ class PlotUpperLimitsAtPoint(
         outputs = {}
 
         # plots
-        names = self.create_plot_names(["limitsatpoint", self.get_output_postfix(), parts])
+        names = self.create_plot_names(["limitsatpoint", self.get_output_postfix(), self.get_output_postfix_additional(), parts])
         outputs["plots"] = [self.target(name) for name in names]
 
         # hep data
         if self.save_hep_data:
-            name = self.join_postfix(["hepdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["hepdata", self.get_output_postfix(), self.get_output_postfix_additional()] + parts)
             outputs["hep_data"] = self.target("{}.yaml".format(name))
 
         # plot data
         if self.save_plot_data:
-            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["plotdata", self.get_output_postfix(), self.get_output_postfix_additional()] + parts)
             outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
@@ -1286,12 +1312,12 @@ class PlotUpperLimits2D(UpperLimitsScanBase, POIPlotTask):
 
         outputs = {}
 
-        names = self.create_plot_names(["limits2d", self.get_output_postfix(), parts])
+        names = self.create_plot_names(["limits2d", self.get_output_postfix(), self.get_output_postfix_additional(), parts])
         outputs["plots"] = [self.target(name) for name in names]
 
         # plot data
         if self.save_plot_data:
-            name = self.join_postfix(["plotdata", self.get_output_postfix()] + parts)
+            name = self.join_postfix(["plotdata", self.get_output_postfix(), self.get_output_postfix_additional()] + parts)
             outputs["plot_data"] = self.target("{}.pkl".format(name))
 
         return outputs
