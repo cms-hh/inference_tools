@@ -33,6 +33,42 @@ info = {
             r"""--X-nuisance-group-function 'bkgTheory' '0.5'"""
       ]
     },
+    'S2ESU': {
+      'scale_args': [
+          # theory
+          r"""--X-nuisance-group-function 'sigTheory' '0.5'""",
+          r"""--X-nuisance-group-function 'bkgTheory' '0.5'"""
+          # lumi
+          r"""--X-nuisance-group-function 'pLumi' '0.6'""",
+          # b(b)-tagging
+          r"""--X-nuisance-group-function 'pPnetAK8J' '0.5'""",
+          r"""--X-nuisance-group-function 'pBTagHF' '0.5'""",
+          r"""--X-nuisance-group-function 'pBTagLF' '1.0'""",
+          # JES and JER
+          r"""--X-nuisance-group-function 'pScaleJ' '1.0'""",
+          r"""--X-nuisance-group-function 'pScaleJAbs' '1.0'""",
+          r"""--X-nuisance-group-function 'pScaleJFlav' '1.0'""",
+          r"""--X-nuisance-group-function 'pScaleJPileup' '1.0'""",
+          r"""--X-nuisance-group-function 'pScaleJRel' '1.0'""",
+          r"""--X-nuisance-group-function 'pScaleJTime' '1.0'""",
+          r"""--X-nuisance-group-function 'pScaleJMethod' '1.0'""",
+          r"""--X-nuisance-group-function 'pResJ' '1.0'""",
+          r"""--X-nuisance-group-function 'pScaleMet' '1.0'""",
+          # Photon efficiency
+          r"""--X-nuisance-group-function 'pPhotonID' '0.8'""",
+          r"""--X-nuisance-group-function 'pHggTrigger' '0.8'""",
+          r"""--X-nuisance-group-function 'pHggPreselections' '0.8'""",
+          # Photon energy scale and resolution
+          r"""--X-nuisance-group-function 'pResPhoton' '1.0'""",
+          # tau ID
+          r"""--X-nuisance-group-function 'pTauID' '1.0'""",
+          # regressions for jet energy and mass - Not in ATLAS
+          r"""--X-nuisance-group-function 'pJmsAK8J' '0.5'""",
+          r"""--X-nuisance-group-function 'pJmrAK8J' '0.5'""",
+          r"""--X-nuisance-group-function 'pResJBreg' '0.5'""",
+          
+      ]
+    },
 }
 
 def GetOpts(scenario):
