@@ -251,14 +251,14 @@ add_hhh_sample( c3 =  1.00   ,d4 =    2.00    ,  xs=0.01415*1e-3*br_ratio*k_fact
 add_hhh_sample( c3 =  2.00   ,d4 =   -1.00    ,  xs=0.0511*1e-3*br_ratio*k_factor ,     label='c3_2_d4_m1')
 add_hhh_sample( c3 = -1.50   ,d4 =   -0.50    ,  xs=0.1723*1e-3*br_ratio*k_factor ,     label='c3_m1p5_d4_m0p5')
 #new reweight
-add_hhh_sample( c3 = -14.00  ,d4 =   -101.00  ,  xs=46.806369*1e-3*br_ratio*k_factor ,  label='c3_m14_d4_m101')
-add_hhh_sample( c3 = -11.00  ,d4 =   -51.00   ,  xs=23.168446*1e-3*br_ratio*k_factor ,  label='c3_m11_d4_m51')
-add_hhh_sample( c3 = -5.00   ,d4 =   -21.00   ,  xs=1.681676*1e-3*br_ratio*k_factor ,   label='c3_m5_d4_m21')
-add_hhh_sample( c3 = -6.00   ,d4 =   -31.00   ,  xs=2.620969*1e-3*br_ratio*k_factor ,   label='c3_m6_d4_m31')
-add_hhh_sample( c3 = 2.00    ,d4 =   59.00    ,  xs=1.540768*1e-3*br_ratio*k_factor ,   label='c3_2_d4_59')
-add_hhh_sample( c3 = 7.00    ,d4 =   49.00    ,  xs=4.580383*1e-3*br_ratio*k_factor ,   label='c3_7_d4_49')
-add_hhh_sample( c3 = 8.00    ,d4 =   99.00    ,  xs=13.517428*1e-3*br_ratio*k_factor ,  label='c3_8_d4_99')
-add_hhh_sample( c3 = 16.00   ,d4 =   33.00    ,  xs=69.184585*1e-3*br_ratio*k_factor ,  label='c3_16_d4_33')
+add_hhh_sample( c3 = -14.00  ,d4 =   -101.00  ,  xs=46.94816*1e-3*br_ratio*k_factor ,   label='c3_m14_d4_m101')
+add_hhh_sample( c3 = -11.00  ,d4 =   99.00    ,  xs=65.109141*1e-3*br_ratio*k_factor ,  label='c3_m11_d4_99')
+add_hhh_sample( c3 = -5.00   ,d4 =   -21.00   ,  xs=1.695242*1e-3*br_ratio*k_factor ,   label='c3_m5_d4_m21')
+add_hhh_sample( c3 = -6.00   ,d4 =   29.00    ,  xs=7.83869*1e-3*br_ratio*k_factor ,    label='c3_m6_d4_29')
+add_hhh_sample( c3 = 2.00    ,d4 =   -61.00   ,  xs=2.593955*1e-3*br_ratio*k_factor ,   label='c3_2_d4_m61')
+add_hhh_sample( c3 = 7.00    ,d4 =   49.00    ,  xs=4.639652*1e-3*br_ratio*k_factor ,   label='c3_7_d4_49')
+add_hhh_sample( c3 = 7.00    ,d4 =   -21.00   ,  xs=0.911872*1e-3*br_ratio*k_factor ,   label='c3_7_d4_m21')
+add_hhh_sample( c3 = 15.00   ,d4 =   -81.00   ,  xs=24.990905*1e-3*br_ratio*k_factor ,  label='c3_15_d4_m81')
 add_hhh_sample( c3 = 1.00    ,d4 =   2.00     ,  xs=0.014062*1e-3*br_ratio*k_factor ,   label='c3_1_d4_2')
 add_hhh_sample( c3 = 2.00    ,d4 =   3.00     ,  xs=0.025578*1e-3*br_ratio*k_factor ,   label='c3_2_d4_3')
  
@@ -1616,7 +1616,9 @@ model_default_hhh=create_model(
     ggf=model_default.ggf_formula.samples,
     vbf=model_default.vbf_formula.samples,
     vhh=model_all_vhh.vhh_formula.samples,
-    hhh=[(0,-1),(1,2),(0,99),(-1,-1),(19,19),(4,9),(2,-1),(1,0),(-1.5,-0.5)]
+    # hhh=[(0,0),(-14,-101),(-11,99),(-5,-21),(-6,29),(2,-61),(7,49),(7,-21),(15,-81)]
+    hhh=[(0,0),(1,2),(0,99),(-1,-1),(19,19),(4,9),(2,-1),(1,0),(-1.5,-0.5)]
+    # hhh=[(0,-1),(1,2),(0,99),(-1,-1),(19,19),(4,9),(2,-1),(1,0),(-1.5,-0.5)]
     # hhh=[(0,-1),(0,99),(19,19),(1,0),(4,9),(-1,0),(-1,-1),(-1.5,-0.5),(0,0)]
     # hhh=[(0,-1),(0,99),(19,19),(1,0),(4,9),(-1,0),(-1,-1),(-1.5,-0.5),(0,0),(1,2),(2,-1)]
 )
